@@ -39,6 +39,9 @@ A scikit-learn compatible classifier wrapper around `HTSKClassifier`.
 - `ur_weight`, `ur_target`
 - `consequent_batch_norm`
 - `random_state`
+- `patience` (early-stopping patience in epochs)
+- `validation_data` (tuple `(x_val, y_val)` for early stopping by accuracy)
+- `weight_decay` (consequent parameter weight decay for AdamW, default $10^{-8}$)
 
 ### Initialization Modes
 

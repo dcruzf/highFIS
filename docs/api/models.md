@@ -32,6 +32,10 @@
 
 ### Training Notes
 
-- Default optimizer: Adam.
-- Default loss: MSE with one-hot targets for classification.
+- Default optimizer: `AdamW` with separate param groups — antecedent
+  (`weight_decay=0`) and consequent (`weight_decay=1e-8`).
+- Default loss: `nn.CrossEntropyLoss()` — raw logits with class-index targets.
+- Early stopping monitored by **validation accuracy** when `x_val`/`y_val` are
+  provided. Best model weights are restored automatically.
 - Supports mini-batches, shuffling, and optional uniform regularization.
+- Custom criterion and custom optimizer can still be passed to `fit()`.

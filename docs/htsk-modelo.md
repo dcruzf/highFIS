@@ -57,25 +57,32 @@ Conclusion: the implemented HTSK core is mathematically consistent with the pape
 
 ### 1.3 Engineering Adaptations
 
-- Antecedent initialization:
-  the estimator default now follows the paper direction, using k-means cluster
+- **Antecedent initialization:**
+  the estimator default follows the paper, using k-means cluster
   centroids for $m_{r,d}$. A grid-based alternative is still available.
-- Sigma initialization:
+- **Sigma initialization:**
   for `mf_init="kmeans"`, the estimator computes per-cluster spreads and scales
-  them with `sigma_scale` (paper-like $h$ factor). For `mf_init="grid"`, sigma
-  is derived from spacing and overlap.
-- Rule-base defaulting:
+  them with `sigma_scale` (paper's $h$ factor) plus stochastic noise
+  $\sigma \sim \mathcal{N}(h, 0.2)$.  For `mf_init="grid"`, sigma is derived
+  from spacing and overlap.
+- **Rule-base defaulting:**
   `rule_base` defaults to `"coco"` in k-means mode (one rule per cluster), and
   to `"cartesian"` in grid mode.
-- Training protocol:
-  the paper reports validation/early stopping schemes; the current
-  implementation trains for fixed epochs.
-- Default loss:
-  the current implementation uses MSE over one-hot targets by default (with
-  optional custom criterion).
-
-These differences do not change the HTSK definition, but they do affect
-experimental protocol.
+- **Training protocol:**
+  the implementation supports early stopping by **validation accuracy**
+  (best-model restore), matching the PyTSK reference.
+- **Default loss:**
+  `nn.CrossEntropyLoss()` on raw logits (class-index targets), aligned with
+  PyTSK. A custom criterion can still be passed.
+- **Default optimizer:**
+  `AdamW` with two parameter groups — antecedent parameters (centres/sigmas)
+  receive `weight_decay=0`, while consequent parameters use a configurable
+  `weight_decay` (default $10^{-8}$).
+- **Normalization:**
+  `NormalizationLayer` uses `softmax(log(w))`, which is mathematically
+  equivalent to $w_r / \sum_i w_i$ but numerically stable in high dimensions.
+- **Uniform regularization:**
+  uses `sum` (not `mean`) over the rule-deviation vector, matching PyTSK.
 
 ## 2) Main Mathematical Formulas
 
@@ -135,13 +142,16 @@ $$
 w_r=\exp\left(\frac{1}{D}\sum_{d=1}^{D}\log\mu_{r,d}(x_d)\right)
 $$
 
-then normalized as:
+then normalized via **softmax on the log-space values**:
 
 $$
-\bar w_r=\frac{w_r}{\sum_{i=1}^{R}w_i+\varepsilon}
+\bar w_r = \mathrm{softmax}(\log w_1,\ldots,\log w_R)_r
+= \frac{w_r}{\sum_{i=1}^{R}w_i}
 $$
 
-where $\varepsilon$ is a numerical-stability constant.
+The `softmax` implementation is numerically stable because it internally
+subtracts $\max_r \log w_r$ before exponentiation, preventing underflow in
+high dimensions.
 
 ### 2.7 Multi-Class Consequent
 
@@ -168,10 +178,13 @@ $$
 The implementation supports regularization over average rule activation:
 
 $$
-\mathcal{L}_{UR}=\frac{1}{R}\sum_{r=1}^{R}\left(\bar w_r^{avg}-\tau\right)^2,
+\mathcal{L}_{UR}=\sum_{r=1}^{R}\left(\bar w_r^{avg}-\tau\right)^2,
 \qquad
 \bar w_r^{avg}=\frac{1}{N}\sum_{n=1}^{N}\bar w_r(x_n)
 $$
+
+The default target $\tau = 1/R$ (uniform); for classification, $\tau = 1/C$
+(number of classes) can be passed via `ur_target`.
 
 Mini-batch loss:
 
@@ -191,10 +204,14 @@ $$
 
 ### 3.2 Training in HTSKClassifier.fit
 
-- Default optimizer: Adam.
+- **Default optimizer:** `AdamW` with separate parameter groups — antecedent
+  (`weight_decay=0`) and consequent (`weight_decay=1e-8`).
+- **Default loss:** `nn.CrossEntropyLoss()` (raw logits + class indices).
+- **Early stopping:** monitors **validation accuracy** when `x_val`/`y_val` are
+  provided; restores the best model weights on stop.
 - Mini-batch support with optional shuffling.
-- Default loss: MSE on one-hot targets for classification.
-- Optional custom criterion, custom optimizer, uniform regularization, and consequent batch norm.
+- Optional custom criterion, custom optimizer, uniform regularization, and
+  consequent batch norm.
 
 ### 3.3 HTSKClassifierEstimator Flow
 
@@ -202,8 +219,30 @@ $$
 2. Label encoding with `LabelEncoder`.
 3. Feature-name/config resolution.
 4. MF initialization:
-   - default `mf_init="kmeans"`: k-means centroids + per-cluster sigmas,
+   - default `mf_init="kmeans"`: k-means centroids + per-cluster sigmas
+     ($\sigma \sim \mathcal{N}(h,0.2)$),
    - optional `mf_init="grid"`: per-feature grid initialization.
-5. `HTSKClassifier` instantiation and training.
+5. `HTSKClassifier` instantiation and training (CrossEntropyLoss + AdamW +
+   early stopping by accuracy when validation data is provided).
 6. Storage of training history and sklearn metadata.
 7. Prediction through `predict_proba` and `predict` with sklearn compatibility.
+
+## 4) Comparison: highFIS vs. Paper vs. PyTSK
+
+The table below compares the main design choices across the IJCNN paper (Cui et al.),
+the PyTSK reference implementation, and highFIS.
+
+| Aspect | Paper (Cui et al.) | PyTSK Reference | highFIS |
+|---|---|---|---|
+| **Loss function** | Cross-entropy (implied) | `nn.CrossEntropyLoss()` | `nn.CrossEntropyLoss()` (default) |
+| **Optimizer** | Adam (stated) | `AdamW` with param groups | `AdamW` with param groups (ante: wd=0, cons: wd=1e-8) |
+| **Firing-strength normalization** | $\bar f_r = \exp(Z_r')/\sum_i \exp(Z_i')$ (softmax) | `F.softmax(Z, dim=1)` (log-space) | `softmax(log(w))` — equivalent |
+| **Early stopping** | Validation-based | By validation **accuracy** | By validation **accuracy** (best-model restore) |
+| **Consequent init** | Not specified | `kaiming_normal_` + zeros bias | `kaiming_normal_` + zeros bias |
+| **MF center init** | K-means centroids | K-means centroids | K-means centroids (default) |
+| **Sigma init** | $\sigma\sim\mathcal{N}(h,0.2)$ | $\sigma\sim\mathcal{N}(h,0.2)$ | $\sigma\sim\mathcal{N}(h,0.2)$ |
+| **UR aggregation** | Not detailed | `sum` of squared deviations | `sum` of squared deviations |
+| **HTSK t-norm** | Geometric mean ($f_r^{1/D}$) | Geometric mean | Geometric mean (`gmean`) |
+| **Rule base** | CoCo / En-FRB | CoCo / En-FRB | `coco`, `en`, `cartesian`, `custom` |
+| **Sigma positivity** | Unconstrained | Unconstrained $\sigma^2$ | Softplus reparameterization (more robust) |
+| **sklearn API** | — | — | Full (`BaseEstimator`, `ClassifierMixin`) |
