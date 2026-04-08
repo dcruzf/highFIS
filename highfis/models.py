@@ -21,7 +21,7 @@ def _uniform_regularization_loss(normalized_weights: Tensor, target: float | Non
     target_value = (1.0 / float(n_rules)) if target is None else float(target)
     target_tensor = normalized_weights.new_full((n_rules,), target_value)
     avg_activation = normalized_weights.mean(dim=0)
-    return torch.mean((avg_activation - target_tensor) ** 2)
+    return torch.sum((avg_activation - target_tensor) ** 2)
 
 
 def _iter_minibatch_indices(n_samples: int, batch_size: int | None, shuffle: bool) -> list[Tensor]:
@@ -127,14 +127,21 @@ class HTSKClassifier(nn.Module):
         x_val: Tensor | None = None,
         y_val: Tensor | None = None,
         patience: int = 20,
+        weight_decay: float = 1e-8,
     ) -> dict[str, Any]:
-        """Train classifier with MSE on one-hot targets by default.
+        """Train classifier with cross-entropy loss by default.
 
-        When *x_val* and *y_val* are provided the model evaluates on the
-        validation set after every epoch and applies early stopping: training
-        halts when the validation loss has not improved for *patience*
-        consecutive epochs.  The best model weights (lowest validation loss)
-        are restored before returning.
+        When *x_val* and *y_val* are provided the model evaluates
+        classification accuracy on the validation set after every epoch and
+        applies early stopping: training halts when the validation accuracy
+        has not improved for *patience* consecutive epochs.  The best model
+        weights (highest validation accuracy) are restored before returning.
+
+        The default optimizer is :class:`~torch.optim.AdamW` with separate
+        parameter groups: antecedent parameters (membership centres and
+        sigmas) receive ``weight_decay=0`` while consequent parameters use
+        the supplied *weight_decay* value — following the PyTSK reference
+        implementation.
 
         When no validation data is given, training runs for the full *epochs*
         count (original behaviour).
@@ -157,11 +164,24 @@ class HTSKClassifier(nn.Module):
             if y_val.ndim != 1:
                 raise ValueError("expected y_val shape (batch,) with class indices")
 
-        train_criterion = criterion or nn.MSELoss()
-        train_optimizer = optimizer or torch.optim.Adam(self.parameters(), lr=learning_rate)
+        train_criterion = criterion or nn.CrossEntropyLoss()
+        if optimizer is not None:
+            train_optimizer = optimizer
+        else:
+            ante_params = list(self.membership_layer.parameters())
+            cons_params = list(self.consequent_layer.parameters())
+            if self.consequent_bn is not None:
+                cons_params.extend(self.consequent_bn.parameters())
+            train_optimizer = torch.optim.AdamW(
+                [
+                    {"params": ante_params, "weight_decay": 0.0},
+                    {"params": cons_params, "weight_decay": weight_decay},
+                ],
+                lr=learning_rate,
+            )
 
-        history: dict[str, Any] = {"train": [], "ur": [], "val": []}
-        best_val_loss = float("inf")
+        history: dict[str, Any] = {"train": [], "ur": [], "val": [], "val_acc": []}
+        best_val_acc = -1.0
         epochs_no_improve = 0
         best_state: dict[str, Any] | None = None
 
@@ -210,11 +230,13 @@ class HTSKClassifier(nn.Module):
                         val_loss = float(train_criterion(logits_v, target_v).item())
                     else:
                         val_loss = float(train_criterion(logits_v, y_val).item())
+                    val_acc = float((logits_v.argmax(dim=1) == y_val).float().mean().item())
                 history["val"].append(val_loss)
+                history["val_acc"].append(val_acc)
                 self.train()
 
-                if val_loss < best_val_loss:
-                    best_val_loss = val_loss
+                if val_acc > best_val_acc:
+                    best_val_acc = val_acc
                     epochs_no_improve = 0
                     best_state = copy.deepcopy(self.state_dict())
                 else:
@@ -222,11 +244,12 @@ class HTSKClassifier(nn.Module):
 
                 if verbose and ((epoch + 1) % max(epochs // 10, 1) == 0 or epoch == 0):
                     logger.info(
-                        "epoch=%s/%s train_loss=%.6f val_loss=%.6f",
+                        "epoch=%s/%s train_loss=%.6f val_loss=%.6f val_acc=%.4f",
                         epoch + 1,
                         epochs,
                         epoch_train_loss,
                         val_loss,
+                        val_acc,
                     )
 
                 if epochs_no_improve >= patience:
