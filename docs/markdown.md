@@ -19,7 +19,8 @@ from highfis import HTSKClassifierEstimator
 
 clf = HTSKClassifierEstimator(
 	n_mfs=3,
-	rule_base="en",
+	mf_init="kmeans",  # default
+	sigma_scale=1.0,
 	epochs=200,
 	learning_rate=1e-3,
 	ur_weight=0.01,
@@ -40,11 +41,25 @@ from highfis import HTSKClassifierEstimator
 
 pipe = Pipeline([
 	("scaler", StandardScaler()),
-	("clf", HTSKClassifierEstimator(n_mfs=3, rule_base="coco", epochs=150)),
+	("clf", HTSKClassifierEstimator(n_mfs=3, mf_init="kmeans", epochs=150)),
 ])
 
 pipe.fit(X_train, y_train)
 test_acc = pipe.score(X_test, y_test)
+```
+
+## Choosing Initialization
+
+- `mf_init="kmeans"` (default): uses k-means centroids as MF centers and
+	per-cluster spread for sigma (scaled by `sigma_scale`).
+- `mf_init="grid"`: uses per-feature uniform grids controlled by `InputConfig`.
+
+```python
+clf = HTSKClassifierEstimator(
+		n_mfs=3,
+		mf_init="grid",
+		rule_base="cartesian",
+)
 ```
 
 ## Development Commands
