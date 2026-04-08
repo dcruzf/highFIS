@@ -94,6 +94,16 @@ def test_classification_consequent_layer_forward_shape() -> None:
     assert logits.shape == (5, 3)
 
 
+def test_classification_consequent_layer_he_init() -> None:
+    """Verify He (Kaiming) initialization on weight and zero bias."""
+    layer = ClassificationConsequentLayer(n_rules=4, n_inputs=10, n_classes=3)
+    # Bias should be all zeros
+    assert torch.allclose(layer.bias, torch.zeros_like(layer.bias))
+    # Weight std should be close to sqrt(2/fan_in) = sqrt(2/10) ≈ 0.447
+    # but can vary; just check it's not the default randn scale (~1.0)
+    assert float(layer.weight.detach().std()) < 1.0
+
+
 def test_generate_en_frb_has_unique_rules() -> None:
     rules = _generate_en_frb(3, 2)
     assert len(rules) == len(set(rules))

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import logging
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, cast
@@ -123,8 +124,21 @@ class HTSKClassifier(nn.Module):
         ur_weight: float = 0.0,
         ur_target: float | None = None,
         verbose: bool = False,
+        x_val: Tensor | None = None,
+        y_val: Tensor | None = None,
+        patience: int = 20,
     ) -> dict[str, Any]:
-        """Train classifier with MSE on one-hot targets by default."""
+        """Train classifier with MSE on one-hot targets by default.
+
+        When *x_val* and *y_val* are provided the model evaluates on the
+        validation set after every epoch and applies early stopping: training
+        halts when the validation loss has not improved for *patience*
+        consecutive epochs.  The best model weights (lowest validation loss)
+        are restored before returning.
+
+        When no validation data is given, training runs for the full *epochs*
+        count (original behaviour).
+        """
         if x.ndim != 2 or x.shape[1] != self.n_inputs:
             raise ValueError(f"expected x shape (batch, {self.n_inputs}), got {tuple(x.shape)}")
         if y.ndim != 1:
@@ -134,10 +148,22 @@ class HTSKClassifier(nn.Module):
         if ur_target is not None and not (0.0 < ur_target <= 1.0):
             raise ValueError("ur_target must be in (0, 1] when provided")
 
+        has_val = x_val is not None and y_val is not None
+        if has_val:
+            if x_val is None or y_val is None:  # pragma: no cover
+                raise ValueError("x_val and y_val must both be provided")
+            if x_val.ndim != 2 or x_val.shape[1] != self.n_inputs:
+                raise ValueError(f"expected x_val shape (batch, {self.n_inputs}), got {tuple(x_val.shape)}")
+            if y_val.ndim != 1:
+                raise ValueError("expected y_val shape (batch,) with class indices")
+
         train_criterion = criterion or nn.MSELoss()
         train_optimizer = optimizer or torch.optim.Adam(self.parameters(), lr=learning_rate)
 
-        history: dict[str, Any] = {"train": [], "ur": []}
+        history: dict[str, Any] = {"train": [], "ur": [], "val": []}
+        best_val_loss = float("inf")
+        epochs_no_improve = 0
+        best_state: dict[str, Any] | None = None
 
         self.train()
         for epoch in range(epochs):
@@ -173,8 +199,49 @@ class HTSKClassifier(nn.Module):
             history["train"].append(epoch_train_loss)
             history["ur"].append(float(sum(batch_ur_losses) / max(len(batch_ur_losses), 1)))
 
-            if verbose and ((epoch + 1) % max(epochs // 10, 1) == 0 or epoch == 0):
-                logger.info("epoch=%s/%s loss=%.6f", epoch + 1, epochs, history["train"][-1])
+            # --- validation & early stopping ---
+            if has_val and x_val is not None and y_val is not None:
+                self.eval()
+                with torch.no_grad():
+                    logits_v = self.forward(x_val)
+                    if isinstance(train_criterion, nn.MSELoss):
+                        target_v = torch.zeros_like(logits_v)
+                        target_v.scatter_(1, y_val.unsqueeze(1), 1.0)
+                        val_loss = float(train_criterion(logits_v, target_v).item())
+                    else:
+                        val_loss = float(train_criterion(logits_v, y_val).item())
+                history["val"].append(val_loss)
+                self.train()
+
+                if val_loss < best_val_loss:
+                    best_val_loss = val_loss
+                    epochs_no_improve = 0
+                    best_state = copy.deepcopy(self.state_dict())
+                else:
+                    epochs_no_improve += 1
+
+                if verbose and ((epoch + 1) % max(epochs // 10, 1) == 0 or epoch == 0):
+                    logger.info(
+                        "epoch=%s/%s train_loss=%.6f val_loss=%.6f",
+                        epoch + 1,
+                        epochs,
+                        epoch_train_loss,
+                        val_loss,
+                    )
+
+                if epochs_no_improve >= patience:
+                    if verbose:
+                        logger.info("early stopping at epoch %s (patience=%s)", epoch + 1, patience)
+                    break
+            else:
+                if verbose and ((epoch + 1) % max(epochs // 10, 1) == 0 or epoch == 0):
+                    logger.info("epoch=%s/%s loss=%.6f", epoch + 1, epochs, epoch_train_loss)
+
+        # Restore best model weights when validation was used
+        if best_state is not None:
+            self.load_state_dict(best_state)
+
+        history["stopped_epoch"] = epoch + 1  # type: ignore[possibly-undefined]
 
         return history
 
