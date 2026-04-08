@@ -58,15 +58,24 @@ Conclusion: the implemented HTSK core is mathematically consistent with the pape
 ### 1.3 Engineering Adaptations
 
 - Antecedent initialization:
-  the paper uses k-means centers; the current estimator uses per-feature grid initialization with margins.
+  the estimator default now follows the paper direction, using k-means cluster
+  centroids for $m_{r,d}$. A grid-based alternative is still available.
 - Sigma initialization:
-  the paper describes stochastic initialization; the current estimator derives width from spacing and overlap.
+  for `mf_init="kmeans"`, the estimator computes per-cluster spreads and scales
+  them with `sigma_scale` (paper-like $h$ factor). For `mf_init="grid"`, sigma
+  is derived from spacing and overlap.
+- Rule-base defaulting:
+  `rule_base` defaults to `"coco"` in k-means mode (one rule per cluster), and
+  to `"cartesian"` in grid mode.
 - Training protocol:
-  the paper reports validation/early stopping schemes; the current implementation trains for fixed epochs.
+  the paper reports validation/early stopping schemes; the current
+  implementation trains for fixed epochs.
 - Default loss:
-  the current implementation uses MSE over one-hot targets by default (with optional custom criterion).
+  the current implementation uses MSE over one-hot targets by default (with
+  optional custom criterion).
 
-These differences do not change the HTSK definition, but they do affect experimental protocol.
+These differences do not change the HTSK definition, but they do affect
+experimental protocol.
 
 ## 2) Main Mathematical Formulas
 
@@ -191,8 +200,10 @@ $$
 
 1. Input validation with sklearn utilities.
 2. Label encoding with `LabelEncoder`.
-3. `InputConfig` resolution for each feature.
-4. Gaussian MF grid initialization per feature.
+3. Feature-name/config resolution.
+4. MF initialization:
+   - default `mf_init="kmeans"`: k-means centroids + per-cluster sigmas,
+   - optional `mf_init="grid"`: per-feature grid initialization.
 5. `HTSKClassifier` instantiation and training.
 6. Storage of training history and sklearn metadata.
 7. Prediction through `predict_proba` and `predict` with sklearn compatibility.

@@ -24,6 +24,7 @@ implemented with PyTorch and exposed through a scikit-learn compatible estimator
 
 - Differentiable fuzzy pipeline end-to-end in PyTorch.
 - HTSK inference via geometric-mean firing strengths for high-dimensional stability.
+- Estimator default initialization based on k-means (paper-aligned), with grid mode as fallback.
 - Rule base strategies: `cartesian`, `coco`, `en`, and `custom`.
 - Native integration with `Pipeline`, `GridSearchCV`, and cross-validation.
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from itertools import product
 from typing import cast
 
@@ -44,7 +44,7 @@ def _generate_en_frb(s: int, d: int) -> list[tuple[int, ...]]:
 class MembershipLayer(nn.Module):
     """Apply membership functions for each input feature."""
 
-    def __init__(self, input_mfs: dict[str, list[MembershipFunction]]) -> None:
+    def __init__(self, input_mfs: Mapping[str, Sequence[MembershipFunction]]) -> None:
         """Initialize membership layer with input-to-membership mapping."""
         super().__init__()
         if not input_mfs:
