@@ -72,18 +72,12 @@ all = "pre-commit run --all-files"
 [tool.hatch.envs.docs]
 installer = "uv"
 dependencies = [
-  "mkdocs-material",
-  "mkdocstrings",
-  "mkdocstrings-python",
-  "mkdocs-awesome-pages-plugin",
-  "mkdocs-git-revision-date-localized-plugin",
-  "mkdocs-jupyter",
+  "zensical",
   "ruff",
 ]
 [tool.hatch.envs.docs.scripts]
-build = "mkdocs build"
-serve = "mkdocs serve"
-deploy = "mkdocs gh-deploy -b docs"
+build = "zensical build --clean"
+serve = "zensical serve"
 
 [tool.hatch.build]
 include = ["docs/assets/logo.svg", "LICENSE"]
