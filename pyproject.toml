@@ -36,7 +36,7 @@ classifiers = [
 dev = [
     "pytest>=8.4.1",
     "scikit-learn>=1.7.2",
-    "mypy>=1.10.0",
+    "ty",
     "bandit>=1.7.9",
     "hatch>=1.16.2",
     "pre-commit",
@@ -58,13 +58,13 @@ installer = "uv"
 dependencies = [
   "ruff",
   "bandit[toml]",
-  "mypy",
+    "ty",
   "pre-commit",
   "coverage"
 ]
 [tool.hatch.envs.default.scripts]
 security = "bandit -c pyproject.toml -r highfis/"
-typing = "mypy"
+typing = "ty check"
 install = "pre-commit install && pre-commit autoupdate"
 html-report = "coverage html -d docs/assets/cov/"
 all = "pre-commit run --all-files"
@@ -72,18 +72,12 @@ all = "pre-commit run --all-files"
 [tool.hatch.envs.docs]
 installer = "uv"
 dependencies = [
-  "mkdocs-material",
-  "mkdocstrings",
-  "mkdocstrings-python",
-  "mkdocs-awesome-pages-plugin",
-  "mkdocs-git-revision-date-localized-plugin",
-  "mkdocs-jupyter",
+  "zensical",
   "ruff",
 ]
 [tool.hatch.envs.docs.scripts]
-build = "mkdocs build"
-serve = "mkdocs serve"
-deploy = "mkdocs gh-deploy -b docs"
+build = "zensical build --clean"
+serve = "zensical serve"
 
 [tool.hatch.build]
 include = ["docs/assets/logo.svg", "LICENSE"]
@@ -147,23 +141,9 @@ source = ['highfis']
 branch = true
 relative_files = true
 
-[tool.mypy]
-python_version = "3.10"
-files = ["highfis", "tests"]
-ignore_missing_imports = true
-warn_unused_configs = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-pretty = true
-show_column_numbers = true
-show_error_context = true
-check_untyped_defs = true
-strict = true
-
-[[tool.mypy.overrides]]
-module = ["tests.*"]
-ignore_errors = true
-
 [tool.bandit]
 recursive = true
 targets = ["highfis"]
+
+[tool.ty.src]
+include = ["highfis", "tests"]
