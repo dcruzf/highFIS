@@ -156,11 +156,11 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
         y_idx = np.argmax(proba, axis=1)
         return np.asarray(self._label_encoder_.inverse_transform(y_idx))
 
-    def score(self, x: Any, y: Any) -> float:
+    def score(self, X: Any, y: Any, sample_weight: Any = None) -> float:
         """Return classification accuracy on the provided dataset."""
         y_true = np.asarray(y)
-        y_pred = self.predict(x)
-        return float(accuracy_score(y_true, y_pred))
+        y_pred = self.predict(X)
+        return float(accuracy_score(y_true, y_pred, sample_weight=sample_weight))
 
 
 __all__ = ["InputConfig", "HTSKClassifierEstimator"]

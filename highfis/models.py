@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any, cast
 
 import torch
@@ -45,7 +45,7 @@ class HTSKClassifier(nn.Module):
 
     def __init__(
         self,
-        input_mfs: dict[str, list[MembershipFunction]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str = "cartesian",
         t_norm: str = "gmean",
