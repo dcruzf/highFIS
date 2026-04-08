@@ -85,14 +85,14 @@ def test_estimator_grid_init_fit_predict() -> None:
 
 def test_estimator_predict_proba_requires_fit() -> None:
     x, _ = _make_dataset(10)
-    est = HTSKClassifierEstimator(n_mfs=2, epochs=1)
+    est = HTSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=16)
     with pytest.raises(NotFittedError):
         est.predict_proba(x)
 
 
 def test_estimator_validates_input_config_length() -> None:
     x, y = _make_dataset(20)
-    est = HTSKClassifierEstimator(input_configs=[InputConfig(name="x1", n_mfs=2)])
+    est = HTSKClassifierEstimator(input_configs=[InputConfig(name="x1", n_mfs=2)], batch_size=16)
     with pytest.raises(ValueError, match="input_configs length"):
         est.fit(x, y)
 
@@ -156,7 +156,7 @@ def test_build_kmeans_sigma_scale_applied() -> None:
 
 def test_estimator_invalid_mf_init_raises() -> None:
     x, y = _make_dataset(20)
-    est = HTSKClassifierEstimator(n_mfs=2, mf_init="random", epochs=1)
+    est = HTSKClassifierEstimator(n_mfs=2, mf_init="random", epochs=1, batch_size=16)
     with pytest.raises(ValueError, match="mf_init"):
         est.fit(x, y)
 
@@ -164,7 +164,57 @@ def test_estimator_invalid_mf_init_raises() -> None:
 def test_estimator_kmeans_default_rule_base_is_coco() -> None:
     """When mf_init='kmeans' and rule_base is not set, model uses 'coco' rule base."""
     x, y = _make_dataset(60)
-    est = HTSKClassifierEstimator(n_mfs=3, mf_init="kmeans", epochs=2, random_state=0)
+    est = HTSKClassifierEstimator(n_mfs=3, mf_init="kmeans", epochs=2, random_state=0, batch_size=16)
     est.fit(x, y)
     # With coco + 3 clusters and 3 features → 3 rules
     assert est.model_.n_rules == 3  # type: ignore[attr-defined]
+
+
+def test_estimator_early_stopping_with_validation_data() -> None:
+    """Estimator stops early when validation_data is provided."""
+    x, y = _make_dataset(80)
+    x_train, x_val = x[:60], x[60:]
+    y_train, y_val = y[:60], y[60:]
+
+    est = HTSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=1000,
+        learning_rate=5e-2,
+        random_state=7,
+        patience=3,
+        validation_data=(x_val, y_val),
+    )
+    est.fit(x_train, y_train)
+
+    assert "val" in est.history_
+    assert len(est.history_["val"]) > 0
+    assert est.history_["stopped_epoch"] < 1000
+
+
+def test_estimator_no_val_runs_full_epochs() -> None:
+    """Without validation_data, training runs for the full epoch count."""
+    x, y = _make_dataset(60)
+    est = HTSKClassifierEstimator(
+        n_mfs=2, mf_init="kmeans", epochs=10, random_state=7, batch_size=16,
+    )
+    est.fit(x, y)
+
+    assert est.history_["stopped_epoch"] == 10
+    assert len(est.history_["val"]) == 0
+
+
+def test_estimator_sigma_scale_auto() -> None:
+    """sigma_scale='auto' uses h=sqrt(D) where D is the number of features."""
+    x, y = _make_dataset(60)
+    est = HTSKClassifierEstimator(
+        n_mfs=3, mf_init="kmeans", sigma_scale="auto",
+        epochs=2, random_state=0, batch_size=16,
+    )
+    est.fit(x, y)
+
+    # With 3 features, auto → h=sqrt(3) ≈ 1.73
+    assert est.model_ is not None
+    proba = est.predict_proba(x)
+    assert proba.shape == (x.shape[0], 2)
+    assert np.allclose(proba.sum(axis=1), 1.0, atol=1e-6)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Any
 
@@ -64,19 +65,21 @@ def _build_kmeans_input_mfs(
     feature_names: list[str],
     random_state: int | None,
 ) -> dict[str, list[MembershipFunction]]:
-    """Build Gaussian MFs via k-means cluster-center initialization.
+    r"""Build Gaussian MFs via k-means cluster-center initialization.
 
     Follows Cui et al. (IJCNN 2021): the center of MF (r, d) is set to the
-    d-th coordinate of the r-th k-means centroid, and sigma_{r,d} is the
-    within-cluster standard deviation of feature d scaled by *sigma_scale*
-    (the paper's ``h`` parameter, recommended h=1 for HTSK). When a cluster
-    has a near-zero spread, sigma falls back to half the gap to the nearest
-    neighboring centroid in that feature dimension.
+    d-th coordinate of the r-th k-means centroid.  The initial sigma is
+    sampled from :math:`\\mathcal{N}(h, 0.2)` where *h* equals
+    *sigma_scale* multiplied by the within-cluster standard deviation of
+    feature *d* in cluster *r*.  When a cluster has near-zero spread, the
+    base sigma falls back to half the gap to the nearest neighbouring
+    centroid in that feature dimension.
     """
     km = KMeans(n_clusters=n_clusters, random_state=random_state, n_init="auto")
     km.fit(x)
     centers: np.ndarray = km.cluster_centers_  # (n_clusters, n_features)
     labels: np.ndarray = np.asarray(km.labels_)
+    rng = np.random.default_rng(random_state)
 
     input_mfs: dict[str, list[MembershipFunction]] = {}
     for d, name in enumerate(feature_names):
@@ -91,7 +94,8 @@ def _build_kmeans_input_mfs(
                 # Half the minimum gap to a neighbouring centroid in this dimension
                 other = np.delete(center_col, r)
                 raw_sigma = float(np.min(np.abs(other - c))) / 2.0 if len(other) > 0 else 1.0
-            sigma = max(raw_sigma * sigma_scale, 1e-3)
+            h = raw_sigma * sigma_scale
+            sigma = max(float(rng.normal(loc=h, scale=0.2)), 1e-3)
             mfs.append(GaussianMF(mean=c, sigma=sigma))
         input_mfs[name] = mfs
 
@@ -105,21 +109,23 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 3,
+        n_mfs: int = 30,
         mf_init: str = "kmeans",
-        sigma_scale: float = 1.0,
+        sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         epochs: int = 200,
-        learning_rate: float = 1e-3,
+        learning_rate: float = 1e-2,
         verbose: bool = False,
         rule_base: str | None = None,
-        batch_size: int | None = None,
+        batch_size: int | None = 512,
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
         consequent_batch_norm: bool = False,
+        patience: int = 20,
+        validation_data: tuple[Any, Any] | None = None,
     ) -> None:
-        """Configure estimator hyperparameters and training options.
+        r"""Configure estimator hyperparameters and training options.
 
         Parameters
         ----------
@@ -133,6 +139,8 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
         sigma_scale:
             Scaling factor ``h`` applied to the computed sigma values during
             k-means initialization.  The paper recommends ``h=1`` for HTSK.
+            Pass ``"auto"`` to use :math:`h = \\sqrt{D}` where *D* is the
+            number of input features — a robust choice for any dimensionality.
             Ignored when ``mf_init="grid"``.
         rule_base:
             Rule-combination strategy passed to :class:`HTSKClassifier`.
@@ -153,6 +161,8 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
         self.ur_weight = ur_weight
         self.ur_target = ur_target
         self.consequent_batch_norm = consequent_batch_norm
+        self.patience = patience
+        self.validation_data = validation_data
 
     def _resolve_input_configs(self, x: np.ndarray) -> list[InputConfig]:
         if self.input_configs is not None:
@@ -192,10 +202,14 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
 
         if init == "kmeans":
             feature_names = self._resolve_feature_names(x_arr)
+            if isinstance(self.sigma_scale, str) and self.sigma_scale.lower() == "auto":
+                effective_sigma_scale = math.sqrt(float(x_arr.shape[1]))
+            else:
+                effective_sigma_scale = float(self.sigma_scale)
             input_mfs = _build_kmeans_input_mfs(
                 x_arr,
                 n_clusters=int(self.n_mfs),
-                sigma_scale=float(self.sigma_scale),
+                sigma_scale=effective_sigma_scale,
                 feature_names=feature_names,
                 random_state=self.random_state,
             )
@@ -219,6 +233,17 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
         )
 
         y_t = torch.as_tensor(y_idx, dtype=torch.long)
+
+        # Prepare validation tensors if provided
+        x_val_t: torch.Tensor | None = None
+        y_val_t: torch.Tensor | None = None
+        if self.validation_data is not None:
+            x_v, y_v = self.validation_data
+            x_v_arr = check_array(x_v)
+            y_v_idx = self._label_encoder_.transform(np.asarray(y_v))
+            x_val_t = self._as_tensor_x(x_v_arr)
+            y_val_t = torch.as_tensor(y_v_idx, dtype=torch.long)
+
         self.history_ = self.model_.fit(
             self._as_tensor_x(x_arr),
             y_t,
@@ -229,6 +254,9 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
             ur_weight=float(self.ur_weight),
             ur_target=self.ur_target,
             verbose=bool(self.verbose),
+            x_val=x_val_t,
+            y_val=y_val_t,
+            patience=int(self.patience),
         )
         return self
 

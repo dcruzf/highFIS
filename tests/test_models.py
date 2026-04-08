@@ -55,9 +55,11 @@ def test_htsk_classifier_fit_returns_history() -> None:
 
     history = model.fit(x, y, epochs=4, learning_rate=1e-2, batch_size=5, shuffle=True)
 
-    assert set(history.keys()) == {"train", "ur"}
+    assert set(history.keys()) == {"train", "ur", "val", "stopped_epoch"}
     assert len(history["train"]) == 4
     assert len(history["ur"]) == 4
+    assert len(history["val"]) == 0
+    assert history["stopped_epoch"] == 4
 
 
 def test_htsk_classifier_fit_supports_custom_criterion() -> None:
@@ -87,3 +89,46 @@ def test_htsk_classifier_fit_validates_inputs() -> None:
 
     with pytest.raises(ValueError, match="ur_target must be in"):
         model.fit(x, y, epochs=1, ur_target=0.0)
+
+
+def test_htsk_classifier_fit_history_keys_without_val() -> None:
+    model = HTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    x = torch.randn(20, 2)
+    y = torch.randint(0, 2, (20,), dtype=torch.long)
+
+    history = model.fit(x, y, epochs=3)
+
+    assert set(history.keys()) == {"train", "ur", "val", "stopped_epoch"}
+    assert len(history["val"]) == 0
+    assert history["stopped_epoch"] == 3
+
+
+def test_htsk_classifier_early_stopping_with_val_data() -> None:
+    torch.manual_seed(42)
+    model = HTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    x = torch.randn(30, 2)
+    y = torch.randint(0, 2, (30,), dtype=torch.long)
+    x_val = torch.randn(10, 2)
+    y_val = torch.randint(0, 2, (10,), dtype=torch.long)
+
+    history = model.fit(
+        x, y, epochs=500, x_val=x_val, y_val=y_val, patience=5, learning_rate=1e-2,
+    )
+
+    assert len(history["val"]) == len(history["train"])
+    assert len(history["val"]) > 0
+    assert "stopped_epoch" in history
+    # Early stopping should fire well before 500 epochs
+    assert history["stopped_epoch"] < 500
+
+
+def test_htsk_classifier_fit_validates_val_inputs() -> None:
+    model = HTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    x = torch.randn(10, 2)
+    y = torch.randint(0, 2, (10,), dtype=torch.long)
+
+    with pytest.raises(ValueError, match="expected x_val shape"):
+        model.fit(x, y, epochs=1, x_val=torch.randn(5, 3), y_val=torch.randint(0, 2, (5,)))
+
+    with pytest.raises(ValueError, match="expected y_val shape"):
+        model.fit(x, y, epochs=1, x_val=torch.randn(5, 2), y_val=torch.randint(0, 2, (5, 1)))

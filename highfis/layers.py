@@ -190,8 +190,10 @@ class ClassificationConsequentLayer(nn.Module):
         self.n_rules = n_rules
         self.n_inputs = n_inputs
         self.n_classes = n_classes
-        self.weight = nn.Parameter(torch.randn(n_rules, n_classes, n_inputs))
-        self.bias = nn.Parameter(torch.randn(n_rules, n_classes))
+        self.weight = nn.Parameter(torch.empty(n_rules, n_classes, n_inputs))
+        self.bias = nn.Parameter(torch.empty(n_rules, n_classes))
+        nn.init.kaiming_normal_(self.weight, mode="fan_in", nonlinearity="linear")
+        nn.init.zeros_(self.bias)
 
     def forward(self, x: Tensor, norm_w: Tensor) -> Tensor:
         """Compute class logits from inputs and normalized rule strengths."""
