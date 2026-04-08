@@ -26,6 +26,9 @@ implemented with PyTorch and exposed through a scikit-learn compatible estimator
 - HTSK inference via geometric-mean firing strengths for high-dimensional stability.
 - Estimator default initialization based on k-means (paper-aligned), with grid mode as fallback.
 - Rule base strategies: `cartesian`, `coco`, `en`, and `custom`.
+- Default loss: `CrossEntropyLoss`; default optimizer: `AdamW` with separate weight-decay groups.
+- Early stopping by validation accuracy with automatic best-model restore.
+- Numerically stable normalization via `softmax(log(w))`.
 - Native integration with `Pipeline`, `GridSearchCV`, and cross-validation.
 
 ## Installation

@@ -31,11 +31,16 @@ Supports built-in and custom t-norm functions.
 
 ## NormalizationLayer
 
-Normalizes firing strengths along the rule axis:
+Normalizes firing strengths along the rule axis using `softmax(log(w))`:
 
 $$
-\bar{w}_r=\frac{w_r}{\sum_j w_j + \varepsilon}
+\bar{w}_r = \mathrm{softmax}(\log w_1,\ldots,\log w_R)_r
+= \frac{w_r}{\sum_j w_j}
 $$
+
+The `softmax` formulation is mathematically equivalent to dividing by the sum
+but numerically stable in high dimensions thanks to the internal
+max-subtraction trick.
 
 ## ClassificationConsequentLayer
 

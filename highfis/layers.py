@@ -173,10 +173,16 @@ class NormalizationLayer(nn.Module):
         self.eps = eps
 
     def forward(self, w: Tensor) -> Tensor:
-        """Normalize firing strengths along the rule axis."""
+        """Normalize firing strengths along the rule axis.
+
+        Uses ``softmax(log(w))`` which is mathematically equivalent to
+        ``w / sum(w)`` but numerically more stable in high dimensions thanks
+        to the internal max-subtraction trick of :func:`torch.softmax`.
+        """
         if w.ndim != 2:
             raise ValueError(f"expected w with 2 dims, got shape {tuple(w.shape)}")
-        return w / (w.sum(dim=1, keepdim=True) + self.eps)
+        log_w = w.clamp(min=self.eps).log()
+        return torch.softmax(log_w, dim=1)
 
 
 class ClassificationConsequentLayer(nn.Module):

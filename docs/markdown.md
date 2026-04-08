@@ -22,7 +22,7 @@ clf = HTSKClassifierEstimator(
 	mf_init="kmeans",  # default
 	sigma_scale=1.0,
 	epochs=200,
-	learning_rate=1e-3,
+	learning_rate=1e-2,
 	ur_weight=0.01,
 	random_state=42,
 )

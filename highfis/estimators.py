@@ -124,6 +124,7 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
         consequent_batch_norm: bool = False,
         patience: int = 20,
         validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
     ) -> None:
         r"""Configure estimator hyperparameters and training options.
 
@@ -163,6 +164,7 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
         self.consequent_batch_norm = consequent_batch_norm
         self.patience = patience
         self.validation_data = validation_data
+        self.weight_decay = weight_decay
 
     def _resolve_input_configs(self, x: np.ndarray) -> list[InputConfig]:
         if self.input_configs is not None:
@@ -257,6 +259,7 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
             x_val=x_val_t,
             y_val=y_val_t,
             patience=int(self.patience),
+            weight_decay=float(self.weight_decay),
         )
         return self
 
