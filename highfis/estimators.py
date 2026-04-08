@@ -6,6 +6,7 @@ from typing import Any
 import numpy as np
 import torch
 from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.cluster import KMeans
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
@@ -56,6 +57,47 @@ def _build_gaussian_input_mfs(
     return input_mfs
 
 
+def _build_kmeans_input_mfs(
+    x: np.ndarray,
+    n_clusters: int,
+    sigma_scale: float,
+    feature_names: list[str],
+    random_state: int | None,
+) -> dict[str, list[MembershipFunction]]:
+    """Build Gaussian MFs via k-means cluster-center initialization.
+
+    Follows Cui et al. (IJCNN 2021): the center of MF (r, d) is set to the
+    d-th coordinate of the r-th k-means centroid, and sigma_{r,d} is the
+    within-cluster standard deviation of feature d scaled by *sigma_scale*
+    (the paper's ``h`` parameter, recommended h=1 for HTSK). When a cluster
+    has a near-zero spread, sigma falls back to half the gap to the nearest
+    neighboring centroid in that feature dimension.
+    """
+    km = KMeans(n_clusters=n_clusters, random_state=random_state, n_init="auto")
+    km.fit(x)
+    centers: np.ndarray = km.cluster_centers_  # (n_clusters, n_features)
+    labels: np.ndarray = np.asarray(km.labels_)
+
+    input_mfs: dict[str, list[MembershipFunction]] = {}
+    for d, name in enumerate(feature_names):
+        col = x[:, d]
+        center_col = centers[:, d]
+        mfs: list[MembershipFunction] = []
+        for r in range(n_clusters):
+            c = float(center_col[r])
+            mask = labels == r
+            raw_sigma = float(np.std(col[mask])) if int(mask.sum()) > 1 else 0.0
+            if raw_sigma < 1e-6:
+                # Half the minimum gap to a neighbouring centroid in this dimension
+                other = np.delete(center_col, r)
+                raw_sigma = float(np.min(np.abs(other - c))) / 2.0 if len(other) > 0 else 1.0
+            sigma = max(raw_sigma * sigma_scale, 1e-3)
+            mfs.append(GaussianMF(mean=c, sigma=sigma))
+        input_mfs[name] = mfs
+
+    return input_mfs
+
+
 class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[misc]
     """High-level HTSK classifier facade with sklearn-compatible API."""
 
@@ -64,20 +106,43 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
         *,
         input_configs: list[InputConfig] | None = None,
         n_mfs: int = 3,
+        mf_init: str = "kmeans",
+        sigma_scale: float = 1.0,
         random_state: int | None = None,
         epochs: int = 200,
         learning_rate: float = 1e-3,
         verbose: bool = False,
-        rule_base: str = "cartesian",
+        rule_base: str | None = None,
         batch_size: int | None = None,
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
         consequent_batch_norm: bool = False,
     ) -> None:
-        """Configure estimator hyperparameters and training options."""
+        """Configure estimator hyperparameters and training options.
+
+        Parameters
+        ----------
+        mf_init:
+            Membership-function initialization strategy.  ``"kmeans"`` (default)
+            places each rule's MF centers at a k-means centroid and uses the
+            within-cluster standard deviation scaled by *sigma_scale* as the
+            initial sigma — following Cui et al. (IJCNN 2021).  ``"grid"``
+            uses a uniform grid over each feature's range (original behaviour,
+            combined with ``rule_base="cartesian"``).
+        sigma_scale:
+            Scaling factor ``h`` applied to the computed sigma values during
+            k-means initialization.  The paper recommends ``h=1`` for HTSK.
+            Ignored when ``mf_init="grid"``.
+        rule_base:
+            Rule-combination strategy passed to :class:`HTSKClassifier`.
+            Defaults to ``"coco"`` when ``mf_init="kmeans"`` (one rule per
+            cluster) and to ``"cartesian"`` when ``mf_init="grid"``.
+        """
         self.input_configs = input_configs
         self.n_mfs = n_mfs
+        self.mf_init = mf_init
+        self.sigma_scale = sigma_scale
         self.random_state = random_state
         self.epochs = epochs
         self.learning_rate = learning_rate
@@ -98,6 +163,15 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
             return list(self.input_configs)
         return [InputConfig(name=f"x{i + 1}", n_mfs=int(self.n_mfs)) for i in range(x.shape[1])]
 
+    def _resolve_feature_names(self, x: np.ndarray) -> list[str]:
+        if self.input_configs is not None:
+            if len(self.input_configs) != x.shape[1]:
+                raise ValueError(
+                    f"input_configs length ({len(self.input_configs)}) must match number of features ({x.shape[1]})"
+                )
+            return [cfg.name for cfg in self.input_configs]
+        return [f"x{i + 1}" for i in range(x.shape[1])]
+
     @staticmethod
     def _as_tensor_x(x: np.ndarray) -> torch.Tensor:
         return torch.as_tensor(x, dtype=torch.float32)
@@ -112,18 +186,35 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
         le = LabelEncoder()
         y_idx = le.fit_transform(np.asarray(y_arr))
 
-        input_configs = self._resolve_input_configs(x_arr)
-        input_mfs = _build_gaussian_input_mfs(x_arr, input_configs)
+        init = str(self.mf_init).lower()
+        if init not in {"kmeans", "grid"}:
+            raise ValueError(f"mf_init must be 'kmeans' or 'grid', got '{self.mf_init}'")
+
+        if init == "kmeans":
+            feature_names = self._resolve_feature_names(x_arr)
+            input_mfs = _build_kmeans_input_mfs(
+                x_arr,
+                n_clusters=int(self.n_mfs),
+                sigma_scale=float(self.sigma_scale),
+                feature_names=feature_names,
+                random_state=self.random_state,
+            )
+            effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
+        else:
+            input_configs = self._resolve_input_configs(x_arr)
+            input_mfs = _build_gaussian_input_mfs(x_arr, input_configs)
+            feature_names = [cfg.name for cfg in input_configs]
+            effective_rule_base = self.rule_base if self.rule_base is not None else "cartesian"
 
         self.n_features_in_ = x_arr.shape[1]
-        self.feature_names_in_ = np.asarray([cfg.name for cfg in input_configs], dtype=object)
+        self.feature_names_in_ = np.asarray(feature_names, dtype=object)
         self.classes_ = le.classes_
         self._label_encoder_ = le
 
         self.model_ = HTSKClassifier(
             input_mfs,
             n_classes=len(self.classes_),
-            rule_base=str(self.rule_base),
+            rule_base=effective_rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),
         )
 
@@ -163,4 +254,4 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
         return float(accuracy_score(y_true, y_pred, sample_weight=sample_weight))
 
 
-__all__ = ["InputConfig", "HTSKClassifierEstimator"]
+__all__ = ["InputConfig", "HTSKClassifierEstimator", "_build_kmeans_input_mfs"]
