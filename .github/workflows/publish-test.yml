@@ -1,30 +1,10 @@
 name: Publish Test
 
 on:
-  push:
-    branches:
-      - dev
+  workflow_dispatch:
 
 jobs:
-  check-trigger:
-    runs-on: ubuntu-latest
-    outputs:
-      should-publish: ${{ steps.check.outputs.should-publish }}
-    steps:
-      - name: Check commit message for "publish"
-        id: check
-        env:
-          COMMIT_MSG: ${{ github.event.head_commit.message }}
-        run: |
-          if [[ "$COMMIT_MSG" == *"publish"* ]]; then
-            echo "should-publish=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "should-publish=false" >> "$GITHUB_OUTPUT"
-          fi
-
   publish:
-    needs: check-trigger
-    if: needs.check-trigger.outputs.should-publish == 'true'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
