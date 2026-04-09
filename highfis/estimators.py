@@ -12,7 +12,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 
-from .memberships import GaussianMF, MembershipFunction
+from .memberships import GaussianMF
 from .models import HTSKClassifier
 
 
@@ -29,9 +29,9 @@ class InputConfig:
 def _build_gaussian_input_mfs(
     x: np.ndarray,
     input_configs: list[InputConfig],
-) -> dict[str, list[MembershipFunction]]:
+) -> dict[str, list[GaussianMF]]:
     """Build Gaussian MFs per input using grid initialization."""
-    input_mfs: dict[str, list[MembershipFunction]] = {}
+    input_mfs: dict[str, list[GaussianMF]] = {}
     for idx, cfg in enumerate(input_configs):
         if cfg.n_mfs < 1:
             raise ValueError(f"n_mfs for '{cfg.name}' must be >= 1")
@@ -64,7 +64,7 @@ def _build_kmeans_input_mfs(
     sigma_scale: float,
     feature_names: list[str],
     random_state: int | None,
-) -> dict[str, list[MembershipFunction]]:
+) -> dict[str, list[GaussianMF]]:
     r"""Build Gaussian MFs via k-means cluster-center initialization.
 
     Follows Cui et al. (IJCNN 2021): the center of MF (r, d) is set to the
@@ -81,11 +81,11 @@ def _build_kmeans_input_mfs(
     labels: np.ndarray = np.asarray(km.labels_)
     rng = np.random.default_rng(random_state)
 
-    input_mfs: dict[str, list[MembershipFunction]] = {}
+    input_mfs: dict[str, list[GaussianMF]] = {}
     for d, name in enumerate(feature_names):
         col = x[:, d]
         center_col = centers[:, d]
-        mfs: list[MembershipFunction] = []
+        mfs: list[GaussianMF] = []
         for r in range(n_clusters):
             c = float(center_col[r])
             mask = labels == r
