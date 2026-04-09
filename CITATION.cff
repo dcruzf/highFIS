@@ -1,0 +1,28 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: highFIS
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Daniel
+    family-names: França
+    email: daniel@ci.ufpb.br
+    affiliation: UFPB
+    orcid: 'https://orcid.org/0009-0007-3932-9849'
+repository-code: 'https://github.com/dcruzf/highFIS'
+url: 'https://dcruzf.github.io/highFIS'
+abstract: >-
+  Python library for high-dimensional Takagi-Sugeno-Kang
+  (TSK) fuzzy inference systems, built on PyTorch with a
+  scikit-learn compatible API.
+keywords:
+  - fuzzy
+  - Machine Learning
+  - High-dimensional problems
+  - Takagi-Sugeno-Kang
+  - Fuzzy systems
+license: GPL-3.0
