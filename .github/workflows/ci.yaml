@@ -1,29 +1,35 @@
 name: CI
 
 on:
-  push:
-    branches:
-      - main
-      - dev
   pull_request:
-  workflow_dispatch:
+    branches: [main, dev]
 
 permissions:
   contents: read
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  tests:
+    if: contains(github.event.head_commit.message, '[skip]') == false && github.event.action != 'closed'
+    name: Lint & Test Suite
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ github.event.pull_request.base.ref == 'main' && fromJson('["ubuntu-latest","macos-latest","windows-latest"]') || fromJson('["ubuntu-latest"]') }}
+
+    defaults:
+      run:
+        shell: bash
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
       - name: Install Hatch
         uses: pypa/hatch@install
 
-      - name: Run pre-commit checks
+      - name: Run pre-commit hooks
+        if: runner.os == 'Linux'
         run: hatch run all
-
-      - name: Run test suite
-        run: hatch test -a -c
+      - name: Run tests
+        run: hatch test --a -c
