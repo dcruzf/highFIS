@@ -32,7 +32,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    environment: test-pypi     # configure o environment no repositório
+    environment: test-pypi
     steps:
       - name: Dump GitHub context
         env:
