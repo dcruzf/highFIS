@@ -32,4 +32,4 @@ jobs:
         if: runner.os == 'Linux'
         run: hatch run all
       - name: Run tests
-        run: hatch test --a -c
+        run: hatch test -a -c
