@@ -3,7 +3,7 @@ requires = ['hatchling']
 build-backend = 'hatchling.build'
 
 [project]
-name = "highFIS"
+name = "highfis"
 dynamic = ["version"]
 description = "highFIS is a comprehensive Python package for training and evaluating high-dimensional TSK fuzzy systems, built on PyTorch and compatible with the scikit-learn API."
 authors = [{ name = "Daniel França", email = "daniel@ci.ufpb.br" }]
@@ -23,7 +23,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -106,9 +105,6 @@ run = "pytest{env:HATCH_TEST_ARGS:} {args}"
 run-cov = "coverage run -m pytest{env:HATCH_TEST_ARGS:} {args}"
 cov-combine = "coverage combine"
 cov-report = "coverage report -m --fail-under=90"
-
-[tool.uv.sources]
-mike = { git = "https://github.com/squidfunk/mike.git", branch = "master" }
 
 [tool.ruff]
 line-length = 120
