@@ -1,20 +1,21 @@
 # highFIS
 
 [![CI](https://github.com/dcruzf/highFIS/actions/workflows/ci.yaml/badge.svg)](https://github.com/dcruzf/highFIS/actions/workflows/ci.yaml)
+[![Documentation](https://github.com/dcruzf/highFIS/actions/workflows/docs.yml/badge.svg)](https://github.com/dcruzf/highFIS/actions/workflows/docs.yml)
 [![License: GPLv3](https://img.shields.io/badge/license-GPLv3-green)](https://www.gnu.org/licenses/gpl-3.0)
 
 
 Python library for high-dimensional Takagi–Sugeno–Kang (TSK) fuzzy inference systems, built on PyTorch with a scikit-learn compatible API.
 
-## Installation
+## 📦 Installation
+
+Install from PyPI:
 
 ```bash
-pip install highFIS
+pip install highfis
 ```
 
-**Requirements:** Python ≥ 3.11, PyTorch ≥ 2.3, NumPy ≥ 1.23, scikit-learn ≥ 1.7.
-
-## Quick Start
+## 🧠 Quick Start
 
 ```python
 from highfis import HTSKClassifierEstimator
@@ -33,19 +34,7 @@ print(clf.score(X_test, y_test))
 
 Works with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and `cross_val_score`.
 
-## Overview
-
-Classical TSK systems use a Cartesian product rule base that scales as $s^d$ with input dimensionality $d$, making them intractable for high-dimensional data. highFIS addresses this with:
-
-- **HTSK defuzzification** — geometric-mean firing strengths that remain stable regardless of dimensionality.
-- **Compact rule bases** — `"coco"` ($s$ rules) and `"en"` ($s(2d+1)$ rules) for linear scaling.
-- **End-to-end differentiability** — all parameters trained jointly via backpropagation.
-- **CrossEntropyLoss** — default loss on raw logits (no one-hot encoding), following the PyTSK reference.
-- **AdamW optimizer** — separate weight-decay groups: 0 for antecedent (centres/sigmas), configurable for consequent parameters.
-- **Early stopping by accuracy** — validation accuracy monitoring with best-model restore.
-- **Numerically stable normalization** — `softmax(log(w))` instead of naive division.
-
-## Key Components
+## 🧩 Key Components
 
 | Class | Module | Description |
 |---|---|---|
@@ -58,12 +47,44 @@ Classical TSK systems use a Cartesian product rule base that scales as $s^d$ wit
 | `HTSKClassifierEstimator` | `highfis.estimators` | sklearn-compatible estimator. |
 | `InputConfig` | `highfis.estimators` | Per-feature membership function configuration. |
 
-## Documentation
+## 🧪 Testing & Quality
 
-Full documentation at [dcruzf.github.io/highFIS](https://dcruzf.github.io/highFIS/).
+### Running tests
 
+Run the full test suite with coverage:
 
+```bash
+hatch test -c -a
+```
 
-## License
+This project is tested on Python 3.11 | 3.12 | 3.13 | 3.14 across Linux, Windows and macOS.
+
+### Linting & Formatting
+
+```bash
+hatch fmt
+```
+
+### Typing
+
+```bash
+hatch run typing
+```
+
+### Security
+
+```bash
+hatch run security
+```
+
+## 📚 Documentation
+
+Comprehensive guides, API reference, and examples: [dcruzf.github.io/highFIS](https://dcruzf.github.io/highFIS/).
+
+## 🤝 Contributing
+
+Issues and pull requests are welcome! Please open a discussion if you'd like to propose larger changes.
+
+## 📄 License
 
 Distributed under the [GPLv3](LICENSE).
