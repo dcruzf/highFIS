@@ -1,11 +1,9 @@
 name: Publish Test
 
 on:
-  pull_request:
-    types:
-      - opened
-      - edited        # disparado quando o corpo do PR é editado
-      - synchronize   # disparado quando há push no branch do PR
+  push:
+    branches:
+      - dev
 
 jobs:
   check-trigger:
@@ -13,13 +11,12 @@ jobs:
     outputs:
       should-publish: ${{ steps.check.outputs.should-publish }}
     steps:
-      - name: Check PR body for "publish"
+      - name: Check commit message for "publish"
         id: check
         env:
-          PR_BODY: ${{ github.event.pull_request.body }}
-          PR_BASE: ${{ github.event.pull_request.base.ref }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
-          if [[ "$PR_BASE" == "dev" && "$PR_BODY" == *"publish"* ]]; then
+          if [[ "$COMMIT_MSG" == *"publish"* ]]; then
             echo "should-publish=true" >> "$GITHUB_OUTPUT"
           else
             echo "should-publish=false" >> "$GITHUB_OUTPUT"
@@ -32,19 +29,14 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    environment: test-pypi     # configure o environment no repositório
+    environment: test-pypi
     steps:
-      - name: Dump GitHub context
-        env:
-          GITHUB_CONTEXT: ${{ toJson(github) }}
-        run: echo "$GITHUB_CONTEXT"
-
       - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version-file: ".python-version"
+          python-version: "3.11"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5

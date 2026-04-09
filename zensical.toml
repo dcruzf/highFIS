@@ -326,3 +326,6 @@ generic = true
 [project.markdown_extensions.tables]
 [project.markdown_extensions.pymdownx.tabbed]
 alternate_style = true
+
+[project.extra.version]
+provider = "mike"

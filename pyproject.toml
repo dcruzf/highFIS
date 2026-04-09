@@ -74,7 +74,6 @@ all = "pre-commit run --all-files"
 installer = "uv"
 dependencies = [
   "zensical",
-  "ruff",
 ]
 [tool.hatch.envs.docs.scripts]
 build = "zensical build --clean"
@@ -107,6 +106,9 @@ run = "pytest{env:HATCH_TEST_ARGS:} {args}"
 run-cov = "coverage run -m pytest{env:HATCH_TEST_ARGS:} {args}"
 cov-combine = "coverage combine"
 cov-report = "coverage report -m --fail-under=90"
+
+[tool.uv.sources]
+mike = { git = "https://github.com/squidfunk/mike.git", branch = "master" }
 
 [tool.ruff]
 line-length = 120
