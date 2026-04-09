@@ -5,7 +5,7 @@ import torch
 from torch import nn
 
 from highfis.memberships import GaussianMF
-from highfis.models import HTSKClassifier
+from highfis.models import HTSKClassifier, _iter_minibatch_indices
 
 
 def _build_input_mfs(n_inputs: int = 3, n_mfs: int = 2) -> dict[str, list[GaussianMF]]:
@@ -135,3 +135,91 @@ def test_htsk_classifier_fit_validates_val_inputs() -> None:
 
     with pytest.raises(ValueError, match="expected y_val shape"):
         model.fit(x, y, epochs=1, x_val=torch.randn(5, 2), y_val=torch.randint(0, 2, (5, 1)))
+
+
+# ---------------------------------------------------------------------------
+# _iter_minibatch_indices
+# ---------------------------------------------------------------------------
+
+
+def test_iter_minibatch_indices_rejects_nonpositive_batch_size() -> None:
+    with pytest.raises(ValueError, match="batch_size must be > 0"):
+        _iter_minibatch_indices(100, batch_size=0, shuffle=False)
+
+
+# ---------------------------------------------------------------------------
+# consequent_batch_norm
+# ---------------------------------------------------------------------------
+
+
+def test_htsk_classifier_consequent_batch_norm() -> None:
+    """consequent_batch_norm=True covers BN in forward (line 169) and fit optimizer (line 174)."""
+    torch.manual_seed(1)
+    model = HTSKClassifier(
+        _build_input_mfs(n_inputs=2, n_mfs=2),
+        n_classes=2,
+        consequent_batch_norm=True,
+    )
+    x = torch.randn(20, 2)
+    y = torch.randint(0, 2, (20,), dtype=torch.long)
+
+    history = model.fit(x, y, epochs=2, batch_size=10)
+    assert len(history["train"]) == 2
+
+    model.eval()
+    with torch.no_grad():
+        logits = model(x)
+    assert logits.shape == (20, 2)
+
+
+# ---------------------------------------------------------------------------
+# MSELoss + validation (lines 228-230)
+# ---------------------------------------------------------------------------
+
+
+def test_htsk_classifier_fit_mse_with_validation() -> None:
+    """MSELoss criterion + validation data covers the MSELoss path in val loop."""
+    torch.manual_seed(0)
+    model = HTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    x = torch.randn(20, 2)
+    y = torch.randint(0, 2, (20,), dtype=torch.long)
+    x_val = torch.randn(8, 2)
+    y_val = torch.randint(0, 2, (8,), dtype=torch.long)
+
+    history = model.fit(
+        x, y, epochs=2, criterion=nn.MSELoss(),
+        x_val=x_val, y_val=y_val, patience=10,
+    )
+    assert len(history["val"]) == 2
+
+
+# ---------------------------------------------------------------------------
+# verbose logging paths (lines 246, 257, 261)
+# ---------------------------------------------------------------------------
+
+
+def test_htsk_classifier_fit_verbose_with_early_stopping() -> None:
+    """verbose=True + early stopping exercises logging lines 246 and 257."""
+    torch.manual_seed(42)
+    model = HTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    x = torch.randn(30, 2)
+    y = torch.randint(0, 2, (30,), dtype=torch.long)
+    x_val = torch.randn(10, 2)
+    y_val = torch.randint(0, 2, (10,), dtype=torch.long)
+
+    history = model.fit(
+        x, y, epochs=500, x_val=x_val, y_val=y_val,
+        patience=5, learning_rate=1e-2, verbose=True,
+    )
+    assert history["stopped_epoch"] < 500
+
+
+def test_htsk_classifier_fit_verbose_no_validation() -> None:
+    """verbose=True without validation exercises the no-val logging path (line 261)."""
+    torch.manual_seed(0)
+    model = HTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    x = torch.randn(20, 2)
+    y = torch.randint(0, 2, (20,), dtype=torch.long)
+
+    history = model.fit(x, y, epochs=10, verbose=True)
+    assert len(history["train"]) == 10

@@ -106,7 +106,7 @@ python = ["3.14","3.13", "3.12", "3.11"]
 run = "pytest{env:HATCH_TEST_ARGS:} {args}"
 run-cov = "coverage run -m pytest{env:HATCH_TEST_ARGS:} {args}"
 cov-combine = "coverage combine"
-cov-report = "coverage report -m"
+cov-report = "coverage report -m --fail-under=90"
 
 [tool.ruff]
 line-length = 120

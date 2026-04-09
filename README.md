@@ -1,9 +1,8 @@
 # highFIS
 
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org)
-[![PyTorch](https://img.shields.io/badge/backend-PyTorch-orange)](https://pytorch.org)
+[![CI](https://github.com/dcruzf/highFIS/actions/workflows/ci.yaml/badge.svg)](https://github.com/dcruzf/highFIS/actions/workflows/ci.yaml)
 [![License: GPLv3](https://img.shields.io/badge/license-GPLv3-green)](https://www.gnu.org/licenses/gpl-3.0)
-[![scikit-learn API](https://img.shields.io/badge/API-scikit--learn-yellow)](https://scikit-learn.org)
+
 
 Python library for high-dimensional Takagi–Sugeno–Kang (TSK) fuzzy inference systems, built on PyTorch with a scikit-learn compatible API.
 
@@ -13,7 +12,7 @@ Python library for high-dimensional Takagi–Sugeno–Kang (TSK) fuzzy inference
 pip install highFIS
 ```
 
-**Requirements:** Python ≥ 3.10, PyTorch ≥ 2.3, NumPy ≥ 1.23, scikit-learn ≥ 1.7.
+**Requirements:** Python ≥ 3.11, PyTorch ≥ 2.3, NumPy ≥ 1.23, scikit-learn ≥ 1.7.
 
 ## Quick Start
 

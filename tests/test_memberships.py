@@ -26,3 +26,11 @@ def test_gaussian_mf_outputs_in_unit_interval() -> None:
     assert y.shape == x.shape
     assert bool(torch.all(y >= 0.0))
     assert bool(torch.all(y <= 1.0))
+
+
+def test_gaussian_mf_as_tensor_accepts_float() -> None:
+    """_as_tensor with a float (not Tensor) covers the float branch (line 27)."""
+    mf = GaussianMF(mean=0.0, sigma=1.0)
+    result = mf._as_tensor(1.5)
+    assert isinstance(result, torch.Tensor)
+    assert float(result) == pytest.approx(1.5)

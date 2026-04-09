@@ -218,3 +218,87 @@ def test_estimator_sigma_scale_auto() -> None:
     proba = est.predict_proba(x)
     assert proba.shape == (x.shape[0], 2)
     assert np.allclose(proba.sum(axis=1), 1.0, atol=1e-6)
+
+
+# ---------------------------------------------------------------------------
+# _build_gaussian_input_mfs edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_build_gaussian_input_mfs_constant_column() -> None:
+    """All values identical → rmax == rmin → rmax += 1e-3 branch (line 46)."""
+    rng = np.random.default_rng(0)
+    x = np.column_stack([np.ones(20), rng.normal(size=20)]).astype(np.float64)
+    configs = [InputConfig(name="x1", n_mfs=2), InputConfig(name="x2", n_mfs=2)]
+    mfs = _build_gaussian_input_mfs(x, configs)
+    assert len(mfs["x1"]) == 2
+
+
+def test_build_gaussian_input_mfs_single_mf() -> None:
+    """n_mfs==1 triggers width=range branch (line 50)."""
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=(20, 1)).astype(np.float64)
+    configs = [InputConfig(name="x1", n_mfs=1)]
+    mfs = _build_gaussian_input_mfs(x, configs)
+    assert len(mfs["x1"]) == 1
+    assert float(mfs["x1"][0].sigma.detach()) > 0
+
+
+# ---------------------------------------------------------------------------
+# _build_kmeans_input_mfs zero-sigma fallback
+# ---------------------------------------------------------------------------
+
+
+def test_build_kmeans_zero_sigma_fallback() -> None:
+    """Constant-value cluster → std=0 → gap-fallback branch (lines 95-96)."""
+    x = np.vstack([
+        np.zeros((10, 2), dtype=np.float64),
+        np.ones((10, 2), dtype=np.float64),
+    ])
+    mfs = _build_kmeans_input_mfs(
+        x, n_clusters=2, sigma_scale=1.0, feature_names=["x1", "x2"], random_state=0,
+    )
+    for name in ["x1", "x2"]:
+        for mf in mfs[name]:
+            assert float(mf.sigma.detach()) > 0
+
+
+# ---------------------------------------------------------------------------
+# _resolve_input_configs and _resolve_feature_names happy paths
+# ---------------------------------------------------------------------------
+
+
+def test_estimator_fit_with_input_configs_grid_resolve_config() -> None:
+    """input_configs set + grid init → _resolve_input_configs happy path (lines 171-175)."""
+    x, y = _make_dataset(60)
+    configs = [InputConfig(name=f"f{i}", n_mfs=2) for i in range(3)]
+    est = HTSKClassifierEstimator(
+        input_configs=configs, mf_init="grid", epochs=2, random_state=0, batch_size=16,
+    )
+    est.fit(x, y)
+    assert list(est.feature_names_in_) == ["f0", "f1", "f2"]
+
+
+def test_estimator_fit_with_input_configs_kmeans_resolve_names() -> None:
+    """input_configs set + kmeans init → _resolve_feature_names happy path (line 184)."""
+    x, y = _make_dataset(60)
+    configs = [InputConfig(name=f"g{i}", n_mfs=3) for i in range(3)]
+    est = HTSKClassifierEstimator(
+        input_configs=configs, mf_init="kmeans", epochs=2, random_state=0, batch_size=16,
+    )
+    est.fit(x, y)
+    assert list(est.feature_names_in_) == ["g0", "g1", "g2"]
+
+
+# ---------------------------------------------------------------------------
+# predict_proba feature-count validation
+# ---------------------------------------------------------------------------
+
+
+def test_estimator_predict_proba_wrong_feature_count() -> None:
+    """predict_proba with wrong number of features raises ValueError (line 271)."""
+    x, y = _make_dataset(40)
+    est = HTSKClassifierEstimator(n_mfs=2, epochs=2, batch_size=16, random_state=0)
+    est.fit(x, y)
+    with pytest.raises(ValueError, match="expected"):
+        est.predict_proba(x[:, :2])

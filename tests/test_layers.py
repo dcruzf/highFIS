@@ -108,3 +108,108 @@ def test_generate_en_frb_has_unique_rules() -> None:
     rules = _generate_en_frb(3, 2)
     assert len(rules) == len(set(rules))
     assert len(rules) >= 3
+
+
+# ---------------------------------------------------------------------------
+# MembershipLayer validation
+# ---------------------------------------------------------------------------
+
+
+def test_membership_layer_rejects_empty_dict() -> None:
+    with pytest.raises(ValueError, match="input_mfs must not be empty"):
+        MembershipLayer({})
+
+
+def test_membership_layer_rejects_empty_mf_list() -> None:
+    with pytest.raises(ValueError, match="must define at least one membership function"):
+        MembershipLayer({"x1": []})
+
+
+# ---------------------------------------------------------------------------
+# RuleLayer validation
+# ---------------------------------------------------------------------------
+
+
+def test_rule_layer_rejects_empty_input_names() -> None:
+    with pytest.raises(ValueError, match="input_names must not be empty"):
+        RuleLayer([], [])
+
+
+def test_rule_layer_rejects_mismatched_lengths() -> None:
+    with pytest.raises(ValueError, match="must have the same length"):
+        RuleLayer(["x1"], [2, 3])
+
+
+def test_rule_layer_rejects_invalid_rule_base() -> None:
+    with pytest.raises(ValueError, match="rule_base must be"):
+        RuleLayer(["x1"], [2], rule_base="invalid")
+
+
+def test_rule_layer_coco_happy_path() -> None:
+    """CoCo rule base with equal MF counts covers lines 119-123."""
+    mfs = {
+        "x1": [GaussianMF(mean=float(i), sigma=1.0) for i in range(3)],
+        "x2": [GaussianMF(mean=float(i), sigma=1.0) for i in range(3)],
+    }
+    layer = RuleLayer(["x1", "x2"], [3, 3], rule_base="coco")
+    assert layer.n_rules == 3
+    m = MembershipLayer(mfs)
+    x = torch.randn(4, 2)
+    w = layer(m(x))
+    assert w.shape == (4, 3)
+
+
+def test_rule_layer_en_single_input_triggers_seen_collision() -> None:
+    """En-FRB with s=2, d=1 triggers base_t-in-seen branch (22->26) and line 130."""
+    mfs = {"x1": [GaussianMF(mean=float(i), sigma=1.0) for i in range(2)]}
+    layer = RuleLayer(["x1"], [2], rule_base="en")
+    assert layer.n_rules == 2
+    m = MembershipLayer(mfs)
+    x = torch.randn(4, 1)
+    w = layer(m(x))
+    assert w.shape == (4, 2)
+
+
+def test_rule_layer_en_rejects_unequal_mf_counts() -> None:
+    with pytest.raises(ValueError, match="En-FRB"):
+        RuleLayer(["x1", "x2"], [2, 3], rule_base="en")
+
+
+def test_rule_layer_custom_rejects_wrong_rule_size() -> None:
+    with pytest.raises(ValueError, match="has size"):
+        RuleLayer(["x1", "x2"], [2, 2], rule_base="custom", rules=[(0,)])
+
+
+def test_rule_layer_custom_rejects_empty_rules() -> None:
+    with pytest.raises(ValueError, match="rules must not be empty"):
+        RuleLayer(["x1", "x2"], [2, 2], rule_base="custom", rules=[])
+
+
+def test_rule_layer_custom_t_norm_fn_overrides_default() -> None:
+    """t_norm_fn parameter uses the custom function (line 195)."""
+    layer = RuleLayer(
+        ["x1", "x2"], [2, 2],
+        t_norm_fn=lambda t: t.prod(dim=-1),
+    )
+    m = MembershipLayer(_build_input_mfs())
+    w = layer(m(torch.randn(4, 2)))
+    assert w.shape == (4, layer.n_rules)
+
+
+# ---------------------------------------------------------------------------
+# ClassificationConsequentLayer validation
+# ---------------------------------------------------------------------------
+
+
+def test_classification_consequent_layer_rejects_bad_x_shape() -> None:
+    layer = ClassificationConsequentLayer(n_rules=4, n_inputs=2, n_classes=3)
+    norm_w = torch.softmax(torch.randn(5, 4), dim=1)
+    with pytest.raises(ValueError, match="expected x shape"):
+        layer(torch.randn(5, 3), norm_w)
+
+
+def test_classification_consequent_layer_rejects_bad_normw_shape() -> None:
+    layer = ClassificationConsequentLayer(n_rules=4, n_inputs=2, n_classes=3)
+    x = torch.randn(5, 2)
+    with pytest.raises(ValueError, match="expected norm_w shape"):
+        layer(x, torch.randn(5, 3))
