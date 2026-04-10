@@ -13,6 +13,9 @@ authors:
     email: daniel@ci.ufpb.br
     affiliation: UFPB
     orcid: 'https://orcid.org/0009-0007-3932-9849'
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.19489226
 repository-code: 'https://github.com/dcruzf/highFIS'
 url: 'https://dcruzf.github.io/highFIS'
 abstract: >-
