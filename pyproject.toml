@@ -47,6 +47,7 @@ Homepage = "https://github.com/dcruzf/highFIS"
 Documentation = "https://dcruzf.github.io/highFIS/"
 Source = "https://github.com/dcruzf/highFIS"
 Tracker = "https://github.com/dcruzf/highFIS/issues"
+DOI = "https://doi.org/10.5281/zenodo.19489225"
 
 [tool.hatch.version]
 path = 'highfis/__init__.py'
