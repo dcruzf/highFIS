@@ -39,7 +39,7 @@ pip install highFIS
 
 Minimum requirements:
 
-- Python 3.10+
+- Python 3.11+
 - PyTorch 2.3+
 - NumPy 1.23+
 - scikit-learn 1.7.2+
