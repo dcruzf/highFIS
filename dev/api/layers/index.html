@@ -478,6 +478,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#regressionconsequentlayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RegressionConsequentLayer
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -662,6 +673,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#regressionconsequentlayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RegressionConsequentLayer
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -723,6 +745,13 @@ max-subtraction trick.</p>
 \mathrm{logits}_k=\sum_{r=1}^{R}\bar{w}_r\,f_{r,k}(x)
 \]</div>
 <p>where <span class="arithmatex">\(f_{r,k}(x)\)</span> is affine in input features.</p>
+<h2 id="regressionconsequentlayer">RegressionConsequentLayer</h2>
+<p>Computes per-rule linear consequents and aggregates a scalar regression output:</p>
+<div class="arithmatex">\[
+\hat{y}=\sum_{r=1}^{R}\bar{w}_r\,f_r(x)
+\]</div>
+<p>where <span class="arithmatex">\(f_r(x) = \mathbf{w}_r^\top x + b_r\)</span> is an affine function of the input features.
+Output shape is <span class="arithmatex">\((\text{batch}, 1)\)</span>.</p>
 
 
 

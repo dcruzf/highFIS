@@ -560,6 +560,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#htskregressorestimator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTSKRegressorEstimator
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="HTSKRegressorEstimator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sklearn-compatibility_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sklearn Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#core-hyperparameters_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Hyperparameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -718,6 +768,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#htskregressorestimator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTSKRegressorEstimator
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="HTSKRegressorEstimator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sklearn-compatibility_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sklearn Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#core-hyperparameters_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Hyperparameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -813,6 +913,34 @@
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">mf_init</span><span class="o">=</span><span class="s2">&quot;grid&quot;</span><span class="p">,</span>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">rule_base</span><span class="o">=</span><span class="s2">&quot;cartesian&quot;</span><span class="p">,</span>
 </span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="p">)</span>
+</span></code></pre></div>
+<h2 id="htskregressorestimator">HTSKRegressorEstimator</h2>
+<p>A scikit-learn compatible regressor wrapper around <code>HTSKRegressor</code>.</p>
+<h3 id="sklearn-compatibility_1">sklearn Compatibility</h3>
+<ul>
+<li>Inherits <code>BaseEstimator</code> and <code>RegressorMixin</code>.</li>
+<li>Implements <code>fit</code>, <code>predict</code>, and <code>score</code> (<span class="arithmatex">\(R^2\)</span>).</li>
+<li>Works with <code>Pipeline</code>, <code>GridSearchCV</code>, and cross-validation tools.</li>
+</ul>
+<h3 id="core-hyperparameters_1">Core Hyperparameters</h3>
+<p>Same hyperparameters as <code>HTSKClassifierEstimator</code> (see above), except:</p>
+<ul>
+<li>No <code>n_classes</code> parameter — output is scalar.</li>
+<li><code>score()</code> returns <span class="arithmatex">\(R^2\)</span> instead of accuracy.</li>
+</ul>
+<h3 id="example_1">Example</h3>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKRegressorEstimator</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">reg</span> <span class="o">=</span> <span class="n">HTSKRegressorEstimator</span><span class="p">(</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">n_mfs</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">mf_init</span><span class="o">=</span><span class="s2">&quot;kmeans&quot;</span><span class="p">,</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">sigma_scale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">epochs</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>    <span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="p">)</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="n">reg</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="n">r2</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">score</span><span class="p">(</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">)</span>
 </span></code></pre></div>
 
 

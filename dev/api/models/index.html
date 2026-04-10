@@ -511,6 +511,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#htskregressor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTSKRegressor
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="HTSKRegressor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constructor-highlights_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constructor Highlights
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#main-methods_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Main Methods
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#training-notes_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Training Notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -674,6 +724,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#htskregressor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTSKRegressor
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="HTSKRegressor">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constructor-highlights_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constructor Highlights
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#main-methods_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Main Methods
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#training-notes_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Training Notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -732,6 +832,39 @@
 <li>Default loss: <code>nn.CrossEntropyLoss()</code> — raw logits with class-index targets.</li>
 <li>Early stopping monitored by <strong>validation accuracy</strong> when <code>x_val</code>/<code>y_val</code> are
   provided. Best model weights are restored automatically.</li>
+<li>Supports mini-batches, shuffling, and optional uniform regularization.</li>
+<li>Custom criterion and custom optimizer can still be passed to <code>fit()</code>.</li>
+</ul>
+<h2 id="htskregressor">HTSKRegressor</h2>
+<p><code>HTSKRegressor</code> is a <code>torch.nn.Module</code> implementing a full TSK regression pipeline:</p>
+<ol>
+<li>Membership evaluation</li>
+<li>Rule firing strength computation</li>
+<li>Firing normalization</li>
+<li>Regression consequent aggregation</li>
+</ol>
+<h3 id="constructor-highlights_1">Constructor Highlights</h3>
+<ul>
+<li><code>input_mfs</code>: dictionary of input names to membership-function lists.</li>
+<li><code>rule_base</code>: <code>"cartesian"</code>, <code>"coco"</code>, <code>"en"</code>, or <code>"custom"</code>.</li>
+<li><code>t_norm</code>: built-in t-norm name.</li>
+<li><code>t_norm_fn</code>: optional custom t-norm callable.</li>
+<li><code>consequent_batch_norm</code>: optional batch normalization before consequents.</li>
+</ul>
+<h3 id="main-methods_1">Main Methods</h3>
+<ul>
+<li><code>forward(x)</code>: returns predictions with shape <code>(batch, 1)</code>.</li>
+<li><code>predict(x)</code>: returns predictions as a 1-D tensor.</li>
+<li><code>forward_antecedents(x)</code>: returns normalized rule strengths.</li>
+<li><code>fit(...)</code>: trains model parameters with gradient descent.</li>
+</ul>
+<h3 id="training-notes_1">Training Notes</h3>
+<ul>
+<li>Default optimizer: <code>AdamW</code> with separate param groups — antecedent
+  (<code>weight_decay=0</code>) and consequent (<code>weight_decay=1e-8</code>).</li>
+<li>Default loss: <code>nn.MSELoss()</code> — scalar predictions with continuous targets.</li>
+<li>Early stopping monitored by <strong>validation loss</strong> when <code>x_val</code>/<code>y_val</code> are
+  provided. Best model weights (lowest validation loss) are restored automatically.</li>
 <li>Supports mini-batches, shuffling, and optional uniform regularization.</li>
 <li>Custom criterion and custom optimizer can still be passed to <code>fit()</code>.</li>
 </ul>
