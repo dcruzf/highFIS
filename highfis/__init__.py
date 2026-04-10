@@ -4,7 +4,7 @@ from .estimators import HTSKClassifierEstimator, InputConfig
 from .memberships import GaussianMF, MembershipFunction
 from .models import HTSKClassifier
 
-__version__ = "0.1.0a3"
+__version__ = "0.1.0"
 
 __all__ = [
     "MembershipFunction",
