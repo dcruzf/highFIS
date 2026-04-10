@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/v0.2/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/v0.2/markdown/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/v0.2/htsk-modelo/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/v0.2/api/memberships/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/v0.2/api/t_norms/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/v0.2/api/layers/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/v0.2/api/models/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/v0.2/api/estimators/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/v0.2/contributing/</loc>
+      </url>
+</urlset>
