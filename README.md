@@ -3,7 +3,10 @@
 [![CI](https://github.com/dcruzf/highFIS/actions/workflows/ci.yaml/badge.svg)](https://github.com/dcruzf/highFIS/actions/workflows/ci.yaml)
 [![Documentation](https://github.com/dcruzf/highFIS/actions/workflows/docs.yml/badge.svg)](https://github.com/dcruzf/highFIS/actions/workflows/docs.yml)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19489225.svg)](https://doi.org/10.5281/zenodo.19489225)
-[![License: GPLv3](https://img.shields.io/badge/license-GPLv3-green)](https://www.gnu.org/licenses/gpl-3.0)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/highfis)
+![PyPI - Version](https://img.shields.io/pypi/v/highfis?color=bright%20green)
+![PyPI - License](https://img.shields.io/pypi/l/highfis?color=bright%20green)
+
 
 
 Python library for high-dimensional Takagi–Sugeno–Kang (TSK) fuzzy inference systems, built on PyTorch with a scikit-learn compatible API.
