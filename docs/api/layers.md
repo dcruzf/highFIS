@@ -51,3 +51,14 @@ $$
 $$
 
 where $f_{r,k}(x)$ is affine in input features.
+
+## RegressionConsequentLayer
+
+Computes per-rule linear consequents and aggregates a scalar regression output:
+
+$$
+\hat{y}=\sum_{r=1}^{R}\bar{w}_r\,f_r(x)
+$$
+
+where $f_r(x) = \mathbf{w}_r^\top x + b_r$ is an affine function of the input features.
+Output shape is $(\text{batch}, 1)$.
