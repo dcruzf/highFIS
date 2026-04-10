@@ -6,14 +6,14 @@ from typing import Any
 
 import numpy as np
 import torch
-from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
 from sklearn.cluster import KMeans
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 
 from .memberships import GaussianMF
-from .models import HTSKClassifier
+from .models import HTSKClassifier, HTSKRegressor
 
 
 @dataclass(frozen=True)
@@ -285,4 +285,173 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
         return float(accuracy_score(y_true, y_pred, sample_weight=sample_weight))
 
 
-__all__ = ["InputConfig", "HTSKClassifierEstimator", "_build_kmeans_input_mfs"]
+class HTSKRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[misc]
+    """High-level HTSK regressor facade with sklearn-compatible API."""
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 30,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 200,
+        learning_rate: float = 1e-2,
+        verbose: bool = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        patience: int = 20,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+    ) -> None:
+        r"""Configure estimator hyperparameters and training options.
+
+        Parameters
+        ----------
+        mf_init:
+            Membership-function initialization strategy.  ``"kmeans"`` (default)
+            places each rule's MF centers at a k-means centroid and uses the
+            within-cluster standard deviation scaled by *sigma_scale* as the
+            initial sigma — following Cui et al. (IJCNN 2021).  ``"grid"``
+            uses a uniform grid over each feature's range (original behaviour,
+            combined with ``rule_base="cartesian"``).
+        sigma_scale:
+            Scaling factor ``h`` applied to the computed sigma values during
+            k-means initialization.  The paper recommends ``h=1`` for HTSK.
+            Pass ``"auto"`` to use :math:`h = \\sqrt{D}` where *D* is the
+            number of input features — a robust choice for any dimensionality.
+            Ignored when ``mf_init="grid"``.
+        rule_base:
+            Rule-combination strategy passed to :class:`HTSKRegressor`.
+            Defaults to ``"coco"`` when ``mf_init="kmeans"`` (one rule per
+            cluster) and to ``"cartesian"`` when ``mf_init="grid"``.
+        """
+        self.input_configs = input_configs
+        self.n_mfs = n_mfs
+        self.mf_init = mf_init
+        self.sigma_scale = sigma_scale
+        self.random_state = random_state
+        self.epochs = epochs
+        self.learning_rate = learning_rate
+        self.verbose = verbose
+        self.rule_base = rule_base
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.ur_weight = ur_weight
+        self.ur_target = ur_target
+        self.consequent_batch_norm = consequent_batch_norm
+        self.patience = patience
+        self.validation_data = validation_data
+        self.weight_decay = weight_decay
+
+    def _resolve_input_configs(self, x: np.ndarray) -> list[InputConfig]:
+        if self.input_configs is not None:
+            if len(self.input_configs) != x.shape[1]:
+                raise ValueError(
+                    f"input_configs length ({len(self.input_configs)}) must match number of features ({x.shape[1]})"
+                )
+            return list(self.input_configs)
+        return [InputConfig(name=f"x{i + 1}", n_mfs=int(self.n_mfs)) for i in range(x.shape[1])]
+
+    def _resolve_feature_names(self, x: np.ndarray) -> list[str]:
+        if self.input_configs is not None:
+            if len(self.input_configs) != x.shape[1]:
+                raise ValueError(
+                    f"input_configs length ({len(self.input_configs)}) must match number of features ({x.shape[1]})"
+                )
+            return [cfg.name for cfg in self.input_configs]
+        return [f"x{i + 1}" for i in range(x.shape[1])]
+
+    @staticmethod
+    def _as_tensor_x(x: np.ndarray) -> torch.Tensor:
+        return torch.as_tensor(x, dtype=torch.float32)
+
+    def fit(self, x: Any, y: Any) -> HTSKRegressorEstimator:
+        """Train the HTSK regressor on labeled samples."""
+        x_arr, y_arr = check_X_y(x, y)
+
+        if self.random_state is not None:
+            torch.manual_seed(int(self.random_state))
+
+        init = str(self.mf_init).lower()
+        if init not in {"kmeans", "grid"}:
+            raise ValueError(f"mf_init must be 'kmeans' or 'grid', got '{self.mf_init}'")
+
+        if init == "kmeans":
+            feature_names = self._resolve_feature_names(x_arr)
+            if isinstance(self.sigma_scale, str) and self.sigma_scale.lower() == "auto":
+                effective_sigma_scale = math.sqrt(float(x_arr.shape[1]))
+            else:
+                effective_sigma_scale = float(self.sigma_scale)
+            input_mfs = _build_kmeans_input_mfs(
+                x_arr,
+                n_clusters=int(self.n_mfs),
+                sigma_scale=effective_sigma_scale,
+                feature_names=feature_names,
+                random_state=self.random_state,
+            )
+            effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
+        else:
+            input_configs = self._resolve_input_configs(x_arr)
+            input_mfs = _build_gaussian_input_mfs(x_arr, input_configs)
+            feature_names = [cfg.name for cfg in input_configs]
+            effective_rule_base = self.rule_base if self.rule_base is not None else "cartesian"
+
+        self.n_features_in_ = x_arr.shape[1]
+        self.feature_names_in_ = np.asarray(feature_names, dtype=object)
+
+        self.model_ = HTSKRegressor(
+            input_mfs,
+            rule_base=effective_rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+        y_t = torch.as_tensor(np.asarray(y_arr, dtype=np.float32), dtype=torch.float32)
+
+        # Prepare validation tensors if provided
+        x_val_t: torch.Tensor | None = None
+        y_val_t: torch.Tensor | None = None
+        if self.validation_data is not None:
+            x_v, y_v = self.validation_data
+            x_v_arr = check_array(x_v)
+            x_val_t = self._as_tensor_x(x_v_arr)
+            y_val_t = torch.as_tensor(np.asarray(y_v, dtype=np.float32), dtype=torch.float32)
+
+        self.history_ = self.model_.fit(
+            self._as_tensor_x(x_arr),
+            y_t,
+            epochs=int(self.epochs),
+            learning_rate=float(self.learning_rate),
+            batch_size=self.batch_size,
+            shuffle=bool(self.shuffle),
+            ur_weight=float(self.ur_weight),
+            ur_target=self.ur_target,
+            verbose=bool(self.verbose),
+            x_val=x_val_t,
+            y_val=y_val_t,
+            patience=int(self.patience),
+            weight_decay=float(self.weight_decay),
+        )
+        return self
+
+    def predict(self, x: Any) -> np.ndarray:
+        """Predict continuous target values for input samples."""
+        check_is_fitted(self, "model_")
+        x_arr = check_array(x)
+        if x_arr.shape[1] != self.n_features_in_:
+            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
+        preds = self.model_.predict(self._as_tensor_x(x_arr))
+        return preds.detach().cpu().numpy()
+
+
+__all__ = [
+    "InputConfig",
+    "HTSKClassifierEstimator",
+    "HTSKRegressorEstimator",
+    "_build_kmeans_input_mfs",
+]

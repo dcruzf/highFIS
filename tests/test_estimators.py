@@ -6,6 +6,7 @@ from sklearn.exceptions import NotFittedError
 
 from highfis.estimators import (
     HTSKClassifierEstimator,
+    HTSKRegressorEstimator,
     InputConfig,
     _build_gaussian_input_mfs,
     _build_kmeans_input_mfs,
@@ -302,3 +303,153 @@ def test_estimator_predict_proba_wrong_feature_count() -> None:
     est.fit(x, y)
     with pytest.raises(ValueError, match="expected"):
         est.predict_proba(x[:, :2])
+
+
+# ===========================================================================
+# HTSKRegressorEstimator
+# ===========================================================================
+
+
+def _make_regression_dataset(n_samples: int = 60) -> tuple[np.ndarray, np.ndarray]:
+    rng = np.random.default_rng(123)
+    x = rng.normal(size=(n_samples, 3)).astype(np.float32)
+    y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * rng.normal(size=n_samples).astype(np.float32)
+    return x, y
+
+
+def test_regressor_estimator_fit_predict_score() -> None:
+    x, y = _make_regression_dataset(80)
+    est = HTSKRegressorEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+
+    est.fit(x, y)
+    pred = est.predict(x)
+    score = est.score(x, y)
+
+    assert pred.shape == (x.shape[0],)
+    # R² score from RegressorMixin
+    assert isinstance(score, float)
+
+
+def test_regressor_estimator_grid_init_fit_predict() -> None:
+    x, y = _make_regression_dataset(80)
+    est = HTSKRegressorEstimator(
+        n_mfs=2,
+        mf_init="grid",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+
+    est.fit(x, y)
+    pred = est.predict(x)
+
+    assert pred.shape == (x.shape[0],)
+
+
+def test_regressor_estimator_predict_requires_fit() -> None:
+    x, _ = _make_regression_dataset(10)
+    est = HTSKRegressorEstimator(n_mfs=2, epochs=1, batch_size=16)
+    with pytest.raises(NotFittedError):
+        est.predict(x)
+
+
+def test_regressor_estimator_validates_input_config_length() -> None:
+    x, y = _make_regression_dataset(20)
+    est = HTSKRegressorEstimator(input_configs=[InputConfig(name="x1", n_mfs=2)], batch_size=16)
+    with pytest.raises(ValueError, match="input_configs length"):
+        est.fit(x, y)
+
+
+def test_regressor_estimator_invalid_mf_init_raises() -> None:
+    x, y = _make_regression_dataset(20)
+    est = HTSKRegressorEstimator(n_mfs=2, mf_init="random", epochs=1, batch_size=16)
+    with pytest.raises(ValueError, match="mf_init"):
+        est.fit(x, y)
+
+
+def test_regressor_estimator_kmeans_default_rule_base_is_coco() -> None:
+    x, y = _make_regression_dataset(60)
+    est = HTSKRegressorEstimator(n_mfs=3, mf_init="kmeans", epochs=2, random_state=0, batch_size=16)
+    est.fit(x, y)
+    assert est.model_.n_rules == 3  # type: ignore[attr-defined]
+
+
+def test_regressor_estimator_early_stopping_with_validation_data() -> None:
+    x, y = _make_regression_dataset(80)
+    x_train, x_val = x[:60], x[60:]
+    y_train, y_val = y[:60], y[60:]
+
+    est = HTSKRegressorEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=1000,
+        learning_rate=5e-2,
+        random_state=7,
+        patience=3,
+        validation_data=(x_val, y_val),
+    )
+    est.fit(x_train, y_train)
+
+    assert "val" in est.history_
+    assert len(est.history_["val"]) > 0
+    assert est.history_["stopped_epoch"] < 1000
+
+
+def test_regressor_estimator_no_val_runs_full_epochs() -> None:
+    x, y = _make_regression_dataset(60)
+    est = HTSKRegressorEstimator(
+        n_mfs=2, mf_init="kmeans", epochs=10, random_state=7, batch_size=16,
+    )
+    est.fit(x, y)
+
+    assert est.history_["stopped_epoch"] == 10
+    assert len(est.history_["val"]) == 0
+
+
+def test_regressor_estimator_sigma_scale_auto() -> None:
+    x, y = _make_regression_dataset(60)
+    est = HTSKRegressorEstimator(
+        n_mfs=3, mf_init="kmeans", sigma_scale="auto",
+        epochs=2, random_state=0, batch_size=16,
+    )
+    est.fit(x, y)
+
+    assert est.model_ is not None
+    pred = est.predict(x)
+    assert pred.shape == (x.shape[0],)
+
+
+def test_regressor_estimator_predict_wrong_feature_count() -> None:
+    x, y = _make_regression_dataset(40)
+    est = HTSKRegressorEstimator(n_mfs=2, epochs=2, batch_size=16, random_state=0)
+    est.fit(x, y)
+    with pytest.raises(ValueError, match="expected"):
+        est.predict(x[:, :2])
+
+
+def test_regressor_estimator_fit_with_input_configs_grid() -> None:
+    x, y = _make_regression_dataset(60)
+    configs = [InputConfig(name=f"f{i}", n_mfs=2) for i in range(3)]
+    est = HTSKRegressorEstimator(
+        input_configs=configs, mf_init="grid", epochs=2, random_state=0, batch_size=16,
+    )
+    est.fit(x, y)
+    assert list(est.feature_names_in_) == ["f0", "f1", "f2"]
+
+
+def test_regressor_estimator_fit_with_input_configs_kmeans() -> None:
+    x, y = _make_regression_dataset(60)
+    configs = [InputConfig(name=f"g{i}", n_mfs=3) for i in range(3)]
+    est = HTSKRegressorEstimator(
+        input_configs=configs, mf_init="kmeans", epochs=2, random_state=0, batch_size=16,
+    )
+    est.fit(x, y)
+    assert list(est.feature_names_in_) == ["g0", "g1", "g2"]
