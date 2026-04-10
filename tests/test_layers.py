@@ -7,6 +7,7 @@ from highfis.layers import (
     ClassificationConsequentLayer,
     MembershipLayer,
     NormalizationLayer,
+    RegressionConsequentLayer,
     RuleLayer,
     _generate_en_frb,
 )
@@ -213,3 +214,61 @@ def test_classification_consequent_layer_rejects_bad_normw_shape() -> None:
     x = torch.randn(5, 2)
     with pytest.raises(ValueError, match="expected norm_w shape"):
         layer(x, torch.randn(5, 3))
+
+
+# ---------------------------------------------------------------------------
+# RegressionConsequentLayer
+# ---------------------------------------------------------------------------
+
+
+def test_regression_consequent_layer_forward_shape() -> None:
+    layer = RegressionConsequentLayer(n_rules=4, n_inputs=2)
+    x = torch.randn(5, 2)
+    norm_w = torch.softmax(torch.randn(5, 4), dim=1)
+
+    out = layer(x, norm_w)
+
+    assert out.shape == (5, 1)
+
+
+def test_regression_consequent_layer_he_init() -> None:
+    """Verify He (Kaiming) initialization on weight and zero bias."""
+    layer = RegressionConsequentLayer(n_rules=4, n_inputs=10)
+    assert torch.allclose(layer.bias, torch.zeros_like(layer.bias))
+    assert float(layer.weight.detach().std()) < 1.0
+
+
+def test_regression_consequent_layer_rejects_invalid_args() -> None:
+    with pytest.raises(ValueError, match="n_rules and n_inputs must be positive"):
+        RegressionConsequentLayer(n_rules=0, n_inputs=2)
+    with pytest.raises(ValueError, match="n_rules and n_inputs must be positive"):
+        RegressionConsequentLayer(n_rules=4, n_inputs=0)
+
+
+def test_regression_consequent_layer_rejects_bad_x_shape() -> None:
+    layer = RegressionConsequentLayer(n_rules=4, n_inputs=2)
+    norm_w = torch.softmax(torch.randn(5, 4), dim=1)
+    with pytest.raises(ValueError, match="expected x shape"):
+        layer(torch.randn(5, 3), norm_w)
+
+
+def test_regression_consequent_layer_rejects_bad_normw_shape() -> None:
+    layer = RegressionConsequentLayer(n_rules=4, n_inputs=2)
+    x = torch.randn(5, 2)
+    with pytest.raises(ValueError, match="expected norm_w shape"):
+        layer(x, torch.randn(5, 3))
+
+
+def test_regression_consequent_layer_gradient_flows() -> None:
+    """Verify that gradients flow through the regression consequent layer."""
+    layer = RegressionConsequentLayer(n_rules=4, n_inputs=2)
+    x = torch.randn(5, 2, requires_grad=True)
+    norm_w = torch.softmax(torch.randn(5, 4), dim=1)
+
+    out = layer(x, norm_w)
+    loss = out.sum()
+    loss.backward()
+
+    assert x.grad is not None
+    assert layer.weight.grad is not None
+    assert layer.bias.grad is not None

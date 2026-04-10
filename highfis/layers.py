@@ -212,9 +212,38 @@ class ClassificationConsequentLayer(nn.Module):
         return torch.einsum("br,brk->bk", norm_w, f)
 
 
+class RegressionConsequentLayer(nn.Module):
+    """Linear TSK consequent layer for scalar regression output."""
+
+    def __init__(self, n_rules: int, n_inputs: int) -> None:
+        """Initialize consequent parameters for regression."""
+        super().__init__()
+        if n_rules <= 0 or n_inputs <= 0:
+            raise ValueError("n_rules and n_inputs must be positive")
+        self.n_rules = n_rules
+        self.n_inputs = n_inputs
+        self.weight = nn.Parameter(torch.empty(n_rules, n_inputs))
+        self.bias = nn.Parameter(torch.empty(n_rules))
+        nn.init.kaiming_normal_(self.weight, mode="fan_in", nonlinearity="linear")
+        nn.init.zeros_(self.bias)
+
+    def forward(self, x: Tensor, norm_w: Tensor) -> Tensor:
+        """Compute scalar regression output from inputs and normalized rule strengths."""
+        if x.ndim != 2 or x.shape[1] != self.n_inputs:
+            raise ValueError(f"expected x shape (batch, {self.n_inputs}), got {tuple(x.shape)}")
+        if norm_w.ndim != 2 or norm_w.shape[1] != self.n_rules:
+            raise ValueError(f"expected norm_w shape (batch, {self.n_rules}), got {tuple(norm_w.shape)}")
+
+        # f_r(x) = x @ W_r^T + b_r  → (batch, n_rules)
+        f = torch.einsum("bd,rd->br", x, self.weight) + self.bias.unsqueeze(0)
+        # output = sum_r(norm_w_r * f_r)  → (batch, 1)
+        return torch.einsum("br,br->b", norm_w, f).unsqueeze(1)
+
+
 __all__ = [
     "MembershipLayer",
     "RuleLayer",
     "NormalizationLayer",
     "ClassificationConsequentLayer",
+    "RegressionConsequentLayer",
 ]

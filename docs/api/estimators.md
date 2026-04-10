@@ -84,3 +84,37 @@ clf = HTSKClassifierEstimator(
     rule_base="cartesian",
 )
 ```
+
+## HTSKRegressorEstimator
+
+A scikit-learn compatible regressor wrapper around `HTSKRegressor`.
+
+### sklearn Compatibility
+
+- Inherits `BaseEstimator` and `RegressorMixin`.
+- Implements `fit`, `predict`, and `score` ($R^2$).
+- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
+
+### Core Hyperparameters
+
+Same hyperparameters as `HTSKClassifierEstimator` (see above), except:
+
+- No `n_classes` parameter — output is scalar.
+- `score()` returns $R^2$ instead of accuracy.
+
+### Example
+
+```python
+from highfis import HTSKRegressorEstimator
+
+reg = HTSKRegressorEstimator(
+    n_mfs=3,
+    mf_init="kmeans",
+    sigma_scale=1.0,
+    epochs=200,
+    learning_rate=1e-3,
+    random_state=0,
+)
+reg.fit(X_train, y_train)
+r2 = reg.score(X_test, y_test)
+```
