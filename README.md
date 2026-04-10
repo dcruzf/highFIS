@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/dcruzf/highFIS/actions/workflows/ci.yaml/badge.svg)](https://github.com/dcruzf/highFIS/actions/workflows/ci.yaml)
 [![Documentation](https://github.com/dcruzf/highFIS/actions/workflows/docs.yml/badge.svg)](https://github.com/dcruzf/highFIS/actions/workflows/docs.yml)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19489225.svg)](https://doi.org/10.5281/zenodo.19489225)
 [![License: GPLv3](https://img.shields.io/badge/license-GPLv3-green)](https://www.gnu.org/licenses/gpl-3.0)
 
 
