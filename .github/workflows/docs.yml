@@ -63,5 +63,4 @@ jobs:
         run: |
           FULL_TAG="${{ github.event.release.tag_name }}"
           VERSION="$(echo "$FULL_TAG" | grep -oP '^v\d+\.\d+')"
-          VERSION="v${VERSION}"
           mike deploy --push --update-aliases $VERSION latest
