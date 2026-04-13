@@ -4,13 +4,16 @@
 
 `highfis.models`
 
+Both models inherit from `BaseTSK` (see [Base TSK API](base.md)), which provides
+the shared pipeline and unified training loop.
+
 ## HTSKClassifier
 
 `HTSKClassifier` is a `torch.nn.Module` implementing a full TSK classification pipeline:
 
 1. Membership evaluation
 2. Rule firing strength computation
-3. Firing normalization
+3. Firing normalization (pluggable defuzzifier)
 4. Consequent aggregation
 
 ### Constructor Highlights
@@ -20,6 +23,7 @@
 - `rule_base`: `"cartesian"`, `"coco"`, `"en"`, or `"custom"`.
 - `t_norm`: built-in t-norm name.
 - `t_norm_fn`: optional custom t-norm callable.
+- `defuzzifier`: optional custom defuzzifier (default `SoftmaxLogDefuzzifier`).
 - `consequent_batch_norm`: optional batch normalization before consequents.
 
 ### Main Methods
@@ -55,6 +59,7 @@
 - `rule_base`: `"cartesian"`, `"coco"`, `"en"`, or `"custom"`.
 - `t_norm`: built-in t-norm name.
 - `t_norm_fn`: optional custom t-norm callable.
+- `defuzzifier`: optional custom defuzzifier (default `SoftmaxLogDefuzzifier`).
 - `consequent_batch_norm`: optional batch normalization before consequents.
 
 ### Main Methods
@@ -62,7 +67,7 @@
 - `forward(x)`: returns predictions with shape `(batch, 1)`.
 - `predict(x)`: returns predictions as a 1-D tensor.
 - `forward_antecedents(x)`: returns normalized rule strengths.
-- `fit(...)`: trains model parameters with gradient descent.
+- `fit(...)`: trains model parameters with gradient descent (inherited from `BaseTSK`).
 
 ### Training Notes
 
