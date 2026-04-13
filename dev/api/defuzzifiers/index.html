@@ -12,13 +12,13 @@
         <meta name="author" content="Daniel Franca">
       
       
-        <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/api/memberships/">
+        <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/api/defuzzifiers/">
       
       
-        <link rel="prev" href="../protocols/">
+        <link rel="prev" href="../t_norms/">
       
       
-        <link rel="next" href="../t_norms/">
+        <link rel="next" href="../layers/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Membership Functions API - highFIS Docs</title>
+        <title>Defuzzifiers API - highFIS Docs</title>
       
     
     
@@ -85,7 +85,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#membership-functions-api" class="md-skip">
+        <a href="#defuzzifiers-api" class="md-skip">
           Skip to content
         </a>
       
@@ -125,7 +125,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Membership Functions API
+              Defuzzifiers API
             
           </span>
         </div>
@@ -333,6 +333,60 @@
       
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../memberships/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API: Membership Functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../t_norms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API: T-Norms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -352,7 +406,7 @@
   <span class="md-ellipsis">
     
   
-    API: Membership Functions
+    API: Defuzzifiers
   
 
     
@@ -370,7 +424,7 @@
   <span class="md-ellipsis">
     
   
-    API: Membership Functions
+    API: Defuzzifiers
   
 
     
@@ -408,85 +462,35 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#classes" class="md-nav__link">
+  <a href="#softmaxlogdefuzzifier" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Classes
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Classes">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#membershipfunction" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MembershipFunction
+        SoftmaxLogDefuzzifier
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#gaussianmf" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#sumbaseddefuzzifier" class="md-nav__link">
     <span class="md-ellipsis">
       
-        GaussianMF
+        SumBasedDefuzzifier
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#triangularmf" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#logsumdefuzzifier" class="md-nav__link">
     <span class="md-ellipsis">
       
-        TriangularMF
+        LogSumDefuzzifier
       
     </span>
   </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#trapezoidalmf" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        TrapezoidalMF
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#bellmf" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        BellMF
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#sigmoidalmf" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        SigmoidalMF
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -505,60 +509,6 @@
   
 </nav>
       
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../t_norms/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    API: T-Norms
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../defuzzifiers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    API: Defuzzifiers
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -750,85 +700,35 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#classes" class="md-nav__link">
+  <a href="#softmaxlogdefuzzifier" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Classes
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Classes">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#membershipfunction" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        MembershipFunction
+        SoftmaxLogDefuzzifier
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#gaussianmf" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#sumbaseddefuzzifier" class="md-nav__link">
     <span class="md-ellipsis">
       
-        GaussianMF
+        SumBasedDefuzzifier
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#triangularmf" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#logsumdefuzzifier" class="md-nav__link">
     <span class="md-ellipsis">
       
-        TriangularMF
+        LogSumDefuzzifier
       
     </span>
   </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#trapezoidalmf" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        TrapezoidalMF
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#bellmf" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        BellMF
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#sigmoidalmf" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        SigmoidalMF
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -866,82 +766,55 @@
                 
                   
 
-<h1 id="membership-functions-api">Membership Functions API</h1>
+<h1 id="defuzzifiers-api">Defuzzifiers API</h1>
 <h2 id="module">Module</h2>
-<p><code>highfis.memberships</code></p>
-<h2 id="classes">Classes</h2>
-<h3 id="membershipfunction">MembershipFunction</h3>
-<p>Base class for differentiable membership functions in PyTorch.</p>
-<ul>
-<li>Inherits from <code>torch.nn.Module</code>.</li>
-<li>Provides numerical-stability epsilon handling.</li>
-</ul>
-<h3 id="gaussianmf">GaussianMF</h3>
-<p>Gaussian membership function:</p>
+<p><code>highfis.defuzzifiers</code></p>
+<p>Defuzzifiers normalize rule firing strengths so that each sample's weights sum
+to one. They can be injected into any <code>BaseTSK</code>-derived model via the
+<code>defuzzifier</code> constructor parameter.</p>
+<h2 id="softmaxlogdefuzzifier">SoftmaxLogDefuzzifier</h2>
+<p>Default defuzzifier. Normalizes via <code>softmax(log(w))</code>:</p>
 <div class="arithmatex">\[
-\mu(x)=\exp\left(-\frac{(x-c)^2}{2\sigma^2}\right)
+\bar{w}_r = \mathrm{softmax}(\log w_1,\ldots,\log w_R)_r
+= \frac{w_r}{\sum_j w_j}
+\]</div>
+<p>Mathematically equivalent to <code>w / sum(w)</code> but numerically stable in high
+dimensions thanks to the internal max-subtraction trick of <code>torch.softmax</code>.</p>
+<p>Parameters:</p>
+<ul>
+<li><code>eps</code>: clamping floor before log (default <code>1e-8</code>).</li>
+</ul>
+<h2 id="sumbaseddefuzzifier">SumBasedDefuzzifier</h2>
+<p>Classic sum-based normalization:</p>
+<div class="arithmatex">\[
+\bar{w}_r = \frac{w_r}{\sum_{j=1}^{R} w_j + \epsilon}
 \]</div>
 <p>Parameters:</p>
 <ul>
-<li><code>mean</code>: center <span class="arithmatex">\(c\)</span>.</li>
-<li><code>sigma</code>: spread parameter <span class="arithmatex">\(\sigma &gt; 0\)</span>.</li>
-<li><code>eps</code>: numerical stability constant.</li>
+<li><code>eps</code>: additive constant for numerical stability (default <code>1e-8</code>).</li>
 </ul>
-<p>Implementation notes:</p>
-<ul>
-<li><code>sigma</code> is parameterized through softplus to remain positive during training.</li>
-<li>Both center and spread are trainable parameters.</li>
-</ul>
-<h3 id="triangularmf">TriangularMF</h3>
-<p>Triangular membership function defined by three vertices:</p>
+<h2 id="logsumdefuzzifier">LogSumDefuzzifier</h2>
+<p>Temperature-scaled log-space normalization:</p>
 <div class="arithmatex">\[
-\mu(x) = \max\!\left(0,\;\min\!\left(\frac{x - l}{c - l},\;\frac{r - x}{r - c}\right)\right)
+\bar{w}_r = \mathrm{softmax}\!\left(\frac{\log w_1}{T},\ldots,\frac{\log w_R}{T}\right)_r
 \]</div>
+<p>When <span class="arithmatex">\(T = 1\)</span>, this recovers <code>SoftmaxLogDefuzzifier</code>. Lower temperatures sharpen
+the distribution; higher temperatures flatten it.</p>
 <p>Parameters:</p>
 <ul>
-<li><code>left</code>: left vertex <span class="arithmatex">\(l\)</span>.</li>
-<li><code>center</code>: peak vertex <span class="arithmatex">\(c\)</span>.</li>
-<li><code>right</code>: right vertex <span class="arithmatex">\(r\)</span>.</li>
-<li>Must satisfy <span class="arithmatex">\(l \le c \le r\)</span> with <span class="arithmatex">\(l \neq r\)</span>.</li>
-</ul>
-<h3 id="trapezoidalmf">TrapezoidalMF</h3>
-<p>Trapezoidal membership function with a flat-top plateau:</p>
-<div class="arithmatex">\[
-\mu(x) = \max\!\left(0,\;\min\!\left(\frac{x - a}{b - a},\;1,\;\frac{d - x}{d - c}\right)\right)
-\]</div>
-<p>Parameters:</p>
-<ul>
-<li><code>a</code>, <code>b</code>, <code>c</code>, <code>d</code>: four vertices with <span class="arithmatex">\(a \le b \le c \le d\)</span> and <span class="arithmatex">\(a \neq d\)</span>.</li>
-</ul>
-<h3 id="bellmf">BellMF</h3>
-<p>Generalized bell membership function:</p>
-<div class="arithmatex">\[
-\mu(x) = \frac{1}{1 + \left|\frac{x - c}{a}\right|^{2b}}
-\]</div>
-<p>Parameters:</p>
-<ul>
-<li><code>a</code>: width parameter <span class="arithmatex">\(a &gt; 0\)</span> (softplus-reparameterized).</li>
-<li><code>b</code>: slope parameter <span class="arithmatex">\(b &gt; 0\)</span> (softplus-reparameterized).</li>
-<li><code>center</code>: center <span class="arithmatex">\(c\)</span>.</li>
-</ul>
-<h3 id="sigmoidalmf">SigmoidalMF</h3>
-<p>Sigmoidal membership function:</p>
-<div class="arithmatex">\[
-\mu(x) = \frac{1}{1 + \exp(-a(x - c))}
-\]</div>
-<p>Parameters:</p>
-<ul>
-<li><code>a</code>: slope control (positive = left-to-right, negative = right-to-left).</li>
-<li><code>center</code>: inflection point <span class="arithmatex">\(c\)</span>.</li>
+<li><code>temperature</code>: scaling factor <span class="arithmatex">\(T &gt; 0\)</span> (default <code>1.0</code>).</li>
+<li><code>eps</code>: clamping floor before log (default <code>1e-8</code>).</li>
 </ul>
 <h2 id="example">Example</h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianMF</span><span class="p">,</span> <span class="n">TriangularMF</span><span class="p">,</span> <span class="n">BellMF</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">gauss</span> <span class="o">=</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">tri</span> <span class="o">=</span> <span class="n">TriangularMF</span><span class="p">(</span><span class="n">left</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">bell</span> <span class="o">=</span> <span class="n">BellMF</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">values</span> <span class="o">=</span> <span class="n">gauss</span><span class="p">(</span><span class="n">x_column</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKClassifier</span><span class="p">,</span> <span class="n">SumBasedDefuzzifier</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis.memberships</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianMF</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">input_mfs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;x1&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)]}</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">model</span> <span class="o">=</span> <span class="n">HTSKClassifier</span><span class="p">(</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">input_mfs</span><span class="p">,</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">n_classes</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">defuzzifier</span><span class="o">=</span><span class="n">SumBasedDefuzzifier</span><span class="p">(),</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="p">)</span>
 </span></code></pre></div>
 
 
@@ -982,7 +855,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../protocols/" class="md-footer__link md-footer__link--prev" aria-label="Previous: API: Protocols">
+          <a href="../t_norms/" class="md-footer__link md-footer__link--prev" aria-label="Previous: API: T-Norms">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -992,20 +865,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                API: Protocols
+                API: T-Norms
               </div>
             </div>
           </a>
         
         
           
-          <a href="../t_norms/" class="md-footer__link md-footer__link--next" aria-label="Next: API: T-Norms">
+          <a href="../layers/" class="md-footer__link md-footer__link--next" aria-label="Next: API: Layers">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                API: T-Norms
+                API: Layers
               </div>
             </div>
             <div class="md-footer__button md-icon">

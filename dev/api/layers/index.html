@@ -15,10 +15,10 @@
         <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/api/layers/">
       
       
-        <link rel="prev" href="../t_norms/">
+        <link rel="prev" href="../defuzzifiers/">
       
       
-        <link rel="next" href="../models/">
+        <link rel="next" href="../base/">
       
       
         
@@ -309,6 +309,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../protocols/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API: Protocols
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../memberships/" class="md-nav__link">
         
   
@@ -344,6 +371,33 @@
     
   
     API: T-Norms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../defuzzifiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API: Defuzzifiers
   
 
     
@@ -493,6 +547,33 @@
   
 </nav>
       
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../base/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API: Base TSK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -731,6 +812,10 @@
 </ul>
 <p>Supports built-in and custom t-norm functions.</p>
 <h2 id="normalizationlayer">NormalizationLayer</h2>
+<p>!!! warning "Deprecated"
+    <code>NormalizationLayer</code> is now a thin subclass of
+    <a href="../defuzzifiers/#softmaxlogdefuzzifier"><code>SoftmaxLogDefuzzifier</code></a>.
+    Prefer using <code>SoftmaxLogDefuzzifier</code> directly for new code.</p>
 <p>Normalizes firing strengths along the rule axis using <code>softmax(log(w))</code>:</p>
 <div class="arithmatex">\[
 \bar{w}_r = \mathrm{softmax}(\log w_1,\ldots,\log w_R)_r
@@ -791,7 +876,7 @@ Output shape is <span class="arithmatex">\((\text{batch}, 1)\)</span>.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../t_norms/" class="md-footer__link md-footer__link--prev" aria-label="Previous: API: T-Norms">
+          <a href="../defuzzifiers/" class="md-footer__link md-footer__link--prev" aria-label="Previous: API: Defuzzifiers">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -801,20 +886,20 @@ Output shape is <span class="arithmatex">\((\text{batch}, 1)\)</span>.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                API: T-Norms
+                API: Defuzzifiers
               </div>
             </div>
           </a>
         
         
           
-          <a href="../models/" class="md-footer__link md-footer__link--next" aria-label="Next: API: Models">
+          <a href="../base/" class="md-footer__link md-footer__link--next" aria-label="Next: API: Base TSK">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                API: Models
+                API: Base TSK
               </div>
             </div>
             <div class="md-footer__button md-icon">

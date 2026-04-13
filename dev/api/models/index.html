@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/api/models/">
       
       
-        <link rel="prev" href="../layers/">
+        <link rel="prev" href="../base/">
       
       
         <link rel="next" href="../estimators/">
@@ -309,6 +309,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../protocols/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API: Protocols
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../memberships/" class="md-nav__link">
         
   
@@ -363,6 +390,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../defuzzifiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API: Defuzzifiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../layers/" class="md-nav__link">
         
   
@@ -371,6 +425,33 @@
     
   
     API: Layers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../base/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API: Base TSK
   
 
     
@@ -800,12 +881,14 @@
 <h1 id="models-api">Models API</h1>
 <h2 id="module">Module</h2>
 <p><code>highfis.models</code></p>
+<p>Both models inherit from <code>BaseTSK</code> (see <a href="../base/">Base TSK API</a>), which provides
+the shared pipeline and unified training loop.</p>
 <h2 id="htskclassifier">HTSKClassifier</h2>
 <p><code>HTSKClassifier</code> is a <code>torch.nn.Module</code> implementing a full TSK classification pipeline:</p>
 <ol>
 <li>Membership evaluation</li>
 <li>Rule firing strength computation</li>
-<li>Firing normalization</li>
+<li>Firing normalization (pluggable defuzzifier)</li>
 <li>Consequent aggregation</li>
 </ol>
 <h3 id="constructor-highlights">Constructor Highlights</h3>
@@ -815,6 +898,7 @@
 <li><code>rule_base</code>: <code>"cartesian"</code>, <code>"coco"</code>, <code>"en"</code>, or <code>"custom"</code>.</li>
 <li><code>t_norm</code>: built-in t-norm name.</li>
 <li><code>t_norm_fn</code>: optional custom t-norm callable.</li>
+<li><code>defuzzifier</code>: optional custom defuzzifier (default <code>SoftmaxLogDefuzzifier</code>).</li>
 <li><code>consequent_batch_norm</code>: optional batch normalization before consequents.</li>
 </ul>
 <h3 id="main-methods">Main Methods</h3>
@@ -849,6 +933,7 @@
 <li><code>rule_base</code>: <code>"cartesian"</code>, <code>"coco"</code>, <code>"en"</code>, or <code>"custom"</code>.</li>
 <li><code>t_norm</code>: built-in t-norm name.</li>
 <li><code>t_norm_fn</code>: optional custom t-norm callable.</li>
+<li><code>defuzzifier</code>: optional custom defuzzifier (default <code>SoftmaxLogDefuzzifier</code>).</li>
 <li><code>consequent_batch_norm</code>: optional batch normalization before consequents.</li>
 </ul>
 <h3 id="main-methods_1">Main Methods</h3>
@@ -856,7 +941,7 @@
 <li><code>forward(x)</code>: returns predictions with shape <code>(batch, 1)</code>.</li>
 <li><code>predict(x)</code>: returns predictions as a 1-D tensor.</li>
 <li><code>forward_antecedents(x)</code>: returns normalized rule strengths.</li>
-<li><code>fit(...)</code>: trains model parameters with gradient descent.</li>
+<li><code>fit(...)</code>: trains model parameters with gradient descent (inherited from <code>BaseTSK</code>).</li>
 </ul>
 <h3 id="training-notes_1">Training Notes</h3>
 <ul>
@@ -907,7 +992,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../layers/" class="md-footer__link md-footer__link--prev" aria-label="Previous: API: Layers">
+          <a href="../base/" class="md-footer__link md-footer__link--prev" aria-label="Previous: API: Base TSK">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -917,7 +1002,7 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                API: Layers
+                API: Base TSK
               </div>
             </div>
           </a>

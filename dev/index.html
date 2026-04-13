@@ -390,6 +390,33 @@
   
   
     <li class="md-nav__item">
+      <a href="./api/protocols/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API: Protocols
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="./api/memberships/" class="md-nav__link">
         
   
@@ -444,6 +471,33 @@
   
   
     <li class="md-nav__item">
+      <a href="./api/defuzzifiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API: Defuzzifiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="./api/layers/" class="md-nav__link">
         
   
@@ -452,6 +506,33 @@
     
   
     API: Layers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./api/base/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API: Base TSK
   
 
     
@@ -662,24 +743,36 @@ implemented with PyTorch and exposed through a scikit-learn compatible estimator
 <td>Mathematical formulation and implementation details of HTSK in highFIS.</td>
 </tr>
 <tr>
+<td><a href="api/protocols/">Protocols API</a></td>
+<td>Structural typing protocols (<code>MembershipFn</code>, <code>TNorm</code>, <code>Defuzzifier</code>, <code>ConsequentFn</code>).</td>
+</tr>
+<tr>
 <td><a href="api/memberships/">Memberships API</a></td>
-<td>Differentiable membership functions (<code>MembershipFunction</code>, <code>GaussianMF</code>).</td>
+<td>Differentiable membership functions (<code>GaussianMF</code>, <code>TriangularMF</code>, <code>TrapezoidalMF</code>, <code>BellMF</code>, <code>SigmoidalMF</code>).</td>
 </tr>
 <tr>
 <td><a href="api/t_norms/">T-Norms API</a></td>
 <td>Built-in aggregators (<code>prod</code>, <code>min</code>, <code>gmean</code>) and custom t-norm injection.</td>
 </tr>
 <tr>
+<td><a href="api/defuzzifiers/">Defuzzifiers API</a></td>
+<td>Pluggable firing-strength normalization (<code>SoftmaxLogDefuzzifier</code>, <code>SumBasedDefuzzifier</code>, <code>LogSumDefuzzifier</code>).</td>
+</tr>
+<tr>
 <td><a href="api/layers/">Layers API</a></td>
-<td>Membership, rule, normalization, and consequent layers.</td>
+<td>Membership, rule, and consequent layers.</td>
+</tr>
+<tr>
+<td><a href="api/base/">Base TSK API</a></td>
+<td><code>BaseTSK</code> abstract base with unified training loop.</td>
 </tr>
 <tr>
 <td><a href="api/models/">Models API</a></td>
-<td><code>HTSKClassifier</code> end-to-end neural fuzzy model.</td>
+<td><code>HTSKClassifier</code> and <code>HTSKRegressor</code> end-to-end neural fuzzy models.</td>
 </tr>
 <tr>
 <td><a href="api/estimators/">Estimators API</a></td>
-<td><code>HTSKClassifierEstimator</code> and <code>InputConfig</code> for sklearn workflows.</td>
+<td><code>HTSKClassifierEstimator</code>, <code>HTSKRegressorEstimator</code>, and <code>InputConfig</code> for sklearn workflows.</td>
 </tr>
 <tr>
 <td><a href="contributing/">Contributing</a></td>
@@ -690,12 +783,15 @@ implemented with PyTorch and exposed through a scikit-learn compatible estimator
 <h2 id="key-characteristics">Key Characteristics</h2>
 <ul>
 <li>Differentiable fuzzy pipeline end-to-end in PyTorch.</li>
+<li><code>BaseTSK</code> abstract base with unified training loop — extend to create custom models.</li>
+<li>Structural typing protocols for all pipeline stages.</li>
+<li>Five membership function types: Gaussian, Triangular, Trapezoidal, Bell, Sigmoidal.</li>
+<li>Pluggable defuzzifiers: <code>SoftmaxLogDefuzzifier</code> (default), <code>SumBasedDefuzzifier</code>, <code>LogSumDefuzzifier</code>.</li>
 <li>HTSK inference via geometric-mean firing strengths for high-dimensional stability.</li>
 <li>Estimator default initialization based on k-means (paper-aligned), with grid mode as fallback.</li>
 <li>Rule base strategies: <code>cartesian</code>, <code>coco</code>, <code>en</code>, and <code>custom</code>.</li>
-<li>Default loss: <code>CrossEntropyLoss</code>; default optimizer: <code>AdamW</code> with separate weight-decay groups.</li>
-<li>Early stopping by validation accuracy with automatic best-model restore.</li>
-<li>Numerically stable normalization via <code>softmax(log(w))</code>.</li>
+<li>Default loss: <code>CrossEntropyLoss</code> (classifier) / <code>MSELoss</code> (regressor); default optimizer: <code>AdamW</code> with separate weight-decay groups.</li>
+<li>Early stopping with automatic best-model restore.</li>
 <li>Native integration with <code>Pipeline</code>, <code>GridSearchCV</code>, and cross-validation.</li>
 </ul>
 <h2 id="installation">Installation</h2>

@@ -10,13 +10,22 @@
         <loc>https://dcruzf.github.io/highFIS/dev/htsk-modelo/</loc>
       </url>
       <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/api/protocols/</loc>
+      </url>
+      <url>
         <loc>https://dcruzf.github.io/highFIS/dev/api/memberships/</loc>
       </url>
       <url>
         <loc>https://dcruzf.github.io/highFIS/dev/api/t_norms/</loc>
       </url>
       <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/api/defuzzifiers/</loc>
+      </url>
+      <url>
         <loc>https://dcruzf.github.io/highFIS/dev/api/layers/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/api/base/</loc>
       </url>
       <url>
         <loc>https://dcruzf.github.io/highFIS/dev/api/models/</loc>
