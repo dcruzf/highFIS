@@ -7,6 +7,7 @@ from typing import cast
 import torch
 from torch import Tensor, nn
 
+from .defuzzifiers import SoftmaxLogDefuzzifier
 from .memberships import MembershipFunction
 from .t_norms import TNormFn, resolve_t_norm
 
@@ -164,25 +165,14 @@ class RuleLayer(nn.Module):
         return torch.stack(outputs, dim=1).reshape(batch_size, self.n_rules)
 
 
-class NormalizationLayer(nn.Module):
-    """Normalize rule strengths so each sample sums to one."""
+class NormalizationLayer(SoftmaxLogDefuzzifier):
+    """Normalize rule strengths so each sample sums to one.
 
-    def __init__(self, eps: float = 1e-8) -> None:
-        """Initialize normalization layer epsilon."""
-        super().__init__()
-        self.eps = eps
-
-    def forward(self, w: Tensor) -> Tensor:
-        """Normalize firing strengths along the rule axis.
-
-        Uses ``softmax(log(w))`` which is mathematically equivalent to
-        ``w / sum(w)`` but numerically more stable in high dimensions thanks
-        to the internal max-subtraction trick of :func:`torch.softmax`.
-        """
-        if w.ndim != 2:
-            raise ValueError(f"expected w with 2 dims, got shape {tuple(w.shape)}")
-        log_w = w.clamp(min=self.eps).log()
-        return torch.softmax(log_w, dim=1)
+    .. deprecated::
+        Prefer :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier` directly.
+        This class is kept for backward compatibility and will be removed in a
+        future release.
+    """
 
 
 class ClassificationConsequentLayer(nn.Module):
