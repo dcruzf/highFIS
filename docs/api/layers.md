@@ -31,6 +31,11 @@ Supports built-in and custom t-norm functions.
 
 ## NormalizationLayer
 
+!!! warning "Deprecated"
+    `NormalizationLayer` is now a thin subclass of
+    [`SoftmaxLogDefuzzifier`](defuzzifiers.md#softmaxlogdefuzzifier).
+    Prefer using `SoftmaxLogDefuzzifier` directly for new code.
+
 Normalizes firing strengths along the rule axis using `softmax(log(w))`:
 
 $$

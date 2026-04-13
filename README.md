@@ -42,14 +42,33 @@ Works with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and `cross_val_score`.
 
 | Class | Module | Description |
 |---|---|---|
+| `BaseTSK` | `highfis.base` | Abstract base for TSK models with unified training loop. |
 | `GaussianMF` | `highfis.memberships` | Differentiable Gaussian membership function. |
+| `TriangularMF` | `highfis.memberships` | Triangular membership function. |
+| `TrapezoidalMF` | `highfis.memberships` | Trapezoidal membership function. |
+| `BellMF` | `highfis.memberships` | Generalized bell membership function. |
+| `SigmoidalMF` | `highfis.memberships` | Sigmoidal membership function. |
+| `SoftmaxLogDefuzzifier` | `highfis.defuzzifiers` | Stable `softmax(log(w))` normalization. |
+| `SumBasedDefuzzifier` | `highfis.defuzzifiers` | Classic `w / sum(w)` normalization. |
+| `LogSumDefuzzifier` | `highfis.defuzzifiers` | Temperature-scaled log-space normalization. |
 | `MembershipLayer` | `highfis.layers` | Evaluates all membership functions. |
 | `RuleLayer` | `highfis.layers` | Computes firing strengths with configurable t-norm and rule base. |
-| `NormalizationLayer` | `highfis.layers` | Normalizes firing strengths. |
-| `ClassificationConsequentLayer` | `highfis.layers` | Linear TSK consequent aggregation. |
-| `HTSKClassifier` | `highfis.models` | Full TSK pipeline as `nn.Module`. |
-| `HTSKClassifierEstimator` | `highfis.estimators` | sklearn-compatible estimator. |
+| `ClassificationConsequentLayer` | `highfis.layers` | Linear TSK consequent aggregation for classification. |
+| `RegressionConsequentLayer` | `highfis.layers` | Linear TSK consequent aggregation for regression. |
+| `HTSKClassifier` | `highfis.models` | Full TSK classification pipeline as `nn.Module`. |
+| `HTSKRegressor` | `highfis.models` | Full TSK regression pipeline as `nn.Module`. |
+| `HTSKClassifierEstimator` | `highfis.estimators` | sklearn-compatible classification estimator. |
+| `HTSKRegressorEstimator` | `highfis.estimators` | sklearn-compatible regression estimator. |
 | `InputConfig` | `highfis.estimators` | Per-feature membership function configuration. |
+
+### Structural Typing Protocols
+
+| Protocol | Description |
+|---|---|
+| `MembershipFn` | Any callable `(Tensor) → Tensor` for membership degrees. |
+| `TNorm` | Any callable `(Tensor) → Tensor` for rule aggregation. |
+| `Defuzzifier` | Any callable `(Tensor) → Tensor` for firing-strength normalization. |
+| `ConsequentFn` | Any callable `(Tensor, Tensor) → Tensor` for consequent output. |
 
 ## 🧪 Testing & Quality
 
