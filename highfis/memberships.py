@@ -50,4 +50,101 @@ class GaussianMF(MembershipFunction):
         return torch.exp(-0.5 * z.square())
 
 
-__all__ = ["MembershipFunction", "GaussianMF"]
+class TriangularMF(MembershipFunction):
+    """Triangular membership function defined by left, center, right."""
+
+    def __init__(self, left: float = -1.0, center: float = 0.0, right: float = 1.0, eps: float = 1e-6) -> None:
+        """Initialize triangular MF with *left*, *center*, *right* vertices."""
+        super().__init__(eps=eps)
+        if not (left <= center <= right):
+            raise ValueError("must satisfy left <= center <= right")
+        if left == right:
+            raise ValueError("left and right must differ")
+        self.left = nn.Parameter(torch.tensor(float(left)))
+        self.center = nn.Parameter(torch.tensor(float(center)))
+        self.right = nn.Parameter(torch.tensor(float(right)))
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Compute triangular membership values for input tensor."""
+        x = self._as_tensor(x)
+        left_slope = (x - self.left) / (self.center - self.left + self.eps)
+        right_slope = (self.right - x) / (self.right - self.center + self.eps)
+        return torch.clamp(torch.minimum(left_slope, right_slope), min=0.0, max=1.0)
+
+
+class TrapezoidalMF(MembershipFunction):
+    """Trapezoidal membership function defined by a, b, c, d."""
+
+    def __init__(self, a: float = -2.0, b: float = -1.0, c: float = 1.0, d: float = 2.0, eps: float = 1e-6) -> None:
+        """Initialize trapezoidal MF with vertices *a*, *b*, *c*, *d*."""
+        super().__init__(eps=eps)
+        if not (a <= b <= c <= d):
+            raise ValueError("must satisfy a <= b <= c <= d")
+        if a == d:
+            raise ValueError("a and d must differ")
+        self.a = nn.Parameter(torch.tensor(float(a)))
+        self.b = nn.Parameter(torch.tensor(float(b)))
+        self.c = nn.Parameter(torch.tensor(float(c)))
+        self.d = nn.Parameter(torch.tensor(float(d)))
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Compute trapezoidal membership values for input tensor."""
+        x = self._as_tensor(x)
+        left = (x - self.a) / (self.b - self.a + self.eps)
+        right = (self.d - x) / (self.d - self.c + self.eps)
+        return torch.clamp(torch.minimum(left, right), min=0.0, max=1.0)
+
+
+class BellMF(MembershipFunction):
+    """Generalized bell membership: 1 / (1 + |((x-c)/a)|^(2b))."""
+
+    def __init__(self, a: float = 1.0, b: float = 2.0, center: float = 0.0, eps: float = 1e-6) -> None:
+        """Initialize bell MF with width *a*, slope *b*, and *center*."""
+        super().__init__(eps=eps)
+        if a <= 0:
+            raise ValueError("a must be positive")
+        if b <= 0:
+            raise ValueError("b must be positive")
+        self.raw_a = nn.Parameter(torch.tensor(_inv_softplus(float(a), eps)))
+        self.raw_b = nn.Parameter(torch.tensor(_inv_softplus(float(b), eps)))
+        self.center = nn.Parameter(torch.tensor(float(center)))
+
+    @property
+    def a(self) -> Tensor:
+        """Return positive width via softplus reparameterization."""
+        return F.softplus(self.raw_a) + self.eps
+
+    @property
+    def b(self) -> Tensor:
+        """Return positive slope via softplus reparameterization."""
+        return F.softplus(self.raw_b) + self.eps
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Compute bell membership values for input tensor."""
+        x = self._as_tensor(x)
+        return 1.0 / (1.0 + torch.abs((x - self.center) / self.a).pow(2.0 * self.b))
+
+
+class SigmoidalMF(MembershipFunction):
+    """Sigmoidal membership: 1 / (1 + exp(-a*(x-c)))."""
+
+    def __init__(self, a: float = 1.0, center: float = 0.0, eps: float = 1e-6) -> None:
+        """Initialize sigmoidal MF with slope *a* and *center*."""
+        super().__init__(eps=eps)
+        self.a = nn.Parameter(torch.tensor(float(a)))
+        self.center = nn.Parameter(torch.tensor(float(center)))
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Compute sigmoidal membership values for input tensor."""
+        x = self._as_tensor(x)
+        return torch.sigmoid(self.a * (x - self.center))
+
+
+__all__ = [
+    "MembershipFunction",
+    "GaussianMF",
+    "TriangularMF",
+    "TrapezoidalMF",
+    "BellMF",
+    "SigmoidalMF",
+]
