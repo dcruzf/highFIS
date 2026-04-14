@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="./assets/images/favicon.png">
-      <meta name="generator" content="zensical-0.0.32">
+      <meta name="generator" content="zensical-0.0.33">
     
     
       
@@ -53,7 +53,7 @@
         
         
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
         <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
       
     
@@ -371,6 +371,60 @@
     
   
     HTSK Technical Notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./models/tsk-vanilla/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TSK Vanilla
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./models/logtsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LogTSK
   
 
     
@@ -743,6 +797,14 @@ implemented with PyTorch and exposed through a scikit-learn compatible estimator
 <td>Mathematical formulation and implementation details of HTSK in highFIS.</td>
 </tr>
 <tr>
+<td><a href="models/tsk-vanilla/">TSK Vanilla</a></td>
+<td>Mathematical formulation of original TSK with sum-based defuzzification.</td>
+</tr>
+<tr>
+<td><a href="models/logtsk/">LogTSK</a></td>
+<td>Log-space defuzzification with temperature parameter (Cui et al., IEEE TFS 2021).</td>
+</tr>
+<tr>
 <td><a href="api/protocols/">Protocols API</a></td>
 <td>Structural typing protocols (<code>MembershipFn</code>, <code>TNorm</code>, <code>Defuzzifier</code>, <code>ConsequentFn</code>).</td>
 </tr>
@@ -768,11 +830,11 @@ implemented with PyTorch and exposed through a scikit-learn compatible estimator
 </tr>
 <tr>
 <td><a href="api/models/">Models API</a></td>
-<td><code>HTSKClassifier</code> and <code>HTSKRegressor</code> end-to-end neural fuzzy models.</td>
+<td><code>HTSKClassifier</code>, <code>HTSKRegressor</code>, <code>TSKClassifier</code>, <code>TSKRegressor</code>, <code>LogTSKClassifier</code>, and <code>LogTSKRegressor</code> end-to-end neural fuzzy models.</td>
 </tr>
 <tr>
 <td><a href="api/estimators/">Estimators API</a></td>
-<td><code>HTSKClassifierEstimator</code>, <code>HTSKRegressorEstimator</code>, and <code>InputConfig</code> for sklearn workflows.</td>
+<td><code>HTSKClassifierEstimator</code>, <code>HTSKRegressorEstimator</code>, <code>TSKClassifierEstimator</code>, <code>TSKRegressorEstimator</code>, <code>LogTSKClassifierEstimator</code>, <code>LogTSKRegressorEstimator</code>, and <code>InputConfig</code> for sklearn workflows.</td>
 </tr>
 <tr>
 <td><a href="contributing/">Contributing</a></td>
@@ -788,6 +850,8 @@ implemented with PyTorch and exposed through a scikit-learn compatible estimator
 <li>Five membership function types: Gaussian, Triangular, Trapezoidal, Bell, Sigmoidal.</li>
 <li>Pluggable defuzzifiers: <code>SoftmaxLogDefuzzifier</code> (default), <code>SumBasedDefuzzifier</code>, <code>LogSumDefuzzifier</code>.</li>
 <li>HTSK inference via geometric-mean firing strengths for high-dimensional stability.</li>
+<li>Vanilla TSK with product t-norm and classic sum-based defuzzification.</li>
+<li>LogTSK with temperature-controlled log-space defuzzification.</li>
 <li>Estimator default initialization based on k-means (paper-aligned), with grid mode as fallback.</li>
 <li>Rule base strategies: <code>cartesian</code>, <code>coco</code>, <code>en</code>, and <code>custom</code>.</li>
 <li>Default loss: <code>CrossEntropyLoss</code> (classifier) / <code>MSELoss</code> (regressor); default optimizer: <code>AdamW</code> with separate weight-decay groups.</li>
@@ -914,7 +978,7 @@ implemented with PyTorch and exposed through a scikit-learn compatible estimator
       <script id="__config" type="application/json">{"annotate":null,"base":".","features":["announce.dismiss","content.code.annotate","content.code.copy","content.code.select","content.footnote.tooltips","content.tabs.link","content.tooltips","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.path","navigation.sections","navigation.top","navigation.tracking","search.highlight"],"search":"./assets/javascripts/workers/search.e2d2d235.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"provider":"mike"}}</script>
     
     
-      <script src="./assets/javascripts/bundle.91a19a9e.min.js"></script>
+      <script src="./assets/javascripts/bundle.63456bd9.min.js"></script>
       
         <script src="./javascripts/mathjax.js"></script>
       

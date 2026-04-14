@@ -12,13 +12,13 @@
         <meta name="author" content="Daniel Franca">
       
       
-        <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/api/defuzzifiers/">
+        <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/models/tsk-vanilla/">
       
       
-        <link rel="prev" href="../t_norms/">
+        <link rel="prev" href="../../htsk-modelo/">
       
       
-        <link rel="next" href="../layers/">
+        <link rel="next" href="../logtsk/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Defuzzifiers API - highFIS Docs</title>
+        <title>Vanilla TSK - highFIS Docs</title>
       
     
     
@@ -85,7 +85,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#defuzzifiers-api" class="md-skip">
+        <a href="#vanilla-tsk" class="md-skip">
           Skip to content
         </a>
       
@@ -125,7 +125,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Defuzzifiers API
+              Vanilla TSK
             
           </span>
         </div>
@@ -306,141 +306,6 @@
       
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../../models/tsk-vanilla/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    TSK Vanilla
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../models/logtsk/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    LogTSK
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../protocols/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    API: Protocols
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../memberships/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    API: Membership Functions
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../t_norms/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    API: T-Norms
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
     
   
   
@@ -460,7 +325,7 @@
   <span class="md-ellipsis">
     
   
-    API: Defuzzifiers
+    TSK Vanilla
   
 
     
@@ -478,7 +343,7 @@
   <span class="md-ellipsis">
     
   
-    API: Defuzzifiers
+    TSK Vanilla
   
 
     
@@ -505,10 +370,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#module" class="md-nav__link">
+  <a href="#reference" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Module
+        Reference
       
     </span>
   </a>
@@ -516,10 +381,60 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#softmaxlogdefuzzifier" class="md-nav__link">
+  <a href="#mathematical-formulation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        SoftmaxLogDefuzzifier
+        Mathematical Formulation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mathematical Formulation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#antecedent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Antecedent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#defuzzification-sum-based" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Defuzzification (sum-based)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#consequent-first-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consequent (first-order)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-paper-correspondence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code ↔ Paper Correspondence
       
     </span>
   </a>
@@ -527,10 +442,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#sumbaseddefuzzifier" class="md-nav__link">
+  <a href="#differences-from-the-paper" class="md-nav__link">
     <span class="md-ellipsis">
       
-        SumBasedDefuzzifier
+        Differences from the paper
       
     </span>
   </a>
@@ -538,10 +453,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#logsumdefuzzifier" class="md-nav__link">
+  <a href="#comparison-with-pytsk" class="md-nav__link">
     <span class="md-ellipsis">
       
-        LogSumDefuzzifier
+        Comparison with PyTSK
       
     </span>
   </a>
@@ -574,7 +489,142 @@
   
   
     <li class="md-nav__item">
-      <a href="../layers/" class="md-nav__link">
+      <a href="../logtsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LogTSK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/protocols/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API: Protocols
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/memberships/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API: Membership Functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/t_norms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API: T-Norms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/defuzzifiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API: Defuzzifiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/layers/" class="md-nav__link">
         
   
   
@@ -601,7 +651,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../base/" class="md-nav__link">
+      <a href="../../api/base/" class="md-nav__link">
         
   
   
@@ -628,7 +678,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../models/" class="md-nav__link">
+      <a href="../../api/models/" class="md-nav__link">
         
   
   
@@ -655,7 +705,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../estimators/" class="md-nav__link">
+      <a href="../../api/estimators/" class="md-nav__link">
         
   
   
@@ -743,10 +793,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#module" class="md-nav__link">
+  <a href="#reference" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Module
+        Reference
       
     </span>
   </a>
@@ -754,10 +804,60 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#softmaxlogdefuzzifier" class="md-nav__link">
+  <a href="#mathematical-formulation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        SoftmaxLogDefuzzifier
+        Mathematical Formulation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mathematical Formulation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#antecedent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Antecedent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#defuzzification-sum-based" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Defuzzification (sum-based)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#consequent-first-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consequent (first-order)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-paper-correspondence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code ↔ Paper Correspondence
       
     </span>
   </a>
@@ -765,10 +865,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#sumbaseddefuzzifier" class="md-nav__link">
+  <a href="#differences-from-the-paper" class="md-nav__link">
     <span class="md-ellipsis">
       
-        SumBasedDefuzzifier
+        Differences from the paper
       
     </span>
   </a>
@@ -776,10 +876,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#logsumdefuzzifier" class="md-nav__link">
+  <a href="#comparison-with-pytsk" class="md-nav__link">
     <span class="md-ellipsis">
       
-        LogSumDefuzzifier
+        Comparison with PyTSK
       
     </span>
   </a>
@@ -820,55 +920,113 @@
                 
                   
 
-<h1 id="defuzzifiers-api">Defuzzifiers API</h1>
-<h2 id="module">Module</h2>
-<p><code>highfis.defuzzifiers</code></p>
-<p>Defuzzifiers normalize rule firing strengths so that each sample's weights sum
-to one. They can be injected into any <code>BaseTSK</code>-derived model via the
-<code>defuzzifier</code> constructor parameter.</p>
-<h2 id="softmaxlogdefuzzifier">SoftmaxLogDefuzzifier</h2>
-<p>Default defuzzifier. Normalizes via <code>softmax(log(w))</code>:</p>
+<h1 id="vanilla-tsk">Vanilla TSK</h1>
+<h2 id="reference">Reference</h2>
+<blockquote>
+<p>Takagi, T. &amp; Sugeno, M. (1985). "Fuzzy identification of systems and
+its applications to modeling and control." <em>IEEE Trans. Syst., Man,
+Cybern.</em> SMC-15(1):116–132.
+DOI: <a href="https://doi.org/10.1109/TSMC.1985.6313399">10.1109/TSMC.1985.6313399</a></p>
+</blockquote>
+<h2 id="mathematical-formulation">Mathematical Formulation</h2>
+<h3 id="antecedent">Antecedent</h3>
+<p>Each rule <span class="arithmatex">\(r\)</span> evaluates <span class="arithmatex">\(D\)</span> membership functions and aggregates them via the
+<strong>product t-norm</strong>:</p>
 <div class="arithmatex">\[
-\bar{w}_r = \mathrm{softmax}(\log w_1,\ldots,\log w_R)_r
-= \frac{w_r}{\sum_j w_j}
+\mu_{r,d}(x_d) = \exp\!\left(-\frac{(x_d - m_{r,d})^2}{2\sigma_{r,d}^2}\right)
+\tag{1}
 \]</div>
-<p>Mathematically equivalent to <code>w / sum(w)</code> but numerically stable in high
-dimensions thanks to the internal max-subtraction trick of <code>torch.softmax</code>.</p>
-<p>Parameters:</p>
-<ul>
-<li><code>eps</code>: clamping floor before log (default <code>1e-8</code>).</li>
-</ul>
-<h2 id="sumbaseddefuzzifier">SumBasedDefuzzifier</h2>
-<p>Classic sum-based normalization:</p>
 <div class="arithmatex">\[
-\bar{w}_r = \frac{w_r}{\sum_{j=1}^{R} w_j + \epsilon}
+w_r = \prod_{d=1}^{D} \mu_{r,d}(x_d)
+\tag{2}
 \]</div>
-<p>Parameters:</p>
-<ul>
-<li><code>eps</code>: additive constant for numerical stability (default <code>1e-8</code>).</li>
-</ul>
-<h2 id="logsumdefuzzifier">LogSumDefuzzifier</h2>
-<p>Temperature-scaled log-space normalization:</p>
+<h3 id="defuzzification-sum-based">Defuzzification (sum-based)</h3>
+<p>The firing strengths are normalized by simple division:</p>
 <div class="arithmatex">\[
-\bar{w}_r = \mathrm{softmax}\!\left(\frac{\log w_1}{T},\ldots,\frac{\log w_R}{T}\right)_r
+\bar{f}_r = \frac{w_r}{\sum_{i=1}^{R} w_i}
+\tag{3}
 \]</div>
-<p>When <span class="arithmatex">\(T = 1\)</span>, this recovers <code>SoftmaxLogDefuzzifier</code>. Lower temperatures sharpen
-the distribution; higher temperatures flatten it.</p>
-<p>Parameters:</p>
-<ul>
-<li><code>temperature</code>: scaling factor <span class="arithmatex">\(T &gt; 0\)</span> (default <code>1.0</code>).</li>
-<li><code>eps</code>: clamping floor before log (default <code>1e-8</code>).</li>
-</ul>
+<p>This is implemented by <code>SumBasedDefuzzifier</code>.</p>
+<h3 id="consequent-first-order">Consequent (first-order)</h3>
+<div class="arithmatex">\[
+\hat{y} = \sum_{r=1}^{R} \bar{f}_r \left( b_{r,0} + \sum_{d=1}^{D} b_{r,d}\, x_d \right)
+\tag{4}
+\]</div>
+<h2 id="code-paper-correspondence">Code ↔ Paper Correspondence</h2>
+<table>
+<thead>
+<tr>
+<th>Equation</th>
+<th>Class / Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(1)</td>
+<td><code>GaussianMF.forward()</code></td>
+<td>Gaussian membership function</td>
+</tr>
+<tr>
+<td>(2)</td>
+<td><code>RuleLayer</code> with <code>t_norm="prod"</code></td>
+<td>Product t-norm via <code>torch.prod</code></td>
+</tr>
+<tr>
+<td>(3)</td>
+<td><code>SumBasedDefuzzifier.forward()</code></td>
+<td><code>w / (w.sum(dim=1) + eps)</code></td>
+</tr>
+<tr>
+<td>(4)</td>
+<td><code>ClassificationConsequentLayer.forward()</code> / <code>RegressionConsequentLayer.forward()</code></td>
+<td>Weighted linear consequent</td>
+</tr>
+</tbody>
+</table>
+<h2 id="differences-from-the-paper">Differences from the paper</h2>
+<ol>
+<li><strong>Learnable parameters</strong>: both <span class="arithmatex">\(m_{r,d}\)</span> and <span class="arithmatex">\(\sigma_{r,d}\)</span> are learned
+   end-to-end via backpropagation. The original paper used least-squares for
+   consequent parameters separately.</li>
+<li><strong><span class="arithmatex">\(\sigma\)</span> reparameterization</strong>: <code>GaussianMF</code> stores a raw parameter and
+   applies <code>softplus</code> to ensure <span class="arithmatex">\(\sigma &gt; 0\)</span>.</li>
+<li><strong>Numeric stability</strong>: <code>SumBasedDefuzzifier</code> adds a small <code>eps</code> to the
+   denominator to avoid division by zero.</li>
+</ol>
+<h2 id="comparison-with-pytsk">Comparison with PyTSK</h2>
+<p>In the PyTSK reference implementation (<code>AntecedentGMF</code> with <code>high_dim=False</code>),
+the product t-norm is computed as <code>torch.sum</code> of log-membership values, and
+normalization is <code>softmax</code> over log-firing-strengths.  Mathematically:</p>
+<div class="arithmatex">\[
+\text{softmax}(\log w)_r = \frac{e^{\log w_r}}{\sum_i e^{\log w_i}}
+= \frac{w_r}{\sum_i w_i}
+\]</div>
+<p>This is <strong>exactly</strong> Equation (3) above.  In highFIS the two representations
+are explicit — <code>SumBasedDefuzzifier</code> and <code>SoftmaxLogDefuzzifier</code> — and can be
+swapped via the <code>defuzzifier</code> parameter.</p>
 <h2 id="example">Example</h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKClassifier</span><span class="p">,</span> <span class="n">SumBasedDefuzzifier</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis.memberships</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianMF</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">input_mfs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;x1&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)]}</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">model</span> <span class="o">=</span> <span class="n">HTSKClassifier</span><span class="p">(</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">input_mfs</span><span class="p">,</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">n_classes</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">defuzzifier</span><span class="o">=</span><span class="n">SumBasedDefuzzifier</span><span class="p">(),</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">TSKClassifierEstimator</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">TSKClassifierEstimator</span><span class="p">(</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">n_mfs</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">mf_init</span><span class="o">=</span><span class="s2">&quot;kmeans&quot;</span><span class="p">,</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">epochs</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="p">)</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Accuracy: </span><span class="si">{</span><span class="n">clf</span><span class="o">.</span><span class="n">score</span><span class="p">(</span><span class="n">X_test</span><span class="p">,</span><span class="w"> </span><span class="n">y_test</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Or using the lower-level <code>nn.Module</code> API:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">TSKClassifier</span><span class="p">,</span> <span class="n">GaussianMF</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">input_mfs</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="s2">&quot;x1&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="s2">&quot;x2&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">}</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">model</span> <span class="o">=</span> <span class="n">TSKClassifier</span><span class="p">(</span><span class="n">input_mfs</span><span class="p">,</span> <span class="n">n_classes</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">history</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">x_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
 </span></code></pre></div>
 
 
@@ -909,7 +1067,7 @@ the distribution; higher temperatures flatten it.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../t_norms/" class="md-footer__link md-footer__link--prev" aria-label="Previous: API: T-Norms">
+          <a href="../../htsk-modelo/" class="md-footer__link md-footer__link--prev" aria-label="Previous: HTSK Technical Notes">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -919,20 +1077,20 @@ the distribution; higher temperatures flatten it.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                API: T-Norms
+                HTSK Technical Notes
               </div>
             </div>
           </a>
         
         
           
-          <a href="../layers/" class="md-footer__link md-footer__link--next" aria-label="Next: API: Layers">
+          <a href="../logtsk/" class="md-footer__link md-footer__link--next" aria-label="Next: LogTSK">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                API: Layers
+                LogTSK
               </div>
             </div>
             <div class="md-footer__button md-icon">

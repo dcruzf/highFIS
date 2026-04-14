@@ -12,13 +12,13 @@
         <meta name="author" content="Daniel Franca">
       
       
-        <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/api/defuzzifiers/">
+        <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/models/logtsk/">
       
       
-        <link rel="prev" href="../t_norms/">
+        <link rel="prev" href="../tsk-vanilla/">
       
       
-        <link rel="next" href="../layers/">
+        <link rel="next" href="../../api/protocols/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Defuzzifiers API - highFIS Docs</title>
+        <title>LogTSK - highFIS Docs</title>
       
     
     
@@ -85,7 +85,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#defuzzifiers-api" class="md-skip">
+        <a href="#logtsk" class="md-skip">
           Skip to content
         </a>
       
@@ -125,7 +125,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Defuzzifiers API
+              LogTSK
             
           </span>
         </div>
@@ -309,7 +309,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../models/tsk-vanilla/" class="md-nav__link">
+      <a href="../tsk-vanilla/" class="md-nav__link">
         
   
   
@@ -317,114 +317,6 @@
     
   
     TSK Vanilla
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../models/logtsk/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    LogTSK
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../protocols/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    API: Protocols
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../memberships/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    API: Membership Functions
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../t_norms/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    API: T-Norms
   
 
     
@@ -460,7 +352,7 @@
   <span class="md-ellipsis">
     
   
-    API: Defuzzifiers
+    LogTSK
   
 
     
@@ -478,7 +370,7 @@
   <span class="md-ellipsis">
     
   
-    API: Defuzzifiers
+    LogTSK
   
 
     
@@ -505,10 +397,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#module" class="md-nav__link">
+  <a href="#reference" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Module
+        Reference
       
     </span>
   </a>
@@ -516,10 +408,60 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#softmaxlogdefuzzifier" class="md-nav__link">
+  <a href="#mathematical-formulation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        SoftmaxLogDefuzzifier
+        Mathematical Formulation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mathematical Formulation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#antecedent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Antecedent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#defuzzification-log-space-with-temperature" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Defuzzification (log-space with temperature)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#consequent-first-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consequent (first-order)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-paper-correspondence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code ↔ Paper Correspondence
       
     </span>
   </a>
@@ -527,10 +469,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#sumbaseddefuzzifier" class="md-nav__link">
+  <a href="#differences-from-the-paper" class="md-nav__link">
     <span class="md-ellipsis">
       
-        SumBasedDefuzzifier
+        Differences from the paper
       
     </span>
   </a>
@@ -538,10 +480,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#logsumdefuzzifier" class="md-nav__link">
+  <a href="#comparison-with-pytsk" class="md-nav__link">
     <span class="md-ellipsis">
       
-        LogSumDefuzzifier
+        Comparison with PyTSK
       
     </span>
   </a>
@@ -574,7 +516,115 @@
   
   
     <li class="md-nav__item">
-      <a href="../layers/" class="md-nav__link">
+      <a href="../../api/protocols/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API: Protocols
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/memberships/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API: Membership Functions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/t_norms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API: T-Norms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/defuzzifiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API: Defuzzifiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/layers/" class="md-nav__link">
         
   
   
@@ -601,7 +651,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../base/" class="md-nav__link">
+      <a href="../../api/base/" class="md-nav__link">
         
   
   
@@ -628,7 +678,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../models/" class="md-nav__link">
+      <a href="../../api/models/" class="md-nav__link">
         
   
   
@@ -655,7 +705,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../estimators/" class="md-nav__link">
+      <a href="../../api/estimators/" class="md-nav__link">
         
   
   
@@ -743,10 +793,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#module" class="md-nav__link">
+  <a href="#reference" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Module
+        Reference
       
     </span>
   </a>
@@ -754,10 +804,60 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#softmaxlogdefuzzifier" class="md-nav__link">
+  <a href="#mathematical-formulation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        SoftmaxLogDefuzzifier
+        Mathematical Formulation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mathematical Formulation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#antecedent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Antecedent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#defuzzification-log-space-with-temperature" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Defuzzification (log-space with temperature)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#consequent-first-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consequent (first-order)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-paper-correspondence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code ↔ Paper Correspondence
       
     </span>
   </a>
@@ -765,10 +865,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#sumbaseddefuzzifier" class="md-nav__link">
+  <a href="#differences-from-the-paper" class="md-nav__link">
     <span class="md-ellipsis">
       
-        SumBasedDefuzzifier
+        Differences from the paper
       
     </span>
   </a>
@@ -776,10 +876,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#logsumdefuzzifier" class="md-nav__link">
+  <a href="#comparison-with-pytsk" class="md-nav__link">
     <span class="md-ellipsis">
       
-        LogSumDefuzzifier
+        Comparison with PyTSK
       
     </span>
   </a>
@@ -820,55 +920,136 @@
                 
                   
 
-<h1 id="defuzzifiers-api">Defuzzifiers API</h1>
-<h2 id="module">Module</h2>
-<p><code>highfis.defuzzifiers</code></p>
-<p>Defuzzifiers normalize rule firing strengths so that each sample's weights sum
-to one. They can be injected into any <code>BaseTSK</code>-derived model via the
-<code>defuzzifier</code> constructor parameter.</p>
-<h2 id="softmaxlogdefuzzifier">SoftmaxLogDefuzzifier</h2>
-<p>Default defuzzifier. Normalizes via <code>softmax(log(w))</code>:</p>
+<h1 id="logtsk">LogTSK</h1>
+<h2 id="reference">Reference</h2>
+<blockquote>
+<p>Cui, Y., Wu, D. &amp; Xu, Y. (2021). "Optimize TSK Fuzzy Systems for
+Regression Problems: Mini-Batch Gradient Descent With Regularization,
+DropRule, and AdaBound (MBGD-RDA)." <em>IEEE Trans. Fuzzy Syst.</em>
+29(5):1003–1015.
+DOI: <a href="https://doi.org/10.1109/TFUZZ.2020.2979968">10.1109/TFUZZ.2020.2979968</a></p>
+</blockquote>
+<h2 id="mathematical-formulation">Mathematical Formulation</h2>
+<h3 id="antecedent">Antecedent</h3>
+<p>Same as vanilla TSK — product t-norm over Gaussian membership values:</p>
 <div class="arithmatex">\[
-\bar{w}_r = \mathrm{softmax}(\log w_1,\ldots,\log w_R)_r
-= \frac{w_r}{\sum_j w_j}
+w_r = \prod_{d=1}^{D} \mu_{r,d}(x_d)
+\tag{1}
 \]</div>
-<p>Mathematically equivalent to <code>w / sum(w)</code> but numerically stable in high
-dimensions thanks to the internal max-subtraction trick of <code>torch.softmax</code>.</p>
-<p>Parameters:</p>
-<ul>
-<li><code>eps</code>: clamping floor before log (default <code>1e-8</code>).</li>
-</ul>
-<h2 id="sumbaseddefuzzifier">SumBasedDefuzzifier</h2>
-<p>Classic sum-based normalization:</p>
+<h3 id="defuzzification-log-space-with-temperature">Defuzzification (log-space with temperature)</h3>
+<p>LogTSK operates entirely in logarithmic space to avoid the underflow that
+plagues high-dimensional TSK systems.  After taking the log of firing
+strengths, a <strong>temperature</strong> parameter <span class="arithmatex">\(\tau\)</span> controls the sharpness of
+the distribution:</p>
 <div class="arithmatex">\[
-\bar{w}_r = \frac{w_r}{\sum_{j=1}^{R} w_j + \epsilon}
+\log \bar{f}_r = \frac{\log w_r}{\tau}
+  - \log\!\left(\sum_{i=1}^{R}
+    \exp\!\left(\frac{\log w_i}{\tau}\right)\right)
+\tag{2}
 \]</div>
-<p>Parameters:</p>
-<ul>
-<li><code>eps</code>: additive constant for numerical stability (default <code>1e-8</code>).</li>
-</ul>
-<h2 id="logsumdefuzzifier">LogSumDefuzzifier</h2>
-<p>Temperature-scaled log-space normalization:</p>
+<p>which is equivalent to:</p>
 <div class="arithmatex">\[
-\bar{w}_r = \mathrm{softmax}\!\left(\frac{\log w_1}{T},\ldots,\frac{\log w_R}{T}\right)_r
+\bar{f}_r = \text{softmax}\!\left(\frac{\log \mathbf{w}}{\tau}\right)_r
+\tag{3}
 \]</div>
-<p>When <span class="arithmatex">\(T = 1\)</span>, this recovers <code>SoftmaxLogDefuzzifier</code>. Lower temperatures sharpen
-the distribution; higher temperatures flatten it.</p>
-<p>Parameters:</p>
-<ul>
-<li><code>temperature</code>: scaling factor <span class="arithmatex">\(T &gt; 0\)</span> (default <code>1.0</code>).</li>
-<li><code>eps</code>: clamping floor before log (default <code>1e-8</code>).</li>
-</ul>
+<p><strong>Special cases</strong>:</p>
+<table>
+<thead>
+<tr>
+<th><span class="arithmatex">\(\tau\)</span></th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="arithmatex">\(\tau = 1\)</span></td>
+<td>Recovers <code>SoftmaxLogDefuzzifier</code> ≡ <code>w / sum(w)</code> (vanilla TSK normalization)</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\tau &lt; 1\)</span></td>
+<td>Sharpens the distribution — amplifies the dominant rule</td>
+</tr>
+<tr>
+<td><span class="arithmatex">\(\tau &gt; 1\)</span></td>
+<td>Smooths the distribution — makes rules more uniform</td>
+</tr>
+</tbody>
+</table>
+<p>This is implemented by <code>LogSumDefuzzifier(temperature=τ)</code>.</p>
+<h3 id="consequent-first-order">Consequent (first-order)</h3>
+<div class="arithmatex">\[
+\hat{y} = \sum_{r=1}^{R} \bar{f}_r \left( b_{r,0} + \sum_{d=1}^{D} b_{r,d}\, x_d \right)
+\tag{4}
+\]</div>
+<h2 id="code-paper-correspondence">Code ↔ Paper Correspondence</h2>
+<table>
+<thead>
+<tr>
+<th>Equation</th>
+<th>Class / Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(1)</td>
+<td><code>RuleLayer</code> with <code>t_norm="prod"</code></td>
+<td>Product t-norm</td>
+</tr>
+<tr>
+<td>(2)–(3)</td>
+<td><code>LogSumDefuzzifier.forward()</code></td>
+<td><code>softmax(log(w) / τ)</code></td>
+</tr>
+<tr>
+<td>(4)</td>
+<td><code>ClassificationConsequentLayer</code> / <code>RegressionConsequentLayer</code></td>
+<td>Weighted consequent</td>
+</tr>
+</tbody>
+</table>
+<h2 id="differences-from-the-paper">Differences from the paper</h2>
+<ol>
+<li><strong>Temperature parameter</strong>: The original MBGD-RDA paper describes operating
+   in log-space but does not introduce an explicit temperature.  We expose <span class="arithmatex">\(\tau\)</span>
+   as a hyperparameter (default 1.0) for additional control.</li>
+<li><strong>DropRule and AdaBound</strong>: These are described in the same paper but belong to
+   Phase 2 of the roadmap.  This implementation focuses solely on the log-space
+   defuzzification component.</li>
+<li><strong>Learnable parameters</strong>: All MF parameters are learned via backpropagation
+   (the paper uses a similar approach with MBGD).</li>
+</ol>
+<h2 id="comparison-with-pytsk">Comparison with PyTSK</h2>
+<p>In PyTSK, the antecedent computes log-firing-strengths and passes them through
+<code>torch.softmax(frs, dim=1)</code>.  With <code>high_dim=False</code> (product t-norm), this is:</p>
+<div class="arithmatex">\[
+\text{softmax}(\log w)_r = \frac{w_r}{\sum_i w_i}
+\]</div>
+<p>PyTSK does <strong>not</strong> expose a temperature parameter — it always uses <span class="arithmatex">\(\tau = 1\)</span>.
+The highFIS <code>LogSumDefuzzifier</code> generalizes this by dividing the log-values by
+<span class="arithmatex">\(\tau\)</span> before applying softmax, providing finer control over rule dominance.</p>
 <h2 id="example">Example</h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKClassifier</span><span class="p">,</span> <span class="n">SumBasedDefuzzifier</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis.memberships</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianMF</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">input_mfs</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;x1&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)]}</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">model</span> <span class="o">=</span> <span class="n">HTSKClassifier</span><span class="p">(</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">input_mfs</span><span class="p">,</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">n_classes</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">defuzzifier</span><span class="o">=</span><span class="n">SumBasedDefuzzifier</span><span class="p">(),</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">LogTSKClassifierEstimator</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">LogTSKClassifierEstimator</span><span class="p">(</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">n_mfs</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">mf_init</span><span class="o">=</span><span class="s2">&quot;kmeans&quot;</span><span class="p">,</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">epochs</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="p">)</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Accuracy: </span><span class="si">{</span><span class="n">clf</span><span class="o">.</span><span class="n">score</span><span class="p">(</span><span class="n">X_test</span><span class="p">,</span><span class="w"> </span><span class="n">y_test</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Using the lower-level API with custom temperature:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">LogTSKClassifier</span><span class="p">,</span> <span class="n">GaussianMF</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">input_mfs</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="s2">&quot;x1&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="s2">&quot;x2&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">}</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">model</span> <span class="o">=</span> <span class="n">LogTSKClassifier</span><span class="p">(</span><span class="n">input_mfs</span><span class="p">,</span> <span class="n">n_classes</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">history</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">x_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
 </span></code></pre></div>
 
 
@@ -909,7 +1090,7 @@ the distribution; higher temperatures flatten it.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../t_norms/" class="md-footer__link md-footer__link--prev" aria-label="Previous: API: T-Norms">
+          <a href="../tsk-vanilla/" class="md-footer__link md-footer__link--prev" aria-label="Previous: TSK Vanilla">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -919,20 +1100,20 @@ the distribution; higher temperatures flatten it.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                API: T-Norms
+                TSK Vanilla
               </div>
             </div>
           </a>
         
         
           
-          <a href="../layers/" class="md-footer__link md-footer__link--next" aria-label="Next: API: Layers">
+          <a href="../../api/protocols/" class="md-footer__link md-footer__link--next" aria-label="Next: API: Protocols">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                API: Layers
+                API: Protocols
               </div>
             </div>
             <div class="md-footer__button md-icon">
