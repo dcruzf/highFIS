@@ -31,16 +31,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.4.1",
-    "ty",
-    "bandit>=1.7.9",
-    "hatch>=1.16.2",
-    "pre-commit",
-    "ruff",
-]
-
 [project.urls]
 Homepage = "https://github.com/dcruzf/highFIS"
 Documentation = "https://dcruzf.github.io/highFIS/"
@@ -52,6 +42,7 @@ DOI = "https://doi.org/10.5281/zenodo.19489225"
 path = "highfis/__init__.py"
 
 [tool.hatch.envs.default]
+path = ".venv"
 installer = "uv"
 dependencies = [
     "ruff",
@@ -90,6 +81,7 @@ include = ["/README.md", "/highfis", "/tests", "/docs/assets/logo.svg", "/LICENS
 installer = "uv"
 dependencies = [
     "coverage[toml]>=7.6.1",
+    "numpy>=1.24.1",
     "pytest>=7.0.0",
     "pytest-cov>=5.0.0",
     "scikit-learn>=1.7.2",
@@ -125,13 +117,14 @@ select = [
     "PTH",    # flake8-use-pathlib
     "SIM",    # flake8-simplify
     "RUF",    # Ruff-specific rules
+    "W",      # pycodestyle (Warning)
 ]
 ignore = ["D100", "D104"]
 pydocstyle = { convention = "google" }
 isort = { known-first-party = ["highfis", "tests"] }
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["D"]
+"tests/*" = ["D", "S"]
 
 [tool.pytest.ini_options]
 testpaths = "tests"
@@ -141,6 +134,15 @@ xfail_strict = true
 source = ["highfis"]
 branch = true
 relative_files = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+    "@overload",
+    "raise NotImplementedError",
+]
 
 [tool.bandit]
 recursive = true
