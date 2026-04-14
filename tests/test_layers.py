@@ -189,7 +189,8 @@ def test_rule_layer_custom_rejects_empty_rules() -> None:
 def test_rule_layer_custom_t_norm_fn_overrides_default() -> None:
     """t_norm_fn parameter uses the custom function (line 195)."""
     layer = RuleLayer(
-        ["x1", "x2"], [2, 2],
+        ["x1", "x2"],
+        [2, 2],
         t_norm_fn=lambda t: t.prod(dim=-1),
     )
     m = MembershipLayer(_build_input_mfs())

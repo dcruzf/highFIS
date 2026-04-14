@@ -118,3 +118,127 @@ reg = HTSKRegressorEstimator(
 reg.fit(X_train, y_train)
 r2 = reg.score(X_test, y_test)
 ```
+
+## TSKClassifierEstimator
+
+A scikit-learn compatible classifier wrapper around `TSKClassifier`.
+
+### sklearn Compatibility
+
+- Inherits `BaseEstimator` and `ClassifierMixin`.
+- Implements `fit`, `predict`, `predict_proba`, and `score`.
+- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
+
+### Core Hyperparameters
+
+Same hyperparameters as `HTSKClassifierEstimator` (see above).
+
+The model uses `SumBasedDefuzzifier` (w / Σw) instead of `SoftmaxLogDefuzzifier`.
+
+### Example
+
+```python
+from highfis import TSKClassifierEstimator
+
+clf = TSKClassifierEstimator(
+    n_mfs=3,
+    mf_init="kmeans",
+    epochs=200,
+    learning_rate=1e-3,
+    random_state=0,
+)
+clf.fit(X_train, y_train)
+acc = clf.score(X_test, y_test)
+```
+
+## TSKRegressorEstimator
+
+A scikit-learn compatible regressor wrapper around `TSKRegressor`.
+
+### sklearn Compatibility
+
+- Inherits `BaseEstimator` and `RegressorMixin`.
+- Implements `fit`, `predict`, and `score` ($R^2$).
+- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
+
+### Core Hyperparameters
+
+Same hyperparameters as `HTSKRegressorEstimator` (see above), with `SumBasedDefuzzifier`.
+
+### Example
+
+```python
+from highfis import TSKRegressorEstimator
+
+reg = TSKRegressorEstimator(
+    n_mfs=3,
+    mf_init="kmeans",
+    epochs=200,
+    learning_rate=1e-3,
+    random_state=0,
+)
+reg.fit(X_train, y_train)
+r2 = reg.score(X_test, y_test)
+```
+
+## LogTSKClassifierEstimator
+
+A scikit-learn compatible classifier wrapper around `LogTSKClassifier`.
+
+### sklearn Compatibility
+
+- Inherits `BaseEstimator` and `ClassifierMixin`.
+- Implements `fit`, `predict`, `predict_proba`, and `score`.
+- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
+
+### Core Hyperparameters
+
+Same hyperparameters as `HTSKClassifierEstimator` (see above).
+
+The model uses `LogSumDefuzzifier` (softmax(log(w)/τ)) for log-space normalization.
+
+### Example
+
+```python
+from highfis import LogTSKClassifierEstimator
+
+clf = LogTSKClassifierEstimator(
+    n_mfs=3,
+    mf_init="kmeans",
+    epochs=200,
+    learning_rate=1e-3,
+    random_state=0,
+)
+clf.fit(X_train, y_train)
+acc = clf.score(X_test, y_test)
+```
+
+## LogTSKRegressorEstimator
+
+A scikit-learn compatible regressor wrapper around `LogTSKRegressor`.
+
+### sklearn Compatibility
+
+- Inherits `BaseEstimator` and `RegressorMixin`.
+- Implements `fit`, `predict`, and `score` ($R^2$).
+- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
+
+### Core Hyperparameters
+
+Same hyperparameters as `HTSKRegressorEstimator` (see above), with `LogSumDefuzzifier`.
+
+### Example
+
+```python
+from highfis import LogTSKRegressorEstimator
+
+reg = LogTSKRegressorEstimator(
+    n_mfs=3,
+    mf_init="kmeans",
+    epochs=200,
+    learning_rate=1e-3,
+    random_state=0,
+)
+reg.fit(X_train, y_train)
+r2 = reg.score(X_test, y_test)
+```

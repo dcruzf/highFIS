@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import torch
-from torch import Tensor, nn
+from torch import Tensor
 
 from highfis.protocols import ConsequentFn, Defuzzifier, MembershipFn, TNorm
 

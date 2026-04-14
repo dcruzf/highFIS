@@ -65,4 +65,4 @@ class LogSumDefuzzifier(nn.Module):
         return torch.softmax(log_w, dim=1)
 
 
-__all__ = ["SoftmaxLogDefuzzifier", "SumBasedDefuzzifier", "LogSumDefuzzifier"]
+__all__: list[str] = ["LogSumDefuzzifier", "SoftmaxLogDefuzzifier", "SumBasedDefuzzifier"]
