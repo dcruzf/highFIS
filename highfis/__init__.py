@@ -31,38 +31,32 @@ from .protocols import ConsequentFn, Defuzzifier, MembershipFn, TNorm
 
 __version__ = "0.4.0"
 
-__all__ = [
-    # Protocols
-    "MembershipFn",
-    "TNorm",
-    "Defuzzifier",
-    "ConsequentFn",
-    # Base
+__all__: list[str] = [
     "BaseTSK",
-    # Membership functions
-    "MembershipFunction",
-    "GaussianMF",
-    "TriangularMF",
-    "TrapezoidalMF",
     "BellMF",
+    "ConsequentFn",
+    "Defuzzifier",
+    "GaussianMF",
+    "HTSKClassifier",
+    "HTSKClassifierEstimator",
+    "HTSKRegressor",
+    "HTSKRegressorEstimator",
+    "InputConfig",
+    "LogSumDefuzzifier",
+    "LogTSKClassifier",
+    "LogTSKClassifierEstimator",
+    "LogTSKRegressor",
+    "LogTSKRegressorEstimator",
+    "MembershipFn",
+    "MembershipFunction",
     "SigmoidalMF",
-    # Defuzzifiers
     "SoftmaxLogDefuzzifier",
     "SumBasedDefuzzifier",
-    "LogSumDefuzzifier",
-    # Models
-    "HTSKClassifier",
-    "HTSKRegressor",
+    "TNorm",
     "TSKClassifier",
-    "TSKRegressor",
-    "LogTSKClassifier",
-    "LogTSKRegressor",
-    # Estimators
-    "InputConfig",
-    "HTSKClassifierEstimator",
-    "HTSKRegressorEstimator",
     "TSKClassifierEstimator",
+    "TSKRegressor",
     "TSKRegressorEstimator",
-    "LogTSKClassifierEstimator",
-    "LogTSKRegressorEstimator",
+    "TrapezoidalMF",
+    "TriangularMF",
 ]

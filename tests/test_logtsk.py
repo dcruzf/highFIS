@@ -2,7 +2,7 @@
 
 LogTSK normalizes in log-space with optional temperature scaling:
 
-    log f̄_r = log(w_r)/τ − log(Σ exp(log(w_i)/τ))
+    log f̄_r = log(w_r)/τ - log(Σ exp(log(w_i)/τ))
 
 At τ=1 it is mathematically equivalent to SoftmaxLogDefuzzifier.
 """

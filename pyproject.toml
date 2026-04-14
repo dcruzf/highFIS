@@ -1,6 +1,6 @@
 [build-system]
-requires = ['hatchling']
-build-backend = 'hatchling.build'
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "highfis"
@@ -49,7 +49,7 @@ Tracker = "https://github.com/dcruzf/highFIS/issues"
 DOI = "https://doi.org/10.5281/zenodo.19489225"
 
 [tool.hatch.version]
-path = 'highfis/__init__.py'
+path = "highfis/__init__.py"
 
 [tool.hatch.envs.default]
 installer = "uv"
@@ -111,31 +111,34 @@ include = ["highfis/*", "tests/*"]
 
 [tool.ruff.lint]
 select = [
-    'F',      # Pyflakes
-    'E',      # pycodestyle (Error)
-    'I',      # isort
-    'D',      # pydocstyle
-    'UP',     # pyupgrade
-    'YTT',    # flake8-2020
-    'B',      # flake8-bugbear
-    'T10',    # flake8-debugger
-    'T20',    # flake8-print
-    'C4',     # flake8-comprehensions
-    'PYI006', # flake8-pyi
+    "F",      # Pyflakes
+    "E",      # pycodestyle (Error)
+    "I",      # isort
+    "D",      # pydocstyle
+    "UP",     # pyupgrade
+    "YTT",    # flake8-2020
+    "B",      # flake8-bugbear
+    "T10",    # flake8-debugger
+    "T20",    # flake8-print
+    "C4",     # flake8-comprehensions
+    "PYI006", # flake8-pyi
+    "PTH",    # flake8-use-pathlib
+    "SIM",    # flake8-simplify
+    "RUF",    # Ruff-specific rules
 ]
-ignore = ['D100', 'D104']
-pydocstyle = { convention = 'google' }
-isort = { known-first-party = ['highfis', 'tests'] }
+ignore = ["D100", "D104"]
+pydocstyle = { convention = "google" }
+isort = { known-first-party = ["highfis", "tests"] }
 
 [tool.ruff.lint.per-file-ignores]
-'tests/*' = ['D']
+"tests/*" = ["D"]
 
 [tool.pytest.ini_options]
-testpaths = 'tests'
+testpaths = "tests"
 xfail_strict = true
 
 [tool.coverage.run]
-source = ['highfis']
+source = ["highfis"]
 branch = true
 relative_files = true
 

@@ -16,7 +16,7 @@ from .layers import MembershipLayer, RuleLayer
 from .memberships import MembershipFunction
 from .t_norms import TNormFn
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 def _uniform_regularization_loss(normalized_weights: Tensor, target: float | None = None) -> Tensor:
@@ -288,4 +288,4 @@ class BaseTSK(nn.Module):
         return history
 
 
-__all__ = ["BaseTSK", "_uniform_regularization_loss", "_iter_minibatch_indices"]
+__all__: list[str] = ["BaseTSK"]

@@ -580,13 +580,13 @@ class LogTSKRegressorEstimator(_BaseRegressorEstimator):
         )
 
 
-__all__ = [
-    "InputConfig",
+__all__: list[str] = [
     "HTSKClassifierEstimator",
     "HTSKRegressorEstimator",
-    "TSKClassifierEstimator",
-    "TSKRegressorEstimator",
+    "InputConfig",
     "LogTSKClassifierEstimator",
     "LogTSKRegressorEstimator",
+    "TSKClassifierEstimator",
+    "TSKRegressorEstimator",
     "_build_kmeans_input_mfs",
 ]

@@ -424,11 +424,11 @@ class LogTSKRegressor(_RegressorMixin, BaseTSK):
         return nn.MSELoss()
 
 
-__all__ = [
+__all__: list[str] = [
     "HTSKClassifier",
     "HTSKRegressor",
-    "TSKClassifier",
-    "TSKRegressor",
     "LogTSKClassifier",
     "LogTSKRegressor",
+    "TSKClassifier",
+    "TSKRegressor",
 ]

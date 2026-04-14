@@ -230,10 +230,10 @@ class RegressionConsequentLayer(nn.Module):
         return torch.einsum("br,br->b", norm_w, f).unsqueeze(1)
 
 
-__all__ = [
-    "MembershipLayer",
-    "RuleLayer",
-    "NormalizationLayer",
+__all__: list[str] = [
     "ClassificationConsequentLayer",
+    "MembershipLayer",
+    "NormalizationLayer",
     "RegressionConsequentLayer",
+    "RuleLayer",
 ]

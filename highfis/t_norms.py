@@ -36,4 +36,4 @@ def resolve_t_norm(name: str) -> TNormFn:
     raise ValueError("t_norm must be 'prod', 'min', or 'gmean'")
 
 
-__all__ = ["TNormFn", "t_norm_prod", "t_norm_min", "t_norm_gmean", "resolve_t_norm"]
+__all__: list[str] = ["TNormFn", "resolve_t_norm", "t_norm_gmean", "t_norm_min", "t_norm_prod"]
