@@ -13,14 +13,16 @@ implemented with PyTorch and exposed through a scikit-learn compatible estimator
 |---|---|
 | [Quick Start](markdown.md) | Installation and first training run with `HTSKClassifierEstimator`. |
 | [HTSK Technical Notes](htsk-modelo.md) | Mathematical formulation and implementation details of HTSK in highFIS. |
+| [TSK Vanilla](models/tsk-vanilla.md) | Mathematical formulation of original TSK with sum-based defuzzification. |
+| [LogTSK](models/logtsk.md) | Log-space defuzzification with temperature parameter (Cui et al., IEEE TFS 2021). |
 | [Protocols API](api/protocols.md) | Structural typing protocols (`MembershipFn`, `TNorm`, `Defuzzifier`, `ConsequentFn`). |
 | [Memberships API](api/memberships.md) | Differentiable membership functions (`GaussianMF`, `TriangularMF`, `TrapezoidalMF`, `BellMF`, `SigmoidalMF`). |
 | [T-Norms API](api/t_norms.md) | Built-in aggregators (`prod`, `min`, `gmean`) and custom t-norm injection. |
 | [Defuzzifiers API](api/defuzzifiers.md) | Pluggable firing-strength normalization (`SoftmaxLogDefuzzifier`, `SumBasedDefuzzifier`, `LogSumDefuzzifier`). |
 | [Layers API](api/layers.md) | Membership, rule, and consequent layers. |
 | [Base TSK API](api/base.md) | `BaseTSK` abstract base with unified training loop. |
-| [Models API](api/models.md) | `HTSKClassifier` and `HTSKRegressor` end-to-end neural fuzzy models. |
-| [Estimators API](api/estimators.md) | `HTSKClassifierEstimator`, `HTSKRegressorEstimator`, and `InputConfig` for sklearn workflows. |
+| [Models API](api/models.md) | `HTSKClassifier`, `HTSKRegressor`, `TSKClassifier`, `TSKRegressor`, `LogTSKClassifier`, and `LogTSKRegressor` end-to-end neural fuzzy models. |
+| [Estimators API](api/estimators.md) | `HTSKClassifierEstimator`, `HTSKRegressorEstimator`, `TSKClassifierEstimator`, `TSKRegressorEstimator`, `LogTSKClassifierEstimator`, `LogTSKRegressorEstimator`, and `InputConfig` for sklearn workflows. |
 | [Contributing](contributing.md) | Development setup, checks, and pull request process. |
 
 ## Key Characteristics
@@ -31,6 +33,8 @@ implemented with PyTorch and exposed through a scikit-learn compatible estimator
 - Five membership function types: Gaussian, Triangular, Trapezoidal, Bell, Sigmoidal.
 - Pluggable defuzzifiers: `SoftmaxLogDefuzzifier` (default), `SumBasedDefuzzifier`, `LogSumDefuzzifier`.
 - HTSK inference via geometric-mean firing strengths for high-dimensional stability.
+- Vanilla TSK with product t-norm and classic sum-based defuzzification.
+- LogTSK with temperature-controlled log-space defuzzification.
 - Estimator default initialization based on k-means (paper-aligned), with grid mode as fallback.
 - Rule base strategies: `cartesian`, `coco`, `en`, and `custom`.
 - Default loss: `CrossEntropyLoss` (classifier) / `MSELoss` (regressor); default optimizer: `AdamW` with separate weight-decay groups.
