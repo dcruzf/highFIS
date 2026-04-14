@@ -43,8 +43,12 @@ class TestTSKClassifierEstimator:
     def test_fit_predict_score_kmeans(self) -> None:
         x, y = _make_clf_dataset(80)
         est = TSKClassifierEstimator(
-            n_mfs=2, mf_init="kmeans", epochs=5,
-            learning_rate=1e-2, random_state=7, batch_size=16,
+            n_mfs=2,
+            mf_init="kmeans",
+            epochs=5,
+            learning_rate=1e-2,
+            random_state=7,
+            batch_size=16,
         )
         est.fit(x, y)
         proba = est.predict_proba(x)
@@ -59,8 +63,12 @@ class TestTSKClassifierEstimator:
     def test_fit_predict_grid(self) -> None:
         x, y = _make_clf_dataset(80)
         est = TSKClassifierEstimator(
-            n_mfs=2, mf_init="grid", epochs=5,
-            learning_rate=1e-2, random_state=7, batch_size=16,
+            n_mfs=2,
+            mf_init="grid",
+            epochs=5,
+            learning_rate=1e-2,
+            random_state=7,
+            batch_size=16,
         )
         est.fit(x, y)
         pred = est.predict(x)
@@ -81,7 +89,8 @@ class TestTSKClassifierEstimator:
     def test_validates_input_config_length(self) -> None:
         x, y = _make_clf_dataset(20)
         est = TSKClassifierEstimator(
-            input_configs=[InputConfig(name="x1", n_mfs=2)], batch_size=16,
+            input_configs=[InputConfig(name="x1", n_mfs=2)],
+            batch_size=16,
         )
         with pytest.raises(ValueError, match="input_configs length"):
             est.fit(x, y)
@@ -96,8 +105,12 @@ class TestTSKRegressorEstimator:
     def test_fit_predict_score_kmeans(self) -> None:
         x, y = _make_reg_dataset(80)
         est = TSKRegressorEstimator(
-            n_mfs=2, mf_init="kmeans", epochs=5,
-            learning_rate=1e-2, random_state=7, batch_size=16,
+            n_mfs=2,
+            mf_init="kmeans",
+            epochs=5,
+            learning_rate=1e-2,
+            random_state=7,
+            batch_size=16,
         )
         est.fit(x, y)
         pred = est.predict(x)
@@ -109,8 +122,12 @@ class TestTSKRegressorEstimator:
     def test_fit_predict_grid(self) -> None:
         x, y = _make_reg_dataset(80)
         est = TSKRegressorEstimator(
-            n_mfs=2, mf_init="grid", epochs=5,
-            learning_rate=1e-2, random_state=7, batch_size=16,
+            n_mfs=2,
+            mf_init="grid",
+            epochs=5,
+            learning_rate=1e-2,
+            random_state=7,
+            batch_size=16,
         )
         est.fit(x, y)
         pred = est.predict(x)
@@ -138,8 +155,12 @@ class TestLogTSKClassifierEstimator:
     def test_fit_predict_score_kmeans(self) -> None:
         x, y = _make_clf_dataset(80)
         est = LogTSKClassifierEstimator(
-            n_mfs=2, mf_init="kmeans", epochs=5,
-            learning_rate=1e-2, random_state=7, batch_size=16,
+            n_mfs=2,
+            mf_init="kmeans",
+            epochs=5,
+            learning_rate=1e-2,
+            random_state=7,
+            batch_size=16,
         )
         est.fit(x, y)
         proba = est.predict_proba(x)
@@ -154,8 +175,12 @@ class TestLogTSKClassifierEstimator:
     def test_fit_predict_grid(self) -> None:
         x, y = _make_clf_dataset(80)
         est = LogTSKClassifierEstimator(
-            n_mfs=2, mf_init="grid", epochs=5,
-            learning_rate=1e-2, random_state=7, batch_size=16,
+            n_mfs=2,
+            mf_init="grid",
+            epochs=5,
+            learning_rate=1e-2,
+            random_state=7,
+            batch_size=16,
         )
         est.fit(x, y)
         pred = est.predict(x)
@@ -183,8 +208,12 @@ class TestLogTSKRegressorEstimator:
     def test_fit_predict_score_kmeans(self) -> None:
         x, y = _make_reg_dataset(80)
         est = LogTSKRegressorEstimator(
-            n_mfs=2, mf_init="kmeans", epochs=5,
-            learning_rate=1e-2, random_state=7, batch_size=16,
+            n_mfs=2,
+            mf_init="kmeans",
+            epochs=5,
+            learning_rate=1e-2,
+            random_state=7,
+            batch_size=16,
         )
         est.fit(x, y)
         pred = est.predict(x)
@@ -195,8 +224,12 @@ class TestLogTSKRegressorEstimator:
     def test_fit_predict_grid(self) -> None:
         x, y = _make_reg_dataset(80)
         est = LogTSKRegressorEstimator(
-            n_mfs=2, mf_init="grid", epochs=5,
-            learning_rate=1e-2, random_state=7, batch_size=16,
+            n_mfs=2,
+            mf_init="grid",
+            epochs=5,
+            learning_rate=1e-2,
+            random_state=7,
+            batch_size=16,
         )
         est.fit(x, y)
         pred = est.predict(x)

@@ -10,10 +10,7 @@ from highfis.models import HTSKClassifier, HTSKRegressor
 
 
 def _build_input_mfs(n_inputs: int = 3, n_mfs: int = 2) -> dict[str, list[GaussianMF]]:
-    return {
-        f"x{i + 1}": [GaussianMF(mean=float(j), sigma=1.0) for j in range(n_mfs)]
-        for i in range(n_inputs)
-    }
+    return {f"x{i + 1}": [GaussianMF(mean=float(j), sigma=1.0) for j in range(n_mfs)] for i in range(n_inputs)}
 
 
 def test_htsk_classifier_init_validates_arguments() -> None:
@@ -113,7 +110,13 @@ def test_htsk_classifier_early_stopping_with_val_data() -> None:
     y_val = torch.randint(0, 2, (10,), dtype=torch.long)
 
     history = model.fit(
-        x, y, epochs=500, x_val=x_val, y_val=y_val, patience=5, learning_rate=1e-2,
+        x,
+        y,
+        epochs=500,
+        x_val=x_val,
+        y_val=y_val,
+        patience=5,
+        learning_rate=1e-2,
     )
 
     assert len(history["val"]) == len(history["train"])
@@ -186,8 +189,13 @@ def test_htsk_classifier_fit_mse_with_validation() -> None:
     y_val = torch.randint(0, 2, (8,), dtype=torch.long)
 
     history = model.fit(
-        x, y, epochs=2, criterion=nn.MSELoss(),
-        x_val=x_val, y_val=y_val, patience=10,
+        x,
+        y,
+        epochs=2,
+        criterion=nn.MSELoss(),
+        x_val=x_val,
+        y_val=y_val,
+        patience=10,
     )
     assert len(history["val"]) == 2
 
@@ -207,8 +215,14 @@ def test_htsk_classifier_fit_verbose_with_early_stopping() -> None:
     y_val = torch.randint(0, 2, (10,), dtype=torch.long)
 
     history = model.fit(
-        x, y, epochs=500, x_val=x_val, y_val=y_val,
-        patience=5, learning_rate=1e-2, verbose=True,
+        x,
+        y,
+        epochs=500,
+        x_val=x_val,
+        y_val=y_val,
+        patience=5,
+        learning_rate=1e-2,
+        verbose=True,
     )
     assert history["stopped_epoch"] < 500
 
@@ -308,7 +322,13 @@ def test_htsk_regressor_early_stopping_with_val_data() -> None:
     y_val = x_val[:, 0] + 0.5 * x_val[:, 1]
 
     history = model.fit(
-        x, y, epochs=2000, x_val=x_val, y_val=y_val, patience=15, learning_rate=5e-2,
+        x,
+        y,
+        epochs=2000,
+        x_val=x_val,
+        y_val=y_val,
+        patience=15,
+        learning_rate=5e-2,
     )
 
     assert len(history["val"]) == len(history["train"])
@@ -356,8 +376,14 @@ def test_htsk_regressor_fit_verbose_with_early_stopping() -> None:
     y_val = x_val[:, 0] + 0.5 * x_val[:, 1]
 
     history = model.fit(
-        x, y, epochs=2000, x_val=x_val, y_val=y_val,
-        patience=15, learning_rate=5e-2, verbose=True,
+        x,
+        y,
+        epochs=2000,
+        x_val=x_val,
+        y_val=y_val,
+        patience=15,
+        learning_rate=5e-2,
+        verbose=True,
     )
     assert history["stopped_epoch"] < 2000
 
@@ -391,7 +417,7 @@ def test_htsk_regressor_constant_targets() -> None:
     x = torch.randn(20, 2)
     y = torch.full((20,), 3.14)
 
-    history = model.fit(x, y, epochs=200, learning_rate=5e-2)
+    _history = model.fit(x, y, epochs=200, learning_rate=5e-2)
     pred = model.predict(x)
 
     # Should converge close to the constant target

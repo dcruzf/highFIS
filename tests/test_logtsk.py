@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import pytest
 import torch
-from torch import nn
 
 from highfis.defuzzifiers import LogSumDefuzzifier
 from highfis.memberships import GaussianMF
@@ -19,10 +18,7 @@ from highfis.models import LogTSKClassifier, LogTSKRegressor
 
 
 def _build_input_mfs(n_inputs: int = 3, n_mfs: int = 2) -> dict[str, list[GaussianMF]]:
-    return {
-        f"x{i + 1}": [GaussianMF(mean=float(j), sigma=1.0) for j in range(n_mfs)]
-        for i in range(n_inputs)
-    }
+    return {f"x{i + 1}": [GaussianMF(mean=float(j), sigma=1.0) for j in range(n_mfs)] for i in range(n_inputs)}
 
 
 # =====================================================================
@@ -133,7 +129,13 @@ class TestLogTSKClassifierFit:
         x_val = torch.randn(10, 2)
         y_val = torch.randint(0, 2, (10,), dtype=torch.long)
         history = model.fit(
-            x, y, epochs=500, x_val=x_val, y_val=y_val, patience=5, learning_rate=1e-2,
+            x,
+            y,
+            epochs=500,
+            x_val=x_val,
+            y_val=y_val,
+            patience=5,
+            learning_rate=1e-2,
         )
         assert history["stopped_epoch"] < 500
 
@@ -203,6 +205,12 @@ class TestLogTSKRegressorFit:
         x_val = torch.randn(10, 2)
         y_val = x_val[:, 0] + 0.5 * x_val[:, 1]
         history = model.fit(
-            x, y, epochs=2000, x_val=x_val, y_val=y_val, patience=15, learning_rate=5e-2,
+            x,
+            y,
+            epochs=2000,
+            x_val=x_val,
+            y_val=y_val,
+            patience=15,
+            learning_rate=5e-2,
         )
         assert history["stopped_epoch"] < 2000

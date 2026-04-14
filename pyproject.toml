@@ -107,7 +107,7 @@ cov-report = "coverage report -m --fail-under=90"
 
 [tool.ruff]
 line-length = 120
-include = ["highfis/*"]
+include = ["highfis/*", "tests/*"]
 
 [tool.ruff.lint]
 select = [

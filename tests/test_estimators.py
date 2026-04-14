@@ -125,9 +125,7 @@ def test_build_kmeans_input_mfs_sigma_positive() -> None:
     x, _ = _make_dataset(60)
     feature_names = ["x1", "x2", "x3"]
 
-    input_mfs = _build_kmeans_input_mfs(
-        x, n_clusters=3, sigma_scale=1.0, feature_names=feature_names, random_state=42
-    )
+    input_mfs = _build_kmeans_input_mfs(x, n_clusters=3, sigma_scale=1.0, feature_names=feature_names, random_state=42)
 
     from highfis.memberships import GaussianMF
 
@@ -148,7 +146,7 @@ def test_build_kmeans_sigma_scale_applied() -> None:
     from highfis.memberships import GaussianMF
 
     for name in feature_names:
-        for m1, m2 in zip(mfs_1[name], mfs_2[name]):
+        for m1, m2 in zip(mfs_1[name], mfs_2[name], strict=False):
             assert isinstance(m1, GaussianMF)
             assert isinstance(m2, GaussianMF)
             # sigma_scale=5 must produce >= sigma_scale=1
@@ -197,7 +195,11 @@ def test_estimator_no_val_runs_full_epochs() -> None:
     """Without validation_data, training runs for the full epoch count."""
     x, y = _make_dataset(60)
     est = HTSKClassifierEstimator(
-        n_mfs=2, mf_init="kmeans", epochs=10, random_state=7, batch_size=16,
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=10,
+        random_state=7,
+        batch_size=16,
     )
     est.fit(x, y)
 
@@ -209,8 +211,12 @@ def test_estimator_sigma_scale_auto() -> None:
     """sigma_scale='auto' uses h=sqrt(D) where D is the number of features."""
     x, y = _make_dataset(60)
     est = HTSKClassifierEstimator(
-        n_mfs=3, mf_init="kmeans", sigma_scale="auto",
-        epochs=2, random_state=0, batch_size=16,
+        n_mfs=3,
+        mf_init="kmeans",
+        sigma_scale="auto",
+        epochs=2,
+        random_state=0,
+        batch_size=16,
     )
     est.fit(x, y)
 
@@ -252,12 +258,18 @@ def test_build_gaussian_input_mfs_single_mf() -> None:
 
 def test_build_kmeans_zero_sigma_fallback() -> None:
     """Constant-value cluster → std=0 → gap-fallback branch (lines 95-96)."""
-    x = np.vstack([
-        np.zeros((10, 2), dtype=np.float64),
-        np.ones((10, 2), dtype=np.float64),
-    ])
+    x = np.vstack(
+        [
+            np.zeros((10, 2), dtype=np.float64),
+            np.ones((10, 2), dtype=np.float64),
+        ]
+    )
     mfs = _build_kmeans_input_mfs(
-        x, n_clusters=2, sigma_scale=1.0, feature_names=["x1", "x2"], random_state=0,
+        x,
+        n_clusters=2,
+        sigma_scale=1.0,
+        feature_names=["x1", "x2"],
+        random_state=0,
     )
     for name in ["x1", "x2"]:
         for mf in mfs[name]:
@@ -274,7 +286,11 @@ def test_estimator_fit_with_input_configs_grid_resolve_config() -> None:
     x, y = _make_dataset(60)
     configs = [InputConfig(name=f"f{i}", n_mfs=2) for i in range(3)]
     est = HTSKClassifierEstimator(
-        input_configs=configs, mf_init="grid", epochs=2, random_state=0, batch_size=16,
+        input_configs=configs,
+        mf_init="grid",
+        epochs=2,
+        random_state=0,
+        batch_size=16,
     )
     est.fit(x, y)
     assert list(est.feature_names_in_) == ["f0", "f1", "f2"]
@@ -285,7 +301,11 @@ def test_estimator_fit_with_input_configs_kmeans_resolve_names() -> None:
     x, y = _make_dataset(60)
     configs = [InputConfig(name=f"g{i}", n_mfs=3) for i in range(3)]
     est = HTSKClassifierEstimator(
-        input_configs=configs, mf_init="kmeans", epochs=2, random_state=0, batch_size=16,
+        input_configs=configs,
+        mf_init="kmeans",
+        epochs=2,
+        random_state=0,
+        batch_size=16,
     )
     est.fit(x, y)
     assert list(est.feature_names_in_) == ["g0", "g1", "g2"]
@@ -406,7 +426,11 @@ def test_regressor_estimator_early_stopping_with_validation_data() -> None:
 def test_regressor_estimator_no_val_runs_full_epochs() -> None:
     x, y = _make_regression_dataset(60)
     est = HTSKRegressorEstimator(
-        n_mfs=2, mf_init="kmeans", epochs=10, random_state=7, batch_size=16,
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=10,
+        random_state=7,
+        batch_size=16,
     )
     est.fit(x, y)
 
@@ -417,8 +441,12 @@ def test_regressor_estimator_no_val_runs_full_epochs() -> None:
 def test_regressor_estimator_sigma_scale_auto() -> None:
     x, y = _make_regression_dataset(60)
     est = HTSKRegressorEstimator(
-        n_mfs=3, mf_init="kmeans", sigma_scale="auto",
-        epochs=2, random_state=0, batch_size=16,
+        n_mfs=3,
+        mf_init="kmeans",
+        sigma_scale="auto",
+        epochs=2,
+        random_state=0,
+        batch_size=16,
     )
     est.fit(x, y)
 
@@ -439,7 +467,11 @@ def test_regressor_estimator_fit_with_input_configs_grid() -> None:
     x, y = _make_regression_dataset(60)
     configs = [InputConfig(name=f"f{i}", n_mfs=2) for i in range(3)]
     est = HTSKRegressorEstimator(
-        input_configs=configs, mf_init="grid", epochs=2, random_state=0, batch_size=16,
+        input_configs=configs,
+        mf_init="grid",
+        epochs=2,
+        random_state=0,
+        batch_size=16,
     )
     est.fit(x, y)
     assert list(est.feature_names_in_) == ["f0", "f1", "f2"]
@@ -449,7 +481,11 @@ def test_regressor_estimator_fit_with_input_configs_kmeans() -> None:
     x, y = _make_regression_dataset(60)
     configs = [InputConfig(name=f"g{i}", n_mfs=3) for i in range(3)]
     est = HTSKRegressorEstimator(
-        input_configs=configs, mf_init="kmeans", epochs=2, random_state=0, batch_size=16,
+        input_configs=configs,
+        mf_init="kmeans",
+        epochs=2,
+        random_state=0,
+        batch_size=16,
     )
     est.fit(x, y)
     assert list(est.feature_names_in_) == ["g0", "g1", "g2"]
