@@ -10,15 +10,9 @@ and its default parameters.
 from __future__ import annotations
 
 import math
-import sys
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Any, cast
-
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    from typing_extensions import Self
+from typing import Any, Self, cast
 
 import numpy as np
 import torch
