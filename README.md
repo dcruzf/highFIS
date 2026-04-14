@@ -57,8 +57,16 @@ Works with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and `cross_val_score`.
 | `RegressionConsequentLayer` | `highfis.layers` | Linear TSK consequent aggregation for regression. |
 | `HTSKClassifier` | `highfis.models` | Full TSK classification pipeline as `nn.Module`. |
 | `HTSKRegressor` | `highfis.models` | Full TSK regression pipeline as `nn.Module`. |
+| `TSKClassifier` | `highfis.models` | Vanilla TSK classifier with sum-based defuzzification. |
+| `TSKRegressor` | `highfis.models` | Vanilla TSK regressor with sum-based defuzzification. |
+| `LogTSKClassifier` | `highfis.models` | LogTSK classifier with log-space defuzzification. |
+| `LogTSKRegressor` | `highfis.models` | LogTSK regressor with log-space defuzzification. |
 | `HTSKClassifierEstimator` | `highfis.estimators` | sklearn-compatible classification estimator. |
 | `HTSKRegressorEstimator` | `highfis.estimators` | sklearn-compatible regression estimator. |
+| `TSKClassifierEstimator` | `highfis.estimators` | sklearn-compatible vanilla TSK classifier estimator. |
+| `TSKRegressorEstimator` | `highfis.estimators` | sklearn-compatible vanilla TSK regressor estimator. |
+| `LogTSKClassifierEstimator` | `highfis.estimators` | sklearn-compatible LogTSK classifier estimator. |
+| `LogTSKRegressorEstimator` | `highfis.estimators` | sklearn-compatible LogTSK regressor estimator. |
 | `InputConfig` | `highfis.estimators` | Per-feature membership function configuration. |
 
 ### Structural Typing Protocols
