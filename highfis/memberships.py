@@ -140,11 +140,11 @@ class SigmoidalMF(MembershipFunction):
         return torch.sigmoid(self.a * (x - self.center))
 
 
-__all__ = [
-    "MembershipFunction",
-    "GaussianMF",
-    "TriangularMF",
-    "TrapezoidalMF",
+__all__: list[str] = [
     "BellMF",
+    "GaussianMF",
+    "MembershipFunction",
     "SigmoidalMF",
+    "TrapezoidalMF",
+    "TriangularMF",
 ]

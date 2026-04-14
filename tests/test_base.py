@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 import torch
-from torch import Tensor, nn
+from torch import nn
 
 from highfis.base import BaseTSK, _iter_minibatch_indices, _uniform_regularization_loss
 from highfis.memberships import GaussianMF

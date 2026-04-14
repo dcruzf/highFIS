@@ -2,7 +2,15 @@
 
 from .base import BaseTSK
 from .defuzzifiers import LogSumDefuzzifier, SoftmaxLogDefuzzifier, SumBasedDefuzzifier
-from .estimators import HTSKClassifierEstimator, HTSKRegressorEstimator, InputConfig
+from .estimators import (
+    HTSKClassifierEstimator,
+    HTSKRegressorEstimator,
+    InputConfig,
+    LogTSKClassifierEstimator,
+    LogTSKRegressorEstimator,
+    TSKClassifierEstimator,
+    TSKRegressorEstimator,
+)
 from .memberships import (
     BellMF,
     GaussianMF,
@@ -11,35 +19,44 @@ from .memberships import (
     TrapezoidalMF,
     TriangularMF,
 )
-from .models import HTSKClassifier, HTSKRegressor
+from .models import (
+    HTSKClassifier,
+    HTSKRegressor,
+    LogTSKClassifier,
+    LogTSKRegressor,
+    TSKClassifier,
+    TSKRegressor,
+)
 from .protocols import ConsequentFn, Defuzzifier, MembershipFn, TNorm
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
-__all__ = [
-    # Protocols
-    "MembershipFn",
-    "TNorm",
-    "Defuzzifier",
-    "ConsequentFn",
-    # Base
+__all__: list[str] = [
     "BaseTSK",
-    # Membership functions
-    "MembershipFunction",
-    "GaussianMF",
-    "TriangularMF",
-    "TrapezoidalMF",
     "BellMF",
+    "ConsequentFn",
+    "Defuzzifier",
+    "GaussianMF",
+    "HTSKClassifier",
+    "HTSKClassifierEstimator",
+    "HTSKRegressor",
+    "HTSKRegressorEstimator",
+    "InputConfig",
+    "LogSumDefuzzifier",
+    "LogTSKClassifier",
+    "LogTSKClassifierEstimator",
+    "LogTSKRegressor",
+    "LogTSKRegressorEstimator",
+    "MembershipFn",
+    "MembershipFunction",
     "SigmoidalMF",
-    # Defuzzifiers
     "SoftmaxLogDefuzzifier",
     "SumBasedDefuzzifier",
-    "LogSumDefuzzifier",
-    # Models
-    "HTSKClassifier",
-    "HTSKRegressor",
-    # Estimators
-    "InputConfig",
-    "HTSKClassifierEstimator",
-    "HTSKRegressorEstimator",
+    "TNorm",
+    "TSKClassifier",
+    "TSKClassifierEstimator",
+    "TSKRegressor",
+    "TSKRegressorEstimator",
+    "TrapezoidalMF",
+    "TriangularMF",
 ]

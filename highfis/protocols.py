@@ -12,7 +12,7 @@ class MembershipFn(Protocol):
     """Callable that maps an input tensor to membership degrees."""
 
     def __call__(self, x: Tensor) -> Tensor:
-        """Compute membership degrees for *x*."""  # noqa: D418
+        """Compute membership degrees for *x*."""
         ...
 
 
@@ -43,4 +43,4 @@ class ConsequentFn(Protocol):
         ...
 
 
-__all__ = ["MembershipFn", "TNorm", "Defuzzifier", "ConsequentFn"]
+__all__: list[str] = ["ConsequentFn", "Defuzzifier", "MembershipFn", "TNorm"]

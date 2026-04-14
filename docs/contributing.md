@@ -10,36 +10,75 @@ Thank you for your interest in improving highFIS.
 
 ## Development Setup
 
-This project uses Hatch environments for consistency.
+This project uses [Hatch](https://hatch.pypa.io/) for environment
+management, testing, formatting, and builds.
 
 ```bash
 pip install hatch
 hatch env create
 ```
 
-Alternative editable installation:
+To set up pre-commit hooks:
 
 ```bash
-pip install -e .[dev]
+hatch run install
 ```
+
+### Virtual Environment for VS Code
+
+The default Hatch environment is configured to use `.venv` at the project
+root. Running `hatch env create` creates it with all dev dependencies
+(ruff, ty, bandit, pre-commit, etc.):
+
+```bash
+hatch env create
+```
+
+VS Code detects `.venv` automatically. If needed, select the interpreter
+manually via **Ctrl+Shift+P** → *Python: Select Interpreter* →
+`./.venv/bin/python`.
 
 ## Local Checks
 
 Run the following before opening a pull request:
 
 ```bash
-hatch run typing
-hatch run security
-hatch test
+hatch fmt            # format and lint (ruff)
+hatch run typing     # type check (ty)
+hatch run security   # security scan (bandit)
+hatch test -c        # tests with coverage (pytest + coverage)
+```
+
+To run all pre-commit hooks at once:
+
+```bash
+hatch run all
+```
+
+### Test Matrix
+
+Tests run against Python 3.11, 3.12, 3.13, and 3.14. To run against a
+specific version:
+
+```bash
+hatch test -py 3.12
+```
+
+### Coverage
+
+Coverage must stay at or above **90 %**. To generate an HTML report:
+
+```bash
+hatch run html-report
 ```
 
 ## Documentation Workflow
 
-Documentation is built with Zensical.
+Documentation is built with [Zensical](https://github.com/dcruzf/zensical).
 
 ```bash
-hatch run docs:serve
-hatch run docs:build
+hatch run docs:serve   # live preview
+hatch run docs:build   # build static site
 ```
 
 ## Pull Request Guidelines
@@ -48,7 +87,8 @@ hatch run docs:build
 2. Keep changes small and coherent.
 3. Add or update tests for behavior changes.
 4. Update documentation for public API changes.
-5. Provide a clear PR description with motivation and scope.
+5. Ensure all local checks pass (`hatch run all`).
+6. Provide a clear PR description with motivation and scope.
 
 ## Reporting Issues
 
