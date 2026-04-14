@@ -1,8 +1,24 @@
+"""Scikit-learn compatible estimator wrappers for TSK models.
+
+Each concrete estimator inherits from a shared ``_BaseClassifierEstimator``
+or ``_BaseRegressorEstimator`` that factors out input-configuration
+resolution, MF building, and the training-loop invocation.  Subclasses
+only implement :meth:`_build_model` to select the appropriate model class
+and its default parameters.
+"""
+
 from __future__ import annotations
 
 import math
+import sys
+from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
+
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
 
 import numpy as np
 import torch
@@ -12,8 +28,16 @@ from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 
+from .base import BaseTSK
 from .memberships import GaussianMF
-from .models import HTSKClassifier, HTSKRegressor
+from .models import (
+    HTSKClassifier,
+    HTSKRegressor,
+    LogTSKClassifier,
+    LogTSKRegressor,
+    TSKClassifier,
+    TSKRegressor,
+)
 
 
 @dataclass(frozen=True)
@@ -102,8 +126,10 @@ def _build_kmeans_input_mfs(
     return input_mfs
 
 
-class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[misc]
-    """High-level HTSK classifier facade with sklearn-compatible API."""
+class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[misc]
+    """Shared logic for all TSK classifier estimators."""
+
+    model_: BaseTSK
 
     def __init__(
         self,
@@ -126,28 +152,7 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
         validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
-        r"""Configure estimator hyperparameters and training options.
-
-        Parameters
-        ----------
-        mf_init:
-            Membership-function initialization strategy.  ``"kmeans"`` (default)
-            places each rule's MF centers at a k-means centroid and uses the
-            within-cluster standard deviation scaled by *sigma_scale* as the
-            initial sigma — following Cui et al. (IJCNN 2021).  ``"grid"``
-            uses a uniform grid over each feature's range (original behaviour,
-            combined with ``rule_base="cartesian"``).
-        sigma_scale:
-            Scaling factor ``h`` applied to the computed sigma values during
-            k-means initialization.  The paper recommends ``h=1`` for HTSK.
-            Pass ``"auto"`` to use :math:`h = \\sqrt{D}` where *D* is the
-            number of input features — a robust choice for any dimensionality.
-            Ignored when ``mf_init="grid"``.
-        rule_base:
-            Rule-combination strategy passed to :class:`HTSKClassifier`.
-            Defaults to ``"coco"`` when ``mf_init="kmeans"`` (one rule per
-            cluster) and to ``"cartesian"`` when ``mf_init="grid"``.
-        """
+        """Configure estimator hyperparameters and training options."""
         self.input_configs = input_configs
         self.n_mfs = n_mfs
         self.mf_init = mf_init
@@ -166,7 +171,10 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
         self.validation_data = validation_data
         self.weight_decay = weight_decay
 
+    # -- helpers ----------------------------------------------------------
+
     def _resolve_input_configs(self, x: np.ndarray) -> list[InputConfig]:
+        """Resolve per-feature input configs."""
         if self.input_configs is not None:
             if len(self.input_configs) != x.shape[1]:
                 raise ValueError(
@@ -176,6 +184,7 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
         return [InputConfig(name=f"x{i + 1}", n_mfs=int(self.n_mfs)) for i in range(x.shape[1])]
 
     def _resolve_feature_names(self, x: np.ndarray) -> list[str]:
+        """Resolve feature names from configs or defaults."""
         if self.input_configs is not None:
             if len(self.input_configs) != x.shape[1]:
                 raise ValueError(
@@ -186,18 +195,11 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
 
     @staticmethod
     def _as_tensor_x(x: np.ndarray) -> torch.Tensor:
+        """Convert numpy array to float32 tensor."""
         return torch.as_tensor(x, dtype=torch.float32)
 
-    def fit(self, x: Any, y: Any) -> HTSKClassifierEstimator:
-        """Train the HTSK classifier on labeled samples."""
-        x_arr, y_arr = check_X_y(x, y)
-
-        if self.random_state is not None:
-            torch.manual_seed(int(self.random_state))
-
-        le = LabelEncoder()
-        y_idx = le.fit_transform(np.asarray(y_arr))
-
+    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[dict[str, list[GaussianMF]], list[str], str]:
+        """Build MFs and resolve rule_base from the initialization mode."""
         init = str(self.mf_init).lower()
         if init not in {"kmeans", "grid"}:
             raise ValueError(f"mf_init must be 'kmeans' or 'grid', got '{self.mf_init}'")
@@ -222,17 +224,37 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
             feature_names = [cfg.name for cfg in input_configs]
             effective_rule_base = self.rule_base if self.rule_base is not None else "cartesian"
 
+        return input_mfs, feature_names, effective_rule_base
+
+    @abstractmethod
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        n_classes: int,
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create the concrete TSK classification model."""
+
+    # -- sklearn API ------------------------------------------------------
+
+    def fit(self, x: Any, y: Any) -> Self:
+        """Train the TSK classifier on labeled samples."""
+        x_arr, y_arr = check_X_y(x, y)
+
+        if self.random_state is not None:
+            torch.manual_seed(int(self.random_state))
+
+        le = LabelEncoder()
+        y_idx = le.fit_transform(np.asarray(y_arr))
+
+        input_mfs, feature_names, effective_rule_base = self._build_input_mfs(x_arr)
+
         self.n_features_in_ = x_arr.shape[1]
         self.feature_names_in_ = np.asarray(feature_names, dtype=object)
         self.classes_ = le.classes_
         self._label_encoder_ = le
 
-        self.model_ = HTSKClassifier(
-            input_mfs,
-            n_classes=len(self.classes_),
-            rule_base=effective_rule_base,
-            consequent_batch_norm=bool(self.consequent_batch_norm),
-        )
+        self.model_ = self._build_model(input_mfs, len(self.classes_), effective_rule_base)
 
         y_t = torch.as_tensor(y_idx, dtype=torch.long)
 
@@ -269,7 +291,7 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
         x_arr = check_array(x)
         if x_arr.shape[1] != self.n_features_in_:
             raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
-        probs = self.model_.predict_proba(self._as_tensor_x(x_arr))
+        probs = cast(Any, self.model_).predict_proba(self._as_tensor_x(x_arr))
         return probs.detach().cpu().numpy()
 
     def predict(self, x: Any) -> np.ndarray:
@@ -285,8 +307,10 @@ class HTSKClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[m
         return float(accuracy_score(y_true, y_pred, sample_weight=sample_weight))
 
 
-class HTSKRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[misc]
-    """High-level HTSK regressor facade with sklearn-compatible API."""
+class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[misc]
+    """Shared logic for all TSK regressor estimators."""
+
+    model_: BaseTSK
 
     def __init__(
         self,
@@ -309,28 +333,7 @@ class HTSKRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mis
         validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
-        r"""Configure estimator hyperparameters and training options.
-
-        Parameters
-        ----------
-        mf_init:
-            Membership-function initialization strategy.  ``"kmeans"`` (default)
-            places each rule's MF centers at a k-means centroid and uses the
-            within-cluster standard deviation scaled by *sigma_scale* as the
-            initial sigma — following Cui et al. (IJCNN 2021).  ``"grid"``
-            uses a uniform grid over each feature's range (original behaviour,
-            combined with ``rule_base="cartesian"``).
-        sigma_scale:
-            Scaling factor ``h`` applied to the computed sigma values during
-            k-means initialization.  The paper recommends ``h=1`` for HTSK.
-            Pass ``"auto"`` to use :math:`h = \\sqrt{D}` where *D* is the
-            number of input features — a robust choice for any dimensionality.
-            Ignored when ``mf_init="grid"``.
-        rule_base:
-            Rule-combination strategy passed to :class:`HTSKRegressor`.
-            Defaults to ``"coco"`` when ``mf_init="kmeans"`` (one rule per
-            cluster) and to ``"cartesian"`` when ``mf_init="grid"``.
-        """
+        """Configure estimator hyperparameters and training options."""
         self.input_configs = input_configs
         self.n_mfs = n_mfs
         self.mf_init = mf_init
@@ -349,7 +352,10 @@ class HTSKRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mis
         self.validation_data = validation_data
         self.weight_decay = weight_decay
 
+    # -- helpers ----------------------------------------------------------
+
     def _resolve_input_configs(self, x: np.ndarray) -> list[InputConfig]:
+        """Resolve per-feature input configs."""
         if self.input_configs is not None:
             if len(self.input_configs) != x.shape[1]:
                 raise ValueError(
@@ -359,6 +365,7 @@ class HTSKRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mis
         return [InputConfig(name=f"x{i + 1}", n_mfs=int(self.n_mfs)) for i in range(x.shape[1])]
 
     def _resolve_feature_names(self, x: np.ndarray) -> list[str]:
+        """Resolve feature names from configs or defaults."""
         if self.input_configs is not None:
             if len(self.input_configs) != x.shape[1]:
                 raise ValueError(
@@ -369,15 +376,11 @@ class HTSKRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mis
 
     @staticmethod
     def _as_tensor_x(x: np.ndarray) -> torch.Tensor:
+        """Convert numpy array to float32 tensor."""
         return torch.as_tensor(x, dtype=torch.float32)
 
-    def fit(self, x: Any, y: Any) -> HTSKRegressorEstimator:
-        """Train the HTSK regressor on labeled samples."""
-        x_arr, y_arr = check_X_y(x, y)
-
-        if self.random_state is not None:
-            torch.manual_seed(int(self.random_state))
-
+    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[dict[str, list[GaussianMF]], list[str], str]:
+        """Build MFs and resolve rule_base from the initialization mode."""
         init = str(self.mf_init).lower()
         if init not in {"kmeans", "grid"}:
             raise ValueError(f"mf_init must be 'kmeans' or 'grid', got '{self.mf_init}'")
@@ -402,14 +405,31 @@ class HTSKRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mis
             feature_names = [cfg.name for cfg in input_configs]
             effective_rule_base = self.rule_base if self.rule_base is not None else "cartesian"
 
+        return input_mfs, feature_names, effective_rule_base
+
+    @abstractmethod
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create the concrete TSK regression model."""
+
+    # -- sklearn API ------------------------------------------------------
+
+    def fit(self, x: Any, y: Any) -> Self:
+        """Train the TSK regressor on labeled samples."""
+        x_arr, y_arr = check_X_y(x, y)
+
+        if self.random_state is not None:
+            torch.manual_seed(int(self.random_state))
+
+        input_mfs, feature_names, effective_rule_base = self._build_input_mfs(x_arr)
+
         self.n_features_in_ = x_arr.shape[1]
         self.feature_names_in_ = np.asarray(feature_names, dtype=object)
 
-        self.model_ = HTSKRegressor(
-            input_mfs,
-            rule_base=effective_rule_base,
-            consequent_batch_norm=bool(self.consequent_batch_norm),
-        )
+        self.model_ = self._build_model(input_mfs, effective_rule_base)
 
         y_t = torch.as_tensor(np.asarray(y_arr, dtype=np.float32), dtype=torch.float32)
 
@@ -445,13 +465,134 @@ class HTSKRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mis
         x_arr = check_array(x)
         if x_arr.shape[1] != self.n_features_in_:
             raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
-        preds = self.model_.predict(self._as_tensor_x(x_arr))
+        preds = cast(Any, self.model_).predict(self._as_tensor_x(x_arr))
         return preds.detach().cpu().numpy()
+
+
+# =====================================================================
+# HTSK Estimators
+# =====================================================================
+
+
+class HTSKClassifierEstimator(_BaseClassifierEstimator):
+    """High-level HTSK classifier facade with sklearn-compatible API."""
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        n_classes: int,
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create HTSKClassifier."""
+        return HTSKClassifier(
+            input_mfs,
+            n_classes=n_classes,
+            rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+
+class HTSKRegressorEstimator(_BaseRegressorEstimator):
+    """High-level HTSK regressor facade with sklearn-compatible API."""
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create HTSKRegressor."""
+        return HTSKRegressor(
+            input_mfs,
+            rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+
+# =====================================================================
+# Vanilla TSK Estimators  (Takagi & Sugeno, 1985)
+# =====================================================================
+
+
+class TSKClassifierEstimator(_BaseClassifierEstimator):
+    """Sklearn-compatible vanilla TSK classifier with sum-based defuzzification."""
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        n_classes: int,
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create TSKClassifier."""
+        return TSKClassifier(
+            input_mfs,
+            n_classes=n_classes,
+            rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+
+class TSKRegressorEstimator(_BaseRegressorEstimator):
+    """Sklearn-compatible vanilla TSK regressor with sum-based defuzzification."""
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create TSKRegressor."""
+        return TSKRegressor(
+            input_mfs,
+            rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+
+# =====================================================================
+# LogTSK Estimators  (Cui, Wu & Xu, IEEE TFS 2021)
+# =====================================================================
+
+
+class LogTSKClassifierEstimator(_BaseClassifierEstimator):
+    """Sklearn-compatible LogTSK classifier with log-space defuzzification."""
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        n_classes: int,
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create LogTSKClassifier."""
+        return LogTSKClassifier(
+            input_mfs,
+            n_classes=n_classes,
+            rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+
+class LogTSKRegressorEstimator(_BaseRegressorEstimator):
+    """Sklearn-compatible LogTSK regressor with log-space defuzzification."""
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create LogTSKRegressor."""
+        return LogTSKRegressor(
+            input_mfs,
+            rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
 
 
 __all__ = [
     "InputConfig",
     "HTSKClassifierEstimator",
     "HTSKRegressorEstimator",
+    "TSKClassifierEstimator",
+    "TSKRegressorEstimator",
+    "LogTSKClassifierEstimator",
+    "LogTSKRegressorEstimator",
     "_build_kmeans_input_mfs",
 ]
