@@ -18,6 +18,10 @@ Model family overview
      - ``prod``
      - ``SumBasedDefuzzifier``
      - Takagi & Sugeno (IEEE SMC 1985)
+   * - **DombiTSK**
+     - ``dombi``
+     - ``SumBasedDefuzzifier``
+     - Dombi (1982)
    * - **LogTSK**
      - ``prod``
      - ``LogSumDefuzzifier``
@@ -45,6 +49,7 @@ explicit and the defuzzification strategy is pluggable:
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
+from functools import partial
 from typing import TYPE_CHECKING
 
 import torch
@@ -54,7 +59,7 @@ from .base import BaseTSK
 from .defuzzifiers import LogSumDefuzzifier, SumBasedDefuzzifier
 from .layers import ClassificationConsequentLayer, RegressionConsequentLayer
 from .memberships import MembershipFunction
-from .t_norms import TNormFn
+from .t_norms import TNormFn, t_norm_dombi
 
 # =====================================================================
 # Shared task-specific logic
@@ -305,6 +310,88 @@ class TSKRegressor(_RegressorMixin, BaseTSK):
         return nn.MSELoss()
 
 
+class DombiTSKClassifier(_ClassifierMixin, BaseTSK):
+    """Dombi TSK classifier using Dombi aggregation in the antecedent."""
+
+    def __init__(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        n_classes: int,
+        rule_base: str = "cartesian",
+        t_norm: str = "dombi",
+        lambda_: float = 1.0,
+        t_norm_fn: TNormFn | None = None,
+        rules: Sequence[Sequence[int]] | None = None,
+        defuzzifier: nn.Module | None = None,
+        consequent_batch_norm: bool = False,
+    ) -> None:
+        """Initialize Dombi TSK classifier."""
+        if n_classes < 2:
+            raise ValueError("n_classes must be >= 2")
+        if lambda_ <= 0.0:
+            raise ValueError("lambda_ must be > 0")
+
+        self.n_classes = int(n_classes)
+        self.lambda_ = float(lambda_)
+        if t_norm_fn is None:
+            t_norm_fn = partial(t_norm_dombi, lambda_=self.lambda_)
+
+        super().__init__(
+            input_mfs,
+            rule_base=rule_base,
+            t_norm=t_norm,
+            t_norm_fn=t_norm_fn,
+            rules=rules,
+            defuzzifier=defuzzifier or SumBasedDefuzzifier(),
+            consequent_batch_norm=consequent_batch_norm,
+        )
+
+    def _build_consequent_layer(self) -> nn.Module:
+        return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
+
+    def _default_criterion(self) -> nn.Module:
+        return nn.CrossEntropyLoss()
+
+
+class DombiTSKRegressor(_RegressorMixin, BaseTSK):
+    """Dombi TSK regressor using Dombi aggregation in the antecedent."""
+
+    def __init__(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        rule_base: str = "cartesian",
+        t_norm: str = "dombi",
+        lambda_: float = 1.0,
+        t_norm_fn: TNormFn | None = None,
+        rules: Sequence[Sequence[int]] | None = None,
+        defuzzifier: nn.Module | None = None,
+        consequent_batch_norm: bool = False,
+    ) -> None:
+        """Initialize Dombi TSK regressor."""
+        if lambda_ <= 0.0:
+            raise ValueError("lambda_ must be > 0")
+
+        self.lambda_ = float(lambda_)
+        if t_norm_fn is None:
+            t_norm_fn = partial(t_norm_dombi, lambda_=self.lambda_)
+
+        super().__init__(
+            input_mfs,
+            rule_base=rule_base,
+            t_norm=t_norm,
+            t_norm_fn=t_norm_fn,
+            rules=rules,
+            defuzzifier=defuzzifier or SumBasedDefuzzifier(),
+            consequent_batch_norm=consequent_batch_norm,
+        )
+
+    def _build_consequent_layer(self) -> nn.Module:
+        return RegressionConsequentLayer(self.n_rules, self.n_inputs)
+
+    def _default_criterion(self) -> nn.Module:
+        return nn.MSELoss()
+
+
 # =====================================================================
 # LogTSK  (Cui, Wu & Xu, IEEE Trans. Fuzzy Syst. 2021)
 #
@@ -425,6 +512,8 @@ class LogTSKRegressor(_RegressorMixin, BaseTSK):
 
 
 __all__: list[str] = [
+    "DombiTSKClassifier",
+    "DombiTSKRegressor",
     "HTSKClassifier",
     "HTSKRegressor",
     "LogTSKClassifier",
