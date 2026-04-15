@@ -3,6 +3,8 @@
 from .base import BaseTSK
 from .defuzzifiers import LogSumDefuzzifier, SoftmaxLogDefuzzifier, SumBasedDefuzzifier
 from .estimators import (
+    DombiTSKClassifierEstimator,
+    DombiTSKRegressorEstimator,
     HTSKClassifierEstimator,
     HTSKRegressorEstimator,
     InputConfig,
@@ -20,6 +22,8 @@ from .memberships import (
     TriangularMF,
 )
 from .models import (
+    DombiTSKClassifier,
+    DombiTSKRegressor,
     HTSKClassifier,
     HTSKRegressor,
     LogTSKClassifier,
@@ -36,6 +40,10 @@ __all__: list[str] = [
     "BellMF",
     "ConsequentFn",
     "Defuzzifier",
+    "DombiTSKClassifier",
+    "DombiTSKClassifierEstimator",
+    "DombiTSKRegressor",
+    "DombiTSKRegressorEstimator",
     "GaussianMF",
     "HTSKClassifier",
     "HTSKClassifierEstimator",
