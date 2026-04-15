@@ -36,11 +36,21 @@ $$
 \exp\left(\frac{1}{d}\sum_{i=1}^{d}\log\mu_i\right)
 $$
 
+### t_norm_dombi
+
+Dombi aggregation interpolates between strict conjunction and soft consensus:
+
+$$
+\mathcal{T}_{\mathrm{dombi}}(\mu_1,\ldots,\mu_d)=\left[1 + \left(\sum_{i=1}^{d}\left(\frac{1}{\mu_i}-1\right)^{\lambda}\right)^{1/\lambda}\right]^{-1}
+$$
+
+The implementation clamps antecedent degrees away from zero for numerical stability.
+
 ## Utility
 
 ### resolve_t_norm
 
-Resolves built-in names: `"prod"`, `"min"`, `"gmean"`.
+Resolves built-in names: `"prod"`, `"min"`, `"gmean"`, `"dombi"`.
 
 ## Custom T-Norms
 

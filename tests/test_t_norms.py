@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from highfis.t_norms import resolve_t_norm, t_norm_gmean, t_norm_min, t_norm_prod
+from highfis.t_norms import resolve_t_norm, t_norm_dombi, t_norm_gmean, t_norm_min, t_norm_prod
 
 
 def test_t_norm_prod_min_gmean_values() -> None:
@@ -22,6 +22,14 @@ def test_resolve_t_norm_returns_callable() -> None:
     assert resolve_t_norm("prod") is t_norm_prod
     assert resolve_t_norm("min") is t_norm_min
     assert resolve_t_norm("gmean") is t_norm_gmean
+    assert resolve_t_norm("dombi") is t_norm_dombi
+
+
+def test_t_norm_dombi_values() -> None:
+    terms = torch.tensor([[0.25, 0.5], [0.4, 0.9]], dtype=torch.float32)
+    out = t_norm_dombi(terms, lambda_=2.0)
+    expected = torch.tensor([0.2403, 0.3993], dtype=torch.float32)
+    assert torch.allclose(out, expected, atol=1e-4)
 
 
 def test_resolve_t_norm_rejects_unknown_name() -> None:
