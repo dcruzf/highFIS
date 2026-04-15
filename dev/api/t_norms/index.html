@@ -533,6 +533,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#t_norm_dombi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        t_norm_dombi
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -843,6 +854,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#t_norm_dombi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        t_norm_dombi
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -933,9 +955,15 @@
 <div class="arithmatex">\[
 \exp\left(\frac{1}{d}\sum_{i=1}^{d}\log\mu_i\right)
 \]</div>
+<h3 id="t_norm_dombi">t_norm_dombi</h3>
+<p>Dombi aggregation interpolates between strict conjunction and soft consensus:</p>
+<div class="arithmatex">\[
+\mathcal{T}_{\mathrm{dombi}}(\mu_1,\ldots,\mu_d)=\left[1 + \left(\sum_{i=1}^{d}\left(\frac{1}{\mu_i}-1\right)^{\lambda}\right)^{1/\lambda}\right]^{-1}
+\]</div>
+<p>The implementation clamps antecedent degrees away from zero for numerical stability.</p>
 <h2 id="utility">Utility</h2>
 <h3 id="resolve_t_norm">resolve_t_norm</h3>
-<p>Resolves built-in names: <code>"prod"</code>, <code>"min"</code>, <code>"gmean"</code>.</p>
+<p>Resolves built-in names: <code>"prod"</code>, <code>"min"</code>, <code>"gmean"</code>, <code>"dombi"</code>.</p>
 <h2 id="custom-t-norms">Custom T-Norms</h2>
 <p>You can provide a custom callable in <code>RuleLayer</code> or <code>HTSKClassifier</code> through <code>t_norm_fn</code>.
 The callable must accept a tensor with shape <span class="arithmatex">\((\text{batch}, n_{\text{inputs}})\)</span> and return <span class="arithmatex">\((\text{batch},)\)</span>.</p>
