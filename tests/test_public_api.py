@@ -30,6 +30,8 @@ def test_all_symbols_importable() -> None:
         "SumBasedDefuzzifier",
         "LogSumDefuzzifier",
         # Models
+        "DombiTSKClassifier",
+        "DombiTSKRegressor",
         "HTSKClassifier",
         "HTSKRegressor",
         "TSKClassifier",
@@ -38,6 +40,8 @@ def test_all_symbols_importable() -> None:
         "LogTSKRegressor",
         # Estimators
         "InputConfig",
+        "DombiTSKClassifierEstimator",
+        "DombiTSKRegressorEstimator",
         "HTSKClassifierEstimator",
         "HTSKRegressorEstimator",
         "TSKClassifierEstimator",
