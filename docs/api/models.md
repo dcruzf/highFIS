@@ -11,6 +11,7 @@ the shared pipeline and unified training loop.
 |---------|-----------|-----------|--------|-------------|
 | **HTSK** | `HTSKClassifier` | `HTSKRegressor` | `gmean` | `SoftmaxLogDefuzzifier` |
 | **TSK (vanilla)** | `TSKClassifier` | `TSKRegressor` | `prod` | `SumBasedDefuzzifier` |
+| **DombiTSK** | `DombiTSKClassifier` | `DombiTSKRegressor` | `dombi` | `SumBasedDefuzzifier` |
 | **LogTSK** | `LogTSKClassifier` | `LogTSKRegressor` | `prod` | `LogSumDefuzzifier` |
 
 For the mathematical details and scientific references, see:
@@ -146,6 +147,62 @@ regression pipeline with product t-norm and sum-based defuzzification.
 Same optimizer and training configuration as `HTSKRegressor`.
 Default loss is `nn.MSELoss()`. Early stopping is monitored by
 **validation loss** when `x_val`/`y_val` are provided.
+
+## DombiTSKClassifier
+
+`DombiTSKClassifier` is a `torch.nn.Module` implementing a Dombi-T-norm
+TSK classification pipeline with sum-based defuzzification.
+
+### Constructor Highlights
+
+- `input_mfs`: dictionary of input names to membership-function lists.
+- `n_classes`: number of output classes.
+- `rule_base`: `"cartesian"`, `"coco"`, `"en"`, or `"custom"`.
+- `t_norm`: built-in t-norm name (default `"dombi"`).
+- `lambda_`: shape parameter for Dombi aggregation.
+- `t_norm_fn`: optional custom t-norm callable.
+- `defuzzifier`: optional custom defuzzifier (default `SumBasedDefuzzifier`).
+- `consequent_batch_norm`: optional batch normalization before consequents.
+
+### Main Methods
+
+- `forward(x)`: returns class logits.
+- `predict_proba(x)`: returns softmax probabilities.
+- `predict(x)`: returns class indices.
+- `forward_antecedents(x)`: returns normalized rule strengths.
+- `fit(...)`: trains model parameters with gradient descent.
+
+### Training Notes
+
+Same optimizer and training configuration as `HTSKClassifier`.
+Default loss is `nn.CrossEntropyLoss()`.
+
+## DombiTSKRegressor
+
+`DombiTSKRegressor` is a `torch.nn.Module` implementing a Dombi-T-norm
+TSK regression pipeline with sum-based defuzzification.
+
+### Constructor Highlights
+
+- `input_mfs`: dictionary of input names to membership-function lists.
+- `rule_base`: `"cartesian"`, `"coco"`, `"en"`, or `"custom"`.
+- `t_norm`: built-in t-norm name (default `"dombi"`).
+- `lambda_`: shape parameter for Dombi aggregation.
+- `t_norm_fn`: optional custom t-norm callable.
+- `defuzzifier`: optional custom defuzzifier (default `SumBasedDefuzzifier`).
+- `consequent_batch_norm`: optional batch normalization before consequents.
+
+### Main Methods
+
+- `forward(x)`: returns predictions with shape `(batch, 1)`.
+- `predict(x)`: returns predictions as a 1-D tensor.
+- `forward_antecedents(x)`: returns normalized rule strengths.
+- `fit(...)`: trains model parameters with gradient descent.
+
+### Training Notes
+
+Same optimizer and training configuration as `HTSKRegressor`.
+Default loss is `nn.MSELoss()`.
 
 ## LogTSKClassifier
 
