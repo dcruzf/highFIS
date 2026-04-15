@@ -6,7 +6,7 @@ from torch import nn
 
 from highfis.base import _iter_minibatch_indices
 from highfis.memberships import GaussianMF
-from highfis.models import HTSKClassifier, HTSKRegressor
+from highfis.models import DombiTSKClassifier, HTSKClassifier, HTSKRegressor
 
 
 def _build_input_mfs(n_inputs: int = 3, n_mfs: int = 2) -> dict[str, list[GaussianMF]]:
@@ -87,6 +87,21 @@ def test_htsk_classifier_fit_validates_inputs() -> None:
 
     with pytest.raises(ValueError, match="ur_target must be in"):
         model.fit(x, y, epochs=1, ur_target=0.0)
+
+
+def test_dombitsk_classifier_forward_antecedents_row_sum_one() -> None:
+    model = DombiTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_=2.0)
+    x = torch.randn(6, 2)
+
+    norm_w = model.forward_antecedents(x)
+
+    assert norm_w.ndim == 2
+    assert torch.allclose(norm_w.sum(dim=1), torch.ones(6), atol=1e-6)
+
+
+def test_dombitsk_classifier_rejects_nonpositive_lambda() -> None:
+    with pytest.raises(ValueError, match="lambda_ must be > 0"):
+        DombiTSKClassifier(_build_input_mfs(), n_classes=2, lambda_=0.0)
 
 
 def test_htsk_classifier_fit_history_keys_without_val() -> None:

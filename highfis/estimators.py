@@ -25,6 +25,8 @@ from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 from .base import BaseTSK
 from .memberships import GaussianMF
 from .models import (
+    DombiTSKClassifier,
+    DombiTSKRegressor,
     HTSKClassifier,
     HTSKRegressor,
     LogTSKClassifier,
@@ -541,6 +543,40 @@ class TSKRegressorEstimator(_BaseRegressorEstimator):
         )
 
 
+class DombiTSKClassifierEstimator(_BaseClassifierEstimator):
+    """Sklearn-compatible DombiTSK classifier with sum-based defuzzification."""
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        n_classes: int,
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create DombiTSKClassifier."""
+        return DombiTSKClassifier(
+            input_mfs,
+            n_classes=n_classes,
+            rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+
+class DombiTSKRegressorEstimator(_BaseRegressorEstimator):
+    """Sklearn-compatible DombiTSK regressor with sum-based defuzzification."""
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create DombiTSKRegressor."""
+        return DombiTSKRegressor(
+            input_mfs,
+            rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+
 # =====================================================================
 # LogTSK Estimators  (Cui, Wu & Xu, IEEE TFS 2021)
 # =====================================================================
@@ -581,6 +617,8 @@ class LogTSKRegressorEstimator(_BaseRegressorEstimator):
 
 
 __all__: list[str] = [
+    "DombiTSKClassifierEstimator",
+    "DombiTSKRegressorEstimator",
     "HTSKClassifierEstimator",
     "HTSKRegressorEstimator",
     "InputConfig",
