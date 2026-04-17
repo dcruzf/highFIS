@@ -57,7 +57,7 @@ from torch import Tensor, nn
 
 from .base import BaseTSK
 from .defuzzifiers import LogSumDefuzzifier, SumBasedDefuzzifier
-from .layers import ClassificationConsequentLayer, RegressionConsequentLayer
+from .layers import AdaptiveDombiRuleLayer, ClassificationConsequentLayer, RegressionConsequentLayer
 from .memberships import MembershipFunction
 from .t_norms import TNormFn, t_norm_dombi
 
@@ -388,6 +388,99 @@ class DombiTSKRegressor(_RegressorMixin, BaseTSK):
     def _build_consequent_layer(self) -> nn.Module:
         return RegressionConsequentLayer(self.n_rules, self.n_inputs)
 
+
+class AdaTSKClassifier(_ClassifierMixin, BaseTSK):
+    """AdaTSK classifier using adaptive per-rule Dombi aggregation."""
+
+    def __init__(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        n_classes: int,
+        rule_base: str = "coco",
+        lambda_init: float = 1.0,
+        rules: Sequence[Sequence[int]] | None = None,
+        defuzzifier: nn.Module | None = None,
+        consequent_batch_norm: bool = False,
+        eps: float = 1e-6,
+    ) -> None:
+        """Initialize AdaTSK classifier architecture and consequent head."""
+        if n_classes < 2:
+            raise ValueError("n_classes must be >= 2")
+        if lambda_init <= 0.0:
+            raise ValueError("lambda_init must be > 0")
+
+        self.n_classes = int(n_classes)
+        self.lambda_init = float(lambda_init)
+        self.eps = float(eps)
+
+        super().__init__(
+            input_mfs,
+            rule_base=rule_base,
+            t_norm="prod",
+            t_norm_fn=None,
+            rules=rules,
+            defuzzifier=defuzzifier or SumBasedDefuzzifier(),
+            consequent_batch_norm=consequent_batch_norm,
+        )
+
+        self.rule_layer = AdaptiveDombiRuleLayer(
+            self.input_names,
+            [len(input_mfs[name]) for name in self.input_names],
+            rules=rules,
+            rule_base=rule_base,
+            lambda_init=self.lambda_init,
+            eps=self.eps,
+        )
+
+    def _build_consequent_layer(self) -> nn.Module:
+        return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
+
+    def _default_criterion(self) -> nn.Module:
+        return nn.CrossEntropyLoss()
+
+
+class AdaTSKRegressor(_RegressorMixin, BaseTSK):
+    """AdaTSK regressor using adaptive per-rule Dombi aggregation."""
+
+    def __init__(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        rule_base: str = "coco",
+        lambda_init: float = 1.0,
+        rules: Sequence[Sequence[int]] | None = None,
+        defuzzifier: nn.Module | None = None,
+        consequent_batch_norm: bool = False,
+        eps: float = 1e-6,
+    ) -> None:
+        """Initialize AdaTSK regressor architecture and consequent head."""
+        if lambda_init <= 0.0:
+            raise ValueError("lambda_init must be > 0")
+
+        self.lambda_init = float(lambda_init)
+        self.eps = float(eps)
+
+        super().__init__(
+            input_mfs,
+            rule_base=rule_base,
+            t_norm="prod",
+            t_norm_fn=None,
+            rules=rules,
+            defuzzifier=defuzzifier or SumBasedDefuzzifier(),
+            consequent_batch_norm=consequent_batch_norm,
+        )
+
+        self.rule_layer = AdaptiveDombiRuleLayer(
+            self.input_names,
+            [len(input_mfs[name]) for name in self.input_names],
+            rules=rules,
+            rule_base=rule_base,
+            lambda_init=self.lambda_init,
+            eps=self.eps,
+        )
+
+    def _build_consequent_layer(self) -> nn.Module:
+        return RegressionConsequentLayer(self.n_rules, self.n_inputs)
+
     def _default_criterion(self) -> nn.Module:
         return nn.MSELoss()
 
@@ -512,6 +605,8 @@ class LogTSKRegressor(_RegressorMixin, BaseTSK):
 
 
 __all__: list[str] = [
+    "AdaTSKClassifier",
+    "AdaTSKRegressor",
     "DombiTSKClassifier",
     "DombiTSKRegressor",
     "HTSKClassifier",
