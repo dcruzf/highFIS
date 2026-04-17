@@ -241,6 +241,72 @@ reg.fit(X_train, y_train)
 r2 = reg.score(X_test, y_test)
 ```
 
+## AdaTSKClassifierEstimator
+
+A scikit-learn compatible classifier wrapper around `AdaTSKClassifier`.
+
+### sklearn Compatibility
+
+- Inherits `BaseEstimator` and `ClassifierMixin`.
+- Implements `fit`, `predict`, `predict_proba`, and `score`.
+- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
+
+### Core Hyperparameters
+
+Same hyperparameters as `HTSKClassifierEstimator` (see above), plus:
+
+- `lambda_init`: positive initial value for adaptive Dombi shape parameters.
+
+### Example
+
+```python
+from highfis import AdaTSKClassifierEstimator
+
+clf = AdaTSKClassifierEstimator(
+    n_mfs=3,
+    mf_init="kmeans",
+    lambda_init=1.0,
+    epochs=200,
+    learning_rate=1e-3,
+    random_state=0,
+)
+clf.fit(X_train, y_train)
+acc = clf.score(X_test, y_test)
+```
+
+## AdaTSKRegressorEstimator
+
+A scikit-learn compatible regressor wrapper around `AdaTSKRegressor`.
+
+### sklearn Compatibility
+
+- Inherits `BaseEstimator` and `RegressorMixin`.
+- Implements `fit`, `predict`, and `score` ($R^2$).
+- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
+
+### Core Hyperparameters
+
+Same hyperparameters as `HTSKRegressorEstimator` (see above), plus:
+
+- `lambda_init`: positive initial value for adaptive Dombi shape parameters.
+
+### Example
+
+```python
+from highfis import AdaTSKRegressorEstimator
+
+reg = AdaTSKRegressorEstimator(
+    n_mfs=3,
+    mf_init="kmeans",
+    lambda_init=1.0,
+    epochs=200,
+    learning_rate=1e-3,
+    random_state=0,
+)
+reg.fit(X_train, y_train)
+r2 = reg.score(X_test, y_test)
+```
+
 ## LogTSKClassifierEstimator
 
 A scikit-learn compatible classifier wrapper around `LogTSKClassifier`.

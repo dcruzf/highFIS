@@ -50,6 +50,29 @@ class GaussianMF(MembershipFunction):
         return torch.exp(-0.5 * z.square())
 
 
+class CompositeGaussianMF(MembershipFunction):
+    """Composite Gaussian membership with a nonzero lower bound."""
+
+    def __init__(self, mean: float = 0.0, sigma: float = 1.0, eps: float = 1e-6) -> None:
+        """Initialize composite Gaussian membership parameters."""
+        super().__init__(eps=eps)
+        if sigma <= 0:
+            raise ValueError("sigma must be positive")
+        self.mean = nn.Parameter(torch.tensor(float(mean)))
+        self.raw_sigma = nn.Parameter(torch.tensor(_inv_softplus(float(sigma), eps)))
+
+    @property
+    def sigma(self) -> Tensor:
+        """Return positive sigma using softplus reparameterization."""
+        return F.softplus(self.raw_sigma) + self.eps
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Compute Composite Gaussian membership values for input tensor."""
+        x = self._as_tensor(x)
+        z = (x - self.mean) / self.sigma
+        return self.eps + (1.0 - self.eps) * torch.exp(-0.5 * z.square())
+
+
 class TriangularMF(MembershipFunction):
     """Triangular membership function defined by left, center, right."""
 
@@ -142,6 +165,7 @@ class SigmoidalMF(MembershipFunction):
 
 __all__: list[str] = [
     "BellMF",
+    "CompositeGaussianMF",
     "GaussianMF",
     "MembershipFunction",
     "SigmoidalMF",

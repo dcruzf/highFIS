@@ -1,15 +1,23 @@
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
 from itertools import product
 from typing import cast
 
 import torch
 from torch import Tensor, nn
+from torch.nn import functional as F
 
 from .defuzzifiers import SoftmaxLogDefuzzifier
 from .memberships import MembershipFunction
 from .t_norms import TNormFn, resolve_t_norm
+
+
+def _inv_softplus(value: float, eps: float = 1e-6) -> float:
+    """Map a positive value to the unconstrained space used by softplus."""
+    v = max(value - eps, eps)
+    return math.log(math.expm1(v))
 
 
 def _generate_en_frb(s: int, d: int) -> list[tuple[int, ...]]:
@@ -165,6 +173,52 @@ class RuleLayer(nn.Module):
         return torch.stack(outputs, dim=1).reshape(batch_size, self.n_rules)
 
 
+class AdaptiveDombiRuleLayer(RuleLayer):
+    """Compute adaptive Dombi firing strengths with per-rule lambda parameters."""
+
+    def __init__(
+        self,
+        input_names: list[str],
+        mf_per_input: list[int],
+        rules: Sequence[Sequence[int]] | None = None,
+        rule_base: str = "coco",
+        lambda_init: float = 1.0,
+        eps: float = 1e-6,
+    ) -> None:
+        """Initialize adaptive Dombi rule layer."""
+        if lambda_init <= 0.0:
+            raise ValueError("lambda_init must be > 0")
+        self.eps = float(eps)
+        super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod", t_norm_fn=None)
+        self.raw_lambdas = nn.Parameter(torch.full((self.n_rules,), _inv_softplus(lambda_init, self.eps)))
+
+    @property
+    def lambdas(self) -> Tensor:
+        """Return strictly positive per-rule lambda values."""
+        return F.softplus(self.raw_lambdas) + self.eps
+
+    def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
+        """Compute adaptive Dombi firing strengths for each rule."""
+        mu_list = []
+        for name in self.input_names:
+            if name not in membership_outputs:
+                raise KeyError(f"missing membership output for input '{name}'")
+            mu_list.append(membership_outputs[name])
+
+        rule_terms: list[Tensor] = []
+        for rule in self.rules:
+            terms = [mu_list[input_idx][:, mf_idx] for input_idx, mf_idx in enumerate(rule)]
+            rule_terms.append(torch.stack(terms, dim=1))
+
+        terms_tensor = torch.stack(rule_terms, dim=1)
+        mu = terms_tensor.clamp(min=self.eps, max=1.0 - self.eps)
+        ratio = (1.0 - mu) / mu
+        lambdas = self.lambdas.view(1, self.n_rules, 1)
+        powered = ratio.pow(lambdas)
+        sum_ratio = powered.sum(dim=-1)
+        return (1.0 + sum_ratio).pow(-1.0 / lambdas.squeeze(-1))
+
+
 class NormalizationLayer(SoftmaxLogDefuzzifier):
     """Normalize rule strengths so each sample sums to one.
 
@@ -231,6 +285,7 @@ class RegressionConsequentLayer(nn.Module):
 
 
 __all__: list[str] = [
+    "AdaptiveDombiRuleLayer",
     "ClassificationConsequentLayer",
     "MembershipLayer",
     "NormalizationLayer",

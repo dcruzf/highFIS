@@ -3,6 +3,8 @@
 from .base import BaseTSK
 from .defuzzifiers import LogSumDefuzzifier, SoftmaxLogDefuzzifier, SumBasedDefuzzifier
 from .estimators import (
+    AdaTSKClassifierEstimator,
+    AdaTSKRegressorEstimator,
     DombiTSKClassifierEstimator,
     DombiTSKRegressorEstimator,
     HTSKClassifierEstimator,
@@ -15,6 +17,7 @@ from .estimators import (
 )
 from .memberships import (
     BellMF,
+    CompositeGaussianMF,
     GaussianMF,
     MembershipFunction,
     SigmoidalMF,
@@ -22,6 +25,8 @@ from .memberships import (
     TriangularMF,
 )
 from .models import (
+    AdaTSKClassifier,
+    AdaTSKRegressor,
     DombiTSKClassifier,
     DombiTSKRegressor,
     HTSKClassifier,
@@ -36,8 +41,13 @@ from .protocols import ConsequentFn, Defuzzifier, MembershipFn, TNorm
 __version__ = "0.5.0"
 
 __all__: list[str] = [
+    "AdaTSKClassifier",
+    "AdaTSKClassifierEstimator",
+    "AdaTSKRegressor",
+    "AdaTSKRegressorEstimator",
     "BaseTSK",
     "BellMF",
+    "CompositeGaussianMF",
     "ConsequentFn",
     "Defuzzifier",
     "DombiTSKClassifier",

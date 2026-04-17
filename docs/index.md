@@ -15,6 +15,7 @@ implemented with PyTorch and exposed through a scikit-learn compatible estimator
 | [HTSK Technical Notes](htsk-modelo.md) | Mathematical formulation and implementation details of HTSK in highFIS. |
 | [TSK Vanilla](models/tsk-vanilla.md) | Mathematical formulation of original TSK with sum-based defuzzification. |
 | [LogTSK](models/logtsk.md) | Log-space defuzzification with temperature parameter (Cui et al., IEEE TFS 2021). |
+| [AdaTSK](models/adatsk.md) | Adaptive Dombi TSK with per-rule lambda and high-dimensional stability. |
 | [Protocols API](api/protocols.md) | Structural typing protocols (`MembershipFn`, `TNorm`, `Defuzzifier`, `ConsequentFn`). |
 | [Memberships API](api/memberships.md) | Differentiable membership functions (`GaussianMF`, `TriangularMF`, `TrapezoidalMF`, `BellMF`, `SigmoidalMF`). |
 | [T-Norms API](api/t_norms.md) | Built-in aggregators (`prod`, `min`, `gmean`) and custom t-norm injection. |
