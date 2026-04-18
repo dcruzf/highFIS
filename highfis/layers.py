@@ -191,6 +191,55 @@ class RuleLayer(nn.Module):
         return self._apply_t_norm(terms)
 
 
+def _gate_activation(u: Tensor) -> Tensor:
+    """Gate function M(u) = u * sqrt(exp(1 - u^2))."""
+    return u * torch.sqrt(torch.exp(1.0 - u.pow(2)))
+
+
+class AdaSoftminRuleLayer(RuleLayer):
+    """Compute adaptive Ada-softmin firing strengths for each rule."""
+
+    def __init__(
+        self,
+        input_names: list[str],
+        mf_per_input: list[int],
+        rules: Sequence[Sequence[int]] | None = None,
+        rule_base: str = "cartesian",
+        eps: float | None = None,
+    ) -> None:
+        """Initialize Ada-softmin rule layer."""
+        self.eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else float(eps)
+        super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod", t_norm_fn=None)
+
+    def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
+        """Compute Ada-softmin rule strengths from membership outputs."""
+        mu_list = []
+        for name in self.input_names:
+            if name not in membership_outputs:
+                raise KeyError(f"missing membership output for input '{name}'")
+            mu_list.append(membership_outputs[name])
+
+        mu_flat = torch.cat(mu_list, dim=1)
+        batch_size = mu_flat.shape[0]
+        rule_indices = cast(Tensor, self.rule_indices)
+        indices = rule_indices.unsqueeze(0).expand(batch_size, -1, -1)
+        terms = mu_flat.gather(1, indices.reshape(batch_size, -1)).reshape(batch_size, self.n_rules, self.n_inputs)
+
+        mu = terms.clamp(min=self.eps, max=1.0 - self.eps)
+        min_mu = mu.min(dim=-1).values
+        q = torch.ceil(690.0 / torch.log(min_mu))
+        q = q.clamp(min=-1000.0, max=-1.0)
+
+        # Stable computation in log-space
+        log_mu = torch.log(mu)
+        log_terms = q.unsqueeze(-1) * log_mu
+        max_log_terms = log_terms.amax(dim=-1, keepdim=True)
+        log_sum = max_log_terms + torch.log(torch.exp(log_terms - max_log_terms).sum(dim=-1, keepdim=True))
+        log_avg = log_sum - math.log(self.n_inputs)
+        log_w = log_avg.squeeze(-1) / q
+        return torch.exp(log_w)
+
+
 class AdaptiveDombiRuleLayer(RuleLayer):
     """Compute adaptive Dombi firing strengths with per-rule lambda parameters."""
 
@@ -275,6 +324,41 @@ class ClassificationConsequentLayer(nn.Module):
         return torch.einsum("br,brk->bk", norm_w, f)
 
 
+class GatedClassificationConsequentLayer(nn.Module):
+    """Gated TSK consequent layer for classification logits."""
+
+    def __init__(self, n_rules: int, n_inputs: int, n_classes: int) -> None:
+        """Initialize gated consequent parameters for classification logits."""
+        super().__init__()
+        if n_rules <= 0 or n_inputs <= 0 or n_classes <= 0:
+            raise ValueError("n_rules, n_inputs and n_classes must be positive")
+        self.n_rules = n_rules
+        self.n_inputs = n_inputs
+        self.n_classes = n_classes
+        self.weight = nn.Parameter(torch.empty(n_rules, n_classes, n_inputs))
+        self.bias = nn.Parameter(torch.empty(n_rules, n_classes))
+        self.lambda_gates = nn.Parameter(torch.zeros(n_rules, n_inputs))
+        self.theta_gates = nn.Parameter(torch.zeros(n_rules))
+        nn.init.kaiming_normal_(self.weight, mode="fan_in", nonlinearity="linear")
+        nn.init.zeros_(self.bias)
+        nn.init.uniform_(self.lambda_gates, -0.1, 0.1)
+        nn.init.uniform_(self.theta_gates, -0.1, 0.1)
+
+    def forward(self, x: Tensor, norm_w: Tensor) -> Tensor:
+        """Compute gated class logits from inputs and normalized rule strengths."""
+        if x.ndim != 2 or x.shape[1] != self.n_inputs:
+            raise ValueError(f"expected x shape (batch, {self.n_inputs}), got {tuple(x.shape)}")
+        if norm_w.ndim != 2 or norm_w.shape[1] != self.n_rules:
+            raise ValueError(f"expected norm_w shape (batch, {self.n_rules}), got {tuple(norm_w.shape)}")
+
+        feature_gates = _gate_activation(self.lambda_gates).unsqueeze(1)
+        rule_gates = _gate_activation(self.theta_gates).view(1, self.n_rules, 1)
+        gated_weight = self.weight * feature_gates
+        f = torch.einsum("bd,rkd->brk", x, gated_weight) + self.bias.unsqueeze(0)
+        f = f * rule_gates
+        return torch.einsum("br,brk->bk", norm_w, f)
+
+
 class RegressionConsequentLayer(nn.Module):
     """Linear TSK consequent layer for scalar regression output."""
 
@@ -303,9 +387,46 @@ class RegressionConsequentLayer(nn.Module):
         return torch.einsum("br,br->b", norm_w, f).unsqueeze(1)
 
 
+class GatedRegressionConsequentLayer(nn.Module):
+    """Gated TSK consequent layer for scalar regression output."""
+
+    def __init__(self, n_rules: int, n_inputs: int) -> None:
+        """Initialize gated consequent parameters for regression."""
+        super().__init__()
+        if n_rules <= 0 or n_inputs <= 0:
+            raise ValueError("n_rules and n_inputs must be positive")
+        self.n_rules = n_rules
+        self.n_inputs = n_inputs
+        self.weight = nn.Parameter(torch.empty(n_rules, n_inputs))
+        self.bias = nn.Parameter(torch.empty(n_rules))
+        self.lambda_gates = nn.Parameter(torch.zeros(n_rules, n_inputs))
+        self.theta_gates = nn.Parameter(torch.zeros(n_rules))
+        nn.init.kaiming_normal_(self.weight, mode="fan_in", nonlinearity="linear")
+        nn.init.zeros_(self.bias)
+        nn.init.uniform_(self.lambda_gates, -0.1, 0.1)
+        nn.init.uniform_(self.theta_gates, -0.1, 0.1)
+
+    def forward(self, x: Tensor, norm_w: Tensor) -> Tensor:
+        """Compute gated regression output from inputs and normalized rule strengths."""
+        if x.ndim != 2 or x.shape[1] != self.n_inputs:
+            raise ValueError(f"expected x shape (batch, {self.n_inputs}), got {tuple(x.shape)}")
+        if norm_w.ndim != 2 or norm_w.shape[1] != self.n_rules:
+            raise ValueError(f"expected norm_w shape (batch, {self.n_rules}), got {tuple(norm_w.shape)}")
+
+        feature_gates = _gate_activation(self.lambda_gates)
+        rule_gates = _gate_activation(self.theta_gates).view(1, self.n_rules)
+        gated_weight = self.weight * feature_gates
+        f = torch.einsum("bd,rd->br", x, gated_weight) + self.bias.unsqueeze(0)
+        f = f * rule_gates
+        return torch.einsum("br,br->b", norm_w, f).unsqueeze(1)
+
+
 __all__: list[str] = [
+    "AdaSoftminRuleLayer",
     "AdaptiveDombiRuleLayer",
     "ClassificationConsequentLayer",
+    "GatedClassificationConsequentLayer",
+    "GatedRegressionConsequentLayer",
     "MembershipLayer",
     "NormalizationLayer",
     "RegressionConsequentLayer",

@@ -49,13 +49,21 @@ explicit and the defuzzification strategy is pluggable:
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
+from typing import Any
 
 import torch
 from torch import Tensor, nn
 
 from .base import BaseTSK
-from .defuzzifiers import LogSumDefuzzifier, SumBasedDefuzzifier
-from .layers import AdaptiveDombiRuleLayer, ClassificationConsequentLayer, RegressionConsequentLayer
+from .defuzzifiers import LogSumDefuzzifier, SoftmaxLogDefuzzifier, SumBasedDefuzzifier
+from .layers import (
+    AdaptiveDombiRuleLayer,
+    AdaSoftminRuleLayer,
+    ClassificationConsequentLayer,
+    GatedClassificationConsequentLayer,
+    GatedRegressionConsequentLayer,
+    RegressionConsequentLayer,
+)
 from .memberships import MembershipFunction
 from .t_norms import DombiTNorm, TNormFn
 
@@ -473,6 +481,154 @@ class AdaTSKRegressor(BaseTSKRegressor):
 
     def _default_criterion(self) -> nn.Module:
         return nn.MSELoss()
+
+
+class FSREAdaTSKClassifier(BaseTSKClassifier):
+    """FSRE-AdaTSK classifier with gate-based consequents and adaptive softmin antecedent."""
+
+    def __init__(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        n_classes: int,
+        rule_base: str = "coco",
+        lambda_init: float = 1.0,
+        rules: Sequence[Sequence[int]] | None = None,
+        defuzzifier: nn.Module | None = None,
+        consequent_batch_norm: bool = False,
+        eps: float | None = None,
+        use_en_frb: bool = False,
+    ) -> None:
+        if n_classes < 2:
+            raise ValueError("n_classes must be >= 2")
+        if lambda_init <= 0.0:
+            raise ValueError("lambda_init must be > 0")
+
+        self.n_classes = int(n_classes)
+        self.lambda_init = float(lambda_init)
+        self.eps = eps
+        self.use_en_frb = bool(use_en_frb)
+
+        super().__init__(
+            input_mfs,
+            rule_base=rule_base,
+            t_norm="prod",
+            t_norm_fn=None,
+            rules=rules,
+            defuzzifier=defuzzifier or SoftmaxLogDefuzzifier(),
+            consequent_batch_norm=consequent_batch_norm,
+        )
+
+        self.rule_layer = AdaSoftminRuleLayer(
+            self.input_names,
+            [len(input_mfs[name]) for name in self.input_names],
+            rules=rules if not self.use_en_frb else None,
+            rule_base="en" if self.use_en_frb else rule_base,
+            eps=self.eps,
+        )
+        self.n_rules = self.rule_layer.n_rules
+        self.consequent_layer = self._build_consequent_layer()
+
+    def _build_consequent_layer(self) -> nn.Module:
+        return GatedClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
+
+    def _default_criterion(self) -> nn.Module:
+        return nn.CrossEntropyLoss()
+
+    def expand_to_en_frb(self) -> None:
+        """Switch the rule layer to an Enhanced Fuzzy Rule Base for RE phase."""
+        self.rule_layer = AdaSoftminRuleLayer(
+            self.input_names,
+            [len(self.input_mfs[name]) for name in self.input_names],
+            rule_base="en",
+            eps=self.eps,
+        )
+        self.n_rules = self.rule_layer.n_rules
+        self.consequent_layer = self._build_consequent_layer()
+
+    def fit_fs(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+        """Train the FS phase on the current rule base."""
+        return self.fit(x, y, **kwargs)
+
+    def fit_re(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+        """Expand to En-FRB and train the RE phase."""
+        self.expand_to_en_frb()
+        return self.fit(x, y, **kwargs)
+
+    def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+        """Fine-tune the reduced FSRE-AdaTSK model."""
+        return self.fit(x, y, **kwargs)
+
+
+class FSREAdaTSKRegressor(BaseTSKRegressor):
+    """FSRE-AdaTSK regressor with gate-based consequents and adaptive softmin antecedent."""
+
+    def __init__(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        rule_base: str = "coco",
+        lambda_init: float = 1.0,
+        rules: Sequence[Sequence[int]] | None = None,
+        defuzzifier: nn.Module | None = None,
+        consequent_batch_norm: bool = False,
+        eps: float | None = None,
+        use_en_frb: bool = False,
+    ) -> None:
+        if lambda_init <= 0.0:
+            raise ValueError("lambda_init must be > 0")
+
+        self.lambda_init = float(lambda_init)
+        self.eps = eps
+        self.use_en_frb = bool(use_en_frb)
+
+        super().__init__(
+            input_mfs,
+            rule_base=rule_base,
+            t_norm="prod",
+            t_norm_fn=None,
+            rules=rules,
+            defuzzifier=defuzzifier or SoftmaxLogDefuzzifier(),
+            consequent_batch_norm=consequent_batch_norm,
+        )
+
+        self.rule_layer = AdaSoftminRuleLayer(
+            self.input_names,
+            [len(input_mfs[name]) for name in self.input_names],
+            rules=rules if not self.use_en_frb else None,
+            rule_base="en" if self.use_en_frb else rule_base,
+            eps=self.eps,
+        )
+        self.n_rules = self.rule_layer.n_rules
+        self.consequent_layer = self._build_consequent_layer()
+
+    def _build_consequent_layer(self) -> nn.Module:
+        return GatedRegressionConsequentLayer(self.n_rules, self.n_inputs)
+
+    def _default_criterion(self) -> nn.Module:
+        return nn.MSELoss()
+
+    def expand_to_en_frb(self) -> None:
+        """Switch the rule layer to an Enhanced Fuzzy Rule Base for RE phase."""
+        self.rule_layer = AdaSoftminRuleLayer(
+            self.input_names,
+            [len(self.input_mfs[name]) for name in self.input_names],
+            rule_base="en",
+            eps=self.eps,
+        )
+        self.n_rules = self.rule_layer.n_rules
+        self.consequent_layer = self._build_consequent_layer()
+
+    def fit_fs(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+        """Train the FS phase on the current rule base."""
+        return self.fit(x, y, **kwargs)
+
+    def fit_re(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+        """Expand to En-FRB and train the RE phase."""
+        self.expand_to_en_frb()
+        return self.fit(x, y, **kwargs)
+
+    def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+        """Fine-tune the reduced FSRE-AdaTSK model."""
+        return self.fit(x, y, **kwargs)
 
 
 # =====================================================================
