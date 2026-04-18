@@ -1887,7 +1887,8 @@
 </ul>
 <h3 id="core-hyperparameters_2">Core Hyperparameters</h3>
 <p>Same hyperparameters as <code>HTSKClassifierEstimator</code> (see above).</p>
-<p>The model uses <code>SumBasedDefuzzifier</code> (w / Σw) instead of <code>SoftmaxLogDefuzzifier</code>.</p>
+<p>The model uses <code>SumBasedDefuzzifier</code>, where weights are clamped to a small,
+input-dtype-aware epsilon before normalization.</p>
 <h3 id="example_2">Example</h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">TSKClassifierEstimator</span>
 </span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
@@ -1911,6 +1912,7 @@
 </ul>
 <h3 id="core-hyperparameters_3">Core Hyperparameters</h3>
 <p>Same hyperparameters as <code>HTSKRegressorEstimator</code> (see above), with <code>SumBasedDefuzzifier</code>.</p>
+<p><code>SumBasedDefuzzifier</code> clamps weights to a dtype-aware epsilon before normalizing.</p>
 <h3 id="example_3">Example</h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">TSKRegressorEstimator</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
@@ -1957,6 +1959,7 @@
 </ul>
 <h3 id="core-hyperparameters_5">Core Hyperparameters</h3>
 <p>Same hyperparameters as <code>HTSKRegressorEstimator</code> (see above), with <code>SumBasedDefuzzifier</code>.</p>
+<p><code>SumBasedDefuzzifier</code> clamps weights to a dtype-aware epsilon before normalizing.</p>
 <h3 id="example_5">Example</h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">DombiTSKRegressorEstimator</span>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
@@ -2034,7 +2037,8 @@
 </ul>
 <h3 id="core-hyperparameters_8">Core Hyperparameters</h3>
 <p>Same hyperparameters as <code>HTSKClassifierEstimator</code> (see above).</p>
-<p>The model uses <code>LogSumDefuzzifier</code> (softmax(log(w)/τ)) for log-space normalization.</p>
+<p>The model uses <code>LogSumDefuzzifier</code> (softmax(log(w)/τ)) for log-space normalization.
+<code>LogSumDefuzzifier</code> also infers a dtype-aware epsilon for clamping before log.</p>
 <h3 id="example_8">Example</h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">LogTSKClassifierEstimator</span>
 </span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
@@ -2058,6 +2062,7 @@
 </ul>
 <h3 id="core-hyperparameters_9">Core Hyperparameters</h3>
 <p>Same hyperparameters as <code>HTSKRegressorEstimator</code> (see above), with <code>LogSumDefuzzifier</code>.</p>
+<p><code>LogSumDefuzzifier</code> infers a dtype-aware epsilon for clamping before log.</p>
 <h3 id="example_9">Example</h3>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">LogTSKRegressorEstimator</span>
 </span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>

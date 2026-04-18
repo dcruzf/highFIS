@@ -1837,6 +1837,9 @@
 <p><code>highfis.models</code></p>
 <p>All models inherit from <code>BaseTSK</code> (see <a href="../base/">Base TSK API</a>), which provides
 the shared pipeline and unified training loop.</p>
+<p>Built-in defuzzifiers now infer their numerical-stability <code>eps</code> from the input
+tensor dtype when <code>eps</code> is not explicitly provided. Custom defuzzifiers may
+still be supplied via the <code>defuzzifier</code> constructor parameter.</p>
 <table>
 <thead>
 <tr>
@@ -1908,6 +1911,7 @@ the shared pipeline and unified training loop.</p>
 <li><code>t_norm</code>: built-in t-norm name.</li>
 <li><code>t_norm_fn</code>: optional custom t-norm callable.</li>
 <li><code>defuzzifier</code>: optional custom defuzzifier (default <code>SoftmaxLogDefuzzifier</code>).</li>
+<li><code>eps</code>: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.</li>
 <li><code>consequent_batch_norm</code>: optional batch normalization before consequents.</li>
 </ul>
 <h3 id="main-methods">Main Methods</h3>
@@ -1943,6 +1947,7 @@ the shared pipeline and unified training loop.</p>
 <li><code>t_norm</code>: built-in t-norm name.</li>
 <li><code>t_norm_fn</code>: optional custom t-norm callable.</li>
 <li><code>defuzzifier</code>: optional custom defuzzifier (default <code>SoftmaxLogDefuzzifier</code>).</li>
+<li><code>eps</code>: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.</li>
 <li><code>consequent_batch_norm</code>: optional batch normalization before consequents.</li>
 </ul>
 <h3 id="main-methods_1">Main Methods</h3>
@@ -1973,6 +1978,7 @@ classification pipeline with product t-norm and sum-based defuzzification.</p>
 <li><code>t_norm</code>: built-in t-norm name (default <code>"prod"</code>).</li>
 <li><code>t_norm_fn</code>: optional custom t-norm callable.</li>
 <li><code>defuzzifier</code>: optional custom defuzzifier (default <code>SumBasedDefuzzifier</code>).</li>
+<li><code>eps</code>: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.</li>
 <li><code>consequent_batch_norm</code>: optional batch normalization before consequents.</li>
 </ul>
 <h3 id="main-methods_2">Main Methods</h3>
@@ -1997,6 +2003,7 @@ regression pipeline with product t-norm and sum-based defuzzification.</p>
 <li><code>t_norm</code>: built-in t-norm name (default <code>"prod"</code>).</li>
 <li><code>t_norm_fn</code>: optional custom t-norm callable.</li>
 <li><code>defuzzifier</code>: optional custom defuzzifier (default <code>SumBasedDefuzzifier</code>).</li>
+<li><code>eps</code>: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.</li>
 <li><code>consequent_batch_norm</code>: optional batch normalization before consequents.</li>
 </ul>
 <h3 id="main-methods_3">Main Methods</h3>
@@ -2022,6 +2029,7 @@ TSK classification pipeline with sum-based defuzzification.</p>
 <li><code>lambda_</code>: shape parameter for Dombi aggregation.</li>
 <li><code>t_norm_fn</code>: optional custom t-norm callable.</li>
 <li><code>defuzzifier</code>: optional custom defuzzifier (default <code>SumBasedDefuzzifier</code>).</li>
+<li><code>eps</code>: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.</li>
 <li><code>consequent_batch_norm</code>: optional batch normalization before consequents.</li>
 </ul>
 <h3 id="main-methods_4">Main Methods</h3>
@@ -2046,6 +2054,7 @@ TSK regression pipeline with sum-based defuzzification.</p>
 <li><code>lambda_</code>: shape parameter for Dombi aggregation.</li>
 <li><code>t_norm_fn</code>: optional custom t-norm callable.</li>
 <li><code>defuzzifier</code>: optional custom defuzzifier (default <code>SumBasedDefuzzifier</code>).</li>
+<li><code>eps</code>: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.</li>
 <li><code>consequent_batch_norm</code>: optional batch normalization before consequents.</li>
 </ul>
 <h3 id="main-methods_5">Main Methods</h3>
@@ -2105,6 +2114,7 @@ positive via a softplus reparameterization.</p>
 <li><code>lambda_init</code>: initial positive value for adaptive Dombi shape parameters.</li>
 <li><code>t_norm_fn</code>: optional custom t-norm callable (not used by default).</li>
 <li><code>defuzzifier</code>: optional custom defuzzifier (default <code>SumBasedDefuzzifier</code>).</li>
+<li><code>eps</code>: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.</li>
 <li><code>consequent_batch_norm</code>: optional batch normalization before consequents.</li>
 </ul>
 <h3 id="training-notes_6">Training Notes</h3>
@@ -2125,6 +2135,7 @@ pipeline for regression. The mathematical formulation is the same as
 <li><code>lambda_init</code>: initial positive value for adaptive Dombi shape parameters.</li>
 <li><code>t_norm_fn</code>: optional custom t-norm callable (not used by default).</li>
 <li><code>defuzzifier</code>: optional custom defuzzifier (default <code>SumBasedDefuzzifier</code>).</li>
+<li><code>eps</code>: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.</li>
 <li><code>consequent_batch_norm</code>: optional batch normalization before consequents.</li>
 </ul>
 <h3 id="main-methods_7">Main Methods</h3>
@@ -2152,6 +2163,7 @@ with a temperature parameter for classification tasks.</p>
 <li><code>t_norm</code>: built-in t-norm name (default <code>"prod"</code>).</li>
 <li><code>t_norm_fn</code>: optional custom t-norm callable.</li>
 <li><code>defuzzifier</code>: optional custom defuzzifier (default <code>LogSumDefuzzifier</code>).</li>
+<li><code>eps</code>: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.</li>
 <li><code>consequent_batch_norm</code>: optional batch normalization before consequents.</li>
 <li><code>temperature</code>: temperature parameter τ for log-space normalization (default <code>1.0</code>).</li>
 </ul>
@@ -2178,6 +2190,7 @@ with a temperature parameter for regression tasks.</p>
 <li><code>t_norm</code>: built-in t-norm name (default <code>"prod"</code>).</li>
 <li><code>t_norm_fn</code>: optional custom t-norm callable.</li>
 <li><code>defuzzifier</code>: optional custom defuzzifier (default <code>LogSumDefuzzifier</code>).</li>
+<li><code>eps</code>: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.</li>
 <li><code>consequent_batch_norm</code>: optional batch normalization before consequents.</li>
 <li><code>temperature</code>: temperature parameter τ for log-space normalization (default <code>1.0</code>).</li>
 </ul>

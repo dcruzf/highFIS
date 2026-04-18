@@ -975,7 +975,7 @@ w_r = \prod_{d=1}^{D} \mu_{r,d}(x_d)
 <tr>
 <td>(3)</td>
 <td><code>SumBasedDefuzzifier.forward()</code></td>
-<td><code>w / (w.sum(dim=1) + eps)</code></td>
+<td><code>w.clamp(min=eps) / w.clamp(min=eps).sum(dim=1)</code></td>
 </tr>
 <tr>
 <td>(4)</td>
@@ -991,8 +991,8 @@ w_r = \prod_{d=1}^{D} \mu_{r,d}(x_d)
    consequent parameters separately.</li>
 <li><strong><span class="arithmatex">\(\sigma\)</span> reparameterization</strong>: <code>GaussianMF</code> stores a raw parameter and
    applies <code>softplus</code> to ensure <span class="arithmatex">\(\sigma &gt; 0\)</span>.</li>
-<li><strong>Numeric stability</strong>: <code>SumBasedDefuzzifier</code> adds a small <code>eps</code> to the
-   denominator to avoid division by zero.</li>
+<li><strong>Numeric stability</strong>: <code>SumBasedDefuzzifier</code> clamps weights to a small
+   floor before normalizing, avoiding underflow without biasing the denominator.</li>
 </ol>
 <h2 id="comparison-with-pytsk">Comparison with PyTSK</h2>
 <p>In the PyTSK reference implementation (<code>AntecedentGMF</code> with <code>high_dim=False</code>),

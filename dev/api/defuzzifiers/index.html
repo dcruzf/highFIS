@@ -836,16 +836,18 @@ to one. They can be injected into any <code>BaseTSK</code>-derived model via the
 dimensions thanks to the internal max-subtraction trick of <code>torch.softmax</code>.</p>
 <p>Parameters:</p>
 <ul>
-<li><code>eps</code>: clamping floor before log (default <code>1e-8</code>).</li>
+<li><code>eps</code>: clamping floor before <code>log</code> (default <code>None</code>, which infers the epsilon
+  from <code>w.dtype</code>).</li>
 </ul>
 <h2 id="sumbaseddefuzzifier">SumBasedDefuzzifier</h2>
-<p>Classic sum-based normalization:</p>
+<p>Classic sum-based normalization with clamped weights:</p>
 <div class="arithmatex">\[
-\bar{w}_r = \frac{w_r}{\sum_{j=1}^{R} w_j + \epsilon}
+\bar{w}_r = \frac{\max(w_r, \epsilon)}{\sum_{j=1}^{R} \max(w_j, \epsilon)}
 \]</div>
 <p>Parameters:</p>
 <ul>
-<li><code>eps</code>: additive constant for numerical stability (default <code>1e-8</code>).</li>
+<li><code>eps</code>: clamping floor for weights before normalization (default <code>None</code>,
+  which infers the epsilon from <code>w.dtype</code>).</li>
 </ul>
 <h2 id="logsumdefuzzifier">LogSumDefuzzifier</h2>
 <p>Temperature-scaled log-space normalization:</p>
@@ -857,7 +859,8 @@ the distribution; higher temperatures flatten it.</p>
 <p>Parameters:</p>
 <ul>
 <li><code>temperature</code>: scaling factor <span class="arithmatex">\(T &gt; 0\)</span> (default <code>1.0</code>).</li>
-<li><code>eps</code>: clamping floor before log (default <code>1e-8</code>).</li>
+<li><code>eps</code>: clamping floor before <code>log</code> (default <code>None</code>, which infers the epsilon
+  from <code>w.dtype</code>).</li>
 </ul>
 <h2 id="example">Example</h2>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKClassifier</span><span class="p">,</span> <span class="n">SumBasedDefuzzifier</span>
