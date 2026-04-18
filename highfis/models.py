@@ -50,7 +50,6 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from functools import partial
-from typing import TYPE_CHECKING
 
 import torch
 from torch import Tensor, nn
@@ -66,12 +65,8 @@ from .t_norms import TNormFn, t_norm_dombi
 # =====================================================================
 
 
-class _ClassifierMixin:
-    """Reusable classifier overrides for any TSK classification model."""
-
-    if TYPE_CHECKING:
-
-        def forward(self, x: Tensor) -> Tensor: ...  # provided by BaseTSK
+class BaseTSKClassifier(BaseTSK):
+    """Abstract classifier base that provides task-specific training and inference helpers."""
 
     def _compute_loss(self, criterion: Callable[[Tensor, Tensor], Tensor], output: Tensor, target: Tensor) -> Tensor:
         """Compute classification loss, handling MSELoss one-hot encoding."""
@@ -87,7 +82,7 @@ class _ClassifierMixin:
         """Evaluate validation set using accuracy as the early-stopping metric."""
         with torch.no_grad():
             logits = self.forward(x_val)
-            val_loss = float(self._compute_loss(criterion, logits, y_val).item())  # type: ignore[arg-type]
+            val_loss = float(self._compute_loss(criterion, logits, y_val).item())
             val_acc = float((logits.argmax(dim=1) == y_val).float().mean().item())
         return {"val_loss": val_loss, "val_acc": val_acc, "metric": val_acc}
 
@@ -103,12 +98,8 @@ class _ClassifierMixin:
             return torch.argmax(self.predict_proba(x), dim=1)
 
 
-class _RegressorMixin:
-    """Reusable regressor overrides for any TSK regression model."""
-
-    if TYPE_CHECKING:
-
-        def forward(self, x: Tensor) -> Tensor: ...  # provided by BaseTSK
+class BaseTSKRegressor(BaseTSK):
+    """Abstract regressor base that provides task-specific training and inference helpers."""
 
     def _compute_loss(self, criterion: Callable[[Tensor, Tensor], Tensor], output: Tensor, target: Tensor) -> Tensor:
         """Compute regression loss, squeezing the output to 1-D."""
@@ -128,7 +119,7 @@ class _RegressorMixin:
 # =====================================================================
 
 
-class HTSKClassifier(_ClassifierMixin, BaseTSK):
+class HTSKClassifier(BaseTSKClassifier):
     """TSK classifier with HTSK defuzzification for high-dimensional data.
 
     Uses the geometric-mean t-norm (``gmean``) and ``SoftmaxLogDefuzzifier``
@@ -169,7 +160,7 @@ class HTSKClassifier(_ClassifierMixin, BaseTSK):
         return nn.CrossEntropyLoss()
 
 
-class HTSKRegressor(_RegressorMixin, BaseTSK):
+class HTSKRegressor(BaseTSKRegressor):
     """TSK regressor with HTSK defuzzification for high-dimensional data.
 
     Uses the geometric-mean t-norm (``gmean``) and ``SoftmaxLogDefuzzifier``
@@ -214,7 +205,7 @@ class HTSKRegressor(_RegressorMixin, BaseTSK):
 # =====================================================================
 
 
-class TSKClassifier(_ClassifierMixin, BaseTSK):
+class TSKClassifier(BaseTSKClassifier):
     r"""Vanilla TSK classifier with sum-based defuzzification.
 
     Implements the original Takagi-Sugeno-Kang inference:
@@ -264,7 +255,7 @@ class TSKClassifier(_ClassifierMixin, BaseTSK):
         return nn.CrossEntropyLoss()
 
 
-class TSKRegressor(_RegressorMixin, BaseTSK):
+class TSKRegressor(BaseTSKRegressor):
     r"""Vanilla TSK regressor with sum-based defuzzification.
 
     Implements the original Takagi-Sugeno-Kang inference:
@@ -310,7 +301,7 @@ class TSKRegressor(_RegressorMixin, BaseTSK):
         return nn.MSELoss()
 
 
-class DombiTSKClassifier(_ClassifierMixin, BaseTSK):
+class DombiTSKClassifier(BaseTSKClassifier):
     """Dombi TSK classifier using Dombi aggregation in the antecedent."""
 
     def __init__(
@@ -353,7 +344,7 @@ class DombiTSKClassifier(_ClassifierMixin, BaseTSK):
         return nn.CrossEntropyLoss()
 
 
-class DombiTSKRegressor(_RegressorMixin, BaseTSK):
+class DombiTSKRegressor(BaseTSKRegressor):
     """Dombi TSK regressor using Dombi aggregation in the antecedent."""
 
     def __init__(
@@ -389,7 +380,7 @@ class DombiTSKRegressor(_RegressorMixin, BaseTSK):
         return RegressionConsequentLayer(self.n_rules, self.n_inputs)
 
 
-class AdaTSKClassifier(_ClassifierMixin, BaseTSK):
+class AdaTSKClassifier(BaseTSKClassifier):
     """AdaTSK classifier using adaptive per-rule Dombi aggregation."""
 
     def __init__(
@@ -439,7 +430,7 @@ class AdaTSKClassifier(_ClassifierMixin, BaseTSK):
         return nn.CrossEntropyLoss()
 
 
-class AdaTSKRegressor(_RegressorMixin, BaseTSK):
+class AdaTSKRegressor(BaseTSKRegressor):
     """AdaTSK regressor using adaptive per-rule Dombi aggregation."""
 
     def __init__(
@@ -496,7 +487,7 @@ class AdaTSKRegressor(_RegressorMixin, BaseTSK):
 # =====================================================================
 
 
-class LogTSKClassifier(_ClassifierMixin, BaseTSK):
+class LogTSKClassifier(BaseTSKClassifier):
     r"""LogTSK classifier with log-space defuzzification.
 
     Normalization operates entirely in log-space to avoid underflow in
@@ -552,7 +543,7 @@ class LogTSKClassifier(_ClassifierMixin, BaseTSK):
         return nn.CrossEntropyLoss()
 
 
-class LogTSKRegressor(_RegressorMixin, BaseTSK):
+class LogTSKRegressor(BaseTSKRegressor):
     r"""LogTSK regressor with log-space defuzzification.
 
     Normalization operates entirely in log-space to avoid underflow in
