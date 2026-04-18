@@ -49,7 +49,6 @@ explicit and the defuzzification strategy is pluggable:
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from functools import partial
 
 import torch
 from torch import Tensor, nn
@@ -58,7 +57,7 @@ from .base import BaseTSK
 from .defuzzifiers import LogSumDefuzzifier, SumBasedDefuzzifier
 from .layers import AdaptiveDombiRuleLayer, ClassificationConsequentLayer, RegressionConsequentLayer
 from .memberships import MembershipFunction
-from .t_norms import TNormFn, t_norm_dombi
+from .t_norms import DombiTNorm, TNormFn
 
 # =====================================================================
 # Shared task-specific logic
@@ -325,7 +324,7 @@ class DombiTSKClassifier(BaseTSKClassifier):
         self.n_classes = int(n_classes)
         self.lambda_ = float(lambda_)
         if t_norm_fn is None:
-            t_norm_fn = partial(t_norm_dombi, lambda_=self.lambda_)
+            t_norm_fn = DombiTNorm(lambda_=self.lambda_)
 
         super().__init__(
             input_mfs,
@@ -364,7 +363,7 @@ class DombiTSKRegressor(BaseTSKRegressor):
 
         self.lambda_ = float(lambda_)
         if t_norm_fn is None:
-            t_norm_fn = partial(t_norm_dombi, lambda_=self.lambda_)
+            t_norm_fn = DombiTNorm(lambda_=self.lambda_)
 
         super().__init__(
             input_mfs,

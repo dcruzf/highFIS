@@ -153,8 +153,11 @@ class RuleLayer(nn.Module):
 
     def _apply_t_norm(self, terms: Tensor) -> Tensor:
         if self.t_norm_fn is not None:
-            return self.t_norm_fn(terms)
-        return self._resolved_t_norm(terms)
+            try:
+                return self.t_norm_fn(terms, dim=1)
+            except TypeError:
+                return self.t_norm_fn(terms)
+        return self._resolved_t_norm(terms, dim=1)
 
     def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
         """Compute rule firing strengths from membership outputs."""
