@@ -133,7 +133,8 @@ A scikit-learn compatible classifier wrapper around `TSKClassifier`.
 
 Same hyperparameters as `HTSKClassifierEstimator` (see above).
 
-The model uses `SumBasedDefuzzifier` (w / Σw) instead of `SoftmaxLogDefuzzifier`.
+The model uses `SumBasedDefuzzifier`, where weights are clamped to a small,
+input-dtype-aware epsilon before normalization.
 
 ### Example
 
@@ -164,6 +165,8 @@ A scikit-learn compatible regressor wrapper around `TSKRegressor`.
 ### Core Hyperparameters
 
 Same hyperparameters as `HTSKRegressorEstimator` (see above), with `SumBasedDefuzzifier`.
+
+`SumBasedDefuzzifier` clamps weights to a dtype-aware epsilon before normalizing.
 
 ### Example
 
@@ -224,6 +227,8 @@ A scikit-learn compatible regressor wrapper around `DombiTSKRegressor`.
 ### Core Hyperparameters
 
 Same hyperparameters as `HTSKRegressorEstimator` (see above), with `SumBasedDefuzzifier`.
+
+`SumBasedDefuzzifier` clamps weights to a dtype-aware epsilon before normalizing.
 
 ### Example
 
@@ -322,6 +327,7 @@ A scikit-learn compatible classifier wrapper around `LogTSKClassifier`.
 Same hyperparameters as `HTSKClassifierEstimator` (see above).
 
 The model uses `LogSumDefuzzifier` (softmax(log(w)/τ)) for log-space normalization.
+`LogSumDefuzzifier` also infers a dtype-aware epsilon for clamping before log.
 
 ### Example
 
@@ -352,6 +358,8 @@ A scikit-learn compatible regressor wrapper around `LogTSKRegressor`.
 ### Core Hyperparameters
 
 Same hyperparameters as `HTSKRegressorEstimator` (see above), with `LogSumDefuzzifier`.
+
+`LogSumDefuzzifier` infers a dtype-aware epsilon for clamping before log.
 
 ### Example
 
