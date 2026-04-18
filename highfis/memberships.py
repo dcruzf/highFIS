@@ -7,8 +7,9 @@ from torch import Tensor, nn
 from torch.nn import functional as F
 
 
-def _inv_softplus(value: float, eps: float = 1e-6) -> float:
+def _inv_softplus(value: float, eps: float | None = None) -> float:
     """Map a positive value to the unconstrained space used by softplus."""
+    eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else eps
     v = max(value - eps, eps)
     return math.log(math.expm1(v))
 
@@ -16,10 +17,10 @@ def _inv_softplus(value: float, eps: float = 1e-6) -> float:
 class MembershipFunction(nn.Module):
     """Base class for differentiable membership functions in PyTorch."""
 
-    def __init__(self, eps: float = 1e-6) -> None:
+    def __init__(self, eps: float | None = None) -> None:
         """Initialize base membership function with numeric stability epsilon."""
         super().__init__()
-        self.eps = eps
+        self.eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else float(eps)
 
     def _as_tensor(self, x: Tensor | float) -> Tensor:
         if isinstance(x, Tensor):
@@ -30,7 +31,7 @@ class MembershipFunction(nn.Module):
 class GaussianMF(MembershipFunction):
     """Gaussian membership: exp(-((x-c)^2)/(2*sigma^2))."""
 
-    def __init__(self, mean: float = 0.0, sigma: float = 1.0, eps: float = 1e-6) -> None:
+    def __init__(self, mean: float = 0.0, sigma: float = 1.0, eps: float | None = None) -> None:
         """Initialize Gaussian membership parameters."""
         super().__init__(eps=eps)
         if sigma <= 0:
@@ -53,7 +54,7 @@ class GaussianMF(MembershipFunction):
 class CompositeGaussianMF(MembershipFunction):
     """Composite Gaussian membership with a nonzero lower bound."""
 
-    def __init__(self, mean: float = 0.0, sigma: float = 1.0, eps: float = 1e-6) -> None:
+    def __init__(self, mean: float = 0.0, sigma: float = 1.0, eps: float | None = None) -> None:
         """Initialize composite Gaussian membership parameters."""
         super().__init__(eps=eps)
         if sigma <= 0:
@@ -76,7 +77,7 @@ class CompositeGaussianMF(MembershipFunction):
 class TriangularMF(MembershipFunction):
     """Triangular membership function defined by left, center, right."""
 
-    def __init__(self, left: float = -1.0, center: float = 0.0, right: float = 1.0, eps: float = 1e-6) -> None:
+    def __init__(self, left: float = -1.0, center: float = 0.0, right: float = 1.0, eps: float | None = None) -> None:
         """Initialize triangular MF with *left*, *center*, *right* vertices."""
         super().__init__(eps=eps)
         if not (left <= center <= right):
@@ -98,7 +99,9 @@ class TriangularMF(MembershipFunction):
 class TrapezoidalMF(MembershipFunction):
     """Trapezoidal membership function defined by a, b, c, d."""
 
-    def __init__(self, a: float = -2.0, b: float = -1.0, c: float = 1.0, d: float = 2.0, eps: float = 1e-6) -> None:
+    def __init__(
+        self, a: float = -2.0, b: float = -1.0, c: float = 1.0, d: float = 2.0, eps: float | None = None
+    ) -> None:
         """Initialize trapezoidal MF with vertices *a*, *b*, *c*, *d*."""
         super().__init__(eps=eps)
         if not (a <= b <= c <= d):
@@ -121,7 +124,7 @@ class TrapezoidalMF(MembershipFunction):
 class BellMF(MembershipFunction):
     """Generalized bell membership: 1 / (1 + |((x-c)/a)|^(2b))."""
 
-    def __init__(self, a: float = 1.0, b: float = 2.0, center: float = 0.0, eps: float = 1e-6) -> None:
+    def __init__(self, a: float = 1.0, b: float = 2.0, center: float = 0.0, eps: float | None = None) -> None:
         """Initialize bell MF with width *a*, slope *b*, and *center*."""
         super().__init__(eps=eps)
         if a <= 0:
@@ -151,7 +154,7 @@ class BellMF(MembershipFunction):
 class SigmoidalMF(MembershipFunction):
     """Sigmoidal membership: 1 / (1 + exp(-a*(x-c)))."""
 
-    def __init__(self, a: float = 1.0, center: float = 0.0, eps: float = 1e-6) -> None:
+    def __init__(self, a: float = 1.0, center: float = 0.0, eps: float | None = None) -> None:
         """Initialize sigmoidal MF with slope *a* and *center*."""
         super().__init__(eps=eps)
         self.a = nn.Parameter(torch.tensor(float(a)))

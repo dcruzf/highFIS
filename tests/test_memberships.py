@@ -34,3 +34,13 @@ def test_gaussian_mf_as_tensor_accepts_float() -> None:
     result = mf._as_tensor(1.5)
     assert isinstance(result, torch.Tensor)
     assert float(result) == pytest.approx(1.5)
+
+
+def test_membership_function_uses_default_dtype_eps() -> None:
+    previous_dtype = torch.get_default_dtype()
+    try:
+        torch.set_default_dtype(torch.float16)
+        mf = GaussianMF(mean=0.0, sigma=1.0)
+        assert mf.eps == torch.finfo(torch.float16).eps
+    finally:
+        torch.set_default_dtype(previous_dtype)

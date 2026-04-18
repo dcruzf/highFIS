@@ -392,7 +392,7 @@ class AdaTSKClassifier(BaseTSKClassifier):
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
-        eps: float = 1e-6,
+        eps: float | None = None,
     ) -> None:
         """Initialize AdaTSK classifier architecture and consequent head."""
         if n_classes < 2:
@@ -402,7 +402,7 @@ class AdaTSKClassifier(BaseTSKClassifier):
 
         self.n_classes = int(n_classes)
         self.lambda_init = float(lambda_init)
-        self.eps = float(eps)
+        self.eps = eps
 
         super().__init__(
             input_mfs,
@@ -441,14 +441,14 @@ class AdaTSKRegressor(BaseTSKRegressor):
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
-        eps: float = 1e-6,
+        eps: float | None = None,
     ) -> None:
         """Initialize AdaTSK regressor architecture and consequent head."""
         if lambda_init <= 0.0:
             raise ValueError("lambda_init must be > 0")
 
         self.lambda_init = float(lambda_init)
-        self.eps = float(eps)
+        self.eps = eps
 
         super().__init__(
             input_mfs,

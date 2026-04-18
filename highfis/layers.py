@@ -14,8 +14,9 @@ from .memberships import MembershipFunction
 from .t_norms import TNormFn, resolve_t_norm
 
 
-def _inv_softplus(value: float, eps: float = 1e-6) -> float:
+def _inv_softplus(value: float, eps: float | None = None) -> float:
     """Map a positive value to the unconstrained space used by softplus."""
+    eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else eps
     v = max(value - eps, eps)
     return math.log(math.expm1(v))
 
@@ -183,12 +184,12 @@ class AdaptiveDombiRuleLayer(RuleLayer):
         rules: Sequence[Sequence[int]] | None = None,
         rule_base: str = "coco",
         lambda_init: float = 1.0,
-        eps: float = 1e-6,
+        eps: float | None = None,
     ) -> None:
         """Initialize adaptive Dombi rule layer."""
         if lambda_init <= 0.0:
             raise ValueError("lambda_init must be > 0")
-        self.eps = float(eps)
+        self.eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else float(eps)
         super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod", t_norm_fn=None)
         self.raw_lambdas = nn.Parameter(torch.full((self.n_rules,), _inv_softplus(lambda_init, self.eps)))
 
