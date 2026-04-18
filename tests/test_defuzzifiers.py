@@ -28,6 +28,13 @@ class TestSoftmaxLogDefuzzifier:
         with pytest.raises(ValueError, match="expected w with 2 dims"):
             d(torch.tensor([0.5, 0.5]))
 
+    def test_dynamic_eps_uses_input_dtype(self) -> None:
+        w = torch.tensor([[0.0, 1.0], [0.0, 2.0]], dtype=torch.float16)
+        d = SoftmaxLogDefuzzifier()
+        out = d(w)
+        assert not torch.isnan(out).any()
+        assert torch.allclose(out.sum(dim=1), torch.ones(2, dtype=torch.float16), atol=1e-3)
+
 
 class TestSumBasedDefuzzifier:
     def test_output_sums_to_one(self, firing_strengths: torch.Tensor) -> None:
@@ -46,6 +53,13 @@ class TestSumBasedDefuzzifier:
         d = SumBasedDefuzzifier()
         with pytest.raises(ValueError, match="expected w with 2 dims"):
             d(torch.tensor([0.5, 0.5]))
+
+    def test_dynamic_eps_uses_input_dtype(self) -> None:
+        w = torch.tensor([[0.0, 1.0], [0.0, 2.0]], dtype=torch.float16)
+        d = SumBasedDefuzzifier()
+        out = d(w)
+        assert not torch.isnan(out).any()
+        assert torch.allclose(out.sum(dim=1), torch.ones(2, dtype=torch.float16), atol=1e-3)
 
 
 class TestLogSumDefuzzifier:

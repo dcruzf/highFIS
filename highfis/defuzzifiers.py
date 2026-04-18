@@ -14,7 +14,7 @@ class SoftmaxLogDefuzzifier(nn.Module):
     :func:`torch.softmax`.
     """
 
-    def __init__(self, eps: float = 1e-8) -> None:
+    def __init__(self, eps: float | None = None) -> None:
         """Initialize with numeric stability *eps*."""
         super().__init__()
         self.eps = eps
@@ -23,14 +23,15 @@ class SoftmaxLogDefuzzifier(nn.Module):
         """Normalize firing strengths via softmax(log(w))."""
         if w.ndim != 2:
             raise ValueError(f"expected w with 2 dims, got shape {tuple(w.shape)}")
-        log_w = w.clamp(min=self.eps).log()
+        eps = self.eps if self.eps is not None else torch.finfo(w.dtype).eps
+        log_w = w.clamp(min=eps).log()
         return torch.softmax(log_w, dim=1)
 
 
 class SumBasedDefuzzifier(nn.Module):
     """Classic ``w / sum(w)`` normalization."""
 
-    def __init__(self, eps: float = 1e-8) -> None:
+    def __init__(self, eps: float | None = None) -> None:
         """Initialize with numeric stability *eps*."""
         super().__init__()
         self.eps = eps
@@ -39,7 +40,9 @@ class SumBasedDefuzzifier(nn.Module):
         """Normalize firing strengths via sum-based division."""
         if w.ndim != 2:
             raise ValueError(f"expected w with 2 dims, got shape {tuple(w.shape)}")
-        return w / (w.sum(dim=1, keepdim=True) + self.eps)
+        eps = self.eps if self.eps is not None else torch.finfo(w.dtype).eps
+        w = w.clamp(min=eps)
+        return w / w.sum(dim=1, keepdim=True)
 
 
 class LogSumDefuzzifier(nn.Module):
@@ -49,7 +52,7 @@ class LogSumDefuzzifier(nn.Module):
     ``temperature=1`` recovers :class:`SoftmaxLogDefuzzifier`.
     """
 
-    def __init__(self, temperature: float = 1.0, eps: float = 1e-8) -> None:
+    def __init__(self, temperature: float = 1.0, eps: float | None = None) -> None:
         """Initialize with *temperature* and numeric stability *eps*."""
         super().__init__()
         if temperature <= 0:
@@ -61,7 +64,8 @@ class LogSumDefuzzifier(nn.Module):
         """Normalize firing strengths via temperature-scaled softmax(log(w))."""
         if w.ndim != 2:
             raise ValueError(f"expected w with 2 dims, got shape {tuple(w.shape)}")
-        log_w = w.clamp(min=self.eps).log() / self.temperature
+        eps = self.eps if self.eps is not None else torch.finfo(w.dtype).eps
+        log_w = w.clamp(min=eps).log() / self.temperature
         return torch.softmax(log_w, dim=1)
 
 

@@ -48,7 +48,7 @@ $$
 |----------|---------------|-------------|
 | (1) | `GaussianMF.forward()` | Gaussian membership function |
 | (2) | `RuleLayer` with `t_norm="prod"` | Product t-norm via `torch.prod` |
-| (3) | `SumBasedDefuzzifier.forward()` | `w / (w.sum(dim=1) + eps)` |
+| (3) | `SumBasedDefuzzifier.forward()` | `w.clamp(min=eps) / w.clamp(min=eps).sum(dim=1)` |
 | (4) | `ClassificationConsequentLayer.forward()` / `RegressionConsequentLayer.forward()` | Weighted linear consequent |
 
 ## Differences from the paper
@@ -58,8 +58,8 @@ $$
    consequent parameters separately.
 2. **$\sigma$ reparameterization**: `GaussianMF` stores a raw parameter and
    applies `softplus` to ensure $\sigma > 0$.
-3. **Numeric stability**: `SumBasedDefuzzifier` adds a small `eps` to the
-   denominator to avoid division by zero.
+3. **Numeric stability**: `SumBasedDefuzzifier` clamps weights to a small
+   floor before normalizing, avoiding underflow without biasing the denominator.
 
 ## Comparison with PyTSK
 
