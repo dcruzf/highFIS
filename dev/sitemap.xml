@@ -4,16 +4,22 @@
         <loc>https://dcruzf.github.io/highFIS/dev/</loc>
       </url>
       <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/markdown/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/htsk-modelo/</loc>
-      </url>
-      <url>
         <loc>https://dcruzf.github.io/highFIS/dev/models/tsk-vanilla/</loc>
       </url>
       <url>
         <loc>https://dcruzf.github.io/highFIS/dev/models/logtsk/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/models/htsk/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/models/dombitsk/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/models/adatsk/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/models/fsre-adatsk/</loc>
       </url>
       <url>
         <loc>https://dcruzf.github.io/highFIS/dev/api/protocols/</loc>

@@ -12,13 +12,13 @@
         <meta name="author" content="Daniel Franca">
       
       
-        <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/models/adatsk/">
+        <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/models/fsre-adatsk/">
       
       
-        <link rel="prev" href="../dombitsk/">
+        <link rel="prev" href="../adatsk/">
       
       
-        <link rel="next" href="../fsre-adatsk/">
+        <link rel="next" href="../../api/protocols/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>AdaTSK - highFIS Docs</title>
+        <title>FSRE-AdaTSK - highFIS Docs</title>
       
     
     
@@ -85,7 +85,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#adatsk" class="md-skip">
+        <a href="#fsre-adatsk" class="md-skip">
           Skip to content
         </a>
       
@@ -125,7 +125,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              AdaTSK
+              FSRE-AdaTSK
             
           </span>
         </div>
@@ -356,6 +356,33 @@
       
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../adatsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AdaTSK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -375,7 +402,7 @@
   <span class="md-ellipsis">
     
   
-    AdaTSK
+    FSRE-AdaTSK
   
 
     
@@ -393,7 +420,7 @@
   <span class="md-ellipsis">
     
   
-    AdaTSK
+    FSRE-AdaTSK
   
 
     
@@ -431,6 +458,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#mathematical-formulation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -443,10 +481,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#antecedent" class="md-nav__link">
+  <a href="#antecedent-membership" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Antecedent
+        Antecedent Membership
       
     </span>
   </a>
@@ -454,10 +492,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#adaptive-dombi-aggregation" class="md-nav__link">
+  <a href="#adaptive-softmin-ada-softmin" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Adaptive Dombi aggregation
+        Adaptive Softmin (Ada-softmin)
       
     </span>
   </a>
@@ -465,10 +503,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#normalization" class="md-nav__link">
+  <a href="#rule-normalization" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Normalization
+        Rule Normalization
       
     </span>
   </a>
@@ -476,10 +514,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#consequent" class="md-nav__link">
+  <a href="#gated-consequents" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Consequent
+        Gated Consequents
       
     </span>
   </a>
@@ -490,7 +528,18 @@
   <a href="#output-aggregation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Output aggregation
+        Output Aggregation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enhanced-fuzzy-rule-base-en-frb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enhanced Fuzzy Rule Base (En-FRB)
       
     </span>
   </a>
@@ -499,6 +548,28 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#learning-phases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Learning Phases
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-correspondence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code Correspondence
+      
+    </span>
+  </a>
   
 </li>
       
@@ -528,33 +599,6 @@
   
 </nav>
       
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../fsre-adatsk/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    FSRE-AdaTSK
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -854,6 +898,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#mathematical-formulation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -866,10 +921,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#antecedent" class="md-nav__link">
+  <a href="#antecedent-membership" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Antecedent
+        Antecedent Membership
       
     </span>
   </a>
@@ -877,10 +932,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#adaptive-dombi-aggregation" class="md-nav__link">
+  <a href="#adaptive-softmin-ada-softmin" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Adaptive Dombi aggregation
+        Adaptive Softmin (Ada-softmin)
       
     </span>
   </a>
@@ -888,10 +943,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#normalization" class="md-nav__link">
+  <a href="#rule-normalization" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Normalization
+        Rule Normalization
       
     </span>
   </a>
@@ -899,10 +954,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#consequent" class="md-nav__link">
+  <a href="#gated-consequents" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Consequent
+        Gated Consequents
       
     </span>
   </a>
@@ -913,7 +968,18 @@
   <a href="#output-aggregation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Output aggregation
+        Output Aggregation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enhanced-fuzzy-rule-base-en-frb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enhanced Fuzzy Rule Base (En-FRB)
       
     </span>
   </a>
@@ -922,6 +988,28 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#learning-phases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Learning Phases
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-correspondence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code Correspondence
+      
+    </span>
+  </a>
   
 </li>
       
@@ -970,7 +1058,7 @@
                 
                   
 
-<h1 id="adatsk">AdaTSK</h1>
+<h1 id="fsre-adatsk">FSRE-AdaTSK</h1>
 <h2 id="reference">Reference</h2>
 <blockquote>
 <p>Xue, Guangdong; Chang, Qin; Wang, Jian; Zhang, Kai; Pal, Nikhil R. (2023).
@@ -979,88 +1067,168 @@ Rule Extraction for High-Dimensional Classification Problems." <em>IEEE
 Transactions on Fuzzy Systems</em> 31(7):2167–2181.
 DOI: <a href="https://doi.org/10.1109/TFUZZ.2022.3220950">10.1109/TFUZZ.2022.3220950</a></p>
 </blockquote>
+<h2 id="overview">Overview</h2>
+<p>FSRE-AdaTSK extends AdaTSK into a three-phase high-dimensional fuzzy model:</p>
+<ol>
+<li><strong>Feature Selection (FS)</strong> — embedded gates on consequent coefficients
+   identify and retain important input features.</li>
+<li><strong>Rule Extraction (RE)</strong> — an enhanced fuzzy rule base (En-FRB) and rule
+   gates discard irrelevant rules without exponential growth.</li>
+<li><strong>Fine Tuning</strong> — the reduced model is re-trained to maximize accuracy and
+   interpretability.</li>
+</ol>
+<p>The model combines adaptive antecedent aggregation with gated consequents so
+that feature and rule importance are learned jointly.</p>
 <h2 id="mathematical-formulation">Mathematical Formulation</h2>
-<p>AdaTSK extends TSK fuzzy inference by using an adaptive Dombi-based
-aggregation in the antecedent and a Composite Gaussian membership function
-with a nonzero lower bound.</p>
-<h3 id="antecedent">Antecedent</h3>
-<p>Each rule-term membership is computed with a Composite Gaussian MF:</p>
+<h3 id="antecedent-membership">Antecedent Membership</h3>
+<p>Each rule-term membership is evaluated with a smooth Gaussian MF:</p>
 <div class="arithmatex">\[
-\mu_{r,d}(x_d) = \epsilon + (1 - \epsilon)\exp\left(-\frac{(x_d - c_{r,d})^2}{2\sigma_{r,d}^2}\right)
+\mu_{r,d}(x_d) = \exp\left(-\frac{(x_d - c_{r,d})^2}{2\sigma_{r,d}^2}\right)
 \]</div>
-<p>where <span class="arithmatex">\(\epsilon\)</span> is a small constant (e.g. <span class="arithmatex">\(10^{-6}\)</span>) and
-<span class="arithmatex">\(\sigma_{r,d} &gt; 0\)</span> is enforced via a softplus reparameterization.</p>
-<h3 id="adaptive-dombi-aggregation">Adaptive Dombi aggregation</h3>
-<p>The rule firing strength uses a per-rule adaptive Dombi t-norm:</p>
+<p>where <span class="arithmatex">\(c_{r,d}\)</span> is the center and <span class="arithmatex">\(\sigma_{r,d} &gt; 0\)</span> is the spread.</p>
+<h3 id="adaptive-softmin-ada-softmin">Adaptive Softmin (Ada-softmin)</h3>
+<p>FSRE-AdaTSK computes rule firing strengths with an adaptive softmin:</p>
 <div class="arithmatex">\[
-\phi_r = \left(1 + \sum_{d=1}^{D} \left[\left(\frac{1 - \mu_{r,d}}{\mu_{r,d}}\right)^{\lambda_r}\right]\right)^{-1/\lambda_r}
+\phi_r(\mathbf{x}) = \left( \frac{1}{D} \sum_{d=1}^{D}
+      \mu_{r,d}(x_d)^{\hat{q}_r(\mathbf{x})} \right)^{1/\hat{q}_r(\mathbf{x})}
 \]</div>
-<p>Each <span class="arithmatex">\(\lambda_r &gt; 0\)</span> is learned via softplus, which allows the model to
-adapt the softmin behavior of each rule individually.</p>
-<h3 id="normalization">Normalization</h3>
-<p>Rule firing strengths are normalized by simple sum normalization:</p>
+<p>The exponent <span class="arithmatex">\(\hat{q}_r(\mathbf{x})\)</span> is adapted per rule and per input so that
+firing strengths remain numerically stable in very high dimensions and the
+aggregation approximates minimum-like behavior.</p>
+<h3 id="rule-normalization">Rule Normalization</h3>
+<p>Normalized rule weights are computed as:</p>
 <div class="arithmatex">\[
-\bar{\phi}_r = \frac{\phi_r}{\sum_{k=1}^{R} \phi_k}
+\bar{\phi}_r(\mathbf{x}) = \frac{\phi_r(\mathbf{x})}{\sum_{i=1}^{R} \phi_i(\mathbf{x})}
 \]</div>
-<h3 id="consequent">Consequent</h3>
-<p>AdaTSK uses a first-order TSK consequent for both classification and
-regression.</p>
-<p>For classification:</p>
+<p>The normalized weights are then used to aggregate rule consequents.</p>
+<h3 id="gated-consequents">Gated Consequents</h3>
+<p>FSRE-AdaTSK uses gates only in the consequent layer. For each feature or rule
+parameter, a gate value <span class="arithmatex">\(u\)</span> modulates output strength with:</p>
 <div class="arithmatex">\[
-\mathbf{y}_r = W_r \mathbf{x} + \mathbf{b}_r
+M(u) = u \sqrt{e^{1 - u^2}}
 \]</div>
-<p>For regression:</p>
+<p>This gate function has larger derivatives near zero than common alternatives,
+making the selection process more responsive during training.</p>
+<p>For a first-order TSK rule and class <span class="arithmatex">\(c\)</span>:</p>
 <div class="arithmatex">\[
-\hat{y}_r = \mathbf{w}_r^\top \mathbf{x} + b_r
+\hat{y}_r^c(\mathbf{x}) = M(u_r) \left(p_{r,0}^c + \sum_{d=1}^{D} p_{r,d}^c \, x_d\right)
 \]</div>
-<h3 id="output-aggregation">Output aggregation</h3>
-<p>The final prediction is the normalized weighted sum of rule consequents:</p>
+<p>where <span class="arithmatex">\(M(u_r)\)</span> can represent a rule-level gate and additional gates can be
+applied at the feature/consequent coefficient level.</p>
+<h3 id="output-aggregation">Output Aggregation</h3>
+<p>The FSRE-AdaTSK output for class <span class="arithmatex">\(c\)</span> is:</p>
+<div class="arithmatex">\[
+y^c(\mathbf{x}) = \sum_{r=1}^{R} \bar{\phi}_r(\mathbf{x}) \, \hat{y}_r^c(\mathbf{x})
+\]</div>
+<p>For regression, the same normalized-weight aggregation applies to scalar rule
+outputs.</p>
+<h3 id="enhanced-fuzzy-rule-base-en-frb">Enhanced Fuzzy Rule Base (En-FRB)</h3>
+<p>The En-FRB is a middle ground between Compactly Combined FRB (CoCo-FRB) and
+Fully Combined FRB (FuCo-FRB). It expands the rule set enough to support rule
+extraction while avoiding exponential rule growth with feature dimension.</p>
+<p>In highFIS, En-FRB can be enabled via <code>use_en_frb=True</code>, and the model supports
+explicit phase transitions for FS, RE, and fine tuning.</p>
+<h2 id="learning-phases">Learning Phases</h2>
+<p>FSRE-AdaTSK is trained in three sequential phases:</p>
 <ul>
-<li>Classification:</li>
+<li><strong>Feature Selection (<code>fit_fs</code>)</strong></li>
+<li>Train on the current compact rule base.</li>
+<li>Learn gate parameters that identify important features.</li>
+<li><strong>Rule Extraction (<code>fit_re</code>)</strong></li>
+<li>Expand the rule layer to En-FRB.</li>
+<li>Learn rule gates that prune irrelevant rules.</li>
+<li><strong>Fine Tuning (<code>fit_finetune</code>)</strong></li>
+<li>Re-train the reduced model after extraction.</li>
 </ul>
-<div class="arithmatex">\[
-\mathbf{y} = \sum_{r=1}^{R} \bar{\phi}_r \mathbf{y}_r
-\]</div>
-<ul>
-<li>Regression:</li>
-</ul>
-<div class="arithmatex">\[
-\hat{y} = \sum_{r=1}^{R} \bar{\phi}_r \hat{y}_r
-\]</div>
+<p>These phases may be executed from the low-level model API or orchestrated by
+higher-level estimator wrappers.</p>
+<h2 id="code-correspondence">Code Correspondence</h2>
+<table>
+<thead>
+<tr>
+<th>Concept</th>
+<th>highFIS class / method</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Adaptive softmin antecedent</td>
+<td><code>AdaSoftminRuleLayer</code></td>
+</tr>
+<tr>
+<td>Gated classification consequent</td>
+<td><code>GatedClassificationConsequentLayer</code></td>
+</tr>
+<tr>
+<td>Gated regression consequent</td>
+<td><code>GatedRegressionConsequentLayer</code></td>
+</tr>
+<tr>
+<td>FSRE-AdaTSK classifier</td>
+<td><code>FSREAdaTSKClassifier</code></td>
+</tr>
+<tr>
+<td>FSRE-AdaTSK regressor</td>
+<td><code>FSREAdaTSKRegressor</code></td>
+</tr>
+<tr>
+<td>Sklearn-style classifier estimator</td>
+<td><code>FSREAdaTSKClassifierEstimator</code></td>
+</tr>
+<tr>
+<td>Sklearn-style regressor estimator</td>
+<td><code>FSREAdaTSKRegressorEstimator</code></td>
+</tr>
+<tr>
+<td>En-FRB expansion</td>
+<td><code>FSREAdaTSKClassifier.expand_to_en_frb()</code> / <code>FSREAdaTSKRegressor.expand_to_en_frb()</code></td>
+</tr>
+<tr>
+<td>Phase training helpers</td>
+<td><code>fit_fs()</code>, <code>fit_re()</code>, <code>fit_finetune()</code></td>
+</tr>
+</tbody>
+</table>
 <h2 id="practical-notes">Practical Notes</h2>
 <ul>
-<li><code>AdaTSKClassifier</code> and <code>AdaTSKRegressor</code> both use <code>SumBasedDefuzzifier</code>
-  after the antecedent aggregation.</li>
-<li><code>lambda_init</code> controls the initial Dombi shape parameter. It must be
-  positive and is learned using softplus.</li>
-<li>The Composite Gaussian MF ensures membership values never fall to zero,
-  improving numerical stability in high dimensions.</li>
-<li><code>consequent_batch_norm=True</code> can be enabled to normalize inputs before
-  consequent computation.</li>
+<li>Use <code>lambda_init</code> to control the initial adaptive aggregation parameter.</li>
+<li>Set <code>use_en_frb=True</code> to start training with the enhanced fuzzy rule base.</li>
+<li><code>rule_base</code> can still be set to common bases like <code>"coco"</code> or a custom rule
+  list, but En-FRB is triggered when <code>use_en_frb=True</code>.</li>
+<li><code>consequent_batch_norm=True</code> can improve stability when input features vary in
+  scale.</li>
 </ul>
 <h2 id="example">Example</h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">AdaTSKClassifierEstimator</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">FSREAdaTSKClassifierEstimator</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">AdaTSKClassifierEstimator</span><span class="p">(</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">n_mfs</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">FSREAdaTSKClassifierEstimator</span><span class="p">(</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">n_mfs</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">mf_init</span><span class="o">=</span><span class="s2">&quot;kmeans&quot;</span><span class="p">,</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">lambda_init</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">epochs</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
 </span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span>
 </span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="p">)</span>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Accuracy: </span><span class="si">{</span><span class="n">clf</span><span class="o">.</span><span class="n">score</span><span class="p">(</span><span class="n">X_test</span><span class="p">,</span><span class="w"> </span><span class="n">y_test</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">use_en_frb</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="p">)</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Accuracy: </span><span class="si">{</span><span class="n">clf</span><span class="o">.</span><span class="n">score</span><span class="p">(</span><span class="n">X_test</span><span class="p">,</span><span class="w"> </span><span class="n">y_test</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </span></code></pre></div>
-<p>For low-level use:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">AdaTSKClassifier</span><span class="p">,</span> <span class="n">GaussianMF</span>
+<p>Low-level usage with explicit FS/RE phases:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">FSREAdaTSKClassifier</span><span class="p">,</span> <span class="n">GaussianMF</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
 </span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">input_mfs</span> <span class="o">=</span> <span class="p">{</span>
 </span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="s2">&quot;x1&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
 </span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="s2">&quot;x2&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
 </span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">}</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">model</span> <span class="o">=</span> <span class="n">AdaTSKClassifier</span><span class="p">(</span><span class="n">input_mfs</span><span class="p">,</span> <span class="n">n_classes</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">lambda_init</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">history</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">x_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">model</span> <span class="o">=</span> <span class="n">FSREAdaTSKClassifier</span><span class="p">(</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">input_mfs</span><span class="p">,</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="n">n_classes</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">lambda_init</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    <span class="n">use_en_frb</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="p">)</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="n">model</span><span class="o">.</span><span class="n">fit_fs</span><span class="p">(</span><span class="n">x_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="n">model</span><span class="o">.</span><span class="n">fit_re</span><span class="p">(</span><span class="n">x_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="n">model</span><span class="o">.</span><span class="n">fit_finetune</span><span class="p">(</span><span class="n">x_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">)</span>
 </span></code></pre></div>
 
 
@@ -1101,7 +1269,7 @@ regression.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../dombitsk/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Dombitsk">
+          <a href="../adatsk/" class="md-footer__link md-footer__link--prev" aria-label="Previous: AdaTSK">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1111,20 +1279,20 @@ regression.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Dombitsk
+                AdaTSK
               </div>
             </div>
           </a>
         
         
           
-          <a href="../fsre-adatsk/" class="md-footer__link md-footer__link--next" aria-label="Next: FSRE-AdaTSK">
+          <a href="../../api/protocols/" class="md-footer__link md-footer__link--next" aria-label="Next: API: Protocols">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                FSRE-AdaTSK
+                API: Protocols
               </div>
             </div>
             <div class="md-footer__button md-icon">
