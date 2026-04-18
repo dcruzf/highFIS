@@ -312,6 +312,74 @@ reg.fit(X_train, y_train)
 r2 = reg.score(X_test, y_test)
 ```
 
+## FSREAdaTSKClassifierEstimator
+
+A scikit-learn compatible classifier wrapper around `FSREAdaTSKClassifier`.
+
+### sklearn Compatibility
+
+- Inherits `BaseEstimator` and `ClassifierMixin`.
+- Implements `fit`, `predict`, `predict_proba`, and `score`.
+- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
+
+### Core Hyperparameters
+
+Same hyperparameters as `AdaTSKClassifierEstimator` (see above), plus:
+
+- `use_en_frb`: whether to enable the enhanced fuzzy rule base for rule extraction.
+
+### Example
+
+```python
+from highfis import FSREAdaTSKClassifierEstimator
+
+clf = FSREAdaTSKClassifierEstimator(
+    n_mfs=3,
+    mf_init="kmeans",
+    lambda_init=1.0,
+    use_en_frb=True,
+    epochs=200,
+    learning_rate=1e-3,
+    random_state=0,
+)
+clf.fit(X_train, y_train)
+acc = clf.score(X_test, y_test)
+```
+
+## FSREAdaTSKRegressorEstimator
+
+A scikit-learn compatible regressor wrapper around `FSREAdaTSKRegressor`.
+
+### sklearn Compatibility
+
+- Inherits `BaseEstimator` and `RegressorMixin`.
+- Implements `fit`, `predict`, and `score` ($R^2$).
+- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
+
+### Core Hyperparameters
+
+Same hyperparameters as `AdaTSKRegressorEstimator` (see above), plus:
+
+- `use_en_frb`: whether to enable the enhanced fuzzy rule base for rule extraction.
+
+### Example
+
+```python
+from highfis import FSREAdaTSKRegressorEstimator
+
+reg = FSREAdaTSKRegressorEstimator(
+    n_mfs=3,
+    mf_init="kmeans",
+    lambda_init=1.0,
+    use_en_frb=True,
+    epochs=200,
+    learning_rate=1e-3,
+    random_state=0,
+)
+reg.fit(X_train, y_train)
+r2 = reg.score(X_test, y_test)
+```
+
 ## LogTSKClassifierEstimator
 
 A scikit-learn compatible classifier wrapper around `LogTSKClassifier`.

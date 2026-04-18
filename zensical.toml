@@ -46,10 +46,12 @@ Copyright &copy; 2026 highFIS contributors
 # Read more: https://zensical.org/docs/setup/navigation/
 nav = [
     { "Home" = "index.md" },
-    { "Quick Start" = "markdown.md" },
-    { "HTSK Technical Notes" = "htsk-modelo.md" },
     { "TSK Vanilla" = "models/tsk-vanilla.md" },
     { "LogTSK" = "models/logtsk.md" },
+    { "HTSK" = "models/htsk.md"},
+    { "Dombitsk" = "models/dombitsk.md" },
+    { "AdaTSK" = "models/adatsk.md" },
+    { "FSRE-AdaTSK" = "models/fsre-adatsk.md" },
     { "API: Protocols" = "api/protocols.md" },
     { "API: Membership Functions" = "api/memberships.md" },
     { "API: T-Norms" = "api/t_norms.md" },

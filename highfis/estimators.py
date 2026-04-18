@@ -29,6 +29,8 @@ from .models import (
     AdaTSKRegressor,
     DombiTSKClassifier,
     DombiTSKRegressor,
+    FSREAdaTSKClassifier,
+    FSREAdaTSKRegressor,
     HTSKClassifier,
     HTSKRegressor,
     LogTSKClassifier,
@@ -707,6 +709,140 @@ class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
         )
 
 
+class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
+    """Sklearn-compatible FSRE-AdaTSK classifier with adaptive softmin and gates."""
+
+    def __init__(
+        self,
+        *,
+        lambda_init: float = 1.0,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 30,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 200,
+        learning_rate: float = 1e-2,
+        verbose: bool = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        patience: int = 20,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+        use_en_frb: bool = False,
+    ) -> None:
+        """Configure FSRE-AdaTSK classifier estimator options."""
+        if lambda_init <= 0.0:
+            raise ValueError("lambda_init must be > 0")
+        self.lambda_init = float(lambda_init)
+        self.use_en_frb = bool(use_en_frb)
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            patience=patience,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        n_classes: int,
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create FSREAdaTSKClassifier."""
+        return FSREAdaTSKClassifier(
+            input_mfs,
+            n_classes=n_classes,
+            rule_base=rule_base,
+            lambda_init=self.lambda_init,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+            use_en_frb=self.use_en_frb,
+        )
+
+
+class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
+    """Sklearn-compatible FSRE-AdaTSK regressor with adaptive softmin and gates."""
+
+    def __init__(
+        self,
+        *,
+        lambda_init: float = 1.0,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 30,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 200,
+        learning_rate: float = 1e-2,
+        verbose: bool = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        patience: int = 20,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+        use_en_frb: bool = False,
+    ) -> None:
+        """Configure FSRE-AdaTSK regressor estimator options."""
+        if lambda_init <= 0.0:
+            raise ValueError("lambda_init must be > 0")
+        self.lambda_init = float(lambda_init)
+        self.use_en_frb = bool(use_en_frb)
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            patience=patience,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create FSREAdaTSKRegressor."""
+        return FSREAdaTSKRegressor(
+            input_mfs,
+            rule_base=rule_base,
+            lambda_init=self.lambda_init,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+            use_en_frb=self.use_en_frb,
+        )
+
+
 # =====================================================================
 # LogTSK Estimators  (Cui, Wu & Xu, IEEE TFS 2021)
 # =====================================================================
@@ -751,6 +887,8 @@ __all__: list[str] = [
     "AdaTSKRegressorEstimator",
     "DombiTSKClassifierEstimator",
     "DombiTSKRegressorEstimator",
+    "FSREAdaTSKClassifierEstimator",
+    "FSREAdaTSKRegressorEstimator",
     "HTSKClassifierEstimator",
     "HTSKRegressorEstimator",
     "InputConfig",
