@@ -42,6 +42,7 @@ DOI = "https://doi.org/10.5281/zenodo.19489225"
 path = "highfis/__init__.py"
 
 [tool.hatch.envs.default]
+python = "3.11"
 path = ".venv"
 installer = "uv"
 dependencies = [

@@ -15,7 +15,6 @@ management, testing, formatting, and builds.
 
 ```bash
 pip install hatch
-hatch env create
 ```
 
 To set up pre-commit hooks:
