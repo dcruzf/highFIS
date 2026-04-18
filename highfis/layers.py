@@ -150,14 +150,30 @@ class RuleLayer(nn.Module):
             self.rules = validated
 
         self.n_rules = len(self.rules)
+        self._register_vectorized_indices()
+
+    def _register_vectorized_indices(self) -> None:
+        """Convert per-input rule MF indices into absolute flat indices."""
+        offsets: list[int] = []
+        current = 0
+        for n_mfs in self.mf_per_input:
+            offsets.append(current)
+            current += n_mfs
+
+        abs_rules = [
+            [rule[input_idx] + offsets[input_idx] for input_idx in range(self.n_inputs)] for rule in self.rules
+        ]
+
+        self.register_buffer("rule_indices", torch.tensor(abs_rules, dtype=torch.long))
 
     def _apply_t_norm(self, terms: Tensor) -> Tensor:
+        dim = terms.ndim - 1
         if self.t_norm_fn is not None:
             try:
-                return self.t_norm_fn(terms, dim=1)
+                return self.t_norm_fn(terms, dim=dim)
             except TypeError:
                 return self.t_norm_fn(terms)
-        return self._resolved_t_norm(terms, dim=1)
+        return self._resolved_t_norm(terms, dim=dim)
 
     def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
         """Compute rule firing strengths from membership outputs."""
@@ -167,14 +183,12 @@ class RuleLayer(nn.Module):
                 raise KeyError(f"missing membership output for input '{name}'")
             mu_list.append(membership_outputs[name])
 
-        batch_size = mu_list[0].shape[0]
-        outputs: list[Tensor] = []
-        for rule in self.rules:
-            terms = [mu_list[input_idx][:, mf_idx] for input_idx, mf_idx in enumerate(rule)]
-            strength = self._apply_t_norm(torch.stack(terms, dim=1))
-            outputs.append(strength)
-
-        return torch.stack(outputs, dim=1).reshape(batch_size, self.n_rules)
+        mu_flat = torch.cat(mu_list, dim=1)
+        batch_size = mu_flat.shape[0]
+        rule_indices = cast(Tensor, self.rule_indices)
+        indices = rule_indices.unsqueeze(0).expand(batch_size, -1, -1)
+        terms = mu_flat.gather(1, indices.reshape(batch_size, -1)).reshape(batch_size, self.n_rules, self.n_inputs)
+        return self._apply_t_norm(terms)
 
 
 class AdaptiveDombiRuleLayer(RuleLayer):
@@ -209,12 +223,13 @@ class AdaptiveDombiRuleLayer(RuleLayer):
                 raise KeyError(f"missing membership output for input '{name}'")
             mu_list.append(membership_outputs[name])
 
-        rule_terms: list[Tensor] = []
-        for rule in self.rules:
-            terms = [mu_list[input_idx][:, mf_idx] for input_idx, mf_idx in enumerate(rule)]
-            rule_terms.append(torch.stack(terms, dim=1))
-
-        terms_tensor = torch.stack(rule_terms, dim=1)
+        mu_flat = torch.cat(mu_list, dim=1)
+        batch_size = mu_flat.shape[0]
+        rule_indices = cast(Tensor, self.rule_indices)
+        indices = rule_indices.unsqueeze(0).expand(batch_size, -1, -1)
+        terms_tensor = mu_flat.gather(1, indices.reshape(batch_size, -1)).reshape(
+            batch_size, self.n_rules, self.n_inputs
+        )
         mu = terms_tensor.clamp(min=self.eps, max=1.0 - self.eps)
         ratio = (1.0 - mu) / mu
         lambdas = self.lambdas.view(1, self.n_rules, 1)
