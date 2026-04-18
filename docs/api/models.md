@@ -17,6 +17,7 @@ still be supplied via the `defuzzifier` constructor parameter.
 | **TSK (vanilla)** | `TSKClassifier` | `TSKRegressor` | `prod` | `SumBasedDefuzzifier` |
 | **DombiTSK** | `DombiTSKClassifier` | `DombiTSKRegressor` | `dombi` | `SumBasedDefuzzifier` |
 | **AdaTSK** | `AdaTSKClassifier` | `AdaTSKRegressor` | adaptive `dombi` | `SumBasedDefuzzifier` |
+| **FSRE-AdaTSK** | `FSREAdaTSKClassifier` | `FSREAdaTSKRegressor` | adaptive `dombi` | `SoftmaxLogDefuzzifier` |
 | **LogTSK** | `LogTSKClassifier` | `LogTSKRegressor` | `prod` | `LogSumDefuzzifier` |
 
 For the mathematical details and scientific references, see:
@@ -25,6 +26,7 @@ For the mathematical details and scientific references, see:
 - [TSK Vanilla](../models/tsk-vanilla.md)
 - [LogTSK](../models/logtsk.md)
 - [AdaTSK](../models/adatsk.md)
+- [FSRE-AdaTSK](../models/fsre-adatsk.md)
 
 ## HTSKClassifier
 
@@ -312,6 +314,73 @@ pipeline for regression. The mathematical formulation is the same as
 - `predict(x)`: returns predictions as a 1-D tensor.
 - `forward_antecedents(x)`: returns normalized rule strengths.
 - `fit(...)`: trains model parameters with gradient descent.
+
+### Training Notes
+
+- Default loss: `nn.MSELoss()`.
+- Default optimizer: `AdamW` with separate weight decay groups.
+- Supports mini-batches, shuffling, and optional uniform regularization.
+- Early stopping can be enabled via validation data.
+
+## FSREAdaTSKClassifier
+
+`FSREAdaTSKClassifier` is a `torch.nn.Module` implementing an adaptive softmin
+TSK classifier with gated consequents for feature selection and rule extraction.
+
+### Constructor Highlights
+
+- `input_mfs`: dictionary of input names to membership-function lists.
+- `n_classes`: number of output classes.
+- `rule_base`: `"cartesian"`, `"coco"`, `"en"`, or `"custom"`.
+- `lambda_init`: positive initial value for the adaptive softmin / Dombi shape parameter.
+- `use_en_frb`: whether to expand to the enhanced fuzzy rule base for rule extraction.
+- `t_norm_fn`: optional custom t-norm callable (not used by default).
+- `defuzzifier`: optional custom defuzzifier (default `SoftmaxLogDefuzzifier`).
+- `eps`: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.
+- `consequent_batch_norm`: optional batch normalization before consequents.
+
+### Main Methods
+
+- `forward(x)`: returns class logits.
+- `predict_proba(x)`: returns softmax probabilities.
+- `predict(x)`: returns class indices.
+- `forward_antecedents(x)`: returns normalized rule strengths.
+- `fit(...)`: trains model parameters with gradient descent.
+- `fit_fs(x, y, ...)`: trains the feature-selection phase.
+- `fit_re(x, y, ...)`: expands to En-FRB and trains the rule-extraction phase.
+- `fit_finetune(x, y, ...)`: fine-tunes the reduced model.
+
+### Training Notes
+
+- Default loss: `nn.CrossEntropyLoss()`.
+- Default optimizer: `AdamW` with separate weight decay groups.
+- Supports mini-batches, shuffling, and optional uniform regularization.
+- Early stopping can be enabled via validation data.
+## FSREAdaTSKRegressor
+
+`FSREAdaTSKRegressor` is a `torch.nn.Module` implementing an adaptive softmin
+TSK regression model with gated consequents and rule-extraction support.
+
+### Constructor Highlights
+
+- `input_mfs`: dictionary of input names to membership-function lists.
+- `rule_base`: `"cartesian"`, `"coco"`, `"en"`, or `"custom"`.
+- `lambda_init`: positive initial value for the adaptive softmin / Dombi shape parameter.
+- `use_en_frb`: whether to expand to the enhanced fuzzy rule base for rule extraction.
+- `t_norm_fn`: optional custom t-norm callable (not used by default).
+- `defuzzifier`: optional custom defuzzifier (default `SoftmaxLogDefuzzifier`).
+- `eps`: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.
+- `consequent_batch_norm`: optional batch normalization before consequents.
+
+### Main Methods
+
+- `forward(x)`: returns predictions with shape `(batch, 1)`.
+- `predict(x)`: returns predictions as a 1-D tensor.
+- `forward_antecedents(x)`: returns normalized rule strengths.
+- `fit(...)`: trains model parameters with gradient descent.
+- `fit_fs(x, y, ...)`: trains the feature-selection phase.
+- `fit_re(x, y, ...)`: expands to En-FRB and trains the rule-extraction phase.
+- `fit_finetune(x, y, ...)`: fine-tunes the reduced model.
 
 ### Training Notes
 

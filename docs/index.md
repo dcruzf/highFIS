@@ -4,53 +4,85 @@ icon: lucide/sparkles
 
 # highFIS
 
-highFIS is a Python library for high-dimensional Takagi-Sugeno-Kang (TSK) fuzzy systems,
-implemented with PyTorch and exposed through a scikit-learn compatible estimator API.
+highFIS is a modern PyTorch library for high-dimensional Takagi-Sugeno-Kang
+(TSK) fuzzy systems. It delivers differentiable, trainable fuzzy inference for
+classification and regression, with sklearn-compatible estimators for fast
+experimentation.
 
-## What Is Included
+## Why highFIS?
 
-| Section | Description |
-|---|---|
-| [Quick Start](markdown.md) | Installation and first training run with `HTSKClassifierEstimator`. |
-| [HTSK Technical Notes](htsk-modelo.md) | Mathematical formulation and implementation details of HTSK in highFIS. |
-| [TSK Vanilla](models/tsk-vanilla.md) | Mathematical formulation of original TSK with sum-based defuzzification. |
-| [LogTSK](models/logtsk.md) | Log-space defuzzification with temperature parameter (Cui et al., IEEE TFS 2021). |
-| [AdaTSK](models/adatsk.md) | Adaptive Dombi TSK with per-rule lambda and high-dimensional stability. |
-| [Protocols API](api/protocols.md) | Structural typing protocols (`MembershipFn`, `TNorm`, `Defuzzifier`, `ConsequentFn`). |
-| [Memberships API](api/memberships.md) | Differentiable membership functions (`GaussianMF`, `TriangularMF`, `TrapezoidalMF`, `BellMF`, `SigmoidalMF`). |
-| [T-Norms API](api/t_norms.md) | Built-in aggregators (`prod`, `min`, `gmean`) and custom t-norm injection. |
-| [Defuzzifiers API](api/defuzzifiers.md) | Pluggable firing-strength normalization (`SoftmaxLogDefuzzifier`, `SumBasedDefuzzifier`, `LogSumDefuzzifier`). |
-| [Layers API](api/layers.md) | Membership, rule, and consequent layers. |
-| [Base TSK API](api/base.md) | `BaseTSK` abstract base with unified training loop. |
-| [Models API](api/models.md) | `HTSKClassifier`, `HTSKRegressor`, `TSKClassifier`, `TSKRegressor`, `LogTSKClassifier`, and `LogTSKRegressor` end-to-end neural fuzzy models. |
-| [Estimators API](api/estimators.md) | `HTSKClassifierEstimator`, `HTSKRegressorEstimator`, `TSKClassifierEstimator`, `TSKRegressorEstimator`, `LogTSKClassifierEstimator`, `LogTSKRegressorEstimator`, and `InputConfig` for sklearn workflows. |
-| [Contributing](contributing.md) | Development setup, checks, and pull request process. |
+- Built for high-dimensional data and numerical stability.
+- Supports adaptive and gated fuzzy inference, including feature selection
+  and rule extraction.
+- Ships with both model-level and estimator-level APIs.
+- Works seamlessly with `Pipeline`, `GridSearchCV`, and standard
+  scikit-learn workflows.
 
-## Key Characteristics
-
-- Differentiable fuzzy pipeline end-to-end in PyTorch.
-- `BaseTSK` abstract base with unified training loop — extend to create custom models.
-- Structural typing protocols for all pipeline stages.
-- Five membership function types: Gaussian, Triangular, Trapezoidal, Bell, Sigmoidal.
-- Pluggable defuzzifiers: `SoftmaxLogDefuzzifier` (default), `SumBasedDefuzzifier`, `LogSumDefuzzifier`.
-- HTSK inference via geometric-mean firing strengths for high-dimensional stability.
-- Vanilla TSK with product t-norm and classic sum-based defuzzification.
-- LogTSK with temperature-controlled log-space defuzzification.
-- Estimator default initialization based on k-means (paper-aligned), with grid mode as fallback.
-- Rule base strategies: `cartesian`, `coco`, `en`, and `custom`.
-- Default loss: `CrossEntropyLoss` (classifier) / `MSELoss` (regressor); default optimizer: `AdamW` with separate weight-decay groups.
-- Early stopping with automatic best-model restore.
-- Native integration with `Pipeline`, `GridSearchCV`, and cross-validation.
-
-## Installation
+## Quick Start
 
 ```bash
 pip install highFIS
 ```
 
-Minimum requirements:
+```python
+from highfis import HTSKClassifierEstimator
 
-- Python 3.11+
-- PyTorch 2.3+
-- NumPy 1.23+
-- scikit-learn 1.7.2+
+clf = HTSKClassifierEstimator(
+    n_mfs=4,
+    mf_init="kmeans",
+    epochs=150,
+    learning_rate=1e-3,
+    random_state=42,
+)
+clf.fit(X_train, y_train)
+print(f"Test accuracy: {clf.score(X_test, y_test):.4f}")
+```
+
+## Models Available
+
+highFIS offers a family of TSK fuzzy models optimized for different
+high-dimensional behaviors.
+
+### Classification
+
+- `HTSKClassifier` — geometric-mean inference for high-dimensional stability.
+- `TSKClassifier` — classical product t-norm TSK.
+- `DombiTSKClassifier` — Dombi aggregation with a tunable shape parameter.
+- `AdaTSKClassifier` — adaptive Dombi inference with per-rule learnable shape.
+- `FSREAdaTSKClassifier` — adaptive softmin with feature selection and rule
+  extraction.
+- `LogTSKClassifier` — log-space normalization with temperature control.
+
+### Regression
+
+- `HTSKRegressor`
+- `TSKRegressor`
+- `DombiTSKRegressor`
+- `AdaTSKRegressor`
+- `FSREAdaTSKRegressor`
+- `LogTSKRegressor`
+
+## Documentation
+
+| Topic | Description |
+|---|---|
+| [Quick Start](#quick-start) | Installation and first model run. |
+| [HTSK Technical Notes](htsk-modelo.md) | Deep dive into HTSK inference design. |
+| [TSK Vanilla](models/tsk-vanilla.md) | Standard Takagi-Sugeno-Kang model. |
+| [LogTSK](models/logtsk.md) | Log-space TSK for stability in high dimensions. |
+| [AdaTSK](models/adatsk.md) | Adaptive Dombi TSK with learned shape. |
+| [FSRE-AdaTSK](models/fsre-adatsk.md) | Feature selection and rule extraction. |
+| [Models API](api/models.md) | Model constructors and usage notes. |
+| [Estimators API](api/estimators.md) | sklearn-compatible estimator reference. |
+| [Layers API](api/layers.md) | Layer primitives for fuzzy pipelines. |
+| [Defuzzifiers API](api/defuzzifiers.md) | Normalization strategies. |
+| [T-Norms API](api/t_norms.md) | Built-in and custom aggregation functions. |
+| [Memberships API](api/memberships.md) | Membership functions for antecedents. |
+| [Base TSK API](api/base.md) | Unified training loop and shared logic. |
+| [Protocols API](api/protocols.md) | Structural typing interfaces. |
+| [Contributing](contributing.md) | Development setup and contribution guide. |
+
+## Get Started
+
+Use the top-level `highfis` classes for fast prototyping, or extend
+`BaseTSK` directly for custom fuzzy pipelines.
