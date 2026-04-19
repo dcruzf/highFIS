@@ -1,7 +1,6 @@
 """highFIS public API."""
 
 from .base import BaseTSK
-from .defuzzifiers import LogSumDefuzzifier, SoftmaxLogDefuzzifier, SumBasedDefuzzifier
 from .estimators import (
     AdaTSKClassifierEstimator,
     AdaTSKRegressorEstimator,
@@ -20,11 +19,19 @@ from .estimators import (
 from .memberships import (
     BellMF,
     CompositeGaussianMF,
+    DiffSigmoidalMF,
     GaussianMF,
+    GaussianPIMF,
+    LinSShapedMF,
+    LinZShapedMF,
     MembershipFunction,
+    PiMF,
+    ProdSigmoidalMF,
     SigmoidalMF,
+    SShapedMF,
     TrapezoidalMF,
     TriangularMF,
+    ZShapedMF,
 )
 from .models import (
     AdaTSKClassifier,
@@ -40,9 +47,7 @@ from .models import (
     TSKClassifier,
     TSKRegressor,
 )
-from .protocols import ConsequentFn, Defuzzifier, MembershipFn, TNorm
-
-__version__ = "0.6.0"
+from .version import __version__
 
 __all__: list[str] = [
     "AdaTSKClassifier",
@@ -52,8 +57,7 @@ __all__: list[str] = [
     "BaseTSK",
     "BellMF",
     "CompositeGaussianMF",
-    "ConsequentFn",
-    "Defuzzifier",
+    "DiffSigmoidalMF",
     "DombiTSKClassifier",
     "DombiTSKClassifierEstimator",
     "DombiTSKRegressor",
@@ -63,26 +67,31 @@ __all__: list[str] = [
     "FSREAdaTSKRegressor",
     "FSREAdaTSKRegressorEstimator",
     "GaussianMF",
+    "GaussianPIMF",
     "HTSKClassifier",
     "HTSKClassifierEstimator",
     "HTSKRegressor",
     "HTSKRegressorEstimator",
     "InputConfig",
-    "LogSumDefuzzifier",
+    "LinSShapedMF",
+    "LinZShapedMF",
     "LogTSKClassifier",
     "LogTSKClassifierEstimator",
     "LogTSKRegressor",
     "LogTSKRegressorEstimator",
-    "MembershipFn",
     "MembershipFunction",
+    "PiMF",
+    "ProdSigmoidalMF",
+    "SShapedMF",
     "SigmoidalMF",
     "SoftmaxLogDefuzzifier",
     "SumBasedDefuzzifier",
-    "TNorm",
     "TSKClassifier",
     "TSKClassifierEstimator",
     "TSKRegressor",
     "TSKRegressorEstimator",
     "TrapezoidalMF",
     "TriangularMF",
+    "ZShapedMF",
+    "__version__",
 ]
