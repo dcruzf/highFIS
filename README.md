@@ -60,7 +60,7 @@ highFIS works with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and
 
 ### Building blocks
 
-- Memberships: `GaussianMF`, `TriangularMF`, `TrapezoidalMF`, `BellMF`, `SigmoidalMF`
+- Memberships: `GaussianMF`, `TriangularMF`, `TrapezoidalMF`, `BellMF`, `SigmoidalMF`, `DiffSigmoidalMF`, `ProdSigmoidalMF`, `SShapedMF`, `LinSShapedMF`, `ZShapedMF`, `LinZShapedMF`, `PiMF`, `GaussianPIMF`
 - Defuzzifiers: `SoftmaxLogDefuzzifier`, `SumBasedDefuzzifier`, `LogSumDefuzzifier`
 - T-norms: `prod`, `min`, `gmean`, `dombi`
 - Rule base strategies: `cartesian`, `coco`, `en`, `custom`
