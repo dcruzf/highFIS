@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 import torch
 from torch import nn
 
 from highfis.base import _iter_minibatch_indices
+from highfis.layers import AdaptiveDombiRuleLayer
 from highfis.memberships import GaussianMF
-from highfis.models import DombiTSKClassifier, HTSKClassifier, HTSKRegressor
+from highfis.models import AdaTSKClassifier, AdaTSKRegressor, DombiTSKClassifier, HTSKClassifier, HTSKRegressor
 
 
 def _build_input_mfs(n_inputs: int = 3, n_mfs: int = 2) -> dict[str, list[GaussianMF]]:
@@ -102,6 +105,115 @@ def test_dombitsk_classifier_forward_antecedents_row_sum_one() -> None:
 def test_dombitsk_classifier_rejects_nonpositive_lambda() -> None:
     with pytest.raises(ValueError, match="lambda_ must be > 0"):
         DombiTSKClassifier(_build_input_mfs(), n_classes=2, lambda_=0.0)
+
+
+def test_adatsk_classifier_forward_predict_shapes() -> None:
+    model = AdaTSKClassifier(_build_input_mfs(), n_classes=3)
+    x = torch.randn(8, 3)
+
+    logits = model.forward(x)
+    proba = model.predict_proba(x)
+    pred = model.predict(x)
+
+    assert logits.shape == (8, 3)
+    assert proba.shape == (8, 3)
+    assert pred.shape == (8,)
+    assert torch.allclose(proba.sum(dim=1), torch.ones(8), atol=1e-6)
+
+
+def test_adatsk_classifier_forward_antecedents_row_sum_one() -> None:
+    model = AdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    x = torch.randn(6, 2)
+
+    norm_w = model.forward_antecedents(x)
+
+    assert norm_w.ndim == 2
+    assert torch.allclose(norm_w.sum(dim=1), torch.ones(6), atol=1e-6)
+
+
+def test_adatsk_classifier_adaptive_lambda_positive() -> None:
+    model = AdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=2.0)
+    rule_layer = cast(AdaptiveDombiRuleLayer, model.rule_layer)
+    lambdas = rule_layer.lambdas
+    assert lambdas.shape == (model.n_rules,)
+    assert torch.all(lambdas > 0.0)
+
+
+def test_adatsk_regressor_forward_shape() -> None:
+    model = AdaTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    x = torch.randn(5, 2)
+
+    output = model.forward(x)
+
+    assert output.shape == (5, 1)
+
+
+def test_adatsk_regressor_fit_returns_history() -> None:
+    torch.manual_seed(1)
+    model = AdaTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    x = torch.randn(20, 2)
+    y = torch.randn(20)
+
+    history = model.fit(x, y, epochs=3, learning_rate=1e-2, batch_size=5, shuffle=True)
+
+    assert set(history.keys()) == {"train", "ur", "val", "stopped_epoch"}
+    assert len(history["train"]) == 3
+    assert len(history["ur"]) == 3
+    assert history["stopped_epoch"] == 3
+
+
+def test_adatsk_classifier_rejects_nonpositive_lambda() -> None:
+    with pytest.raises(ValueError, match="lambda_init must be > 0"):
+        AdaTSKClassifier(_build_input_mfs(), n_classes=2, lambda_init=0.0)
+
+
+def test_adatsk_regressor_rejects_nonpositive_lambda() -> None:
+    with pytest.raises(ValueError, match="lambda_init must be > 0"):
+        AdaTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=0.0)
+
+
+def test_adatsk_classifier_rejects_invalid_n_classes() -> None:
+    with pytest.raises(ValueError, match="n_classes must be >= 2"):
+        AdaTSKClassifier(_build_input_mfs(), n_classes=1)
+
+
+def test_adatsk_classifier_consequent_batch_norm() -> None:
+    model = AdaTSKClassifier(_build_input_mfs(), n_classes=2, consequent_batch_norm=True)
+    x = torch.randn(8, 3)
+    y = torch.randint(0, 2, (8,), dtype=torch.long)
+
+    history = model.fit(x, y, epochs=2, learning_rate=1e-2, batch_size=4)
+    assert history["stopped_epoch"] == 2
+    assert model.predict(x).shape == (8,)
+
+
+def test_adatsk_classifier_custom_rule_base_and_rules() -> None:
+    input_mfs = _build_input_mfs(n_inputs=2, n_mfs=2)
+    custom_rules = [(0, 0), (1, 1)]
+    model = AdaTSKClassifier(
+        input_mfs,
+        n_classes=2,
+        rule_base="custom",
+        rules=custom_rules,
+        lambda_init=1.5,
+    )
+    assert model.n_rules == 2
+    x = torch.randn(4, 2)
+    logits = model.forward(x)
+    assert logits.shape == (4, 2)
+    assert torch.allclose(model.forward_antecedents(x).sum(dim=1), torch.ones(4), atol=1e-6)
+
+
+def test_adatsk_regressor_consequent_batch_norm() -> None:
+    model = AdaTSKRegressor(
+        _build_input_mfs(n_inputs=2, n_mfs=2),
+        consequent_batch_norm=True,
+    )
+    x = torch.randn(8, 2)
+    y = torch.randn(8)
+    history = model.fit(x, y, epochs=2, learning_rate=1e-2, batch_size=4)
+    assert history["stopped_epoch"] == 2
+    assert model.predict(x).shape == (8,)
 
 
 def test_htsk_classifier_fit_history_keys_without_val() -> None:

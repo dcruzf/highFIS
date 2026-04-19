@@ -22,19 +22,21 @@ dimensions thanks to the internal max-subtraction trick of `torch.softmax`.
 
 Parameters:
 
-- `eps`: clamping floor before log (default `1e-8`).
+- `eps`: clamping floor before `log` (default `None`, which infers the epsilon
+  from `w.dtype`).
 
 ## SumBasedDefuzzifier
 
-Classic sum-based normalization:
+Classic sum-based normalization with clamped weights:
 
 $$
-\bar{w}_r = \frac{w_r}{\sum_{j=1}^{R} w_j + \epsilon}
+\bar{w}_r = \frac{\max(w_r, \epsilon)}{\sum_{j=1}^{R} \max(w_j, \epsilon)}
 $$
 
 Parameters:
 
-- `eps`: additive constant for numerical stability (default `1e-8`).
+- `eps`: clamping floor for weights before normalization (default `None`,
+  which infers the epsilon from `w.dtype`).
 
 ## LogSumDefuzzifier
 
@@ -50,7 +52,8 @@ the distribution; higher temperatures flatten it.
 Parameters:
 
 - `temperature`: scaling factor $T > 0$ (default `1.0`).
-- `eps`: clamping floor before log (default `1e-8`).
+- `eps`: clamping floor before `log` (default `None`, which infers the epsilon
+  from `w.dtype`).
 
 ## Example
 

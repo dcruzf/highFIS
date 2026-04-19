@@ -133,7 +133,8 @@ A scikit-learn compatible classifier wrapper around `TSKClassifier`.
 
 Same hyperparameters as `HTSKClassifierEstimator` (see above).
 
-The model uses `SumBasedDefuzzifier` (w / Σw) instead of `SoftmaxLogDefuzzifier`.
+The model uses `SumBasedDefuzzifier`, where weights are clamped to a small,
+input-dtype-aware epsilon before normalization.
 
 ### Example
 
@@ -164,6 +165,8 @@ A scikit-learn compatible regressor wrapper around `TSKRegressor`.
 ### Core Hyperparameters
 
 Same hyperparameters as `HTSKRegressorEstimator` (see above), with `SumBasedDefuzzifier`.
+
+`SumBasedDefuzzifier` clamps weights to a dtype-aware epsilon before normalizing.
 
 ### Example
 
@@ -225,6 +228,8 @@ A scikit-learn compatible regressor wrapper around `DombiTSKRegressor`.
 
 Same hyperparameters as `HTSKRegressorEstimator` (see above), with `SumBasedDefuzzifier`.
 
+`SumBasedDefuzzifier` clamps weights to a dtype-aware epsilon before normalizing.
+
 ### Example
 
 ```python
@@ -233,6 +238,140 @@ from highfis import DombiTSKRegressorEstimator
 reg = DombiTSKRegressorEstimator(
     n_mfs=3,
     mf_init="kmeans",
+    epochs=200,
+    learning_rate=1e-3,
+    random_state=0,
+)
+reg.fit(X_train, y_train)
+r2 = reg.score(X_test, y_test)
+```
+
+## AdaTSKClassifierEstimator
+
+A scikit-learn compatible classifier wrapper around `AdaTSKClassifier`.
+
+### sklearn Compatibility
+
+- Inherits `BaseEstimator` and `ClassifierMixin`.
+- Implements `fit`, `predict`, `predict_proba`, and `score`.
+- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
+
+### Core Hyperparameters
+
+Same hyperparameters as `HTSKClassifierEstimator` (see above), plus:
+
+- `lambda_init`: positive initial value for adaptive Dombi shape parameters.
+
+### Example
+
+```python
+from highfis import AdaTSKClassifierEstimator
+
+clf = AdaTSKClassifierEstimator(
+    n_mfs=3,
+    mf_init="kmeans",
+    lambda_init=1.0,
+    epochs=200,
+    learning_rate=1e-3,
+    random_state=0,
+)
+clf.fit(X_train, y_train)
+acc = clf.score(X_test, y_test)
+```
+
+## AdaTSKRegressorEstimator
+
+A scikit-learn compatible regressor wrapper around `AdaTSKRegressor`.
+
+### sklearn Compatibility
+
+- Inherits `BaseEstimator` and `RegressorMixin`.
+- Implements `fit`, `predict`, and `score` ($R^2$).
+- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
+
+### Core Hyperparameters
+
+Same hyperparameters as `HTSKRegressorEstimator` (see above), plus:
+
+- `lambda_init`: positive initial value for adaptive Dombi shape parameters.
+
+### Example
+
+```python
+from highfis import AdaTSKRegressorEstimator
+
+reg = AdaTSKRegressorEstimator(
+    n_mfs=3,
+    mf_init="kmeans",
+    lambda_init=1.0,
+    epochs=200,
+    learning_rate=1e-3,
+    random_state=0,
+)
+reg.fit(X_train, y_train)
+r2 = reg.score(X_test, y_test)
+```
+
+## FSREAdaTSKClassifierEstimator
+
+A scikit-learn compatible classifier wrapper around `FSREAdaTSKClassifier`.
+
+### sklearn Compatibility
+
+- Inherits `BaseEstimator` and `ClassifierMixin`.
+- Implements `fit`, `predict`, `predict_proba`, and `score`.
+- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
+
+### Core Hyperparameters
+
+Same hyperparameters as `AdaTSKClassifierEstimator` (see above), plus:
+
+- `use_en_frb`: whether to enable the enhanced fuzzy rule base for rule extraction.
+
+### Example
+
+```python
+from highfis import FSREAdaTSKClassifierEstimator
+
+clf = FSREAdaTSKClassifierEstimator(
+    n_mfs=3,
+    mf_init="kmeans",
+    lambda_init=1.0,
+    use_en_frb=True,
+    epochs=200,
+    learning_rate=1e-3,
+    random_state=0,
+)
+clf.fit(X_train, y_train)
+acc = clf.score(X_test, y_test)
+```
+
+## FSREAdaTSKRegressorEstimator
+
+A scikit-learn compatible regressor wrapper around `FSREAdaTSKRegressor`.
+
+### sklearn Compatibility
+
+- Inherits `BaseEstimator` and `RegressorMixin`.
+- Implements `fit`, `predict`, and `score` ($R^2$).
+- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
+
+### Core Hyperparameters
+
+Same hyperparameters as `AdaTSKRegressorEstimator` (see above), plus:
+
+- `use_en_frb`: whether to enable the enhanced fuzzy rule base for rule extraction.
+
+### Example
+
+```python
+from highfis import FSREAdaTSKRegressorEstimator
+
+reg = FSREAdaTSKRegressorEstimator(
+    n_mfs=3,
+    mf_init="kmeans",
+    lambda_init=1.0,
+    use_en_frb=True,
     epochs=200,
     learning_rate=1e-3,
     random_state=0,
@@ -256,6 +395,7 @@ A scikit-learn compatible classifier wrapper around `LogTSKClassifier`.
 Same hyperparameters as `HTSKClassifierEstimator` (see above).
 
 The model uses `LogSumDefuzzifier` (softmax(log(w)/τ)) for log-space normalization.
+`LogSumDefuzzifier` also infers a dtype-aware epsilon for clamping before log.
 
 ### Example
 
@@ -286,6 +426,8 @@ A scikit-learn compatible regressor wrapper around `LogTSKRegressor`.
 ### Core Hyperparameters
 
 Same hyperparameters as `HTSKRegressorEstimator` (see above), with `LogSumDefuzzifier`.
+
+`LogSumDefuzzifier` infers a dtype-aware epsilon for clamping before log.
 
 ### Example
 

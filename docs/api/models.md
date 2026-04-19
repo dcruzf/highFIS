@@ -7,11 +7,17 @@
 All models inherit from `BaseTSK` (see [Base TSK API](base.md)), which provides
 the shared pipeline and unified training loop.
 
+Built-in defuzzifiers now infer their numerical-stability `eps` from the input
+tensor dtype when `eps` is not explicitly provided. Custom defuzzifiers may
+still be supplied via the `defuzzifier` constructor parameter.
+
 | Variant | Classifier | Regressor | T-norm | Defuzzifier |
 |---------|-----------|-----------|--------|-------------|
 | **HTSK** | `HTSKClassifier` | `HTSKRegressor` | `gmean` | `SoftmaxLogDefuzzifier` |
 | **TSK (vanilla)** | `TSKClassifier` | `TSKRegressor` | `prod` | `SumBasedDefuzzifier` |
 | **DombiTSK** | `DombiTSKClassifier` | `DombiTSKRegressor` | `dombi` | `SumBasedDefuzzifier` |
+| **AdaTSK** | `AdaTSKClassifier` | `AdaTSKRegressor` | adaptive `dombi` | `SumBasedDefuzzifier` |
+| **FSRE-AdaTSK** | `FSREAdaTSKClassifier` | `FSREAdaTSKRegressor` | adaptive `dombi` | `SoftmaxLogDefuzzifier` |
 | **LogTSK** | `LogTSKClassifier` | `LogTSKRegressor` | `prod` | `LogSumDefuzzifier` |
 
 For the mathematical details and scientific references, see:
@@ -19,6 +25,8 @@ For the mathematical details and scientific references, see:
 - [HTSK Technical Notes](../htsk-modelo.md)
 - [TSK Vanilla](../models/tsk-vanilla.md)
 - [LogTSK](../models/logtsk.md)
+- [AdaTSK](../models/adatsk.md)
+- [FSRE-AdaTSK](../models/fsre-adatsk.md)
 
 ## HTSKClassifier
 
@@ -37,6 +45,7 @@ For the mathematical details and scientific references, see:
 - `t_norm`: built-in t-norm name.
 - `t_norm_fn`: optional custom t-norm callable.
 - `defuzzifier`: optional custom defuzzifier (default `SoftmaxLogDefuzzifier`).
+- `eps`: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.
 - `consequent_batch_norm`: optional batch normalization before consequents.
 
 ### Main Methods
@@ -73,6 +82,7 @@ For the mathematical details and scientific references, see:
 - `t_norm`: built-in t-norm name.
 - `t_norm_fn`: optional custom t-norm callable.
 - `defuzzifier`: optional custom defuzzifier (default `SoftmaxLogDefuzzifier`).
+- `eps`: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.
 - `consequent_batch_norm`: optional batch normalization before consequents.
 
 ### Main Methods
@@ -105,6 +115,7 @@ classification pipeline with product t-norm and sum-based defuzzification.
 - `t_norm`: built-in t-norm name (default `"prod"`).
 - `t_norm_fn`: optional custom t-norm callable.
 - `defuzzifier`: optional custom defuzzifier (default `SumBasedDefuzzifier`).
+- `eps`: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.
 - `consequent_batch_norm`: optional batch normalization before consequents.
 
 ### Main Methods
@@ -133,6 +144,7 @@ regression pipeline with product t-norm and sum-based defuzzification.
 - `t_norm`: built-in t-norm name (default `"prod"`).
 - `t_norm_fn`: optional custom t-norm callable.
 - `defuzzifier`: optional custom defuzzifier (default `SumBasedDefuzzifier`).
+- `eps`: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.
 - `consequent_batch_norm`: optional batch normalization before consequents.
 
 ### Main Methods
@@ -162,6 +174,7 @@ TSK classification pipeline with sum-based defuzzification.
 - `lambda_`: shape parameter for Dombi aggregation.
 - `t_norm_fn`: optional custom t-norm callable.
 - `defuzzifier`: optional custom defuzzifier (default `SumBasedDefuzzifier`).
+- `eps`: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.
 - `consequent_batch_norm`: optional batch normalization before consequents.
 
 ### Main Methods
@@ -190,6 +203,7 @@ TSK regression pipeline with sum-based defuzzification.
 - `lambda_`: shape parameter for Dombi aggregation.
 - `t_norm_fn`: optional custom t-norm callable.
 - `defuzzifier`: optional custom defuzzifier (default `SumBasedDefuzzifier`).
+- `eps`: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.
 - `consequent_batch_norm`: optional batch normalization before consequents.
 
 ### Main Methods
@@ -204,6 +218,177 @@ TSK regression pipeline with sum-based defuzzification.
 Same optimizer and training configuration as `HTSKRegressor`.
 Default loss is `nn.MSELoss()`.
 
+## AdaTSKClassifier
+
+`AdaTSKClassifier` is a `torch.nn.Module` implementing an adaptive Dombi TSK
+pipeline for classification. The rule antecedent aggregation is based on
+per-rule learnable $\lambda$ parameters, which are constrained to be
+positive via a softplus reparameterization.
+
+### Mathematical Formulation
+
+#### Antecedent
+
+Each membership term follows a Composite Gaussian MF with lower bound
+$\epsilon$:
+
+$$
+\mu_{r,d}(x_d) = \epsilon + (1 - \epsilon) \exp\left(-\frac{(x_d - c_{r,d})^2}{2 \sigma_{r,d}^2}\right)
+$$
+
+The adaptive Dombi firing strength is:
+
+$$
+\phi_r = \left(1 + \sum_{d=1}^D \left[\left(\frac{1 - \mu_{r,d}}{\mu_{r,d}}\right)^{\lambda_r}\right]\right)^{-1/\lambda_r}
+$$
+
+where each $\lambda_r > 0$ is learned.
+
+#### Consequent
+
+For classification:
+
+$$
+\mathbf{y}_r = W_r \mathbf{x} + \mathbf{b}_r
+$$
+
+#### Aggregation
+
+Normalized rule strengths are computed with sum normalization:
+
+$$
+\bar{\phi}_r = \frac{\phi_r}{\sum_{k=1}^R \phi_k}
+$$
+
+Final logits are aggregated as:
+
+$$
+\mathbf{y} = \sum_{r=1}^R \bar{\phi}_r \mathbf{y}_r
+$$
+
+### Main Methods
+
+- `forward(x)`: returns class logits.
+- `predict_proba(x)`: returns softmax probabilities.
+- `predict(x)`: returns class indices.
+- `forward_antecedents(x)`: returns normalized rule strengths.
+- `fit(...)`: trains model parameters with gradient descent.
+
+### Constructor Highlights
+
+- `input_mfs`: dictionary of input names to membership-function lists.
+- `n_classes`: number of output classes.
+- `rule_base`: `"cartesian"`, `"coco"`, `"en"`, or `"custom"`.
+- `lambda_init`: initial positive value for adaptive Dombi shape parameters.
+- `t_norm_fn`: optional custom t-norm callable (not used by default).
+- `defuzzifier`: optional custom defuzzifier (default `SumBasedDefuzzifier`).
+- `eps`: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.
+- `consequent_batch_norm`: optional batch normalization before consequents.
+
+### Training Notes
+
+- Default loss: `nn.CrossEntropyLoss()`.
+- Default optimizer: `AdamW` with separate weight decay groups.
+- Supports mini-batches, shuffling, and optional uniform regularization.
+- Early stopping can be enabled via validation data.
+
+## AdaTSKRegressor
+
+`AdaTSKRegressor` is a `torch.nn.Module` implementing an adaptive Dombi TSK
+pipeline for regression. The mathematical formulation is the same as
+`AdaTSKClassifier` except the consequent output is scalar.
+
+### Constructor Highlights
+
+- `input_mfs`: dictionary of input names to membership-function lists.
+- `rule_base`: `"cartesian"`, `"coco"`, `"en"`, or `"custom"`.
+- `lambda_init`: initial positive value for adaptive Dombi shape parameters.
+- `t_norm_fn`: optional custom t-norm callable (not used by default).
+- `defuzzifier`: optional custom defuzzifier (default `SumBasedDefuzzifier`).
+- `eps`: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.
+- `consequent_batch_norm`: optional batch normalization before consequents.
+
+### Main Methods
+
+- `forward(x)`: returns predictions with shape `(batch, 1)`.
+- `predict(x)`: returns predictions as a 1-D tensor.
+- `forward_antecedents(x)`: returns normalized rule strengths.
+- `fit(...)`: trains model parameters with gradient descent.
+
+### Training Notes
+
+- Default loss: `nn.MSELoss()`.
+- Default optimizer: `AdamW` with separate weight decay groups.
+- Supports mini-batches, shuffling, and optional uniform regularization.
+- Early stopping can be enabled via validation data.
+
+## FSREAdaTSKClassifier
+
+`FSREAdaTSKClassifier` is a `torch.nn.Module` implementing an adaptive softmin
+TSK classifier with gated consequents for feature selection and rule extraction.
+
+### Constructor Highlights
+
+- `input_mfs`: dictionary of input names to membership-function lists.
+- `n_classes`: number of output classes.
+- `rule_base`: `"cartesian"`, `"coco"`, `"en"`, or `"custom"`.
+- `lambda_init`: positive initial value for the adaptive softmin / Dombi shape parameter.
+- `use_en_frb`: whether to expand to the enhanced fuzzy rule base for rule extraction.
+- `t_norm_fn`: optional custom t-norm callable (not used by default).
+- `defuzzifier`: optional custom defuzzifier (default `SoftmaxLogDefuzzifier`).
+- `eps`: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.
+- `consequent_batch_norm`: optional batch normalization before consequents.
+
+### Main Methods
+
+- `forward(x)`: returns class logits.
+- `predict_proba(x)`: returns softmax probabilities.
+- `predict(x)`: returns class indices.
+- `forward_antecedents(x)`: returns normalized rule strengths.
+- `fit(...)`: trains model parameters with gradient descent.
+- `fit_fs(x, y, ...)`: trains the feature-selection phase.
+- `fit_re(x, y, ...)`: expands to En-FRB and trains the rule-extraction phase.
+- `fit_finetune(x, y, ...)`: fine-tunes the reduced model.
+
+### Training Notes
+
+- Default loss: `nn.CrossEntropyLoss()`.
+- Default optimizer: `AdamW` with separate weight decay groups.
+- Supports mini-batches, shuffling, and optional uniform regularization.
+- Early stopping can be enabled via validation data.
+## FSREAdaTSKRegressor
+
+`FSREAdaTSKRegressor` is a `torch.nn.Module` implementing an adaptive softmin
+TSK regression model with gated consequents and rule-extraction support.
+
+### Constructor Highlights
+
+- `input_mfs`: dictionary of input names to membership-function lists.
+- `rule_base`: `"cartesian"`, `"coco"`, `"en"`, or `"custom"`.
+- `lambda_init`: positive initial value for the adaptive softmin / Dombi shape parameter.
+- `use_en_frb`: whether to expand to the enhanced fuzzy rule base for rule extraction.
+- `t_norm_fn`: optional custom t-norm callable (not used by default).
+- `defuzzifier`: optional custom defuzzifier (default `SoftmaxLogDefuzzifier`).
+- `eps`: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.
+- `consequent_batch_norm`: optional batch normalization before consequents.
+
+### Main Methods
+
+- `forward(x)`: returns predictions with shape `(batch, 1)`.
+- `predict(x)`: returns predictions as a 1-D tensor.
+- `forward_antecedents(x)`: returns normalized rule strengths.
+- `fit(...)`: trains model parameters with gradient descent.
+- `fit_fs(x, y, ...)`: trains the feature-selection phase.
+- `fit_re(x, y, ...)`: expands to En-FRB and trains the rule-extraction phase.
+- `fit_finetune(x, y, ...)`: fine-tunes the reduced model.
+
+### Training Notes
+
+- Default loss: `nn.MSELoss()`.
+- Default optimizer: `AdamW` with separate weight decay groups.
+- Supports mini-batches, shuffling, and optional uniform regularization.
+- Early stopping can be enabled via validation data.
+
 ## LogTSKClassifier
 
 `LogTSKClassifier` is a `torch.nn.Module` implementing log-space defuzzification
@@ -217,6 +402,7 @@ with a temperature parameter for classification tasks.
 - `t_norm`: built-in t-norm name (default `"prod"`).
 - `t_norm_fn`: optional custom t-norm callable.
 - `defuzzifier`: optional custom defuzzifier (default `LogSumDefuzzifier`).
+- `eps`: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.
 - `consequent_batch_norm`: optional batch normalization before consequents.
 - `temperature`: temperature parameter τ for log-space normalization (default `1.0`).
 
@@ -247,6 +433,7 @@ with a temperature parameter for regression tasks.
 - `t_norm`: built-in t-norm name (default `"prod"`).
 - `t_norm_fn`: optional custom t-norm callable.
 - `defuzzifier`: optional custom defuzzifier (default `LogSumDefuzzifier`).
+- `eps`: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.
 - `consequent_batch_norm`: optional batch normalization before consequents.
 - `temperature`: temperature parameter τ for log-space normalization (default `1.0`).
 

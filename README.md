@@ -7,11 +7,12 @@
 [![PyPI - Version](https://img.shields.io/pypi/v/highfis?color=%2333CA56)](https://pypi.org/project/highfis/)
 [![PyPI - License](https://img.shields.io/pypi/l/highfis?color=%2333CA56)](https://raw.githubusercontent.com/dcruzf/highFIS/refs/heads/main/LICENSE)
 
+highFIS is a PyTorch-based framework for high-dimensional Takagi–Sugeno–Kang
+(TSK) fuzzy systems. It brings differentiable fuzzy inference, numerical
+stability, and sklearn-compatible estimators to both classification and
+regression workflows.
 
-
-Python library for high-dimensional Takagi–Sugeno–Kang (TSK) fuzzy inference systems, built on PyTorch with a scikit-learn compatible API.
-
-## 📦 Installation
+## 🚀 Quick Start
 
 Install from PyPI:
 
@@ -19,102 +20,67 @@ Install from PyPI:
 pip install highfis
 ```
 
-## 🧠 Quick Start
+Run a classifier:
 
 ```python
 from highfis import HTSKClassifierEstimator
 
 clf = HTSKClassifierEstimator(
-    n_mfs=3,
-    rule_base="en",
-    epochs=200,
+    n_mfs=4,
+    mf_init="kmeans",
+    epochs=150,
     learning_rate=1e-3,
-    ur_weight=0.01,
     random_state=42,
 )
 clf.fit(X_train, y_train)
-print(clf.score(X_test, y_test))
+print(f"Test accuracy: {clf.score(X_test, y_test):.4f}")
 ```
 
-Works with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and `cross_val_score`.
+highFIS works with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and
+`cross_val_score`.
 
-## 🧩 Key Components
+## 🔧 What’s Included
 
-| Class | Module | Description |
-|---|---|---|
-| `BaseTSK` | `highfis.base` | Abstract base for TSK models with unified training loop. |
-| `GaussianMF` | `highfis.memberships` | Differentiable Gaussian membership function. |
-| `TriangularMF` | `highfis.memberships` | Triangular membership function. |
-| `TrapezoidalMF` | `highfis.memberships` | Trapezoidal membership function. |
-| `BellMF` | `highfis.memberships` | Generalized bell membership function. |
-| `SigmoidalMF` | `highfis.memberships` | Sigmoidal membership function. |
-| `SoftmaxLogDefuzzifier` | `highfis.defuzzifiers` | Stable `softmax(log(w))` normalization. |
-| `SumBasedDefuzzifier` | `highfis.defuzzifiers` | Classic `w / sum(w)` normalization. |
-| `LogSumDefuzzifier` | `highfis.defuzzifiers` | Temperature-scaled log-space normalization. |
-| `MembershipLayer` | `highfis.layers` | Evaluates all membership functions. |
-| `RuleLayer` | `highfis.layers` | Computes firing strengths with configurable t-norm and rule base. |
-| `ClassificationConsequentLayer` | `highfis.layers` | Linear TSK consequent aggregation for classification. |
-| `RegressionConsequentLayer` | `highfis.layers` | Linear TSK consequent aggregation for regression. |
-| `HTSKClassifier` | `highfis.models` | Full TSK classification pipeline as `nn.Module`. |
-| `HTSKRegressor` | `highfis.models` | Full TSK regression pipeline as `nn.Module`. |
-| `TSKClassifier` | `highfis.models` | Vanilla TSK classifier with sum-based defuzzification. |
-| `TSKRegressor` | `highfis.models` | Vanilla TSK regressor with sum-based defuzzification. |
-| `LogTSKClassifier` | `highfis.models` | LogTSK classifier with log-space defuzzification. |
-| `LogTSKRegressor` | `highfis.models` | LogTSK regressor with log-space defuzzification. |
-| `HTSKClassifierEstimator` | `highfis.estimators` | sklearn-compatible classification estimator. |
-| `HTSKRegressorEstimator` | `highfis.estimators` | sklearn-compatible regression estimator. |
-| `TSKClassifierEstimator` | `highfis.estimators` | sklearn-compatible vanilla TSK classifier estimator. |
-| `TSKRegressorEstimator` | `highfis.estimators` | sklearn-compatible vanilla TSK regressor estimator. |
-| `LogTSKClassifierEstimator` | `highfis.estimators` | sklearn-compatible LogTSK classifier estimator. |
-| `LogTSKRegressorEstimator` | `highfis.estimators` | sklearn-compatible LogTSK regressor estimator. |
-| `InputConfig` | `highfis.estimators` | Per-feature membership function configuration. |
+### Core models
 
-### Structural Typing Protocols
+- `HTSKClassifier`, `HTSKRegressor`
+- `TSKClassifier`, `TSKRegressor`
+- `DombiTSKClassifier`, `DombiTSKRegressor`
+- `AdaTSKClassifier`, `AdaTSKRegressor`
+- `FSREAdaTSKClassifier`, `FSREAdaTSKRegressor`
+- `LogTSKClassifier`, `LogTSKRegressor`
 
-| Protocol | Description |
-|---|---|
-| `MembershipFn` | Any callable `(Tensor) → Tensor` for membership degrees. |
-| `TNorm` | Any callable `(Tensor) → Tensor` for rule aggregation. |
-| `Defuzzifier` | Any callable `(Tensor) → Tensor` for firing-strength normalization. |
-| `ConsequentFn` | Any callable `(Tensor, Tensor) → Tensor` for consequent output. |
+### Estimator wrappers
 
-## 🧪 Testing & Quality
+- `HTSKClassifierEstimator`, `HTSKRegressorEstimator`
+- `TSKClassifierEstimator`, `TSKRegressorEstimator`
+- `LogTSKClassifierEstimator`, `LogTSKRegressorEstimator`
+- `AdaTSKClassifierEstimator`, `AdaTSKRegressorEstimator`
+- `FSREAdaTSKClassifierEstimator`, `FSREAdaTSKRegressorEstimator`
 
-### Running tests
+### Building blocks
 
-Run the full test suite with coverage:
-
-```bash
-hatch test -c -a
-```
-
-This project is tested on Python 3.11 | 3.12 | 3.13 | 3.14 across Linux, Windows and macOS.
-
-### Linting & Formatting
-
-```bash
-hatch fmt
-```
-
-### Typing
-
-```bash
-hatch run typing
-```
-
-### Security
-
-```bash
-hatch run security
-```
+- Memberships: `GaussianMF`, `TriangularMF`, `TrapezoidalMF`, `BellMF`, `SigmoidalMF`
+- Defuzzifiers: `SoftmaxLogDefuzzifier`, `SumBasedDefuzzifier`, `LogSumDefuzzifier`
+- T-norms: `prod`, `min`, `gmean`, `dombi`
+- Rule base strategies: `cartesian`, `coco`, `en`, `custom`
 
 ## 📚 Documentation
 
-Comprehensive guides, API reference, and examples: [dcruzf.github.io/highFIS](https://dcruzf.github.io/highFIS/).
+The published documentation is available at https://dcruzf.github.io/highFIS.
 
-## 🤝 Contributing
+Key reference pages:
 
-Issues and pull requests are welcome! Please open a discussion if you'd like to propose larger changes.
+- [TSK Vanilla](https://dcruzf.github.io/highFIS/latest/models/tsk-vanilla)
+- [LogTSK](https://dcruzf.github.io/highFIS/latest/models/logtsk)
+- [HTSK](https://dcruzf.github.io/highFIS/latest/models/htsk)
+- [DombiTSK](https://dcruzf.github.io/highFIS/latest/models/dombitsk)
+- [AdaTSK](https://dcruzf.github.io/highFIS/latest/models/adatsk)
+- [FSRE-AdaTSK](https://dcruzf.github.io/highFIS/latest/models/fsre-adatsk)
+
+## 🤝 Contributing & Development
+
+See the published contribution guide at [contributing](https://dcruzf.github.io/highFIS/latest/contributing/).
 
 ## 📄 License
 

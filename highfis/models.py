@@ -49,29 +49,31 @@ explicit and the defuzzification strategy is pluggable:
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from functools import partial
-from typing import TYPE_CHECKING
+from typing import Any
 
 import torch
 from torch import Tensor, nn
 
 from .base import BaseTSK
-from .defuzzifiers import LogSumDefuzzifier, SumBasedDefuzzifier
-from .layers import ClassificationConsequentLayer, RegressionConsequentLayer
+from .defuzzifiers import LogSumDefuzzifier, SoftmaxLogDefuzzifier, SumBasedDefuzzifier
+from .layers import (
+    AdaptiveDombiRuleLayer,
+    AdaSoftminRuleLayer,
+    ClassificationConsequentLayer,
+    GatedClassificationConsequentLayer,
+    GatedRegressionConsequentLayer,
+    RegressionConsequentLayer,
+)
 from .memberships import MembershipFunction
-from .t_norms import TNormFn, t_norm_dombi
+from .t_norms import DombiTNorm, TNormFn
 
 # =====================================================================
 # Shared task-specific logic
 # =====================================================================
 
 
-class _ClassifierMixin:
-    """Reusable classifier overrides for any TSK classification model."""
-
-    if TYPE_CHECKING:
-
-        def forward(self, x: Tensor) -> Tensor: ...  # provided by BaseTSK
+class BaseTSKClassifier(BaseTSK):
+    """Abstract classifier base that provides task-specific training and inference helpers."""
 
     def _compute_loss(self, criterion: Callable[[Tensor, Tensor], Tensor], output: Tensor, target: Tensor) -> Tensor:
         """Compute classification loss, handling MSELoss one-hot encoding."""
@@ -87,7 +89,7 @@ class _ClassifierMixin:
         """Evaluate validation set using accuracy as the early-stopping metric."""
         with torch.no_grad():
             logits = self.forward(x_val)
-            val_loss = float(self._compute_loss(criterion, logits, y_val).item())  # type: ignore[arg-type]
+            val_loss = float(self._compute_loss(criterion, logits, y_val).item())
             val_acc = float((logits.argmax(dim=1) == y_val).float().mean().item())
         return {"val_loss": val_loss, "val_acc": val_acc, "metric": val_acc}
 
@@ -103,12 +105,8 @@ class _ClassifierMixin:
             return torch.argmax(self.predict_proba(x), dim=1)
 
 
-class _RegressorMixin:
-    """Reusable regressor overrides for any TSK regression model."""
-
-    if TYPE_CHECKING:
-
-        def forward(self, x: Tensor) -> Tensor: ...  # provided by BaseTSK
+class BaseTSKRegressor(BaseTSK):
+    """Abstract regressor base that provides task-specific training and inference helpers."""
 
     def _compute_loss(self, criterion: Callable[[Tensor, Tensor], Tensor], output: Tensor, target: Tensor) -> Tensor:
         """Compute regression loss, squeezing the output to 1-D."""
@@ -128,7 +126,7 @@ class _RegressorMixin:
 # =====================================================================
 
 
-class HTSKClassifier(_ClassifierMixin, BaseTSK):
+class HTSKClassifier(BaseTSKClassifier):
     """TSK classifier with HTSK defuzzification for high-dimensional data.
 
     Uses the geometric-mean t-norm (``gmean``) and ``SoftmaxLogDefuzzifier``
@@ -169,7 +167,7 @@ class HTSKClassifier(_ClassifierMixin, BaseTSK):
         return nn.CrossEntropyLoss()
 
 
-class HTSKRegressor(_RegressorMixin, BaseTSK):
+class HTSKRegressor(BaseTSKRegressor):
     """TSK regressor with HTSK defuzzification for high-dimensional data.
 
     Uses the geometric-mean t-norm (``gmean``) and ``SoftmaxLogDefuzzifier``
@@ -214,7 +212,7 @@ class HTSKRegressor(_RegressorMixin, BaseTSK):
 # =====================================================================
 
 
-class TSKClassifier(_ClassifierMixin, BaseTSK):
+class TSKClassifier(BaseTSKClassifier):
     r"""Vanilla TSK classifier with sum-based defuzzification.
 
     Implements the original Takagi-Sugeno-Kang inference:
@@ -264,7 +262,7 @@ class TSKClassifier(_ClassifierMixin, BaseTSK):
         return nn.CrossEntropyLoss()
 
 
-class TSKRegressor(_RegressorMixin, BaseTSK):
+class TSKRegressor(BaseTSKRegressor):
     r"""Vanilla TSK regressor with sum-based defuzzification.
 
     Implements the original Takagi-Sugeno-Kang inference:
@@ -310,7 +308,7 @@ class TSKRegressor(_RegressorMixin, BaseTSK):
         return nn.MSELoss()
 
 
-class DombiTSKClassifier(_ClassifierMixin, BaseTSK):
+class DombiTSKClassifier(BaseTSKClassifier):
     """Dombi TSK classifier using Dombi aggregation in the antecedent."""
 
     def __init__(
@@ -334,7 +332,7 @@ class DombiTSKClassifier(_ClassifierMixin, BaseTSK):
         self.n_classes = int(n_classes)
         self.lambda_ = float(lambda_)
         if t_norm_fn is None:
-            t_norm_fn = partial(t_norm_dombi, lambda_=self.lambda_)
+            t_norm_fn = DombiTNorm(lambda_=self.lambda_)
 
         super().__init__(
             input_mfs,
@@ -353,7 +351,7 @@ class DombiTSKClassifier(_ClassifierMixin, BaseTSK):
         return nn.CrossEntropyLoss()
 
 
-class DombiTSKRegressor(_RegressorMixin, BaseTSK):
+class DombiTSKRegressor(BaseTSKRegressor):
     """Dombi TSK regressor using Dombi aggregation in the antecedent."""
 
     def __init__(
@@ -373,7 +371,7 @@ class DombiTSKRegressor(_RegressorMixin, BaseTSK):
 
         self.lambda_ = float(lambda_)
         if t_norm_fn is None:
-            t_norm_fn = partial(t_norm_dombi, lambda_=self.lambda_)
+            t_norm_fn = DombiTNorm(lambda_=self.lambda_)
 
         super().__init__(
             input_mfs,
@@ -388,8 +386,249 @@ class DombiTSKRegressor(_RegressorMixin, BaseTSK):
     def _build_consequent_layer(self) -> nn.Module:
         return RegressionConsequentLayer(self.n_rules, self.n_inputs)
 
+
+class AdaTSKClassifier(BaseTSKClassifier):
+    """AdaTSK classifier using adaptive per-rule Dombi aggregation."""
+
+    def __init__(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        n_classes: int,
+        rule_base: str = "coco",
+        lambda_init: float = 1.0,
+        rules: Sequence[Sequence[int]] | None = None,
+        defuzzifier: nn.Module | None = None,
+        consequent_batch_norm: bool = False,
+        eps: float | None = None,
+    ) -> None:
+        """Initialize AdaTSK classifier architecture and consequent head."""
+        if n_classes < 2:
+            raise ValueError("n_classes must be >= 2")
+        if lambda_init <= 0.0:
+            raise ValueError("lambda_init must be > 0")
+
+        self.n_classes = int(n_classes)
+        self.lambda_init = float(lambda_init)
+        self.eps = eps
+
+        super().__init__(
+            input_mfs,
+            rule_base=rule_base,
+            t_norm="prod",
+            t_norm_fn=None,
+            rules=rules,
+            defuzzifier=defuzzifier or SumBasedDefuzzifier(),
+            consequent_batch_norm=consequent_batch_norm,
+        )
+
+        self.rule_layer = AdaptiveDombiRuleLayer(
+            self.input_names,
+            [len(input_mfs[name]) for name in self.input_names],
+            rules=rules,
+            rule_base=rule_base,
+            lambda_init=self.lambda_init,
+            eps=self.eps,
+        )
+
+    def _build_consequent_layer(self) -> nn.Module:
+        return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
+
+    def _default_criterion(self) -> nn.Module:
+        return nn.CrossEntropyLoss()
+
+
+class AdaTSKRegressor(BaseTSKRegressor):
+    """AdaTSK regressor using adaptive per-rule Dombi aggregation."""
+
+    def __init__(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        rule_base: str = "coco",
+        lambda_init: float = 1.0,
+        rules: Sequence[Sequence[int]] | None = None,
+        defuzzifier: nn.Module | None = None,
+        consequent_batch_norm: bool = False,
+        eps: float | None = None,
+    ) -> None:
+        """Initialize AdaTSK regressor architecture and consequent head."""
+        if lambda_init <= 0.0:
+            raise ValueError("lambda_init must be > 0")
+
+        self.lambda_init = float(lambda_init)
+        self.eps = eps
+
+        super().__init__(
+            input_mfs,
+            rule_base=rule_base,
+            t_norm="prod",
+            t_norm_fn=None,
+            rules=rules,
+            defuzzifier=defuzzifier or SumBasedDefuzzifier(),
+            consequent_batch_norm=consequent_batch_norm,
+        )
+
+        self.rule_layer = AdaptiveDombiRuleLayer(
+            self.input_names,
+            [len(input_mfs[name]) for name in self.input_names],
+            rules=rules,
+            rule_base=rule_base,
+            lambda_init=self.lambda_init,
+            eps=self.eps,
+        )
+
+    def _build_consequent_layer(self) -> nn.Module:
+        return RegressionConsequentLayer(self.n_rules, self.n_inputs)
+
     def _default_criterion(self) -> nn.Module:
         return nn.MSELoss()
+
+
+class FSREAdaTSKClassifier(BaseTSKClassifier):
+    """FSRE-AdaTSK classifier with gate-based consequents and adaptive softmin antecedent."""
+
+    def __init__(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        n_classes: int,
+        rule_base: str = "coco",
+        lambda_init: float = 1.0,
+        rules: Sequence[Sequence[int]] | None = None,
+        defuzzifier: nn.Module | None = None,
+        consequent_batch_norm: bool = False,
+        eps: float | None = None,
+        use_en_frb: bool = False,
+    ) -> None:
+        if n_classes < 2:
+            raise ValueError("n_classes must be >= 2")
+        if lambda_init <= 0.0:
+            raise ValueError("lambda_init must be > 0")
+
+        self.n_classes = int(n_classes)
+        self.lambda_init = float(lambda_init)
+        self.eps = eps
+        self.use_en_frb = bool(use_en_frb)
+
+        super().__init__(
+            input_mfs,
+            rule_base=rule_base,
+            t_norm="prod",
+            t_norm_fn=None,
+            rules=rules,
+            defuzzifier=defuzzifier or SoftmaxLogDefuzzifier(),
+            consequent_batch_norm=consequent_batch_norm,
+        )
+
+        self.rule_layer = AdaSoftminRuleLayer(
+            self.input_names,
+            [len(input_mfs[name]) for name in self.input_names],
+            rules=rules if not self.use_en_frb else None,
+            rule_base="en" if self.use_en_frb else rule_base,
+            eps=self.eps,
+        )
+        self.n_rules = self.rule_layer.n_rules
+        self.consequent_layer = self._build_consequent_layer()
+
+    def _build_consequent_layer(self) -> nn.Module:
+        return GatedClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
+
+    def _default_criterion(self) -> nn.Module:
+        return nn.CrossEntropyLoss()
+
+    def expand_to_en_frb(self) -> None:
+        """Switch the rule layer to an Enhanced Fuzzy Rule Base for RE phase."""
+        self.rule_layer = AdaSoftminRuleLayer(
+            self.input_names,
+            [len(self.input_mfs[name]) for name in self.input_names],
+            rule_base="en",
+            eps=self.eps,
+        )
+        self.n_rules = self.rule_layer.n_rules
+        self.consequent_layer = self._build_consequent_layer()
+
+    def fit_fs(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+        """Train the FS phase on the current rule base."""
+        return self.fit(x, y, **kwargs)
+
+    def fit_re(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+        """Expand to En-FRB and train the RE phase."""
+        self.expand_to_en_frb()
+        return self.fit(x, y, **kwargs)
+
+    def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+        """Fine-tune the reduced FSRE-AdaTSK model."""
+        return self.fit(x, y, **kwargs)
+
+
+class FSREAdaTSKRegressor(BaseTSKRegressor):
+    """FSRE-AdaTSK regressor with gate-based consequents and adaptive softmin antecedent."""
+
+    def __init__(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        rule_base: str = "coco",
+        lambda_init: float = 1.0,
+        rules: Sequence[Sequence[int]] | None = None,
+        defuzzifier: nn.Module | None = None,
+        consequent_batch_norm: bool = False,
+        eps: float | None = None,
+        use_en_frb: bool = False,
+    ) -> None:
+        if lambda_init <= 0.0:
+            raise ValueError("lambda_init must be > 0")
+
+        self.lambda_init = float(lambda_init)
+        self.eps = eps
+        self.use_en_frb = bool(use_en_frb)
+
+        super().__init__(
+            input_mfs,
+            rule_base=rule_base,
+            t_norm="prod",
+            t_norm_fn=None,
+            rules=rules,
+            defuzzifier=defuzzifier or SoftmaxLogDefuzzifier(),
+            consequent_batch_norm=consequent_batch_norm,
+        )
+
+        self.rule_layer = AdaSoftminRuleLayer(
+            self.input_names,
+            [len(input_mfs[name]) for name in self.input_names],
+            rules=rules if not self.use_en_frb else None,
+            rule_base="en" if self.use_en_frb else rule_base,
+            eps=self.eps,
+        )
+        self.n_rules = self.rule_layer.n_rules
+        self.consequent_layer = self._build_consequent_layer()
+
+    def _build_consequent_layer(self) -> nn.Module:
+        return GatedRegressionConsequentLayer(self.n_rules, self.n_inputs)
+
+    def _default_criterion(self) -> nn.Module:
+        return nn.MSELoss()
+
+    def expand_to_en_frb(self) -> None:
+        """Switch the rule layer to an Enhanced Fuzzy Rule Base for RE phase."""
+        self.rule_layer = AdaSoftminRuleLayer(
+            self.input_names,
+            [len(self.input_mfs[name]) for name in self.input_names],
+            rule_base="en",
+            eps=self.eps,
+        )
+        self.n_rules = self.rule_layer.n_rules
+        self.consequent_layer = self._build_consequent_layer()
+
+    def fit_fs(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+        """Train the FS phase on the current rule base."""
+        return self.fit(x, y, **kwargs)
+
+    def fit_re(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+        """Expand to En-FRB and train the RE phase."""
+        self.expand_to_en_frb()
+        return self.fit(x, y, **kwargs)
+
+    def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+        """Fine-tune the reduced FSRE-AdaTSK model."""
+        return self.fit(x, y, **kwargs)
 
 
 # =====================================================================
@@ -403,7 +642,7 @@ class DombiTSKRegressor(_RegressorMixin, BaseTSK):
 # =====================================================================
 
 
-class LogTSKClassifier(_ClassifierMixin, BaseTSK):
+class LogTSKClassifier(BaseTSKClassifier):
     r"""LogTSK classifier with log-space defuzzification.
 
     Normalization operates entirely in log-space to avoid underflow in
@@ -459,7 +698,7 @@ class LogTSKClassifier(_ClassifierMixin, BaseTSK):
         return nn.CrossEntropyLoss()
 
 
-class LogTSKRegressor(_RegressorMixin, BaseTSK):
+class LogTSKRegressor(BaseTSKRegressor):
     r"""LogTSK regressor with log-space defuzzification.
 
     Normalization operates entirely in log-space to avoid underflow in
@@ -512,6 +751,8 @@ class LogTSKRegressor(_RegressorMixin, BaseTSK):
 
 
 __all__: list[str] = [
+    "AdaTSKClassifier",
+    "AdaTSKRegressor",
     "DombiTSKClassifier",
     "DombiTSKRegressor",
     "HTSKClassifier",

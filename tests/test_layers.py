@@ -4,6 +4,7 @@ import pytest
 import torch
 
 from highfis.layers import (
+    AdaptiveDombiRuleLayer,
     ClassificationConsequentLayer,
     MembershipLayer,
     NormalizationLayer,
@@ -52,6 +53,30 @@ def test_rule_layer_cartesian_forward() -> None:
     assert r_layer.n_rules == 4
     assert w.shape == (4, 4)
     assert bool(torch.all(w >= 0.0))
+
+
+def test_rule_layer_vectorized_forward_matches_manual() -> None:
+    m_layer = MembershipLayer(_build_input_mfs())
+    r_layer = RuleLayer(["x1", "x2"], [2, 2], rule_base="cartesian", t_norm="prod")
+    x = torch.randn(3, 2)
+
+    mu = m_layer(x)
+    actual = r_layer(mu)
+
+    expected = []
+    for rule in r_layer.rules:
+        terms = [mu[name][:, idx] for name, idx in zip(r_layer.input_names, rule, strict=False)]
+        expected.append(torch.stack(terms, dim=1).prod(dim=1))
+
+    expected_tensor = torch.stack(expected, dim=1)
+    assert torch.allclose(actual, expected_tensor)
+
+
+def test_rule_layer_registers_rule_indices_buffer() -> None:
+    layer = RuleLayer(["x1", "x2"], [2, 2])
+    assert isinstance(layer.rule_indices, torch.Tensor)
+    assert layer.rule_indices.shape == (4, 2)
+    assert layer.rule_indices.dtype == torch.int64
 
 
 def test_rule_layer_coco_requires_same_mf_count() -> None:
@@ -196,6 +221,27 @@ def test_rule_layer_custom_t_norm_fn_overrides_default() -> None:
     m = MembershipLayer(_build_input_mfs())
     w = layer(m(torch.randn(4, 2)))
     assert w.shape == (4, layer.n_rules)
+
+
+def test_adaptive_dombi_rule_layer_forward_matches_manual() -> None:
+    m_layer = MembershipLayer(_build_input_mfs())
+    r_layer = AdaptiveDombiRuleLayer(["x1", "x2"], [2, 2], rule_base="cartesian", lambda_init=1.0)
+    x = torch.rand(4, 2)
+
+    mu = m_layer(x)
+    actual = r_layer(mu)
+
+    expected = []
+    for rule_idx, rule in enumerate(r_layer.rules):
+        terms = [mu[name][:, idx] for name, idx in zip(r_layer.input_names, rule, strict=False)]
+        tensor_terms = torch.stack(terms, dim=1).clamp(min=r_layer.eps, max=1.0 - r_layer.eps)
+        ratio = (1.0 - tensor_terms) / tensor_terms
+        lam = r_layer.lambdas[rule_idx]
+        sum_ratio = ratio.pow(lam).sum(dim=-1)
+        expected.append((1.0 + sum_ratio).pow(-1.0 / lam))
+
+    expected_tensor = torch.stack(expected, dim=1)
+    assert torch.allclose(actual, expected_tensor)
 
 
 # ---------------------------------------------------------------------------
