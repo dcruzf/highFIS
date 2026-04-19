@@ -12,13 +12,13 @@
         <meta name="author" content="Daniel Franca">
       
       
-        <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/api/base/">
+        <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/api/persistence/">
       
       
-        <link rel="prev" href="../layers/">
+        <link rel="prev" href="../estimators/">
       
       
-        <link rel="next" href="../models/">
+        <link rel="next" href="../../contributing/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Base TSK API - highFIS Docs</title>
+        <title>Persistence API - highFIS Docs</title>
       
     
     
@@ -85,7 +85,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#base-tsk-api" class="md-skip">
+        <a href="#persistence-api" class="md-skip">
           Skip to content
         </a>
       
@@ -125,7 +125,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Base TSK API
+              Persistence API
             
           </span>
         </div>
@@ -545,37 +545,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Base TSK
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="././" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../base/" class="md-nav__link">
         
   
   
@@ -591,132 +564,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#module" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Module
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#basetsk" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        BaseTSK
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="BaseTSK">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#pipeline" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pipeline
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#constructor-parameters" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Constructor Parameters
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#abstract-methods-must-be-implemented-by-subclasses" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Abstract Methods (must be implemented by subclasses)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#overridable-hooks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overridable Hooks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#shared-methods" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Shared Methods
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#training-loop" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Training Loop
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example-custom-tsk-model" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example: Custom TSK Model
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -779,10 +626,37 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../persistence/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persistence
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
         
   
   
@@ -798,6 +672,121 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#module" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Module
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#save_checkpointpath-checkpoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        save_checkpoint(path, checkpoint)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#load_checkpointpath" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        load_checkpoint(path)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validate_checkpoint_payloadcheckpoint-expected_estimator_class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate_checkpoint_payload(checkpoint, *, expected_estimator_class)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#estimator-persistence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Estimator persistence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#low-level-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Low-level usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -881,22 +870,33 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#basetsk" class="md-nav__link">
+  <a href="#overview" class="md-nav__link">
     <span class="md-ellipsis">
       
-        BaseTSK
+        Overview
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="BaseTSK">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Functions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Functions">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#pipeline" class="md-nav__link">
+  <a href="#save_checkpointpath-checkpoint" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pipeline
+        save_checkpoint(path, checkpoint)
       
     </span>
   </a>
@@ -904,10 +904,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#constructor-parameters" class="md-nav__link">
+  <a href="#load_checkpointpath" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Constructor Parameters
+        load_checkpoint(path)
       
     </span>
   </a>
@@ -915,43 +915,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#abstract-methods-must-be-implemented-by-subclasses" class="md-nav__link">
+  <a href="#validate_checkpoint_payloadcheckpoint-expected_estimator_class" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Abstract Methods (must be implemented by subclasses)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#overridable-hooks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overridable Hooks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#shared-methods" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Shared Methods
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#training-loop" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Training Loop
+        validate_checkpoint_payload(checkpoint, *, expected_estimator_class)
       
     </span>
   </a>
@@ -964,10 +931,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#example-custom-tsk-model" class="md-nav__link">
+  <a href="#estimator-persistence" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example: Custom TSK Model
+        Estimator persistence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#low-level-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Low-level usage
       
     </span>
   </a>
@@ -997,65 +975,71 @@
                 
                   
 
-<h1 id="base-tsk-api">Base TSK API</h1>
+<h1 id="persistence-api">Persistence API</h1>
 <h2 id="module">Module</h2>
-<p><code>highfis.base</code></p>
-<h2 id="basetsk">BaseTSK</h2>
-<p>Abstract base class for all TSK fuzzy models. Factors the common
-antecedent–defuzzification pipeline and provides a unified training loop with
-early stopping and uniform regularization.</p>
-<h3 id="pipeline">Pipeline</h3>
-<ol>
-<li><strong>MembershipLayer</strong> — evaluates membership functions per input feature.</li>
-<li><strong>RuleLayer</strong> — computes firing strengths via configurable t-norm and rule base.</li>
-<li><strong>Defuzzifier</strong> — normalizes firing strengths (pluggable; default <code>SoftmaxLogDefuzzifier</code>).</li>
-<li><strong>ConsequentLayer</strong> — task-specific output (built by subclass).</li>
-</ol>
-<h3 id="constructor-parameters">Constructor Parameters</h3>
+<p><code>highfis.persistence</code></p>
+<p>The persistence module provides versioned checkpoint serialization and
+reconstruction for estimator objects without depending on Python object
+pickling.</p>
+<h2 id="overview">Overview</h2>
+<p>Persisted checkpoints are stored with <code>torch.save</code> and loaded with
+<code>torch.load</code> into CPU memory. The checkpoint payload is a structured dictionary
+that includes:</p>
 <ul>
-<li><code>input_mfs</code>: dictionary of input names to membership-function lists.</li>
-<li><code>rule_base</code>: <code>"cartesian"</code>, <code>"coco"</code>, <code>"en"</code>, or <code>"custom"</code>.</li>
-<li><code>t_norm</code>: built-in t-norm name (<code>"prod"</code>, <code>"min"</code>, <code>"gmean"</code>).</li>
-<li><code>t_norm_fn</code>: optional custom t-norm callable.</li>
-<li><code>rules</code>: explicit rule tuples (required when <code>rule_base="custom"</code>).</li>
-<li><code>defuzzifier</code>: any <code>nn.Module</code> for firing-strength normalization. Defaults to <code>SoftmaxLogDefuzzifier</code>.</li>
-<li><code>consequent_batch_norm</code>: apply batch normalization to inputs before the consequent layer.</li>
+<li><code>format</code>: checkpoint format name (<code>highfis_estimator</code>)</li>
+<li><code>format_version</code>: package version used to create the checkpoint</li>
+<li><code>estimator_class</code>: estimator class name used during serialization</li>
+<li><code>estimator_params</code>: constructor parameters for the estimator</li>
+<li><code>model_init</code>: model initialization metadata needed to rebuild <code>model_</code></li>
+<li><code>model_state_dict</code>: learned model weights</li>
+<li><code>fitted_attrs</code>: fitted sklearn metadata such as <code>n_features_in_</code>,
+  <code>feature_names_in_</code>, and <code>classes_</code></li>
+<li><code>history</code>: optional training history, if available</li>
 </ul>
-<h3 id="abstract-methods-must-be-implemented-by-subclasses">Abstract Methods (must be implemented by subclasses)</h3>
+<h2 id="functions">Functions</h2>
+<h3 id="save_checkpointpath-checkpoint"><code>save_checkpoint(path, checkpoint)</code></h3>
+<p>Save a checkpoint dictionary to disk using PyTorch serialization. Parent
+directories are created automatically.</p>
+<h3 id="load_checkpointpath"><code>load_checkpoint(path)</code></h3>
+<p>Load a checkpoint dictionary from disk into CPU memory. The function raises
+<code>ValueError</code> if the loaded object is not a dictionary.</p>
+<h3 id="validate_checkpoint_payloadcheckpoint-expected_estimator_class"><code>validate_checkpoint_payload(checkpoint, *, expected_estimator_class)</code></h3>
+<p>Validate a loaded checkpoint payload for:</p>
 <ul>
-<li><code>_build_consequent_layer() → nn.Module</code> — return the task-specific consequent layer.</li>
-<li><code>_default_criterion() → nn.Module</code> — return the default loss function.</li>
+<li>the expected <code>format</code></li>
+<li>the expected <code>format_version</code></li>
+<li>the expected <code>estimator_class</code></li>
+<li>required checkpoint keys</li>
 </ul>
-<h3 id="overridable-hooks">Overridable Hooks</h3>
+<p>This provides a safety net before reconstructing an estimator from a file.</p>
+<h2 id="estimator-persistence">Estimator persistence</h2>
+<p>Most estimator classes in <code>highfis</code> support convenient persistence methods:</p>
 <ul>
-<li><code>_compute_loss(criterion, output, target) → Tensor</code> — compute the main task loss.</li>
-<li><code>_evaluate_validation(criterion, x_val, y_val) → dict</code> — evaluate on validation data and return a dict with at least <code>"metric"</code> (higher is better for early stopping).</li>
+<li><code>estimator.save(path)</code></li>
+<li><code>EstimatorClass.load(path)</code></li>
 </ul>
-<h3 id="shared-methods">Shared Methods</h3>
-<ul>
-<li><code>forward(x)</code> — full forward pass through the pipeline.</li>
-<li><code>forward_antecedents(x)</code> — returns normalized rule strengths.</li>
-<li><code>fit(...)</code> — unified training with optional early stopping, mini-batches, uniform regularization, and AdamW with separate weight-decay groups.</li>
-</ul>
-<h3 id="training-loop">Training Loop</h3>
-<p>The default optimizer is <code>AdamW</code> with two parameter groups:</p>
-<ul>
-<li>Antecedent (membership) parameters: <code>weight_decay=0</code>.</li>
-<li>Consequent parameters: configurable <code>weight_decay</code> (default <code>1e-8</code>).</li>
-</ul>
-<p>Early stopping is activated when <code>x_val</code> and <code>y_val</code> are provided. The best
-model weights are restored automatically.</p>
-<h2 id="example-custom-tsk-model">Example: Custom TSK Model</h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="w"> </span><span class="kn">import</span> <span class="n">nn</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseTSK</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis.layers</span><span class="w"> </span><span class="kn">import</span> <span class="n">RegressionConsequentLayer</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyTSK</span><span class="p">(</span><span class="n">BaseTSK</span><span class="p">):</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_build_consequent_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        <span class="k">return</span> <span class="n">RegressionConsequentLayer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_rules</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_inputs</span><span class="p">)</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">_default_criterion</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">:</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        <span class="k">return</span> <span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span><span class="p">()</span>
+<p>Example:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">TSKClassifierEstimator</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">TSKClassifierEstimator</span><span class="p">(</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">n_mfs</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">mf_init</span><span class="o">=</span><span class="s2">&quot;kmeans&quot;</span><span class="p">,</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">epochs</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="p">)</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="n">clf</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;artifacts/tsk_classifier.pt&quot;</span><span class="p">)</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="n">restored</span> <span class="o">=</span> <span class="n">TSKClassifierEstimator</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;artifacts/tsk_classifier.pt&quot;</span><span class="p">)</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="k">assert</span> <span class="n">restored</span><span class="o">.</span><span class="n">score</span><span class="p">(</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">)</span> <span class="o">==</span> <span class="n">clf</span><span class="o">.</span><span class="n">score</span><span class="p">(</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y_test</span><span class="p">)</span>
+</span></code></pre></div>
+<h2 id="low-level-usage">Low-level usage</h2>
+<p>If you need direct access to checkpoint payloads, use the persistence helpers:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis.persistence</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_checkpoint</span><span class="p">,</span> <span class="n">validate_checkpoint_payload</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">checkpoint</span> <span class="o">=</span> <span class="n">load_checkpoint</span><span class="p">(</span><span class="s2">&quot;artifacts/tsk_classifier.pt&quot;</span><span class="p">)</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">validate_checkpoint_payload</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">,</span> <span class="n">expected_estimator_class</span><span class="o">=</span><span class="s2">&quot;TSKClassifierEstimator&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 
 
@@ -1096,7 +1080,7 @@ model weights are restored automatically.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../layers/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Layers">
+          <a href="../estimators/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Estimators">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1106,20 +1090,20 @@ model weights are restored automatically.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Layers
+                Estimators
               </div>
             </div>
           </a>
         
         
           
-          <a href="../models/" class="md-footer__link md-footer__link--next" aria-label="Next: Models">
+          <a href="../../contributing/" class="md-footer__link md-footer__link--next" aria-label="Next: Contributing">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Models
+                Contributing
               </div>
             </div>
             <div class="md-footer__button md-icon">
