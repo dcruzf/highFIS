@@ -589,6 +589,94 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#diffsigmoidalmf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DiffSigmoidalMF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prodsigmoidalmf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ProdSigmoidalMF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sshapedmf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SShapedMF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#linsshapedmf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LinSShapedMF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#zshapedmf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ZShapedMF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#linzshapedmf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LinZShapedMF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pimf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PiMF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gaussianpimf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GaussianPIMF
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -931,6 +1019,94 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#diffsigmoidalmf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DiffSigmoidalMF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prodsigmoidalmf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ProdSigmoidalMF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sshapedmf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SShapedMF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#linsshapedmf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LinSShapedMF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#zshapedmf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ZShapedMF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#linzshapedmf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LinZShapedMF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pimf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PiMF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gaussianpimf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GaussianPIMF
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1038,12 +1214,68 @@
 <li><code>a</code>: slope control (positive = left-to-right, negative = right-to-left).</li>
 <li><code>center</code>: inflection point <span class="arithmatex">\(c\)</span>.</li>
 </ul>
+<h3 id="diffsigmoidalmf">DiffSigmoidalMF</h3>
+<p>Difference of two sigmoids leading to a localized activation interval.</p>
+<p>Parameters:</p>
+<ul>
+<li><code>a1</code>, <code>center1</code>: slope and center of the first sigmoid.</li>
+<li><code>a2</code>, <code>center2</code>: slope and center of the second sigmoid.</li>
+</ul>
+<h3 id="prodsigmoidalmf">ProdSigmoidalMF</h3>
+<p>Product of two sigmoids, producing a smooth window between thresholds.</p>
+<p>Parameters:</p>
+<ul>
+<li><code>a1</code>, <code>center1</code>: slope and center of the first sigmoid.</li>
+<li><code>a2</code>, <code>center2</code>: slope and center of the second sigmoid.</li>
+</ul>
+<h3 id="sshapedmf">SShapedMF</h3>
+<p>Smooth S-shaped membership from 0 to 1 using a cubic smoothstep.</p>
+<p>Parameters:</p>
+<ul>
+<li><code>a</code>: start of the transition.</li>
+<li><code>b</code>: end of the transition with <span class="arithmatex">\(a &lt; b\)</span>.</li>
+</ul>
+<h3 id="linsshapedmf">LinSShapedMF</h3>
+<p>Linear S-shaped membership from 0 to 1.</p>
+<p>Parameters:</p>
+<ul>
+<li><code>a</code>: start of the transition.</li>
+<li><code>b</code>: end of the transition with <span class="arithmatex">\(a &lt; b\)</span>.</li>
+</ul>
+<h3 id="zshapedmf">ZShapedMF</h3>
+<p>Smooth Z-shaped membership from 1 to 0 using an inverted cubic smoothstep.</p>
+<p>Parameters:</p>
+<ul>
+<li><code>a</code>: start of the transition.</li>
+<li><code>b</code>: end of the transition with <span class="arithmatex">\(a &lt; b\)</span>.</li>
+</ul>
+<h3 id="linzshapedmf">LinZShapedMF</h3>
+<p>Linear Z-shaped membership from 1 to 0.</p>
+<p>Parameters:</p>
+<ul>
+<li><code>a</code>: start of the transition.</li>
+<li><code>b</code>: end of the transition with <span class="arithmatex">\(a &lt; b\)</span>.</li>
+</ul>
+<h3 id="pimf">PiMF</h3>
+<p>Pi-shaped membership with smooth S/Z transitions and a flat top region.</p>
+<p>Parameters:</p>
+<ul>
+<li><code>a</code>, <code>b</code>, <code>c</code>, <code>d</code>: four boundary points with <span class="arithmatex">\(a &lt; b \le c &lt; d\)</span>.</li>
+</ul>
+<h3 id="gaussianpimf">GaussianPIMF</h3>
+<p>Gaussian membership with a positive infimum controlled by parameter <code>K</code>, which can help avoid underflow in high-dimensional softmin-based aggregation.</p>
+<p>Parameters:</p>
+<ul>
+<li><code>mean</code>: center <span class="arithmatex">\(c\)</span>.</li>
+<li><code>sigma</code>: spread parameter <span class="arithmatex">\(\sigma &gt; 0\)</span>.</li>
+<li><code>K</code>: positive infimum control parameter, with $   ext{infimum} = e^{-K}$.</li>
+</ul>
 <h2 id="example">Example</h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianMF</span><span class="p">,</span> <span class="n">TriangularMF</span><span class="p">,</span> <span class="n">BellMF</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianMF</span><span class="p">,</span> <span class="n">PiMF</span><span class="p">,</span> <span class="n">GaussianPIMF</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">gauss</span> <span class="o">=</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">tri</span> <span class="o">=</span> <span class="n">TriangularMF</span><span class="p">(</span><span class="n">left</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">bell</span> <span class="o">=</span> <span class="n">BellMF</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">pi_mf</span> <span class="o">=</span> <span class="n">PiMF</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">gauss_pimf</span> <span class="o">=</span> <span class="n">GaussianPIMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">K</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">values</span> <span class="o">=</span> <span class="n">gauss</span><span class="p">(</span><span class="n">x_column</span><span class="p">)</span>
 </span></code></pre></div>
