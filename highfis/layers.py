@@ -11,7 +11,6 @@ import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
 
-from .defuzzifiers import SoftmaxLogDefuzzifier
 from .memberships import MembershipFunction
 from .t_norms import TNormFn, resolve_t_norm
 
@@ -342,16 +341,6 @@ class AdaptiveDombiRuleLayer(RuleLayer):
         return (1.0 + sum_ratio).pow(-1.0 / lambdas.squeeze(-1))
 
 
-class NormalizationLayer(SoftmaxLogDefuzzifier):
-    """Normalize rule strengths so each sample sums to one.
-
-    .. deprecated::
-        Prefer :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier` directly.
-        This class is kept for backward compatibility and will be removed in a
-        future release.
-    """
-
-
 class ClassificationConsequentLayer(nn.Module):
     """Linear TSK consequent layer for classification logits."""
 
@@ -543,7 +532,6 @@ __all__: list[str] = [
     "GatedRegressionConsequentLayer",
     "GatedRegressionZeroOrderConsequentLayer",
     "MembershipLayer",
-    "NormalizationLayer",
     "RegressionConsequentLayer",
     "RuleLayer",
 ]
