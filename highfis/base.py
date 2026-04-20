@@ -88,6 +88,7 @@ class BaseTSK(nn.Module):
         self.consequent_batch_norm = bool(consequent_batch_norm)
         self.consequent_bn = nn.BatchNorm1d(self.n_inputs) if self.consequent_batch_norm else None
         self.consequent_layer = self._build_consequent_layer()
+        self.logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}")
 
     # ------------------------------------------------------------------
     # Abstract hooks
@@ -137,6 +138,19 @@ class BaseTSK(nn.Module):
     ) -> Tensor:
         """Compute the main task loss.  Override for custom target preparation."""
         return criterion(output, target)
+
+    def _log(
+        self,
+        message: str,
+        *args: Any,
+        level: int = logging.INFO,
+        verbose: bool = False,
+        **kwargs: Any,
+    ) -> None:
+        """Log a message when verbose mode is enabled."""
+        if not verbose:
+            return
+        self.logger.log(level, message, *args, **kwargs)
 
     def _evaluate_validation(
         self,
@@ -272,15 +286,15 @@ class BaseTSK(nn.Module):
                     for k, v in val_info.items():
                         if k != "metric":
                             log_parts.append(f"{k}={v:.6f}" if isinstance(v, float) else f"{k}={v}")
-                    logger.info(" ".join(log_parts))
+                    self._log(" ".join(log_parts), verbose=True)
 
                 if epochs_no_improve >= patience:
                     if verbose:
-                        logger.info("early stopping at epoch %s (patience=%s)", epoch + 1, patience)
+                        self._log("early stopping at epoch %s (patience=%s)", epoch + 1, patience, verbose=True)
                     break
             else:
                 if verbose and ((epoch + 1) % max(epochs // 10, 1) == 0 or epoch == 0):
-                    logger.info("epoch=%s/%s loss=%.6f", epoch + 1, epochs, epoch_train_loss)
+                    self._log("epoch=%s/%s loss=%.6f", epoch + 1, epochs, epoch_train_loss, verbose=True)
 
         if best_state is not None:
             self.load_state_dict(best_state)
