@@ -114,6 +114,32 @@ FSRE-AdaTSK is trained in three sequential phases:
 These phases may be executed from the low-level model API or orchestrated by
 higher-level estimator wrappers.
 
+For the related DG-ALETSK implementation, see `docs/models/dg-aletsk.md`.
+
+## Comparison with the original IEEE FSRE-AdaTSK paper
+
+This document reflects the same FSRE-AdaTSK design presented in the paper
+"An Adaptive Neuro-Fuzzy System With Integrated Feature Selection and Rule
+Extraction for High-Dimensional Classification Problems." The paper's main
+claims are:
+
+- AdaTSK is the adaptive antecedent aggregation core.
+- Gates are embedded only in the consequent layer, not in antecedents.
+- Feature selection and rule extraction are performed in two successive
+  phases, followed by a final fine-tuning phase.
+- An Enhanced Fuzzy Rule Base (En-FRB) is used to keep rule growth
+  manageable while still allowing effective extraction.
+
+In highFIS, this is implemented by `AdaSoftminRuleLayer` for the adaptive
+antecedent aggregation and by gated consequent layers for both classification
+and regression. The gate function used in the paper,
+$M(u) = u\\sqrt{e^{1 - u^2}}$, is the same gate activation function used in
+`GatedClassificationConsequentLayer` and `GatedRegressionConsequentLayer`.
+
+The highFIS implementation therefore matches the paper's distinction between
+AdaTSK as the base model and FSRE-AdaTSK as the three-phase extension with
+feature selection, rule extraction, and En-FRB support.
+
 ## Code Correspondence
 
 | Concept | highFIS class / method |

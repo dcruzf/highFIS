@@ -52,6 +52,7 @@ nav = [
     { "Dombitsk" = "models/dombitsk.md" },
     { "AdaTSK" = "models/adatsk.md" },
     { "FSRE-AdaTSK" = "models/fsre-adatsk.md" },
+    { "DG-ALETSK" = "models/dg-aletsk.md" },
     { "Protocols" = "api/protocols.md" },
     { "Membership Functions" = "api/memberships.md" },
     { "T-Norms" = "api/t_norms.md" },
