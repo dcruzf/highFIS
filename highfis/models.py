@@ -49,7 +49,7 @@ explicit and the defuzzification strategy is pluggable:
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any
+from typing import Any, cast
 
 import torch
 from torch import Tensor, nn
@@ -60,8 +60,11 @@ from .layers import (
     AdaptiveDombiRuleLayer,
     AdaSoftminRuleLayer,
     ClassificationConsequentLayer,
+    DGALETSKRuleLayer,
     GatedClassificationConsequentLayer,
+    GatedClassificationZeroOrderConsequentLayer,
     GatedRegressionConsequentLayer,
+    GatedRegressionZeroOrderConsequentLayer,
     RegressionConsequentLayer,
 )
 from .memberships import MembershipFunction
@@ -631,6 +634,148 @@ class FSREAdaTSKRegressor(BaseTSKRegressor):
         return self.fit(x, y, **kwargs)
 
 
+class DGALETSKClassifier(BaseTSKClassifier):
+    """DG-ALETSK classifier with Ln-Exp softmin antecedent and double groups of gates."""
+
+    def __init__(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        n_classes: int,
+        rule_base: str = "coco",
+        lambda_init: float = 1.0,
+        rules: Sequence[Sequence[int]] | None = None,
+        defuzzifier: nn.Module | None = None,
+        consequent_batch_norm: bool = False,
+        eps: float | None = None,
+        use_en_frb: bool = False,
+    ) -> None:
+        """Initialize the DG-ALETSK classifier with zero-order gated consequents."""
+        if n_classes < 2:
+            raise ValueError("n_classes must be >= 2")
+        if lambda_init <= 0.0:
+            raise ValueError("lambda_init must be > 0")
+
+        self.n_classes = int(n_classes)
+        self.lambda_init = float(lambda_init)
+        self.eps = eps
+        self.use_en_frb = bool(use_en_frb)
+
+        super().__init__(
+            input_mfs,
+            rule_base=rule_base,
+            t_norm="prod",
+            t_norm_fn=None,
+            rules=rules,
+            defuzzifier=defuzzifier or SoftmaxLogDefuzzifier(),
+            consequent_batch_norm=consequent_batch_norm,
+        )
+
+        self.rule_layer = DGALETSKRuleLayer(
+            self.input_names,
+            [len(input_mfs[name]) for name in self.input_names],
+            rules=rules if not self.use_en_frb else None,
+            rule_base="en" if self.use_en_frb else rule_base,
+            alpha_init=self.lambda_init,
+            eps=self.eps,
+        )
+        self.n_rules = self.rule_layer.n_rules
+        self.consequent_layer = self._build_zero_order_consequent_layer()
+
+    def _build_zero_order_consequent_layer(self) -> nn.Module:
+        return GatedClassificationZeroOrderConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
+
+    def _build_consequent_layer(self) -> nn.Module:
+        return GatedClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
+
+    def _default_criterion(self) -> nn.Module:
+        return nn.CrossEntropyLoss()
+
+    def convert_to_first_order(self) -> None:
+        """Convert the DG phase zero-order consequent to first-order form."""
+        previous = self.consequent_layer
+        new_consequent = self._build_consequent_layer()
+        if isinstance(previous, GatedClassificationZeroOrderConsequentLayer):
+            cast(GatedClassificationConsequentLayer, new_consequent).theta_gates.data.copy_(previous.theta_gates.data)
+        self.consequent_layer = new_consequent
+
+    def fit_dg_phase(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+        """Train the DG phase using zero-order TSK and joint FS+RE."""
+        return self.fit(x, y, **kwargs)
+
+    def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+        """Fine-tune the DG-ALETSK model after converting to first-order TSK."""
+        return self.fit(x, y, **kwargs)
+
+
+class DGALETSKRegressor(BaseTSKRegressor):
+    """DG-ALETSK regressor with Ln-Exp softmin antecedent and double groups of gates."""
+
+    def __init__(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        rule_base: str = "coco",
+        lambda_init: float = 1.0,
+        rules: Sequence[Sequence[int]] | None = None,
+        defuzzifier: nn.Module | None = None,
+        consequent_batch_norm: bool = False,
+        eps: float | None = None,
+        use_en_frb: bool = False,
+    ) -> None:
+        """Initialize the DG-ALETSK regressor with zero-order gated consequents."""
+        if lambda_init <= 0.0:
+            raise ValueError("lambda_init must be > 0")
+
+        self.lambda_init = float(lambda_init)
+        self.eps = eps
+        self.use_en_frb = bool(use_en_frb)
+
+        super().__init__(
+            input_mfs,
+            rule_base=rule_base,
+            t_norm="prod",
+            t_norm_fn=None,
+            rules=rules,
+            defuzzifier=defuzzifier or SoftmaxLogDefuzzifier(),
+            consequent_batch_norm=consequent_batch_norm,
+        )
+
+        self.rule_layer = DGALETSKRuleLayer(
+            self.input_names,
+            [len(input_mfs[name]) for name in self.input_names],
+            rules=rules if not self.use_en_frb else None,
+            rule_base="en" if self.use_en_frb else rule_base,
+            alpha_init=self.lambda_init,
+            eps=self.eps,
+        )
+        self.n_rules = self.rule_layer.n_rules
+        self.consequent_layer = self._build_zero_order_consequent_layer()
+
+    def _build_zero_order_consequent_layer(self) -> nn.Module:
+        return GatedRegressionZeroOrderConsequentLayer(self.n_rules, self.n_inputs)
+
+    def _build_consequent_layer(self) -> nn.Module:
+        return GatedRegressionConsequentLayer(self.n_rules, self.n_inputs)
+
+    def _default_criterion(self) -> nn.Module:
+        return nn.MSELoss()
+
+    def convert_to_first_order(self) -> None:
+        """Convert the DG phase zero-order consequent to first-order form."""
+        previous = self.consequent_layer
+        new_consequent = self._build_consequent_layer()
+        if isinstance(previous, GatedRegressionZeroOrderConsequentLayer):
+            cast(GatedRegressionConsequentLayer, new_consequent).theta_gates.data.copy_(previous.theta_gates.data)
+        self.consequent_layer = new_consequent
+
+    def fit_dg_phase(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+        """Train the DG phase using zero-order TSK and joint FS+RE."""
+        return self.fit(x, y, **kwargs)
+
+    def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+        """Fine-tune the DG-ALETSK model after converting to first-order TSK."""
+        return self.fit(x, y, **kwargs)
+
+
 # =====================================================================
 # LogTSK  (Cui, Wu & Xu, IEEE Trans. Fuzzy Syst. 2021)
 #
@@ -753,6 +898,8 @@ class LogTSKRegressor(BaseTSKRegressor):
 __all__: list[str] = [
     "AdaTSKClassifier",
     "AdaTSKRegressor",
+    "DGALETSKClassifier",
+    "DGALETSKRegressor",
     "DombiTSKClassifier",
     "DombiTSKRegressor",
     "HTSKClassifier",

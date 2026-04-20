@@ -1,3 +1,5 @@
+"""Antecedent and consequent layers for highFIS fuzzy models."""
+
 from __future__ import annotations
 
 import math
@@ -240,6 +242,59 @@ class AdaSoftminRuleLayer(RuleLayer):
         return torch.exp(log_w)
 
 
+class DGALETSKRuleLayer(RuleLayer):
+    """Compute adaptive Ln-Exp softmin firing strengths with antecedent feature gates."""
+
+    def __init__(
+        self,
+        input_names: list[str],
+        mf_per_input: list[int],
+        rules: Sequence[Sequence[int]] | None = None,
+        rule_base: str = "cartesian",
+        alpha_init: float = 1.0,
+        eps: float | None = None,
+    ) -> None:
+        """Initialize DGALETSK rule layer."""
+        if alpha_init <= 0.0:
+            raise ValueError("alpha_init must be > 0")
+        self.eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else float(eps)
+        super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod", t_norm_fn=None)
+        self.raw_alpha = nn.Parameter(torch.full((1,), _inv_softplus(alpha_init, self.eps)))
+        self.lambda_gates = nn.Parameter(torch.zeros(self.n_rules, self.n_inputs))
+        nn.init.uniform_(self.lambda_gates, -0.1, 0.1)
+
+    @property
+    def alpha(self) -> Tensor:
+        """Return positive adaptive alpha parameter."""
+        return F.softplus(self.raw_alpha) + self.eps
+
+    def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
+        """Compute adaptive Ln-Exp rule strengths from membership outputs."""
+        mu_list = []
+        for name in self.input_names:
+            if name not in membership_outputs:
+                raise KeyError(f"missing membership output for input '{name}'")
+            mu_list.append(membership_outputs[name])
+
+        mu_flat = torch.cat(mu_list, dim=1)
+        batch_size = mu_flat.shape[0]
+        rule_indices = cast(Tensor, self.rule_indices)
+        indices = rule_indices.unsqueeze(0).expand(batch_size, -1, -1)
+        terms = mu_flat.gather(1, indices.reshape(batch_size, -1)).reshape(batch_size, self.n_rules, self.n_inputs)
+
+        mu = terms.clamp(min=self.eps, max=1.0 - self.eps)
+        feature_gates = _gate_activation(self.lambda_gates).unsqueeze(0)
+        mu = mu * feature_gates
+
+        alpha = self.alpha.view(1, 1, 1)
+        log_terms = -alpha * mu
+        max_log_terms = log_terms.amax(dim=-1, keepdim=True)
+        log_sum = max_log_terms + torch.log(torch.exp(log_terms - max_log_terms).sum(dim=-1, keepdim=True))
+        log_avg = log_sum - torch.log(torch.tensor(self.n_inputs, dtype=log_sum.dtype, device=log_sum.device))
+        log_w = -log_avg.squeeze(-1) / alpha.squeeze(-1)
+        return torch.exp(log_w)
+
+
 class AdaptiveDombiRuleLayer(RuleLayer):
     """Compute adaptive Dombi firing strengths with per-rule lambda parameters."""
 
@@ -359,6 +414,63 @@ class GatedClassificationConsequentLayer(nn.Module):
         return torch.einsum("br,brk->bk", norm_w, f)
 
 
+class GatedClassificationZeroOrderConsequentLayer(nn.Module):
+    """Gated zero-order TSK consequent layer for classification logits."""
+
+    def __init__(self, n_rules: int, n_inputs: int, n_classes: int) -> None:
+        """Initialize zero-order gated consequent parameters for classification logits."""
+        super().__init__()
+        if n_rules <= 0 or n_inputs <= 0 or n_classes <= 0:
+            raise ValueError("n_rules, n_inputs and n_classes must be positive")
+        self.n_rules = n_rules
+        self.n_inputs = n_inputs
+        self.n_classes = n_classes
+        self.bias = nn.Parameter(torch.empty(n_rules, n_classes))
+        self.theta_gates = nn.Parameter(torch.zeros(n_rules))
+        nn.init.zeros_(self.bias)
+        nn.init.uniform_(self.theta_gates, -0.1, 0.1)
+
+    def forward(self, x: Tensor, norm_w: Tensor) -> Tensor:
+        """Compute gated class logits from normalized rule strengths."""
+        if x.ndim != 2 or x.shape[1] != self.n_inputs:
+            raise ValueError(f"expected x shape (batch, {self.n_inputs}), got {tuple(x.shape)}")
+        if norm_w.ndim != 2 or norm_w.shape[1] != self.n_rules:
+            raise ValueError(f"expected norm_w shape (batch, {self.n_rules}), got {tuple(norm_w.shape)}")
+
+        f = self.bias.unsqueeze(0)
+        rule_gates = _gate_activation(self.theta_gates).view(1, self.n_rules, 1)
+        f = f * rule_gates
+        return torch.einsum("br,brk->bk", norm_w, f)
+
+
+class GatedRegressionZeroOrderConsequentLayer(nn.Module):
+    """Gated zero-order TSK consequent layer for regression."""
+
+    def __init__(self, n_rules: int, n_inputs: int) -> None:
+        """Initialize zero-order gated consequent parameters for regression."""
+        super().__init__()
+        if n_rules <= 0 or n_inputs <= 0:
+            raise ValueError("n_rules and n_inputs must be positive")
+        self.n_rules = n_rules
+        self.n_inputs = n_inputs
+        self.bias = nn.Parameter(torch.empty(n_rules))
+        self.theta_gates = nn.Parameter(torch.zeros(n_rules))
+        nn.init.zeros_(self.bias)
+        nn.init.uniform_(self.theta_gates, -0.1, 0.1)
+
+    def forward(self, x: Tensor, norm_w: Tensor) -> Tensor:
+        """Compute gated regression output from normalized rule strengths."""
+        if x.ndim != 2 or x.shape[1] != self.n_inputs:
+            raise ValueError(f"expected x shape (batch, {self.n_inputs}), got {tuple(x.shape)}")
+        if norm_w.ndim != 2 or norm_w.shape[1] != self.n_rules:
+            raise ValueError(f"expected norm_w shape (batch, {self.n_rules}), got {tuple(norm_w.shape)}")
+
+        f = self.bias.unsqueeze(0)
+        rule_gates = _gate_activation(self.theta_gates).view(1, self.n_rules)
+        f = f * rule_gates
+        return torch.einsum("br,br->b", norm_w, f).unsqueeze(1)
+
+
 class RegressionConsequentLayer(nn.Module):
     """Linear TSK consequent layer for scalar regression output."""
 
@@ -425,8 +537,11 @@ __all__: list[str] = [
     "AdaSoftminRuleLayer",
     "AdaptiveDombiRuleLayer",
     "ClassificationConsequentLayer",
+    "DGALETSKRuleLayer",
     "GatedClassificationConsequentLayer",
+    "GatedClassificationZeroOrderConsequentLayer",
     "GatedRegressionConsequentLayer",
+    "GatedRegressionZeroOrderConsequentLayer",
     "MembershipLayer",
     "NormalizationLayer",
     "RegressionConsequentLayer",

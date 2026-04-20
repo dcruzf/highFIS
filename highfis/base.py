@@ -206,12 +206,14 @@ class BaseTSK(nn.Module):
             train_optimizer = optimizer
         else:
             ante_params = list(self.membership_layer.parameters())
+            rule_params = list(self.rule_layer.parameters())
             cons_params = list(self.consequent_layer.parameters())
             if self.consequent_bn is not None:
                 cons_params.extend(self.consequent_bn.parameters())
             train_optimizer = torch.optim.AdamW(
                 [
                     {"params": ante_params, "weight_decay": 0.0},
+                    {"params": rule_params, "weight_decay": 0.0},
                     {"params": cons_params, "weight_decay": weight_decay},
                 ],
                 lr=learning_rate,

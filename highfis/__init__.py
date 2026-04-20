@@ -4,6 +4,8 @@ from .base import BaseTSK
 from .estimators import (
     AdaTSKClassifierEstimator,
     AdaTSKRegressorEstimator,
+    DGALETSKClassifierEstimator,
+    DGALETSKRegressorEstimator,
     DombiTSKClassifierEstimator,
     DombiTSKRegressorEstimator,
     FSREAdaTSKClassifierEstimator,
@@ -36,6 +38,8 @@ from .memberships import (
 from .models import (
     AdaTSKClassifier,
     AdaTSKRegressor,
+    DGALETSKClassifier,
+    DGALETSKRegressor,
     DombiTSKClassifier,
     DombiTSKRegressor,
     FSREAdaTSKClassifier,
@@ -57,6 +61,10 @@ __all__: list[str] = [
     "BaseTSK",
     "BellMF",
     "CompositeGaussianMF",
+    "DGALETSKClassifier",
+    "DGALETSKClassifierEstimator",
+    "DGALETSKRegressor",
+    "DGALETSKRegressorEstimator",
     "DiffSigmoidalMF",
     "DombiTSKClassifier",
     "DombiTSKClassifierEstimator",
