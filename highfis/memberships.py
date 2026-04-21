@@ -159,15 +159,24 @@ class BellMF(MembershipFunction):
 
 
 class CompositeExponentialMF(MembershipFunction):
-    """Composite exponential membership function: exp(-|x-c|/sigma)."""
+    """Composite exponential membership function used in AYATSK."""
 
-    def __init__(self, center: float = 0.0, sigma: float = 1.0, eps: float | None = None) -> None:
-        """Initialize CompositeExponentialMF with center and scale parameters."""
+    def __init__(
+        self,
+        center: float = 0.0,
+        sigma: float = 1.0,
+        k: float = 10.0,
+        eps: float | None = None,
+    ) -> None:
+        """Initialize CompositeExponentialMF with center, scale, and lower-bound control."""
         super().__init__(eps=eps)
         if sigma <= 0:
             raise ValueError("sigma must be positive")
+        if k <= 1.0:
+            raise ValueError("k must be greater than 1")
         self.center = nn.Parameter(torch.tensor(float(center)))
         self.raw_sigma = nn.Parameter(torch.tensor(_inv_softplus(float(sigma), eps)))
+        self.k = float(k)
 
     @property
     def sigma(self) -> Tensor:
@@ -175,9 +184,10 @@ class CompositeExponentialMF(MembershipFunction):
         return F.softplus(self.raw_sigma) + self.eps
 
     def forward(self, x: Tensor) -> Tensor:
-        """Compute composite exponential membership values for input tensor."""
+        """Compute CompositeExponentialMF membership values for input tensor."""
         x = self._as_tensor(x)
-        return torch.exp(-torch.abs(x - self.center) / self.sigma)
+        exponent = -0.5 * ((x - self.center) / self.sigma).square()
+        return torch.pow(self.k, -1.0 + torch.exp(exponent))
 
 
 class SigmoidalMF(MembershipFunction):
