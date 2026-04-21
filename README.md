@@ -40,6 +40,20 @@ print(f"Test accuracy: {clf.score(X_test, y_test):.4f}")
 highFIS works with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and
 `cross_val_score`.
 
+## Models Available
+
+highFIS offers a family of TSK fuzzy models optimized for different
+high-dimensional behaviors.
+
+- `Vanilla TSK` — the original Takagi-Sugeno-Kang model with Gaussian MFs, product antecedent aggregation, and sum-based normalization.
+- `HTSK` — high-dimensional TSK with geometric mean aggregation and log-space normalization to reduce dimensionality bias.
+- `LogTSK` — log-space defuzzification with temperature scaling for numerically stable high-dimensional aggregation.
+- `DombiTSK` — Dombi t-norm aggregation with first-order consequents and a learnable shape parameter.
+- `AdaTSK` — adaptive Dombi inference using Composite Gaussian MFs with a positive lower bound.
+- `FSRE-AdaTSK` — adaptive model with gated feature selection and rule extraction in the consequent.
+- `DG-TSK` — double-gated training for simultaneous feature selection and rule extraction, followed by first-order fine tuning.
+- `DG-ALETSK` — DG-based adaptive Ln-Exp softmin with embedded feature and rule gates for sparse high-dimensional modeling.
+
 ## 🔧 What’s Included
 
 ### Core models

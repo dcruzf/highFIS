@@ -43,45 +43,37 @@ print(f"Test accuracy: {clf.score(X_test, y_test):.4f}")
 highFIS offers a family of TSK fuzzy models optimized for different
 high-dimensional behaviors.
 
-### Classification
-
-- `HTSKClassifier` — geometric-mean inference for high-dimensional stability.
-- `TSKClassifier` — classical product t-norm TSK.
-- `DombiTSKClassifier` — Dombi aggregation with a tunable shape parameter.
-- `AdaTSKClassifier` — adaptive Dombi inference with per-rule learnable shape.
-- `FSREAdaTSKClassifier` — adaptive softmin with feature selection and rule
-  extraction.
-- `LogTSKClassifier` — log-space normalization with temperature control.
-
-### Regression
-
-- `HTSKRegressor`
-- `TSKRegressor`
-- `DombiTSKRegressor`
-- `AdaTSKRegressor`
-- `FSREAdaTSKRegressor`
-- `LogTSKRegressor`
-
+- [`Vanilla TSK`](models/tsk-vanilla.md) — the original Takagi-Sugeno-Kang model
+  with Gaussian MFs, product antecedent aggregation, and sum-based
+  normalization.
+- [`HTSK`](models/htsk.md) — high-dimensional TSK with geometric mean
+  aggregation and log-space normalization to reduce dimensionality bias.
+- [`LogTSK`](models/logtsk.md) — log-space defuzzification with temperature
+  scaling for numerically stable high-dimensional aggregation.
+- [`DombiTSK`](models/dombitsk.md) — Dombi t-norm aggregation with first-order
+  consequents and a learnable shape parameter.
+- [`AdaTSK`](models/adatsk.md) — adaptive Dombi inference using Composite
+  Gaussian MFs with a positive lower bound.
+- [`FSRE-AdaTSK`](models/fsre-adatsk.md) — adaptive model with gated feature
+  selection and rule extraction in the consequent.
+- [`DG-TSK`](models/dg-tsk.md) — double-gated training for simultaneous
+  feature selection and rule extraction, followed by first-order fine tuning.
+- [`DG-ALETSK`](models/dg-aletsk.md) — DG-based adaptive Ln-Exp softmin with
+  embedded feature and rule gates for sparse high-dimensional modeling.
 ## Documentation
 
 | Topic | Description |
 |---|---|
 | [Quick Start](#quick-start) | Installation and first model run. |
-| [HTSK Technical Notes](htsk-modelo.md) | Deep dive into HTSK inference design. |
-| [TSK Vanilla](models/tsk-vanilla.md) | Standard Takagi-Sugeno-Kang model. |
-| [LogTSK](models/logtsk.md) | Log-space TSK for stability in high dimensions. |
-| [AdaTSK](models/adatsk.md) | Adaptive Dombi TSK with learned shape. |
-| [FSRE-AdaTSK](models/fsre-adatsk.md) | Feature selection and rule extraction. |
-| [DG-TSK](models/dg-tsk.md) | Dynamic-gating TSK with feature and rule gating. |
-| [Models API](api/models.md) | Model constructors and usage notes. |
-| [Estimators API](api/estimators.md) | sklearn-compatible estimator reference. |
-| [Layers API](api/layers.md) | Layer primitives for fuzzy pipelines. |
-| [Defuzzifiers API](api/defuzzifiers.md) | Normalization strategies. |
-| [T-Norms API](api/t_norms.md) | Built-in and custom aggregation functions. |
-| [Memberships API](api/memberships.md) | Membership functions for antecedents. |
-| [Base TSK API](api/base.md) | Unified training loop and shared logic. |
-| [Protocols API](api/protocols.md) | Structural typing interfaces. |
-| [Persistence API](api/persistence.md) | Estimator checkpoint serialization and load validation. |
+| [Models](api/models.md) | Model constructors and usage notes. |
+| [Estimators](api/estimators.md) | sklearn-compatible estimator reference. |
+| [Layers](api/layers.md) | Layer primitives for fuzzy pipelines. |
+| [Defuzzifiers](api/defuzzifiers.md) | Normalization strategies. |
+| [T-Norms](api/t_norms.md) | Built-in and custom aggregation functions. |
+| [Memberships](api/memberships.md) | Membership functions for antecedents. |
+| [Base TSK](api/base.md) | Unified training loop and shared logic. |
+| [Protocols](api/protocols.md) | Structural typing interfaces. |
+| [Persistence](api/persistence.md) | Estimator checkpoint serialization and load validation. |
 | [Contributing](contributing.md) | Development setup and contribution guide. |
 
 ## Get Started
