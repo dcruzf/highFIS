@@ -1,3 +1,5 @@
+"""Definitions and utilities for fuzzy T-norm aggregation strategies."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

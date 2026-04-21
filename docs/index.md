@@ -80,6 +80,7 @@ high-dimensional behaviors.
 | [Memberships API](api/memberships.md) | Membership functions for antecedents. |
 | [Base TSK API](api/base.md) | Unified training loop and shared logic. |
 | [Protocols API](api/protocols.md) | Structural typing interfaces. |
+| [Persistence API](api/persistence.md) | Estimator checkpoint serialization and load validation. |
 | [Contributing](contributing.md) | Development setup and contribution guide. |
 
 ## Get Started

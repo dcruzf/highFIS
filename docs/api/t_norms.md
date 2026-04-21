@@ -6,6 +6,31 @@
 
 ## Built-in T-Norms
 
+### BaseTNorm
+
+Abstract base class for t-norm strategy modules.
+
+- Inherits from `torch.nn.Module` and `ABC`.
+- Defines `forward(terms: Tensor, dim: int = -1) -> Tensor`.
+- Can be used with custom `t_norm_fn` callables in TSK models.
+
+### ProductTNorm
+
+Product t-norm module implementing `t_norm_prod` behavior.
+
+### MinimumTNorm
+
+Minimum t-norm module implementing `t_norm_min` behavior.
+
+### GMeanTNorm
+
+Geometric-mean t-norm module implementing `t_norm_gmean` behavior.
+
+### DombiTNorm
+
+Dombi aggregation module implementing `t_norm_dombi` with a learnable or
+fixed `lambda_` parameter.
+
 ### t_norm_prod
 
 Product t-norm over antecedent terms:
@@ -46,11 +71,9 @@ $$
 
 The implementation clamps antecedent degrees away from zero for numerical stability.
 
-## Utility
-
 ### resolve_t_norm
 
-Resolves built-in names: `"prod"`, `"min"`, `"gmean"`, `"dombi"`.
+Resolves built-in t-norm names: `"prod"`, `"min"`, `"gmean"`, `"dombi"`.
 
 ## Custom T-Norms
 

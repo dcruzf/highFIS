@@ -27,6 +27,8 @@ from .memberships import GaussianMF
 from .models import (
     AdaTSKClassifier,
     AdaTSKRegressor,
+    DGALETSKClassifier,
+    DGALETSKRegressor,
     DombiTSKClassifier,
     DombiTSKRegressor,
     FSREAdaTSKClassifier,
@@ -37,6 +39,13 @@ from .models import (
     LogTSKRegressor,
     TSKClassifier,
     TSKRegressor,
+)
+from .persistence import (
+    CHECKPOINT_FORMAT,
+    CHECKPOINT_VERSION,
+    load_checkpoint,
+    save_checkpoint,
+    validate_checkpoint_payload,
 )
 
 
@@ -283,7 +292,68 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
             patience=int(self.patience),
             weight_decay=float(self.weight_decay),
         )
+        self.rule_base_ = effective_rule_base
         return self
+
+    def _build_checkpoint_base(
+        self,
+        *,
+        model_init: dict[str, Any],
+        fitted_attrs: dict[str, Any],
+    ) -> dict[str, Any]:
+        check_is_fitted(self, "model_")
+        return {
+            "format": CHECKPOINT_FORMAT,
+            "format_version": CHECKPOINT_VERSION,
+            "estimator_class": self.__class__.__name__,
+            "estimator_params": self.get_params(deep=False),
+            "model_init": model_init,
+            "model_state_dict": self.model_.state_dict(),
+            "fitted_attrs": fitted_attrs,
+            "history": getattr(self, "history_", None),
+        }
+
+    def save(self, path: str) -> None:
+        """Persist estimator configuration, model weights and fitted metadata."""
+        checkpoint = self._build_checkpoint_base(
+            model_init={
+                "input_mfs": self.model_.input_mfs,
+                "n_classes": len(self.classes_),
+                "rule_base": self.rule_base_,
+            },
+            fitted_attrs={
+                "n_features_in": int(self.n_features_in_),
+                "feature_names_in": self.feature_names_in_.tolist(),
+                "classes": self.classes_.tolist(),
+            },
+        )
+        save_checkpoint(path, checkpoint)
+
+    @classmethod
+    def load(cls, path: str) -> Self:
+        """Load a persisted estimator created by save."""
+        checkpoint = load_checkpoint(path)
+        validate_checkpoint_payload(checkpoint, expected_estimator_class=cls.__name__)
+
+        estimator = cls(**checkpoint["estimator_params"])
+        model_init = checkpoint["model_init"]
+        estimator.rule_base_ = model_init["rule_base"]
+        estimator.model_ = estimator._build_model(
+            model_init["input_mfs"],
+            int(model_init["n_classes"]),
+            str(model_init["rule_base"]),
+        )
+        estimator.model_.load_state_dict(checkpoint["model_state_dict"])
+
+        fitted = checkpoint["fitted_attrs"]
+        estimator.n_features_in_ = int(fitted["n_features_in"])
+        estimator.feature_names_in_ = np.asarray(fitted["feature_names_in"], dtype=object)
+        estimator.classes_ = np.asarray(fitted["classes"], dtype=object)
+        label_encoder = LabelEncoder()
+        label_encoder.classes_ = estimator.classes_
+        estimator._label_encoder_ = label_encoder
+        estimator.history_ = cast(dict[str, Any], checkpoint.get("history", {}))
+        return estimator
 
     def predict_proba(self, x: Any) -> np.ndarray:
         """Predict class probabilities for input samples."""
@@ -457,7 +527,61 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
             patience=int(self.patience),
             weight_decay=float(self.weight_decay),
         )
+        self.rule_base_ = effective_rule_base
         return self
+
+    def _build_checkpoint_base(
+        self,
+        *,
+        model_init: dict[str, Any],
+        fitted_attrs: dict[str, Any],
+    ) -> dict[str, Any]:
+        check_is_fitted(self, "model_")
+        return {
+            "format": CHECKPOINT_FORMAT,
+            "format_version": CHECKPOINT_VERSION,
+            "estimator_class": self.__class__.__name__,
+            "estimator_params": self.get_params(deep=False),
+            "model_init": model_init,
+            "model_state_dict": self.model_.state_dict(),
+            "fitted_attrs": fitted_attrs,
+            "history": getattr(self, "history_", None),
+        }
+
+    def save(self, path: str) -> None:
+        """Persist estimator configuration, model weights and fitted metadata."""
+        checkpoint = self._build_checkpoint_base(
+            model_init={
+                "input_mfs": self.model_.input_mfs,
+                "rule_base": self.rule_base_,
+            },
+            fitted_attrs={
+                "n_features_in": int(self.n_features_in_),
+                "feature_names_in": self.feature_names_in_.tolist(),
+            },
+        )
+        save_checkpoint(path, checkpoint)
+
+    @classmethod
+    def load(cls, path: str) -> Self:
+        """Load a persisted estimator created by save."""
+        checkpoint = load_checkpoint(path)
+        validate_checkpoint_payload(checkpoint, expected_estimator_class=cls.__name__)
+
+        estimator = cls(**checkpoint["estimator_params"])
+        model_init = checkpoint["model_init"]
+        estimator.rule_base_ = model_init["rule_base"]
+        estimator.model_ = estimator._build_model(
+            model_init["input_mfs"],
+            str(model_init["rule_base"]),
+        )
+        estimator.model_.load_state_dict(checkpoint["model_state_dict"])
+
+        fitted = checkpoint["fitted_attrs"]
+        estimator.n_features_in_ = int(fitted["n_features_in"])
+        estimator.feature_names_in_ = np.asarray(fitted["feature_names_in"], dtype=object)
+        estimator.history_ = cast(dict[str, Any], checkpoint.get("history", {}))
+        return estimator
 
     def predict(self, x: Any) -> np.ndarray:
         """Predict continuous target values for input samples."""
@@ -843,6 +967,44 @@ class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
         )
 
 
+class DGALETSKClassifierEstimator(FSREAdaTSKClassifierEstimator):
+    """Sklearn-compatible DG-ALETSK classifier estimator."""
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        n_classes: int,
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create DGALETSKClassifier."""
+        return DGALETSKClassifier(
+            input_mfs,
+            n_classes=n_classes,
+            rule_base=rule_base,
+            lambda_init=self.lambda_init,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+            use_en_frb=self.use_en_frb,
+        )
+
+
+class DGALETSKRegressorEstimator(FSREAdaTSKRegressorEstimator):
+    """Sklearn-compatible DG-ALETSK regressor estimator."""
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create DGALETSKRegressor."""
+        return DGALETSKRegressor(
+            input_mfs,
+            rule_base=rule_base,
+            lambda_init=self.lambda_init,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+            use_en_frb=self.use_en_frb,
+        )
+
+
 # =====================================================================
 # LogTSK Estimators  (Cui, Wu & Xu, IEEE TFS 2021)
 # =====================================================================
@@ -885,6 +1047,8 @@ class LogTSKRegressorEstimator(_BaseRegressorEstimator):
 __all__: list[str] = [
     "AdaTSKClassifierEstimator",
     "AdaTSKRegressorEstimator",
+    "DGALETSKClassifierEstimator",
+    "DGALETSKRegressorEstimator",
     "DombiTSKClassifierEstimator",
     "DombiTSKRegressorEstimator",
     "FSREAdaTSKClassifierEstimator",

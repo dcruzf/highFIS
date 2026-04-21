@@ -47,6 +47,7 @@ highFIS works with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and
 - `TSKClassifier`, `TSKRegressor`
 - `DombiTSKClassifier`, `DombiTSKRegressor`
 - `AdaTSKClassifier`, `AdaTSKRegressor`
+- `DGALETSKClassifier`, `DGALETSKRegressor`
 - `FSREAdaTSKClassifier`, `FSREAdaTSKRegressor`
 - `LogTSKClassifier`, `LogTSKRegressor`
 
@@ -56,14 +57,16 @@ highFIS works with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and
 - `TSKClassifierEstimator`, `TSKRegressorEstimator`
 - `LogTSKClassifierEstimator`, `LogTSKRegressorEstimator`
 - `AdaTSKClassifierEstimator`, `AdaTSKRegressorEstimator`
+- `DGALETSKClassifierEstimator`, `DGALETSKRegressorEstimator`
 - `FSREAdaTSKClassifierEstimator`, `FSREAdaTSKRegressorEstimator`
 
 ### Building blocks
 
-- Memberships: `GaussianMF`, `TriangularMF`, `TrapezoidalMF`, `BellMF`, `SigmoidalMF`
+- Memberships: `GaussianMF`, `TriangularMF`, `TrapezoidalMF`, `BellMF`, `SigmoidalMF`, `DiffSigmoidalMF`, `ProdSigmoidalMF`, `SShapedMF`, `LinSShapedMF`, `ZShapedMF`, `LinZShapedMF`, `PiMF`, `GaussianPIMF`
 - Defuzzifiers: `SoftmaxLogDefuzzifier`, `SumBasedDefuzzifier`, `LogSumDefuzzifier`
 - T-norms: `prod`, `min`, `gmean`, `dombi`
 - Rule base strategies: `cartesian`, `coco`, `en`, `custom`
+- Persistence: estimator `.save(path)` / `.load(path)` and versioned checkpoint validation via `highfis.persistence`
 
 ## 📚 Documentation
 
@@ -76,7 +79,9 @@ Key reference pages:
 - [HTSK](https://dcruzf.github.io/highFIS/latest/models/htsk)
 - [DombiTSK](https://dcruzf.github.io/highFIS/latest/models/dombitsk)
 - [AdaTSK](https://dcruzf.github.io/highFIS/latest/models/adatsk)
+- [DG-ALETSK](https://dcruzf.github.io/highFIS/latest/models/dg-aletsk)
 - [FSRE-AdaTSK](https://dcruzf.github.io/highFIS/latest/models/fsre-adatsk)
+- [Persistence API](https://dcruzf.github.io/highFIS/latest/api/persistence)
 
 ## 🤝 Contributing & Development
 

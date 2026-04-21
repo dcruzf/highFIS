@@ -42,6 +42,7 @@ early stopping and uniform regularization.
 - `forward(x)` — full forward pass through the pipeline.
 - `forward_antecedents(x)` — returns normalized rule strengths.
 - `fit(...)` — unified training with optional early stopping, mini-batches, uniform regularization, and AdamW with separate weight-decay groups.
+- `_log(message, *args, level=logging.INFO, verbose=False, **kwargs)` — internal helper for verbose logging across all BaseTSK subclasses. When `verbose=True`, this method emits model-specific progress messages through the instance logger.
 
 ### Training Loop
 
