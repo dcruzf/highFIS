@@ -4,14 +4,20 @@
 
 `highfis.memberships`
 
-## Classes
+This module exposes differentiable membership functions designed for fuzzy
+models in highFIS.
+
+## Base class
 
 ### MembershipFunction
 
-Base class for differentiable membership functions in PyTorch.
+`MembershipFunction` is the abstract base class for all membership functions.
 
 - Inherits from `torch.nn.Module`.
-- Provides numerical-stability epsilon handling.
+- Stores numeric stability epsilon `eps`.
+- Provides `_as_tensor(x)` to convert scalar inputs into tensors.
+
+## Membership function classes
 
 ### GaussianMF
 
@@ -25,33 +31,38 @@ Parameters:
 
 - `mean`: center $c$.
 - `sigma`: spread parameter $\sigma > 0$.
-- `eps`: numerical stability constant.
+- `eps`: numeric stability constant.
+
+Notes:
+
+- `sigma` is parameterized through `softplus` so it remains positive.
+- `mean` and `sigma` are learnable parameters.
 
 ### CompositeGaussianMF
 
-Composite Gaussian membership function with a nonzero lower bound.
+Composite Gaussian membership function with a positive lower bound:
 
 $$
-\mu(x)=\epsilon + (1-\epsilon)\exp\left(-\frac{(x-c)^2}{2\sigma^2}\right)
+\mu(x)=\epsilon + (1 - \epsilon)\exp\left(-\frac{(x-c)^2}{2\sigma^2}\right)
 $$
 
 Parameters:
 
 - `mean`: center $c$.
 - `sigma`: spread parameter $\sigma > 0$.
-- `eps`: numerical stability floor.
+- `eps`: numeric stability floor.
 
-Implementation notes:
+Notes:
 
-- `sigma` is parameterized through softplus to remain positive during training.
-- Both center and spread are trainable parameters.
+- Ensures membership values never fall below `eps`.
+- Useful for models where a nonzero infimum is needed.
 
 ### TriangularMF
 
 Triangular membership function defined by three vertices:
 
 $$
-\mu(x) = \max\!\left(0,\;\min\!\left(\frac{x - l}{c - l},\;\frac{r - x}{r - c}\right)\right)
+\mu(x) = \max\left(0,\;\min\left(\frac{x - l}{c - l},\;\frac{r - x}{r - c}\right)\right)
 $$
 
 Parameters:
@@ -59,19 +70,24 @@ Parameters:
 - `left`: left vertex $l$.
 - `center`: peak vertex $c$.
 - `right`: right vertex $r$.
-- Must satisfy $l \le c \le r$ with $l \neq r$.
+
+Constraints:
+
+- $l \le c \le r$
+- $l \neq r$
 
 ### TrapezoidalMF
 
-Trapezoidal membership function with a flat-top plateau:
+Trapezoidal membership function with a plateau:
 
 $$
-\mu(x) = \max\!\left(0,\;\min\!\left(\frac{x - a}{b - a},\;1,\;\frac{d - x}{d - c}\right)\right)
+\mu(x) = \max\left(0,\;\min\left(\frac{x - a}{b - a},\;1,\;\frac{d - x}{d - c}\right)\right)
 $$
 
 Parameters:
 
-- `a`, `b`, `c`, `d`: four vertices with $a \le b \le c \le d$ and $a \neq d$.
+- `a`, `b`, `c`, `d`: vertices with $a \le b \le c \le d$.
+- Must satisfy $a \neq d$.
 
 ### BellMF
 
@@ -83,9 +99,13 @@ $$
 
 Parameters:
 
-- `a`: width parameter $a > 0$ (softplus-reparameterized).
-- `b`: slope parameter $b > 0$ (softplus-reparameterized).
+- `a`: width parameter ($a > 0$, softplus-reparameterized).
+- `b`: slope parameter ($b > 0$, softplus-reparameterized).
 - `center`: center $c$.
+
+Notes:
+
+- Both `a` and `b` are learned in a way that enforces positivity.
 
 ### SigmoidalMF
 
@@ -97,12 +117,16 @@ $$
 
 Parameters:
 
-- `a`: slope control (positive = left-to-right, negative = right-to-left).
+- `a`: slope parameter.
 - `center`: inflection point $c$.
 
 ### DiffSigmoidalMF
 
-Difference of two sigmoids leading to a localized activation interval.
+Difference of two sigmoid functions:
+
+$$
+\mu(x) = \sigma(a_1, x-c_1) - \sigma(a_2, x-c_2)
+$$
 
 Parameters:
 
@@ -111,7 +135,11 @@ Parameters:
 
 ### ProdSigmoidalMF
 
-Product of two sigmoids, producing a smooth window between thresholds.
+Product of two sigmoid functions:
+
+$$
+\mu(x) = \sigma(a_1, x-c_1) \cdot \sigma(a_2, x-c_2)
+$$
 
 Parameters:
 
@@ -125,7 +153,7 @@ Smooth S-shaped membership from 0 to 1 using a cubic smoothstep.
 Parameters:
 
 - `a`: start of the transition.
-- `b`: end of the transition with $a < b$.
+- `b`: end of the transition, with $a < b$.
 
 ### LinSShapedMF
 
@@ -134,16 +162,16 @@ Linear S-shaped membership from 0 to 1.
 Parameters:
 
 - `a`: start of the transition.
-- `b`: end of the transition with $a < b$.
+- `b`: end of the transition, with $a < b$.
 
 ### ZShapedMF
 
-Smooth Z-shaped membership from 1 to 0 using an inverted cubic smoothstep.
+Smooth Z-shaped membership from 1 to 0 using an inverted smoothstep.
 
 Parameters:
 
 - `a`: start of the transition.
-- `b`: end of the transition with $a < b$.
+- `b`: end of the transition, with $a < b$.
 
 ### LinZShapedMF
 
@@ -152,25 +180,45 @@ Linear Z-shaped membership from 1 to 0.
 Parameters:
 
 - `a`: start of the transition.
-- `b`: end of the transition with $a < b$.
+- `b`: end of the transition, with $a < b$.
 
 ### PiMF
 
-Pi-shaped membership with smooth S/Z transitions and a flat top region.
+Pi-shaped membership function with smooth rising and falling edges.
 
 Parameters:
 
-- `a`, `b`, `c`, `d`: four boundary points with $a < b \le c < d$.
+- `a`, `b`, `c`, `d`: four boundary points satisfying $a < b \le c < d$.
+
+Notes:
+
+- Combines a smooth S-shaped left edge, a flat plateau, and a smooth Z-shaped right edge.
 
 ### GaussianPIMF
 
-Gaussian membership with a positive infimum controlled by parameter `K`, which can help avoid underflow in high-dimensional softmin-based aggregation.
+Gaussian membership with a positive infimum controlled by `K`:
+
+$$
+\mu(x)=\exp\left(-K\left(1-\exp\left(-\frac{(x-m)^2}{2\sigma^2}\right)\right)\right)
+$$
 
 Parameters:
 
-- `mean`: center $c$.
+- `mean`: center $m$.
 - `sigma`: spread parameter $\sigma > 0$.
-- `K`: positive infimum control parameter, with $	ext{infimum} = e^{-K}$.
+- `K`: positive infimum control parameter with $0 < K \le 745$.
+- `eps`: numeric stability constant.
+
+Notes:
+
+- The membership infimum is $\exp(-K) > 0$.
+- Designed to prevent numeric underflow in high-dimensional softmin-based aggregation.
+
+## Implementation details
+
+- All classes inherit from `MembershipFunction`.
+- Several classes use `softplus` reparameterization to enforce positive parameters.
+- `_as_tensor` supports scalar or tensor inputs with the default torch dtype.
 
 ## Example
 

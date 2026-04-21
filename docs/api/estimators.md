@@ -4,59 +4,88 @@
 
 `highfis.estimators`
 
+This module provides scikit-learn compatible wrappers for highFIS TSK models.
+Each estimator implements the standard `fit`/`predict` interface and builds an
+underlying `BaseTSK` model from Gaussian membership functions.
+
 ## InputConfig
 
-`InputConfig` controls per-feature Gaussian setup used by `mf_init="grid"`.
+`InputConfig` configures per-feature Gaussian MF construction for
+`mf_init="grid"`.
 
 Fields:
 
 - `name`: feature name.
 - `n_mfs`: number of Gaussian membership functions.
-- `overlap`: overlap factor controlling membership width.
-- `margin`: range padding before center placement.
+- `overlap`: controls the spacing of grid-initialized membership widths.
+- `margin`: padding applied to the feature range before center placement.
 
-When `mf_init="kmeans"` (default), `InputConfig` is used only for feature names
-(if provided), while centers and sigmas are estimated from k-means clusters.
+When `mf_init="kmeans"`, `InputConfig` is only used to name features; centers
+and sigmas are estimated from k-means cluster centroids.
+
+## Common hyperparameters
+
+Most estimators share these common settings:
+
+- `input_configs`: optional list of `InputConfig`; must match the number of features.
+- `n_mfs`: number of MFs per feature for grid initialization or number of k-means
+  clusters for clustering-based initialization.
+- `mf_init`: initialization mode, either `"kmeans"` or `"grid"`.
+- `sigma_scale`: scale factor for k-means sigma initialization; accepts a float or
+  `"auto"`.
+- `random_state`: RNG seed for deterministic initialization.
+- `epochs`: number of training epochs.
+- `learning_rate`: optimizer learning rate.
+- `verbose`: whether to print training progress.
+- `rule_base`: explicit rule base type; defaults to `"coco"` for k-means and
+  `"cartesian"` for grid initialization.
+- `batch_size`: training batch size.
+- `shuffle`: whether to shuffle training samples each epoch.
+- `ur_weight`: uncertainty regularization weight.
+- `ur_target`: optional target for uncertainty regularization.
+- `consequent_batch_norm`: whether to apply batch normalization to consequent layers.
+- `patience`: early stopping patience.
+- `validation_data`: optional tuple `(x_val, y_val)` for validation during training.
+- `weight_decay`: weight decay for consequent parameters.
+
+## Initialization modes
+
+- `mf_init="kmeans"` (default):
+  - runs k-means with `n_clusters=n_mfs`.
+  - Gaussian centers are set to cluster centroid coordinates.
+  - Sigma is initialized from within-cluster spread scaled by `sigma_scale`.
+- `mf_init="grid"`:
+  - builds per-feature Gaussian MFs over a regular grid.
+  - uses `InputConfig` values to control center placement and overlap.
+
+## Base estimator behavior
+
+### `_BaseClassifierEstimator`
+
+- Builds a classifier-specific `BaseTSK` model in `_build_model`.
+- Encodes labels with `LabelEncoder`.
+- Supports `fit`, `predict_proba`, `predict`, and `score`.
+- `save(path)` persists estimator parameters, model state, and fitted metadata.
+- `load(path)` reconstructs the estimator and model from a checkpoint.
+
+### `_BaseRegressorEstimator`
+
+- Builds a regressor-specific `BaseTSK` model in `_build_model`.
+- Supports `fit`, `predict`, and `score`.
+- `save(path)` persists estimator parameters, model state, and fitted metadata.
+- `load(path)` reconstructs the estimator and model from a checkpoint.
 
 ## HTSKClassifierEstimator
 
 A scikit-learn compatible classifier wrapper around `HTSKClassifier`.
 
-### sklearn Compatibility
+### Summary
 
-- Inherits `BaseEstimator` and `ClassifierMixin`.
-- Implements `fit`, `predict`, `predict_proba`, and `score`.
-- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
-
-### Core Hyperparameters
-
-- `n_mfs`, `input_configs`
-- `mf_init` (`"kmeans"` default, `"grid"` optional)
-- `sigma_scale` (k-means sigma scaling factor, paper's $h$)
-- `epochs`, `learning_rate`
-- `rule_base`
-- `batch_size`, `shuffle`
-- `ur_weight`, `ur_target`
-- `consequent_batch_norm`
-- `random_state`
-- `patience` (early-stopping patience in epochs)
-- `validation_data` (tuple `(x_val, y_val)` for early stopping by accuracy)
-- `weight_decay` (consequent parameter weight decay for AdamW, default $10^{-8}$)
-
-### Initialization Modes
-
-- `mf_init="kmeans"` (default):
-    runs k-means with `n_clusters=n_mfs`; for each rule $r$ and feature $d$,
-    the Gaussian center is the centroid coordinate $m_{r,d}$ and sigma is the
-    within-cluster spread scaled by `sigma_scale`.
-- `mf_init="grid"`:
-    keeps the original per-feature grid initialization controlled by
-    `InputConfig(n_mfs, overlap, margin)`.
-
-Default `rule_base` depends on the initialization mode:
-
-- `"coco"` when `mf_init="kmeans"` (one rule per cluster)
-- `"cartesian"` when `mf_init="grid"`
+- Uses `HTSKClassifier` as the underlying model.
+- Supports grid and k-means MF initialization.
+- Uses `cartesian` rule base for grid initialization and `coco` for k-means by
+  default.
+- Exposes shared estimator hyperparameters plus regularization and validation.
 
 ### Example
 
@@ -65,8 +94,8 @@ from highfis import HTSKClassifierEstimator
 
 clf = HTSKClassifierEstimator(
     n_mfs=3,
-    mf_init="kmeans",      # default
-    sigma_scale=1.0,        # paper-recommended default for HTSK
+    mf_init="kmeans",
+    sigma_scale=1.0,
     epochs=200,
     learning_rate=1e-3,
     random_state=0,
@@ -75,32 +104,15 @@ clf.fit(X_train, y_train)
 acc = clf.score(X_test, y_test)
 ```
 
-Grid-based initialization remains available:
-
-```python
-clf = HTSKClassifierEstimator(
-    n_mfs=3,
-    mf_init="grid",
-    rule_base="cartesian",
-)
-```
-
 ## HTSKRegressorEstimator
 
 A scikit-learn compatible regressor wrapper around `HTSKRegressor`.
 
-### sklearn Compatibility
+### Summary
 
-- Inherits `BaseEstimator` and `RegressorMixin`.
-- Implements `fit`, `predict`, and `score` ($R^2$).
-- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
-
-### Core Hyperparameters
-
-Same hyperparameters as `HTSKClassifierEstimator` (see above), except:
-
-- No `n_classes` parameter — output is scalar.
-- `score()` returns $R^2$ instead of accuracy.
+- Uses `HTSKRegressor` as the underlying model.
+- Shares the same hyperparameters and initialization behavior as the
+  classifier wrapper.
 
 ### Example
 
@@ -123,18 +135,10 @@ r2 = reg.score(X_test, y_test)
 
 A scikit-learn compatible classifier wrapper around `TSKClassifier`.
 
-### sklearn Compatibility
+### Summary
 
-- Inherits `BaseEstimator` and `ClassifierMixin`.
-- Implements `fit`, `predict`, `predict_proba`, and `score`.
-- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
-
-### Core Hyperparameters
-
-Same hyperparameters as `HTSKClassifierEstimator` (see above).
-
-The model uses `SumBasedDefuzzifier`, where weights are clamped to a small,
-input-dtype-aware epsilon before normalization.
+- Uses `TSKClassifier` as the underlying model.
+- Implements `fit`, `predict_proba`, `predict`, and `score`.
 
 ### Example
 
@@ -156,17 +160,10 @@ acc = clf.score(X_test, y_test)
 
 A scikit-learn compatible regressor wrapper around `TSKRegressor`.
 
-### sklearn Compatibility
+### Summary
 
-- Inherits `BaseEstimator` and `RegressorMixin`.
-- Implements `fit`, `predict`, and `score` ($R^2$).
-- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
-
-### Core Hyperparameters
-
-Same hyperparameters as `HTSKRegressorEstimator` (see above), with `SumBasedDefuzzifier`.
-
-`SumBasedDefuzzifier` clamps weights to a dtype-aware epsilon before normalizing.
+- Uses `TSKRegressor` as the underlying model.
+- Implements `fit`, `predict`, and `score`.
 
 ### Example
 
@@ -188,15 +185,11 @@ r2 = reg.score(X_test, y_test)
 
 A scikit-learn compatible classifier wrapper around `DombiTSKClassifier`.
 
-### sklearn Compatibility
+### Summary
 
-- Inherits `BaseEstimator` and `ClassifierMixin`.
-- Implements `fit`, `predict`, `predict_proba`, and `score`.
-- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
-
-### Core Hyperparameters
-
-Same hyperparameters as `HTSKClassifierEstimator` (see above).
+- Uses `DombiTSKClassifier` as the underlying model.
+- Shares the same estimator interface and hyperparameters as other
+  classifier wrappers.
 
 ### Example
 
@@ -218,17 +211,11 @@ acc = clf.score(X_test, y_test)
 
 A scikit-learn compatible regressor wrapper around `DombiTSKRegressor`.
 
-### sklearn Compatibility
+### Summary
 
-- Inherits `BaseEstimator` and `RegressorMixin`.
-- Implements `fit`, `predict`, and `score` ($R^2$).
-- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
-
-### Core Hyperparameters
-
-Same hyperparameters as `HTSKRegressorEstimator` (see above), with `SumBasedDefuzzifier`.
-
-`SumBasedDefuzzifier` clamps weights to a dtype-aware epsilon before normalizing.
+- Uses `DombiTSKRegressor` as the underlying model.
+- Shares the same estimator interface and hyperparameters as other
+  regressor wrappers.
 
 ### Example
 
@@ -250,17 +237,11 @@ r2 = reg.score(X_test, y_test)
 
 A scikit-learn compatible classifier wrapper around `AdaTSKClassifier`.
 
-### sklearn Compatibility
+### Summary
 
-- Inherits `BaseEstimator` and `ClassifierMixin`.
-- Implements `fit`, `predict`, `predict_proba`, and `score`.
-- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
-
-### Core Hyperparameters
-
-Same hyperparameters as `HTSKClassifierEstimator` (see above), plus:
-
-- `lambda_init`: positive initial value for adaptive Dombi shape parameters.
+- Adds `lambda_init` to initialize the adaptive Dombi shape parameter.
+- Validates that `lambda_init > 0`.
+- Uses `AdaTSKClassifier` as the underlying model.
 
 ### Example
 
@@ -283,17 +264,11 @@ acc = clf.score(X_test, y_test)
 
 A scikit-learn compatible regressor wrapper around `AdaTSKRegressor`.
 
-### sklearn Compatibility
+### Summary
 
-- Inherits `BaseEstimator` and `RegressorMixin`.
-- Implements `fit`, `predict`, and `score` ($R^2$).
-- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
-
-### Core Hyperparameters
-
-Same hyperparameters as `HTSKRegressorEstimator` (see above), plus:
-
-- `lambda_init`: positive initial value for adaptive Dombi shape parameters.
+- Adds `lambda_init` to initialize the adaptive Dombi shape parameter.
+- Validates that `lambda_init > 0`.
+- Uses `AdaTSKRegressor` as the underlying model.
 
 ### Example
 
@@ -316,17 +291,11 @@ r2 = reg.score(X_test, y_test)
 
 A scikit-learn compatible classifier wrapper around `FSREAdaTSKClassifier`.
 
-### sklearn Compatibility
+### Summary
 
-- Inherits `BaseEstimator` and `ClassifierMixin`.
-- Implements `fit`, `predict`, `predict_proba`, and `score`.
-- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
-
-### Core Hyperparameters
-
-Same hyperparameters as `AdaTSKClassifierEstimator` (see above), plus:
-
-- `use_en_frb`: whether to enable the enhanced fuzzy rule base for rule extraction.
+- Adds `use_en_frb` to enable the enhanced fuzzy rule base.
+- Adds `lambda_init` for adaptive Dombi shape initialization.
+- Uses `FSREAdaTSKClassifier` as the underlying model.
 
 ### Example
 
@@ -350,17 +319,11 @@ acc = clf.score(X_test, y_test)
 
 A scikit-learn compatible regressor wrapper around `FSREAdaTSKRegressor`.
 
-### sklearn Compatibility
+### Summary
 
-- Inherits `BaseEstimator` and `RegressorMixin`.
-- Implements `fit`, `predict`, and `score` ($R^2$).
-- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
-
-### Core Hyperparameters
-
-Same hyperparameters as `AdaTSKRegressorEstimator` (see above), plus:
-
-- `use_en_frb`: whether to enable the enhanced fuzzy rule base for rule extraction.
+- Adds `use_en_frb` to enable the enhanced fuzzy rule base.
+- Adds `lambda_init` for adaptive Dombi shape initialization.
+- Uses `FSREAdaTSKRegressor` as the underlying model.
 
 ### Example
 
@@ -384,18 +347,11 @@ r2 = reg.score(X_test, y_test)
 
 A scikit-learn compatible classifier wrapper around `DGALETSKClassifier`.
 
-### sklearn Compatibility
+### Summary
 
-- Inherits `BaseEstimator` and `ClassifierMixin`.
-- Implements `fit`, `predict`, `predict_proba`, and `score`.
-- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
-
-### Core Hyperparameters
-
-Same hyperparameters as `AdaTSKClassifierEstimator` (see above), plus:
-
-- `lambda_init`: positive initial value for the adaptive Ln-Exp softmin parameter.
-- `use_en_frb`: whether to enable the enhanced fuzzy rule base for joint feature selection and rule extraction.
+- Inherits from `FSREAdaTSKClassifierEstimator`.
+- Adds `lambda_init` and `use_en_frb`.
+- Uses `DGALETSKClassifier` as the underlying model.
 
 ### Example
 
@@ -419,6 +375,12 @@ acc = clf.score(X_test, y_test)
 
 A scikit-learn compatible regressor wrapper around `DGALETSKRegressor`.
 
+### Summary
+
+- Inherits from `FSREAdaTSKRegressorEstimator`.
+- Adds `lambda_init` and `use_en_frb`.
+- Uses `DGALETSKRegressor` as the underlying model.
+
 ### Example
 
 ```python
@@ -441,17 +403,10 @@ r2 = reg.score(X_test, y_test)
 
 A scikit-learn compatible classifier wrapper around `DGTSKClassifier`.
 
-### sklearn Compatibility
+### Summary
 
-- Inherits `BaseEstimator` and `ClassifierMixin`.
-- Implements `fit`, `predict`, `predict_proba`, and `score`.
-- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
-
-### Core Hyperparameters
-
-Same hyperparameters as `AdaTSKClassifierEstimator` (see above), plus:
-
-- `use_en_frb`: whether to enable the enhanced fuzzy rule base for rule extraction.
+- Adds `use_en_frb` to enable the enhanced fuzzy rule base.
+- Uses `DGTSKClassifier` as the underlying model.
 
 ### Example
 
@@ -474,17 +429,10 @@ acc = clf.score(X_test, y_test)
 
 A scikit-learn compatible regressor wrapper around `DGTSKRegressor`.
 
-### sklearn Compatibility
+### Summary
 
-- Inherits `BaseEstimator` and `RegressorMixin`.
-- Implements `fit`, `predict`, and `score` ($R^2$).
-- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
-
-### Core Hyperparameters
-
-Same hyperparameters as `AdaTSKRegressorEstimator` (see above), plus:
-
-- `use_en_frb`: whether to enable the enhanced fuzzy rule base for rule extraction.
+- Adds `use_en_frb` to enable the enhanced fuzzy rule base.
+- Uses `DGTSKRegressor` as the underlying model.
 
 ### Example
 
@@ -507,53 +455,11 @@ r2 = reg.score(X_test, y_test)
 
 A scikit-learn compatible classifier wrapper around `LogTSKClassifier`.
 
-### sklearn Compatibility
+### Summary
 
-- Inherits `BaseEstimator` and `RegressorMixin`.
-- Implements `fit`, `predict`, and `score` ($R^2$).
-- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
-
-### Core Hyperparameters
-
-Same hyperparameters as `AdaTSKRegressorEstimator` (see above), plus:
-
-- `lambda_init`: positive initial value for the adaptive Ln-Exp softmin parameter.
-- `use_en_frb`: whether to enable the enhanced fuzzy rule base for joint feature selection and rule extraction.
-
-### Example
-
-```python
-from highfis import DGALETSKRegressorEstimator
-
-reg = DGALETSKRegressorEstimator(
-    n_mfs=3,
-    mf_init="kmeans",
-    lambda_init=1.0,
-    use_en_frb=True,
-    epochs=200,
-    learning_rate=1e-3,
-    random_state=0,
-)
-reg.fit(X_train, y_train)
-r2 = reg.score(X_test, y_test)
-```
-
-## LogTSKClassifierEstimator
-
-A scikit-learn compatible classifier wrapper around `LogTSKClassifier`.
-
-### sklearn Compatibility
-
-- Inherits `BaseEstimator` and `ClassifierMixin`.
-- Implements `fit`, `predict`, `predict_proba`, and `score`.
-- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
-
-### Core Hyperparameters
-
-Same hyperparameters as `HTSKClassifierEstimator` (see above).
-
-The model uses `LogSumDefuzzifier` (softmax(log(w)/τ)) for log-space normalization.
-`LogSumDefuzzifier` also infers a dtype-aware epsilon for clamping before log.
+- Uses `LogTSKClassifier` as the underlying model.
+- Implements `fit`, `predict_proba`, `predict`, and `score`.
+- `score` returns accuracy.
 
 ### Example
 
@@ -575,17 +481,11 @@ acc = clf.score(X_test, y_test)
 
 A scikit-learn compatible regressor wrapper around `LogTSKRegressor`.
 
-### sklearn Compatibility
+### Summary
 
-- Inherits `BaseEstimator` and `RegressorMixin`.
-- Implements `fit`, `predict`, and `score` ($R^2$).
-- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
-
-### Core Hyperparameters
-
-Same hyperparameters as `HTSKRegressorEstimator` (see above), with `LogSumDefuzzifier`.
-
-`LogSumDefuzzifier` infers a dtype-aware epsilon for clamping before log.
+- Uses `LogTSKRegressor` as the underlying model.
+- Implements `fit`, `predict`, and `score`.
+- `score` returns $R^2$.
 
 ### Example
 
@@ -602,3 +502,10 @@ reg = LogTSKRegressorEstimator(
 reg.fit(X_train, y_train)
 r2 = reg.score(X_test, y_test)
 ```
+
+## Exported helper
+
+### `_build_kmeans_input_mfs`
+
+A helper function exported by the module for building Gaussian MFs from
+k-means cluster centers and per-feature spread.

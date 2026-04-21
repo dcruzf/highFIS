@@ -4,78 +4,150 @@
 
 `highfis.t_norms`
 
-## Built-in T-Norms
+This module defines fuzzy conjunction strategies for antecedent aggregation.
+It exposes both module-based T-norm classes and convenience functions for
+common aggregations.
 
-### BaseTNorm
+## Types
 
-Abstract base class for t-norm strategy modules.
+### `TNormFn`
+
+A callable type alias used for T-norm functions.
+
+**Signature:** `Callable[..., Tensor]`
+
+## BaseTNorm
+
+Abstract base class for T-norm strategy modules.
 
 - Inherits from `torch.nn.Module` and `ABC`.
 - Defines `forward(terms: Tensor, dim: int = -1) -> Tensor`.
-- Can be used with custom `t_norm_fn` callables in TSK models.
+- Concrete subclasses implement specific aggregation behavior.
 
-### ProductTNorm
+## ProductTNorm
 
-Product t-norm module implementing `t_norm_prod` behavior.
+Product t-norm module.
 
-### MinimumTNorm
+### Behavior
 
-Minimum t-norm module implementing `t_norm_min` behavior.
+- Computes the product of antecedent terms over the specified dimension.
+- Equivalent to the classic fuzzy product conjunction.
 
-### GMeanTNorm
+### `forward(terms, dim=-1)`
 
-Geometric-mean t-norm module implementing `t_norm_gmean` behavior.
+Returns `torch.prod(terms, dim=dim)`.
 
-### DombiTNorm
+## MinimumTNorm
 
-Dombi aggregation module implementing `t_norm_dombi` with a learnable or
-fixed `lambda_` parameter.
+Minimum t-norm module.
 
-### t_norm_prod
+### Behavior
 
-Product t-norm over antecedent terms:
+- Computes the minimum over antecedent terms along the specified dimension.
+- Equivalent to the classic fuzzy minimum conjunction.
 
-$$
-\mathcal{T}_{\mathrm{prod}}(\mu_1,\ldots,\mu_d)=\prod_{i=1}^{d}\mu_i
-$$
+### `forward(terms, dim=-1)`
 
-### t_norm_min
+Returns `torch.min(terms, dim=dim).values`.
 
-Minimum t-norm:
+## GMeanTNorm
 
-$$
-\mathcal{T}_{\mathrm{min}}(\mu_1,\ldots,\mu_d)=\min_i\mu_i
-$$
+Geometric mean t-norm module.
 
-### t_norm_gmean
+### Constructor parameters
 
-Geometric-mean aggregation used by HTSK:
+- `eps`: optional numeric stability floor for input clamping.
 
-$$
-\mathcal{T}_{\mathrm{gmean}}(\mu_1,\ldots,\mu_d)=\left(\prod_{i=1}^{d}\mu_i\right)^{1/d}
-$$
+### Behavior
 
-Equivalent log form in implementation:
+- Computes the geometric mean of antecedent terms over the specified
+  dimension.
+- Uses the log-domain implementation for numerical stability.
 
-$$
-\exp\left(\frac{1}{d}\sum_{i=1}^{d}\log\mu_i\right)
-$$
+### `forward(terms, dim=-1)`
 
-### t_norm_dombi
+Returns `exp(mean(log(clamp(terms, min=eps))))`.
 
-Dombi aggregation interpolates between strict conjunction and soft consensus:
+## DombiTNorm
 
-$$
-\mathcal{T}_{\mathrm{dombi}}(\mu_1,\ldots,\mu_d)=\left[1 + \left(\sum_{i=1}^{d}\left(\frac{1}{\mu_i}-1\right)^{\lambda}\right)^{1/\lambda}\right]^{-1}
-$$
+Dombi t-norm module.
 
-The implementation clamps antecedent degrees away from zero for numerical stability.
+### Constructor parameters
 
-### resolve_t_norm
+- `lambda_`: positive shape parameter (`lambda_ > 0`).
+- `eps`: optional numeric stability floor for input clamping.
 
-Resolves built-in t-norm names: `"prod"`, `"min"`, `"gmean"`, `"dombi"`.
+### Behavior
 
-## Custom T-Norms
+- Implements the Dombi aggregation strategy.
+- Clamps inputs to `(eps, 1.0]` before computing the Dombi formula.
 
-You can provide a custom callable in `RuleLayer` or `HTSKClassifier` through `t_norm_fn`.
-The callable must accept a tensor with shape $(\text{batch}, n_{\text{inputs}})$ and return $(\text{batch},)$.
+### `forward(terms, dim=-1)`
+
+Computes:
+
+```python
+clamped = terms.clamp(min=eps, max=1.0)
+inv = (1.0 / clamped) - 1.0
+powered = torch.pow(inv, lambda_)
+summed = powered.sum(dim=dim)
+return 1.0 / (1.0 + torch.pow(summed, 1.0 / lambda_))
+```
+
+## Convenience functions
+
+### `t_norm_prod(terms)`
+
+Product t-norm over antecedent terms with shape `(batch, n_inputs)`.
+
+### `t_norm_min(terms)`
+
+Minimum t-norm over antecedent terms with shape `(batch, n_inputs)`.
+
+### `t_norm_gmean(terms, eps=None)`
+
+Geometric mean aggregation for HTSK-like behavior.
+
+### `t_norm_dombi(terms, lambda_=1.0, eps=None)`
+
+Dombi aggregation over antecedent terms.
+
+## resolve_t_norm
+
+### `resolve_t_norm(name)`
+
+Resolve a built-in t-norm by name.
+
+Supported names:
+
+- `"prod"` → `ProductTNorm()`
+- `"min"` → `MinimumTNorm()`
+- `"gmean"` → `GMeanTNorm()`
+- `"dombi"` → `DombiTNorm()`
+
+Raises `ValueError` if the name is not one of the supported strings.
+
+## Exported names
+
+- `BaseTNorm`
+- `ProductTNorm`
+- `MinimumTNorm`
+- `GMeanTNorm`
+- `DombiTNorm`
+- `TNormFn`
+- `resolve_t_norm`
+- `t_norm_prod`
+- `t_norm_min`
+- `t_norm_gmean`
+- `t_norm_dombi`
+
+## Example
+
+```python
+from highfis.t_norms import resolve_t_norm, t_norm_prod
+
+prod = resolve_t_norm("prod")
+result = prod(terms, dim=1)
+
+result2 = t_norm_prod(terms)
+```
