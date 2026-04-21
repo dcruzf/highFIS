@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="zensical-0.0.33">
+      <meta name="generator" content="zensical-0.0.34">
     
     
       
@@ -413,6 +413,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../../models/dg-tsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DG-TSK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../models/dg-aletsk/" class="md-nav__link">
         
   
@@ -657,6 +684,17 @@
     <span class="md-ellipsis">
       
         DGALETSKRuleLayer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dgtskrulelayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DGTSKRuleLayer
       
     </span>
   </a>
@@ -979,6 +1017,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#dgtskrulelayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DGTSKRuleLayer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#adaptivedombirulelayer" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1114,6 +1163,13 @@
 <li>Learns <code>λ</code> gates per feature and rule.</li>
 <li>Applies gate activation before aggregation to enable feature selection.</li>
 <li>Uses an adaptive Ln-Exp softmin formulation for rule firing strengths.</li>
+</ul>
+<h2 id="dgtskrulelayer">DGTSKRuleLayer</h2>
+<p>A DG-TSK antecedent layer that learns feature gates and applies them directly to Gaussian memberships.</p>
+<ul>
+<li>Learns <code>λ</code> gates per feature and rule.</li>
+<li>Applies an explicit gate function such as <code>gate1</code>, <code>gate2</code>, <code>gate3</code>, <code>gate4</code>, or <code>gate_m</code>.</li>
+<li>Uses product aggregation to compute rule firing strengths from gated memberships.</li>
 </ul>
 <h2 id="adaptivedombirulelayer">AdaptiveDombiRuleLayer</h2>
 <p>A per-rule adaptive Dombi aggregation layer.</p>
@@ -1286,7 +1342,7 @@ Output shape is <span class="arithmatex">\((\text{batch}, 1)\)</span>.</p>
       <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["announce.dismiss","content.code.annotate","content.code.copy","content.code.select","content.footnote.tooltips","content.tabs.link","content.tooltips","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.path","navigation.sections","navigation.top","navigation.tracking","search.highlight"],"search":"../../assets/javascripts/workers/search.e2d2d235.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"provider":"mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.63456bd9.min.js"></script>
+      <script src="../../assets/javascripts/bundle.9f55f5b1.min.js"></script>
       
         <script src="../../javascripts/mathjax.js"></script>
       
