@@ -413,6 +413,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../../models/dg-aletsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DG-ALETSK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../protocols/" class="md-nav__link">
         
   
@@ -539,6 +566,17 @@
     <span class="md-ellipsis">
       
         GaussianMF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compositegaussianmf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CompositeGaussianMF
       
     </span>
   </a>
@@ -1003,6 +1041,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#compositegaussianmf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CompositeGaussianMF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#triangularmf" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1193,6 +1242,17 @@
 <li><code>mean</code>: center <span class="arithmatex">\(c\)</span>.</li>
 <li><code>sigma</code>: spread parameter <span class="arithmatex">\(\sigma &gt; 0\)</span>.</li>
 <li><code>eps</code>: numerical stability constant.</li>
+</ul>
+<h3 id="compositegaussianmf">CompositeGaussianMF</h3>
+<p>Composite Gaussian membership function with a nonzero lower bound.</p>
+<div class="arithmatex">\[
+\mu(x)=\epsilon + (1-\epsilon)\exp\left(-\frac{(x-c)^2}{2\sigma^2}\right)
+\]</div>
+<p>Parameters:</p>
+<ul>
+<li><code>mean</code>: center <span class="arithmatex">\(c\)</span>.</li>
+<li><code>sigma</code>: spread parameter <span class="arithmatex">\(\sigma &gt; 0\)</span>.</li>
+<li><code>eps</code>: numerical stability floor.</li>
 </ul>
 <p>Implementation notes:</p>
 <ul>

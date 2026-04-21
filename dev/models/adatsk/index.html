@@ -514,6 +514,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#relation-to-the-fsre-adatsk-paper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Relation to the FSRE-AdaTSK paper
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#example" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -547,6 +558,33 @@
     
   
     FSRE-AdaTSK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dg-aletsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DG-ALETSK
   
 
     
@@ -964,6 +1002,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#relation-to-the-fsre-adatsk-paper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Relation to the FSRE-AdaTSK paper
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#example" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1000,11 +1049,7 @@
 <h1 id="adatsk">AdaTSK</h1>
 <h2 id="reference">Reference</h2>
 <blockquote>
-<p>Xue, Guangdong; Chang, Qin; Wang, Jian; Zhang, Kai; Pal, Nikhil R. (2023).
-"An Adaptive Neuro-Fuzzy System With Integrated Feature Selection and
-Rule Extraction for High-Dimensional Classification Problems." <em>IEEE
-Transactions on Fuzzy Systems</em> 31(7):2167–2181.
-DOI: <a href="https://doi.org/10.1109/TFUZZ.2022.3220950">10.1109/TFUZZ.2022.3220950</a></p>
+<p>G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive Neuro-Fuzzy System With Integrated Feature Selection and Rule Extraction for High-Dimensional Classification Problems," in IEEE Transactions on Fuzzy Systems, vol. 31, no. 7, pp. 2167-2181, July 2023, doi: <a href="https://doi.org/10.1109/TFUZZ.2022.3220950">10.1109/TFUZZ.2022.3220950</a></p>
 </blockquote>
 <h2 id="mathematical-formulation">Mathematical Formulation</h2>
 <p>AdaTSK extends TSK fuzzy inference by using an adaptive Dombi-based
@@ -1065,6 +1110,18 @@ regression.</p>
 <li><code>consequent_batch_norm=True</code> can be enabled to normalize inputs before
   consequent computation.</li>
 </ul>
+<h2 id="relation-to-the-fsre-adatsk-paper">Relation to the FSRE-AdaTSK paper</h2>
+<p>This implementation follows the same AdaTSK core described in the paper
+"An Adaptive Neuro-Fuzzy System With Integrated Feature Selection and Rule
+Extraction for High-Dimensional Classification Problems." In that work,
+AdaTSK is the base adaptive TSK system with smooth, numerically stable
+aggregation.</p>
+<p>The paper shows that FSRE-AdaTSK is built on top of AdaTSK by adding gate-
+based consequents and an Enhanced Fuzzy Rule Base (En-FRB) for feature
+selection and rule extraction. In highFIS, <code>AdaTSKClassifier</code> and
+<code>AdaTSKRegressor</code> implement the core adaptive aggregation and first-order
+TSK consequents, while <code>FSREAdaTSKClassifier</code> and <code>FSREAdaTSKRegressor</code>
+provide the extended FSRE-AdaTSK behavior.</p>
 <h2 id="example">Example</h2>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">AdaTSKClassifierEstimator</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>

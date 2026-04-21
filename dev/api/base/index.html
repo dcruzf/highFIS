@@ -413,6 +413,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../../models/dg-aletsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DG-ALETSK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../protocols/" class="md-nav__link">
         
   
@@ -1036,6 +1063,7 @@ early stopping and uniform regularization.</p>
 <li><code>forward(x)</code> — full forward pass through the pipeline.</li>
 <li><code>forward_antecedents(x)</code> — returns normalized rule strengths.</li>
 <li><code>fit(...)</code> — unified training with optional early stopping, mini-batches, uniform regularization, and AdamW with separate weight-decay groups.</li>
+<li><code>_log(message, *args, level=logging.INFO, verbose=False, **kwargs)</code> — internal helper for verbose logging across all BaseTSK subclasses. When <code>verbose=True</code>, this method emits model-specific progress messages through the instance logger.</li>
 </ul>
 <h3 id="training-loop">Training Loop</h3>
 <p>The default optimizer is <code>AdamW</code> with two parameter groups:</p>

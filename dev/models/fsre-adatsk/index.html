@@ -18,7 +18,7 @@
         <link rel="prev" href="../adatsk/">
       
       
-        <link rel="next" href="../../api/protocols/">
+        <link rel="next" href="../dg-aletsk/">
       
       
         
@@ -563,6 +563,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#comparison-with-the-original-ieee-fsre-adatsk-paper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparison with the original IEEE FSRE-AdaTSK paper
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#code-correspondence" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -599,6 +610,33 @@
   
 </nav>
       
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dg-aletsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DG-ALETSK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1030,6 +1068,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#comparison-with-the-original-ieee-fsre-adatsk-paper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparison with the original IEEE FSRE-AdaTSK paper
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#code-correspondence" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1169,6 +1218,28 @@ explicit phase transitions for FS, RE, and fine tuning.</p>
 </ul>
 <p>These phases may be executed from the low-level model API or orchestrated by
 higher-level estimator wrappers.</p>
+<p>For the related DG-ALETSK implementation, see <code>docs/models/dg-aletsk.md</code>.</p>
+<h2 id="comparison-with-the-original-ieee-fsre-adatsk-paper">Comparison with the original IEEE FSRE-AdaTSK paper</h2>
+<p>This document reflects the same FSRE-AdaTSK design presented in the paper
+"An Adaptive Neuro-Fuzzy System With Integrated Feature Selection and Rule
+Extraction for High-Dimensional Classification Problems." The paper's main
+claims are:</p>
+<ul>
+<li>AdaTSK is the adaptive antecedent aggregation core.</li>
+<li>Gates are embedded only in the consequent layer, not in antecedents.</li>
+<li>Feature selection and rule extraction are performed in two successive
+  phases, followed by a final fine-tuning phase.</li>
+<li>An Enhanced Fuzzy Rule Base (En-FRB) is used to keep rule growth
+  manageable while still allowing effective extraction.</li>
+</ul>
+<p>In highFIS, this is implemented by <code>AdaSoftminRuleLayer</code> for the adaptive
+antecedent aggregation and by gated consequent layers for both classification
+and regression. The gate function used in the paper,
+<span class="arithmatex">\(M(u) = u\\sqrt{e^{1 - u^2}}\)</span>, is the same gate activation function used in
+<code>GatedClassificationConsequentLayer</code> and <code>GatedRegressionConsequentLayer</code>.</p>
+<p>The highFIS implementation therefore matches the paper's distinction between
+AdaTSK as the base model and FSRE-AdaTSK as the three-phase extension with
+feature selection, rule extraction, and En-FRB support.</p>
 <h2 id="code-correspondence">Code Correspondence</h2>
 <table>
 <thead>
@@ -1313,13 +1384,13 @@ higher-level estimator wrappers.</p>
         
         
           
-          <a href="../../api/protocols/" class="md-footer__link md-footer__link--next" aria-label="Next: Protocols">
+          <a href="../dg-aletsk/" class="md-footer__link md-footer__link--next" aria-label="Next: DG-ALETSK">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Protocols
+                DG-ALETSK
               </div>
             </div>
             <div class="md-footer__button md-icon">

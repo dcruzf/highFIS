@@ -413,6 +413,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../../models/dg-aletsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DG-ALETSK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../protocols/" class="md-nav__link">
         
   
@@ -551,6 +578,61 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#basetnorm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BaseTNorm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#producttnorm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ProductTNorm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#minimumtnorm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MinimumTNorm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gmeantnorm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GMeanTNorm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dombitnorm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DombiTNorm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#t_norm_prod" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -593,23 +675,6 @@
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#utility" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Utility
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Utility">
-      <ul class="md-nav__list">
         
           <li class="md-nav__item">
   <a href="#resolve_t_norm" class="md-nav__link">
@@ -899,6 +964,61 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#basetnorm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BaseTNorm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#producttnorm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ProductTNorm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#minimumtnorm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MinimumTNorm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gmeantnorm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GMeanTNorm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dombitnorm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DombiTNorm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#t_norm_prod" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -941,23 +1061,6 @@
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#utility" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Utility
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Utility">
-      <ul class="md-nav__list">
         
           <li class="md-nav__item">
   <a href="#resolve_t_norm" class="md-nav__link">
@@ -1013,6 +1116,22 @@
 <h2 id="module">Module</h2>
 <p><code>highfis.t_norms</code></p>
 <h2 id="built-in-t-norms">Built-in T-Norms</h2>
+<h3 id="basetnorm">BaseTNorm</h3>
+<p>Abstract base class for t-norm strategy modules.</p>
+<ul>
+<li>Inherits from <code>torch.nn.Module</code> and <code>ABC</code>.</li>
+<li>Defines <code>forward(terms: Tensor, dim: int = -1) -&gt; Tensor</code>.</li>
+<li>Can be used with custom <code>t_norm_fn</code> callables in TSK models.</li>
+</ul>
+<h3 id="producttnorm">ProductTNorm</h3>
+<p>Product t-norm module implementing <code>t_norm_prod</code> behavior.</p>
+<h3 id="minimumtnorm">MinimumTNorm</h3>
+<p>Minimum t-norm module implementing <code>t_norm_min</code> behavior.</p>
+<h3 id="gmeantnorm">GMeanTNorm</h3>
+<p>Geometric-mean t-norm module implementing <code>t_norm_gmean</code> behavior.</p>
+<h3 id="dombitnorm">DombiTNorm</h3>
+<p>Dombi aggregation module implementing <code>t_norm_dombi</code> with a learnable or
+fixed <code>lambda_</code> parameter.</p>
 <h3 id="t_norm_prod">t_norm_prod</h3>
 <p>Product t-norm over antecedent terms:</p>
 <div class="arithmatex">\[
@@ -1038,9 +1157,8 @@
 \mathcal{T}_{\mathrm{dombi}}(\mu_1,\ldots,\mu_d)=\left[1 + \left(\sum_{i=1}^{d}\left(\frac{1}{\mu_i}-1\right)^{\lambda}\right)^{1/\lambda}\right]^{-1}
 \]</div>
 <p>The implementation clamps antecedent degrees away from zero for numerical stability.</p>
-<h2 id="utility">Utility</h2>
 <h3 id="resolve_t_norm">resolve_t_norm</h3>
-<p>Resolves built-in names: <code>"prod"</code>, <code>"min"</code>, <code>"gmean"</code>, <code>"dombi"</code>.</p>
+<p>Resolves built-in t-norm names: <code>"prod"</code>, <code>"min"</code>, <code>"gmean"</code>, <code>"dombi"</code>.</p>
 <h2 id="custom-t-norms">Custom T-Norms</h2>
 <p>You can provide a custom callable in <code>RuleLayer</code> or <code>HTSKClassifier</code> through <code>t_norm_fn</code>.
 The callable must accept a tensor with shape <span class="arithmatex">\((\text{batch}, n_{\text{inputs}})\)</span> and return <span class="arithmatex">\((\text{batch},)\)</span>.</p>

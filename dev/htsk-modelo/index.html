@@ -409,6 +409,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../models/dg-aletsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DG-ALETSK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../api/protocols/" class="md-nav__link">
         
   
@@ -1012,7 +1039,7 @@ Z_r'=-\frac{1}{D}\sum_{d=1}^{D}\frac{(x_d-m_{r,d})^2}{2\sigma_{r,d}^2}
   receive <code>weight_decay=0</code>, while consequent parameters use a configurable
   <code>weight_decay</code> (default <span class="arithmatex">\(10^{-8}\)</span>).</li>
 <li><strong>Normalization:</strong>
-  <code>NormalizationLayer</code> uses <code>softmax(log(w))</code>, which is mathematically
+  <code>SoftmaxLogDefuzzifier</code> uses <code>softmax(log(w))</code>, which is mathematically
   equivalent to <span class="arithmatex">\(w_r / \sum_i w_i\)</span> but numerically stable in high dimensions.</li>
 <li><strong>Uniform regularization:</strong>
   uses <code>sum</code> (not <code>mean</code>) over the rule-deviation vector, matching PyTSK.</li>
@@ -1096,7 +1123,7 @@ p(y=k\mid x)=\mathrm{softmax}(\mathrm{logits})_k
 <ol>
 <li><code>MembershipLayer</code>: computes <span class="arithmatex">\(\mu_{r,d}(x_d)\)</span> for every rule/input pair.</li>
 <li><code>RuleLayer</code>: aggregates antecedents with the selected t-norm (default HTSK: <code>gmean</code>).</li>
-<li><code>NormalizationLayer</code>: normalizes rule strengths across rules.</li>
+<li><code>SoftmaxLogDefuzzifier</code>: normalizes rule strengths across rules.</li>
 <li><code>ClassificationConsequentLayer</code>: computes linear consequents and weighted logits.</li>
 <li><code>softmax</code> (in prediction): converts logits to class probabilities.</li>
 </ol>

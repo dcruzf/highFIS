@@ -413,6 +413,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../../models/dg-aletsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DG-ALETSK
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../protocols/" class="md-nav__link">
         
   
@@ -615,10 +642,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#normalizationlayer" class="md-nav__link">
+  <a href="#adasoftminrulelayer" class="md-nav__link">
     <span class="md-ellipsis">
       
-        NormalizationLayer
+        AdaSoftminRuleLayer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dgaletskrulelayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DGALETSKRuleLayer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adaptivedombirulelayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AdaptiveDombiRuleLayer
       
     </span>
   </a>
@@ -630,6 +679,50 @@
     <span class="md-ellipsis">
       
         ClassificationConsequentLayer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gatedclassificationconsequentlayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GatedClassificationConsequentLayer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gatedclassificationzeroorderconsequentlayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GatedClassificationZeroOrderConsequentLayer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gatedregressionzeroorderconsequentlayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GatedRegressionZeroOrderConsequentLayer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gatedregressionconsequentlayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GatedRegressionConsequentLayer
       
     </span>
   </a>
@@ -864,10 +957,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#normalizationlayer" class="md-nav__link">
+  <a href="#adasoftminrulelayer" class="md-nav__link">
     <span class="md-ellipsis">
       
-        NormalizationLayer
+        AdaSoftminRuleLayer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dgaletskrulelayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DGALETSKRuleLayer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adaptivedombirulelayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AdaptiveDombiRuleLayer
       
     </span>
   </a>
@@ -879,6 +994,50 @@
     <span class="md-ellipsis">
       
         ClassificationConsequentLayer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gatedclassificationconsequentlayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GatedClassificationConsequentLayer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gatedclassificationzeroorderconsequentlayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GatedClassificationZeroOrderConsequentLayer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gatedregressionzeroorderconsequentlayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GatedRegressionZeroOrderConsequentLayer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gatedregressionconsequentlayer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GatedRegressionConsequentLayer
       
     </span>
   </a>
@@ -942,25 +1101,61 @@
 <li><code>"custom"</code>: user-specified rule index tuples.</li>
 </ul>
 <p>Supports built-in and custom t-norm functions.</p>
-<h2 id="normalizationlayer">NormalizationLayer</h2>
-<p>!!! warning "Deprecated"
-    <code>NormalizationLayer</code> is now a thin subclass of
-    <a href="../defuzzifiers/#softmaxlogdefuzzifier"><code>SoftmaxLogDefuzzifier</code></a>.
-    Prefer using <code>SoftmaxLogDefuzzifier</code> directly for new code.</p>
-<p>Normalizes firing strengths along the rule axis using <code>softmax(log(w))</code>:</p>
-<div class="arithmatex">\[
-\bar{w}_r = \mathrm{softmax}(\log w_1,\ldots,\log w_R)_r
-= \frac{w_r}{\sum_j w_j}
-\]</div>
-<p>The <code>softmax</code> formulation is mathematically equivalent to dividing by the sum
-but numerically stable in high dimensions thanks to the internal
-max-subtraction trick.</p>
+<h2 id="adasoftminrulelayer">AdaSoftminRuleLayer</h2>
+<p>An adaptive softmin rule layer based on <code>α</code>-scaling in log-space.</p>
+<ul>
+<li>Uses an input-dependent exponent <code>q</code> to compute a stable soft-min aggregation.</li>
+<li>Computes rule strengths from membership degrees via a numerically stable log-sum-exp formulation.</li>
+<li>Useful when you need softmin-like behavior with adaptive sharpness and improved stability.</li>
+</ul>
+<h2 id="dgaletskrulelayer">DGALETSKRuleLayer</h2>
+<p>A DG-ALETSK antecedent layer that learns feature gates inside the rule aggregation.</p>
+<ul>
+<li>Learns <code>λ</code> gates per feature and rule.</li>
+<li>Applies gate activation before aggregation to enable feature selection.</li>
+<li>Uses an adaptive Ln-Exp softmin formulation for rule firing strengths.</li>
+</ul>
+<h2 id="adaptivedombirulelayer">AdaptiveDombiRuleLayer</h2>
+<p>A per-rule adaptive Dombi aggregation layer.</p>
+<ul>
+<li>Learns positive <code>λ_r</code> values for each rule using a softplus reparameterization.</li>
+<li>Computes Dombi firing strengths for each rule with numerically stable operations.</li>
+<li>Interpolates between strict conjunction and soft consensus per rule.</li>
+</ul>
 <h2 id="classificationconsequentlayer">ClassificationConsequentLayer</h2>
 <p>Computes per-rule linear consequents and aggregates class logits:</p>
 <div class="arithmatex">\[
 \mathrm{logits}_k=\sum_{r=1}^{R}\bar{w}_r\,f_{r,k}(x)
 \]</div>
 <p>where <span class="arithmatex">\(f_{r,k}(x)\)</span> is affine in input features.</p>
+<h2 id="gatedclassificationconsequentlayer">GatedClassificationConsequentLayer</h2>
+<p>A gated classification consequent layer with both feature-level and rule-level gating.</p>
+<ul>
+<li>Learns <code>lambda_gates</code> to scale each input feature per rule.</li>
+<li>Learns <code>theta_gates</code> to gate entire rule outputs.</li>
+<li>Aggregates gated first-order consequents into logits with normalized rule strengths.</li>
+</ul>
+<h2 id="gatedclassificationzeroorderconsequentlayer">GatedClassificationZeroOrderConsequentLayer</h2>
+<p>A zero-order gated classification consequent layer used during DG-ALETSK training.</p>
+<ul>
+<li>Produces class bias values per rule instead of first-order affine functions.</li>
+<li>Applies rule gating via <code>theta_gates</code> only.</li>
+<li>Supports efficient threshold-based rule pruning.</li>
+</ul>
+<h2 id="gatedregressionzeroorderconsequentlayer">GatedRegressionZeroOrderConsequentLayer</h2>
+<p>A zero-order gated regression consequent layer used during DG-ALETSK training.</p>
+<ul>
+<li>Produces scalar biases per rule.</li>
+<li>Applies rule gating via <code>theta_gates</code>.</li>
+<li>Outputs a scalar regression prediction by weighted sum over normalized rule strengths.</li>
+</ul>
+<h2 id="gatedregressionconsequentlayer">GatedRegressionConsequentLayer</h2>
+<p>A gated regression consequent layer with feature- and rule-level gating.</p>
+<ul>
+<li>Learns <code>lambda_gates</code> to scale each input feature per rule.</li>
+<li>Learns <code>theta_gates</code> to gate entire rule outputs.</li>
+<li>Computes gated first-order regression outputs and aggregates them with normalized rule strengths.</li>
+</ul>
 <h2 id="regressionconsequentlayer">RegressionConsequentLayer</h2>
 <p>Computes per-rule linear consequents and aggregates a scalar regression output:</p>
 <div class="arithmatex">\[
