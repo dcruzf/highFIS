@@ -19,16 +19,19 @@ still be supplied via the `defuzzifier` constructor parameter.
 | **AdaTSK** | `AdaTSKClassifier` | `AdaTSKRegressor` | adaptive `dombi` | `SumBasedDefuzzifier` |
 | **FSRE-AdaTSK** | `FSREAdaTSKClassifier` | `FSREAdaTSKRegressor` | adaptive `dombi` | `SoftmaxLogDefuzzifier` |
 | **DG-ALETSK** | `DGALETSKClassifier` | `DGALETSKRegressor` | Ln-Exp softmin | `SoftmaxLogDefuzzifier` |
+| **DG-TSK** | `DGTSKClassifier` | `DGTSKRegressor` | `prod` | `SoftmaxLogDefuzzifier` |
 | **LogTSK** | `LogTSKClassifier` | `LogTSKRegressor` | `prod` | `LogSumDefuzzifier` |
 
 For the mathematical details and scientific references, see:
 
-- [HTSK Technical Notes](../htsk-modelo.md)
 - [TSK Vanilla](../models/tsk-vanilla.md)
+- [HTSK](../models/htsk.md)
 - [LogTSK](../models/logtsk.md)
+- [DombiTSK](../models/dombitsk.md)
 - [AdaTSK](../models/adatsk.md)
 - [FSRE-AdaTSK](../models/fsre-adatsk.md)
 - [DG-ALETSK](../models/dg-aletsk.md)
+- [DG-TSK](../models/dg-tsk.md)
 
 ## BaseTSKClassifier
 
@@ -472,6 +475,80 @@ TSK regression model with gated consequents and rule-extraction support.
 - `convert_to_first_order()`: convert the model to first-order gated consequents.
 - `fit_finetune(x, y, ...)`: fine-tune the converted first-order model.
 - `search_thresholds(...)`: search threshold coefficients for feature and rule pruning.
+
+### Training Notes
+
+- Default loss: `nn.MSELoss()`.
+- Default optimizer: `AdamW` with separate weight decay groups.
+- Supports mini-batches, shuffling, and optional uniform regularization.
+- Early stopping can be enabled via validation data.
+
+## DGTSKClassifier
+
+`DGTSKClassifier` is a `torch.nn.Module` implementing the DG-TSK architecture for classification with learned feature and rule gates.
+
+### Constructor Highlights
+
+- `input_mfs`: dictionary of input names to membership-function lists.
+- `n_classes`: number of output classes.
+- `rule_base`: `"coco"` by default, or `"en"`, `"cartesian"`, or `"custom"`.
+- `gate_fea`: feature gate function name or callable, default `"gate_m"`.
+- `gate_rule`: rule gate function name or callable, default `"gate_m"`.
+- `rules`: optional custom rule index set.
+- `defuzzifier`: optional custom defuzzifier (default `SoftmaxLogDefuzzifier`).
+- `consequent_batch_norm`: optional batch normalization before consequents.
+- `eps`: optional stability parameter for membership evaluation.
+- `use_en_frb`: if `True`, builds an enhanced fuzzy rule base automatically.
+
+### Main Methods
+
+- `forward(x)`: returns class logits.
+- `predict_proba(x)`: returns softmax probabilities.
+- `predict(x)`: returns class indices.
+- `forward_antecedents(x)`: returns normalized rule strengths.
+- `fit(x, y, ...)`: trains the model parameters with gradient descent.
+- `fit_dg_phase(x, y, ...)`: trains the DG phase using zero-order consequents.
+- `convert_to_first_order()`: converts the model from zero-order to first-order consequents.
+- `compute_thresholds(zeta_lambda, zeta_theta)`: computes pruning thresholds from gate values.
+- `apply_thresholds(tau_lambda, tau_theta)`: applies feature and rule gate pruning.
+- `search_thresholds(...)`: searches the best `(ζ_λ, ζ_θ)` threshold pair and optionally updates the model.
+- `fit_finetune(x, y, ...)`: fine tunes the model after first-order conversion.
+
+### Training Notes
+
+- Default loss: `nn.CrossEntropyLoss()`.
+- Default optimizer: `AdamW` with separate weight decay groups.
+- Supports mini-batches, shuffling, and optional uniform regularization.
+- Early stopping can be enabled via validation data.
+
+## DGTSKRegressor
+
+`DGTSKRegressor` is a `torch.nn.Module` implementing the DG-TSK architecture for regression with learned feature and rule gates.
+
+### Constructor Highlights
+
+- `input_mfs`: dictionary of input names to membership-function lists.
+- `rule_base`: `"coco"` by default, or `"en"`, `"cartesian"`, or `"custom"`.
+- `gate_fea`: feature gate function name or callable, default `"gate_m"`.
+- `gate_rule`: rule gate function name or callable, default `"gate_m"`.
+- `rules`: optional custom rule index set.
+- `defuzzifier`: optional custom defuzzifier (default `SoftmaxLogDefuzzifier`).
+- `consequent_batch_norm`: optional batch normalization before consequents.
+- `eps`: optional stability parameter for membership evaluation.
+- `use_en_frb`: if `True`, builds an enhanced fuzzy rule base automatically.
+
+### Main Methods
+
+- `forward(x)`: returns predictions with shape `(batch, 1)`.
+- `predict(x)`: returns predictions as a 1-D tensor.
+- `forward_antecedents(x)`: returns normalized rule strengths.
+- `fit(x, y, ...)`: trains the model parameters with gradient descent.
+- `fit_dg_phase(x, y, ...)`: trains the DG phase using zero-order consequents.
+- `convert_to_first_order()`: converts the model from zero-order to first-order consequents.
+- `compute_thresholds(zeta_lambda, zeta_theta)`: computes pruning thresholds from gate values.
+- `apply_thresholds(tau_lambda, tau_theta)`: applies feature and rule gate pruning.
+- `search_thresholds(...)`: searches the best `(ζ_λ, ζ_θ)` threshold pair and optionally updates the model.
+- `fit_finetune(x, y, ...)`: fine tunes the model after first-order conversion.
 
 ### Training Notes
 

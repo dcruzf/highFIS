@@ -4,61 +4,91 @@
 
 `highfis.defuzzifiers`
 
-Defuzzifiers normalize rule firing strengths so that each sample's weights sum
-to one. They can be injected into any `BaseTSK`-derived model via the
-`defuzzifier` constructor parameter.
+This module provides normalized rule-firing-strengh defuzzifiers for highFIS
+models. Defuzzifiers take raw rule weights and convert them into valid
+probability-like distributions across rules for consequent aggregation.
 
 ## SoftmaxLogDefuzzifier
 
-Default defuzzifier. Normalizes via `softmax(log(w))`:
+Normalizes firing strengths via `softmax(log(w))`.
+
+### Description
+
+`SoftmaxLogDefuzzifier` computes normalized weights as:
 
 $$
-\bar{w}_r = \mathrm{softmax}(\log w_1,\ldots,\log w_R)_r
-= \frac{w_r}{\sum_j w_j}
+\bar{w}_r = \mathrm{softmax}(\log w)_r
 $$
 
-Mathematically equivalent to `w / sum(w)` but numerically stable in high
-dimensions thanks to the internal max-subtraction trick of `torch.softmax`.
+This is mathematically equivalent to `w / sum(w)` but is numerically more
+stable in high dimensions because it uses `torch.softmax` with the internal
+max-subtraction trick.
 
-Parameters:
+### Parameters
 
-- `eps`: clamping floor before `log` (default `None`, which infers the epsilon
-  from `w.dtype`).
+- `eps`: optional numeric stability floor for weight clamping before taking
+  the logarithm. If `None`, the epsilon is inferred from `w.dtype`.
+
+### Usage
+
+- Accepts `w` tensors of shape `(n_samples, n_rules)`.
+- Raises a `ValueError` if `w` is not 2-dimensional.
 
 ## SumBasedDefuzzifier
 
-Classic sum-based normalization with clamped weights:
+Classic sum-based normalization.
+
+### Description
+
+`SumBasedDefuzzifier` computes normalized weights as:
 
 $$
-\bar{w}_r = \frac{\max(w_r, \epsilon)}{\sum_{j=1}^{R} \max(w_j, \epsilon)}
+\bar{w}_r = \frac{\max(w_r, \epsilon)}{\sum_{j} \max(w_j, \epsilon)}
 $$
 
-Parameters:
+### Parameters
 
-- `eps`: clamping floor for weights before normalization (default `None`,
-  which infers the epsilon from `w.dtype`).
+- `eps`: optional numeric stability floor for weight clamping before division.
+  If `None`, the epsilon is inferred from `w.dtype`.
+
+### Usage
+
+- Accepts `w` tensors of shape `(n_samples, n_rules)`.
+- Raises a `ValueError` if `w` is not 2-dimensional.
 
 ## LogSumDefuzzifier
 
-Temperature-scaled log-space normalization:
+Temperature-scaled log-space softmax normalization.
+
+### Description
+
+`LogSumDefuzzifier` computes normalized weights as:
 
 $$
-\bar{w}_r = \mathrm{softmax}\!\left(\frac{\log w_1}{T},\ldots,\frac{\log w_R}{T}\right)_r
+\bar{w}_r = \mathrm{softmax}\left(\frac{\log w}{T}\right)_r
 $$
 
-When $T = 1$, this recovers `SoftmaxLogDefuzzifier`. Lower temperatures sharpen
-the distribution; higher temperatures flatten it.
+- `temperature=1.0` recovers the same behavior as
+  `SoftmaxLogDefuzzifier`.
+- Lower temperatures produce a sharper distribution.
+- Higher temperatures produce a flatter distribution.
 
-Parameters:
+### Parameters
 
-- `temperature`: scaling factor $T > 0$ (default `1.0`).
-- `eps`: clamping floor before `log` (default `None`, which infers the epsilon
-  from `w.dtype`).
+- `temperature`: positive scaling factor $T > 0$.
+- `eps`: optional numeric stability floor for weight clamping before taking
+  the logarithm. If `None`, the epsilon is inferred from `w.dtype`.
+
+### Usage
+
+- Accepts `w` tensors of shape `(n_samples, n_rules)`.
+- Raises a `ValueError` if `temperature <= 0` or if `w` is not 2-dimensional.
 
 ## Example
 
 ```python
-from highfis import HTSKClassifier, SumBasedDefuzzifier
+from highfis import HTSKClassifier
+from highfis.defuzzifiers import SumBasedDefuzzifier
 from highfis.memberships import GaussianMF
 
 input_mfs = {"x1": [GaussianMF(0, 1), GaussianMF(1, 1)]}

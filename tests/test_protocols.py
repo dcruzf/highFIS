@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import torch
 from torch import Tensor
 
@@ -38,6 +40,16 @@ def test_defuzzifier_protocol() -> None:
 
 def test_consequent_fn_protocol() -> None:
     assert isinstance(_dummy_cons, ConsequentFn)
+
+
+def test_protocol_stub_methods_execute() -> None:
+    x = torch.randn(2, 3)
+    w = torch.randn(2, 2)
+
+    assert MembershipFn.__call__(cast(MembershipFn, None), x) is None
+    assert TNorm.__call__(cast(TNorm, None), w) is None
+    assert Defuzzifier.__call__(cast(Defuzzifier, None), w) is None
+    assert ConsequentFn.__call__(cast(ConsequentFn, None), x, w) is None
 
 
 def test_nn_module_satisfies_membership_fn() -> None:

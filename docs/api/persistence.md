@@ -4,82 +4,81 @@
 
 `highfis.persistence`
 
-The persistence module provides versioned checkpoint serialization and
-reconstruction for estimator objects without depending on Python object
-pickling.
+This module provides versioned checkpoint serialization helpers for estimator
+persistence in highFIS.
 
-## Overview
+## Constants
 
-Persisted checkpoints are stored with `torch.save` and loaded with
-`torch.load` into CPU memory. The checkpoint payload is a structured dictionary
-that includes:
-
-- `format`: checkpoint format name (`highfis_estimator`)
-- `format_version`: package version used to create the checkpoint
-- `estimator_class`: estimator class name used during serialization
-- `estimator_params`: constructor parameters for the estimator
-- `model_init`: model initialization metadata needed to rebuild `model_`
-- `model_state_dict`: learned model weights
-- `fitted_attrs`: fitted sklearn metadata such as `n_features_in_`,
-  `feature_names_in_`, and `classes_`
-- `history`: optional training history, if available
+- `CHECKPOINT_FORMAT`: the expected payload format string, `"highfis_estimator"`.
+- `CHECKPOINT_VERSION`: the current package version used to validate checkpoint
+  compatibility.
 
 ## Functions
 
 ### `save_checkpoint(path, checkpoint)`
 
-Save a checkpoint dictionary to disk using PyTorch serialization. Parent
-directories are created automatically.
+Save a checkpoint dictionary to disk using PyTorch serialization.
+
+- `path`: target file path or `Path`.
+- `checkpoint`: dictionary payload containing estimator state.
+- Parent directories are created automatically.
+- Uses `torch.save` internally.
 
 ### `load_checkpoint(path)`
 
-Load a checkpoint dictionary from disk into CPU memory. The function raises
-`ValueError` if the loaded object is not a dictionary.
+Load a checkpoint dictionary from disk into CPU memory.
+
+- `path`: source file path or `Path`.
+- Uses `torch.load(..., map_location="cpu")` internally.
+- Supports older PyTorch versions by retrying without the `weights_only` argument.
+- Raises `ValueError` if the loaded payload is not a dictionary.
 
 ### `validate_checkpoint_payload(checkpoint, *, expected_estimator_class)`
 
-Validate a loaded checkpoint payload for:
+Validate a loaded checkpoint payload before estimator reconstruction.
 
-- the expected `format`
-- the expected `format_version`
-- the expected `estimator_class`
-- required checkpoint keys
+Checks include:
 
-This provides a safety net before reconstructing an estimator from a file.
+- `format` must equal `CHECKPOINT_FORMAT`.
+- `format_version` must equal `CHECKPOINT_VERSION`.
+- `estimator_class` must match `expected_estimator_class`.
+- required keys: `estimator_params`, `model_init`, `model_state_dict`, and `fitted_attrs`.
 
-## Estimator persistence
+Raises `ValueError` for any schema mismatch.
 
-Most estimator classes in `highfis` support convenient persistence methods:
+## Checkpoint schema
 
-- `estimator.save(path)`
-- `EstimatorClass.load(path)`
+Valid checkpoints are dictionaries with at least the following entries:
 
-Example:
+- `format`: format identifier string.
+- `format_version`: package version string.
+- `estimator_class`: name of the estimator class used to create the checkpoint.
+- `estimator_params`: constructor parameters used to initialize the estimator.
+- `model_init`: model initialization metadata required to rebuild the model.
+- `model_state_dict`: serialized model weights.
+- `fitted_attrs`: sklearn fit metadata such as `n_features_in_`,
+  `feature_names_in_`, and `classes_`.
 
-```python
-from highfis import TSKClassifierEstimator
+Optional entries may include:
 
-clf = TSKClassifierEstimator(
-    n_mfs=4,
-    mf_init="kmeans",
-    epochs=150,
-    learning_rate=1e-3,
-    random_state=42,
-)
-clf.fit(X_train, y_train)
-clf.save("artifacts/tsk_classifier.pt")
+- `history`: training history produced by the estimator.
 
-restored = TSKClassifierEstimator.load("artifacts/tsk_classifier.pt")
-assert restored.score(X_test, y_test) == clf.score(X_test, y_test)
-```
-
-## Low-level usage
-
-If you need direct access to checkpoint payloads, use the persistence helpers:
+## Example
 
 ```python
 from highfis.persistence import load_checkpoint, validate_checkpoint_payload
 
-checkpoint = load_checkpoint("artifacts/tsk_classifier.pt")
-validate_checkpoint_payload(checkpoint, expected_estimator_class="TSKClassifierEstimator")
+checkpoint = load_checkpoint("artifacts/tsk_checkpoint.pt")
+validate_checkpoint_payload(
+    checkpoint,
+    expected_estimator_class="TSKClassifierEstimator",
+)
 ```
+
+## Notes
+
+- Checkpoints are loaded into CPU memory regardless of where they were saved.
+- The module intentionally validates the format version against the current
+  package version to prevent incompatible checkpoint usage.
+- The helper functions are designed for use with estimator wrappers that
+  implement `save(path)` and `load(path)`.

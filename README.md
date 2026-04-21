@@ -10,7 +10,8 @@
 highFIS is a PyTorch-based framework for high-dimensional Takagi–Sugeno–Kang
 (TSK) fuzzy systems. It brings differentiable fuzzy inference, numerical
 stability, and sklearn-compatible estimators to both classification and
-regression workflows.
+regression workflows. It also includes DGTSK dynamic-gating models for
+feature and rule selection in high-dimensional fuzzy systems.
 
 ## 🚀 Quick Start
 
@@ -39,6 +40,20 @@ print(f"Test accuracy: {clf.score(X_test, y_test):.4f}")
 highFIS works with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and
 `cross_val_score`.
 
+## Models Available
+
+highFIS offers a family of TSK fuzzy models optimized for different
+high-dimensional behaviors.
+
+- `Vanilla TSK` — the original Takagi-Sugeno-Kang model with Gaussian MFs, product antecedent aggregation, and sum-based normalization.
+- `HTSK` — high-dimensional TSK with geometric mean aggregation and log-space normalization to reduce dimensionality bias.
+- `LogTSK` — log-space defuzzification with temperature scaling for numerically stable high-dimensional aggregation.
+- `DombiTSK` — Dombi t-norm aggregation with first-order consequents and a learnable shape parameter.
+- `AdaTSK` — adaptive Dombi inference using Composite Gaussian MFs with a positive lower bound.
+- `FSRE-AdaTSK` — adaptive model with gated feature selection and rule extraction in the consequent.
+- `DG-TSK` — double-gated training for simultaneous feature selection and rule extraction, followed by first-order fine tuning.
+- `DG-ALETSK` — DG-based adaptive Ln-Exp softmin with embedded feature and rule gates for sparse high-dimensional modeling.
+
 ## 🔧 What’s Included
 
 ### Core models
@@ -48,6 +63,7 @@ highFIS works with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and
 - `DombiTSKClassifier`, `DombiTSKRegressor`
 - `AdaTSKClassifier`, `AdaTSKRegressor`
 - `DGALETSKClassifier`, `DGALETSKRegressor`
+- `DGTSKClassifier`, `DGTSKRegressor`
 - `FSREAdaTSKClassifier`, `FSREAdaTSKRegressor`
 - `LogTSKClassifier`, `LogTSKRegressor`
 
@@ -58,6 +74,7 @@ highFIS works with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and
 - `LogTSKClassifierEstimator`, `LogTSKRegressorEstimator`
 - `AdaTSKClassifierEstimator`, `AdaTSKRegressorEstimator`
 - `DGALETSKClassifierEstimator`, `DGALETSKRegressorEstimator`
+- `DGTSKClassifierEstimator`, `DGTSKRegressorEstimator`
 - `FSREAdaTSKClassifierEstimator`, `FSREAdaTSKRegressorEstimator`
 
 ### Building blocks
@@ -79,6 +96,7 @@ Key reference pages:
 - [HTSK](https://dcruzf.github.io/highFIS/latest/models/htsk)
 - [DombiTSK](https://dcruzf.github.io/highFIS/latest/models/dombitsk)
 - [AdaTSK](https://dcruzf.github.io/highFIS/latest/models/adatsk)
+- [DGTSK](https://dcruzf.github.io/highFIS/latest/models/dg-tsk)
 - [DG-ALETSK](https://dcruzf.github.io/highFIS/latest/models/dg-aletsk)
 - [FSRE-AdaTSK](https://dcruzf.github.io/highFIS/latest/models/fsre-adatsk)
 - [Persistence API](https://dcruzf.github.io/highFIS/latest/api/persistence)

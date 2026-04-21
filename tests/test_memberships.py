@@ -4,6 +4,7 @@ import pytest
 import torch
 
 from highfis.memberships import (
+    CompositeGaussianMF,
     DiffSigmoidalMF,
     GaussianMF,
     GaussianPIMF,
@@ -126,6 +127,41 @@ def test_pi_mf_has_flat_top() -> None:
     assert y[1] > y[2]
     assert bool(torch.all(y >= 0.0))
     assert bool(torch.all(y <= 1.0))
+
+
+def test_composite_gaussian_mf_rejects_non_positive_sigma() -> None:
+    with pytest.raises(ValueError, match="sigma must be positive"):
+        CompositeGaussianMF(mean=0.0, sigma=0.0)
+
+
+def test_s_shaped_mf_rejects_invalid_bounds() -> None:
+    with pytest.raises(ValueError, match="expected a < b"):
+        SShapedMF(a=1.0, b=0.0)
+
+
+def test_lin_s_shaped_mf_rejects_invalid_bounds() -> None:
+    with pytest.raises(ValueError, match="expected a < b"):
+        LinSShapedMF(a=1.0, b=0.0)
+
+
+def test_z_shaped_mf_rejects_invalid_bounds() -> None:
+    with pytest.raises(ValueError, match="expected a < b"):
+        ZShapedMF(a=1.0, b=0.0)
+
+
+def test_lin_z_shaped_mf_rejects_invalid_bounds() -> None:
+    with pytest.raises(ValueError, match="expected a < b"):
+        LinZShapedMF(a=1.0, b=0.0)
+
+
+def test_pi_mf_rejects_invalid_bounds() -> None:
+    with pytest.raises(ValueError, match="expected a < b <= c < d"):
+        PiMF(a=0.0, b=1.0, c=0.5, d=2.0)
+
+
+def test_gaussian_pimf_rejects_invalid_sigma() -> None:
+    with pytest.raises(ValueError, match="sigma must be positive"):
+        GaussianPIMF(mean=0.0, sigma=0.0, K=1.0)
 
 
 def test_gaussian_pimf_rejects_invalid_k() -> None:
