@@ -29,6 +29,8 @@ from .models import (
     AdaTSKRegressor,
     DGALETSKClassifier,
     DGALETSKRegressor,
+    DGTSKClassifier,
+    DGTSKRegressor,
     DombiTSKClassifier,
     DombiTSKRegressor,
     FSREAdaTSKClassifier,
@@ -135,6 +137,31 @@ def _build_kmeans_input_mfs(
     return input_mfs
 
 
+def _build_pfrb_input_mfs(
+    x: np.ndarray,
+    feature_names: list[str],
+    max_rules: int | None,
+    sigma_scale: float,
+    random_state: int | None,
+) -> dict[str, list[GaussianMF]]:
+    """Build point-based fuzzy rule base membership functions from training samples."""
+    n_samples = x.shape[0]
+    if max_rules is None or max_rules >= n_samples:
+        indices = np.arange(n_samples)
+    else:
+        rng = np.random.default_rng(random_state)
+        indices = rng.choice(n_samples, size=int(max_rules), replace=False)
+        indices = np.sort(indices)
+
+    input_mfs: dict[str, list[GaussianMF]] = {}
+    for d, name in enumerate(feature_names):
+        col = x[:, d]
+        sigma = max(float(np.std(col)) * sigma_scale, 1e-3)
+        centers = col[indices]
+        input_mfs[name] = [GaussianMF(mean=float(c), sigma=sigma) for c in centers]
+    return input_mfs
+
+
 class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[misc]
     """Shared logic for all TSK classifier estimators."""
 
@@ -157,6 +184,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         ur_weight: float = 0.0,
         ur_target: float | None = None,
         consequent_batch_norm: bool = False,
+        pfrb_max_rules: int | None = None,
         patience: int = 20,
         validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
@@ -176,6 +204,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         self.ur_weight = ur_weight
         self.ur_target = ur_target
         self.consequent_batch_norm = consequent_batch_norm
+        self.pfrb_max_rules = pfrb_max_rules
         self.patience = patience
         self.validation_data = validation_data
         self.weight_decay = weight_decay
@@ -1005,6 +1034,130 @@ class DGALETSKRegressorEstimator(FSREAdaTSKRegressorEstimator):
         )
 
 
+class DGTSKClassifierEstimator(_BaseClassifierEstimator):
+    """Sklearn-compatible DG-TSK classifier estimator."""
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 30,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 200,
+        learning_rate: float = 1e-2,
+        verbose: bool = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        patience: int = 20,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+        use_en_frb: bool = False,
+    ) -> None:
+        """Configure DG-TSK classifier estimator options."""
+        self.use_en_frb = bool(use_en_frb)
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            patience=patience,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        n_classes: int,
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create DGTSKClassifier."""
+        return DGTSKClassifier(
+            input_mfs,
+            n_classes=n_classes,
+            rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+            use_en_frb=self.use_en_frb,
+        )
+
+
+class DGTSKRegressorEstimator(_BaseRegressorEstimator):
+    """Sklearn-compatible DG-TSK regressor estimator."""
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 30,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 200,
+        learning_rate: float = 1e-2,
+        verbose: bool = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        patience: int = 20,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+        use_en_frb: bool = False,
+    ) -> None:
+        """Configure DG-TSK regressor estimator options."""
+        self.use_en_frb = bool(use_en_frb)
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            patience=patience,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create DGTSKRegressor."""
+        return DGTSKRegressor(
+            input_mfs,
+            rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+            use_en_frb=self.use_en_frb,
+        )
+
+
 # =====================================================================
 # LogTSK Estimators  (Cui, Wu & Xu, IEEE TFS 2021)
 # =====================================================================
@@ -1049,6 +1202,8 @@ __all__: list[str] = [
     "AdaTSKRegressorEstimator",
     "DGALETSKClassifierEstimator",
     "DGALETSKRegressorEstimator",
+    "DGTSKClassifierEstimator",
+    "DGTSKRegressorEstimator",
     "DombiTSKClassifierEstimator",
     "DombiTSKRegressorEstimator",
     "FSREAdaTSKClassifierEstimator",
