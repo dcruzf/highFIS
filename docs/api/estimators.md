@@ -419,6 +419,94 @@ acc = clf.score(X_test, y_test)
 
 A scikit-learn compatible regressor wrapper around `DGALETSKRegressor`.
 
+### Example
+
+```python
+from highfis import DGALETSKRegressorEstimator
+
+reg = DGALETSKRegressorEstimator(
+    n_mfs=3,
+    mf_init="kmeans",
+    lambda_init=1.0,
+    use_en_frb=True,
+    epochs=200,
+    learning_rate=1e-3,
+    random_state=0,
+)
+reg.fit(X_train, y_train)
+r2 = reg.score(X_test, y_test)
+```
+
+## DGTSKClassifierEstimator
+
+A scikit-learn compatible classifier wrapper around `DGTSKClassifier`.
+
+### sklearn Compatibility
+
+- Inherits `BaseEstimator` and `ClassifierMixin`.
+- Implements `fit`, `predict`, `predict_proba`, and `score`.
+- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
+
+### Core Hyperparameters
+
+Same hyperparameters as `AdaTSKClassifierEstimator` (see above), plus:
+
+- `use_en_frb`: whether to enable the enhanced fuzzy rule base for rule extraction.
+
+### Example
+
+```python
+from highfis import DGTSKClassifierEstimator
+
+clf = DGTSKClassifierEstimator(
+    n_mfs=3,
+    mf_init="kmeans",
+    use_en_frb=True,
+    epochs=200,
+    learning_rate=1e-3,
+    random_state=0,
+)
+clf.fit(X_train, y_train)
+acc = clf.score(X_test, y_test)
+```
+
+## DGTSKRegressorEstimator
+
+A scikit-learn compatible regressor wrapper around `DGTSKRegressor`.
+
+### sklearn Compatibility
+
+- Inherits `BaseEstimator` and `RegressorMixin`.
+- Implements `fit`, `predict`, and `score` ($R^2$).
+- Works with `Pipeline`, `GridSearchCV`, and cross-validation tools.
+
+### Core Hyperparameters
+
+Same hyperparameters as `AdaTSKRegressorEstimator` (see above), plus:
+
+- `use_en_frb`: whether to enable the enhanced fuzzy rule base for rule extraction.
+
+### Example
+
+```python
+from highfis import DGTSKRegressorEstimator
+
+reg = DGTSKRegressorEstimator(
+    n_mfs=3,
+    mf_init="kmeans",
+    use_en_frb=True,
+    epochs=200,
+    learning_rate=1e-3,
+    random_state=0,
+)
+reg.fit(X_train, y_train)
+r2 = reg.score(X_test, y_test)
+```
+
+## LogTSKClassifierEstimator
+
+A scikit-learn compatible classifier wrapper around `LogTSKClassifier`.
+
 ### sklearn Compatibility
 
 - Inherits `BaseEstimator` and `RegressorMixin`.

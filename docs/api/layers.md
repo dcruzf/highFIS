@@ -44,7 +44,13 @@ A DG-ALETSK antecedent layer that learns feature gates inside the rule aggregati
 - Learns `λ` gates per feature and rule.
 - Applies gate activation before aggregation to enable feature selection.
 - Uses an adaptive Ln-Exp softmin formulation for rule firing strengths.
+## DGTSKRuleLayer
 
+A DG-TSK antecedent layer that learns feature gates and applies them directly to Gaussian memberships.
+
+- Learns `λ` gates per feature and rule.
+- Applies an explicit gate function such as `gate1`, `gate2`, `gate3`, `gate4`, or `gate_m`.
+- Uses product aggregation to compute rule firing strengths from gated memberships.
 ## AdaptiveDombiRuleLayer
 
 A per-rule adaptive Dombi aggregation layer.

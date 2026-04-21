@@ -19,6 +19,7 @@ still be supplied via the `defuzzifier` constructor parameter.
 | **AdaTSK** | `AdaTSKClassifier` | `AdaTSKRegressor` | adaptive `dombi` | `SumBasedDefuzzifier` |
 | **FSRE-AdaTSK** | `FSREAdaTSKClassifier` | `FSREAdaTSKRegressor` | adaptive `dombi` | `SoftmaxLogDefuzzifier` |
 | **DG-ALETSK** | `DGALETSKClassifier` | `DGALETSKRegressor` | Ln-Exp softmin | `SoftmaxLogDefuzzifier` |
+| **DG-TSK** | `DGTSKClassifier` | `DGTSKRegressor` | `prod` | `SoftmaxLogDefuzzifier` |
 | **LogTSK** | `LogTSKClassifier` | `LogTSKRegressor` | `prod` | `LogSumDefuzzifier` |
 
 For the mathematical details and scientific references, see:
