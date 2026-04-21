@@ -13,6 +13,8 @@ from highfis.estimators import (
     AdaTSKRegressorEstimator,
     DGALETSKClassifierEstimator,
     DGALETSKRegressorEstimator,
+    DGTSKClassifierEstimator,
+    DGTSKRegressorEstimator,
     DombiTSKClassifierEstimator,
     DombiTSKRegressorEstimator,
     FSREAdaTSKClassifierEstimator,
@@ -26,7 +28,9 @@ from highfis.estimators import (
     TSKRegressorEstimator,
     _build_gaussian_input_mfs,
     _build_kmeans_input_mfs,
+    _build_pfrb_input_mfs,
 )
+from highfis.memberships import GaussianMF
 
 
 def _make_dataset(n_samples: int = 60) -> tuple[np.ndarray, np.ndarray]:
@@ -122,6 +126,120 @@ def test_dgaletsk_regressor_estimator_fit_predict_score() -> None:
 
     assert pred.shape == (x.shape[0],)
     assert isinstance(score, float)
+
+
+def test_dgtsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
+    x, y = _make_dataset(80)
+    est = DGTSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+        use_en_frb=True,
+    )
+
+    est.fit(x, y)
+    proba = est.predict_proba(x)
+    pred = est.predict(x)
+    score = est.score(x, y)
+
+    assert proba.shape == (x.shape[0], 2)
+    assert pred.shape == (x.shape[0],)
+    assert np.allclose(proba.sum(axis=1), 1.0, atol=1e-6)
+    assert 0.0 <= score <= 1.0
+
+
+def test_dgtsk_regressor_estimator_fit_predict_score() -> None:
+    x = np.random.default_rng(123).normal(size=(80, 3)).astype(np.float32)
+    y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=80).astype(np.float32)
+    est = DGTSKRegressorEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+        use_en_frb=True,
+    )
+
+    est.fit(x, y)
+    pred = est.predict(x)
+    score = est.score(x, y)
+
+    assert pred.shape == (x.shape[0],)
+    assert isinstance(score, float)
+
+
+def test_dgtsk_classifier_estimator_pipeline_integration() -> None:
+    x, y = _make_dataset(60)
+    est = DGTSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+        use_en_frb=True,
+    )
+    pipe = Pipeline([("model", est)])
+    pipe.fit(x, y)
+    pred = pipe.predict(x[:10])
+
+    assert pred.shape == (10,)
+
+
+def test_dgtsk_regressor_estimator_save_load_roundtrip() -> None:
+    x = np.random.default_rng(123).normal(size=(80, 3)).astype(np.float32)
+    y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=80).astype(np.float32)
+    est = DGTSKRegressorEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+        use_en_frb=True,
+    )
+    est.fit(x, y)
+
+    with tempfile.NamedTemporaryFile(suffix=".pth", delete=False) as tmp:
+        path = tmp.name
+    try:
+        est.save(path)
+        loaded = DGTSKRegressorEstimator.load(path)
+        pred = loaded.predict(x)
+        assert pred.shape == (x.shape[0],)
+    finally:
+        Path(path).unlink()
+
+
+def test_build_pfrb_input_mfs_limits_rules_and_returns_gaussian_mfs() -> None:
+    x = np.arange(12, dtype=np.float32).reshape(4, 3)
+    feature_names = ["x1", "x2", "x3"]
+
+    input_mfs = _build_pfrb_input_mfs(x, feature_names, max_rules=2, sigma_scale=1.0, random_state=0)
+
+    assert list(input_mfs.keys()) == feature_names
+    assert len(input_mfs["x1"]) == 2
+    assert len(input_mfs["x2"]) == 2
+    assert len(input_mfs["x3"]) == 2
+    for mfs in input_mfs.values():
+        for mf in mfs:
+            assert isinstance(mf, GaussianMF)
+            assert float(mf.sigma.detach()) > 0.0
+
+
+def test_build_pfrb_input_mfs_max_rules_none_uses_all_samples() -> None:
+    x = np.arange(12, dtype=np.float32).reshape(4, 3)
+    feature_names = ["x1", "x2", "x3"]
+
+    input_mfs = _build_pfrb_input_mfs(x, feature_names, max_rules=None, sigma_scale=1.0, random_state=0)
+
+    assert len(input_mfs["x1"]) == 4
+    assert len(input_mfs["x2"]) == 4
+    assert len(input_mfs["x3"]) == 4
 
 
 def test_estimator_grid_init_fit_predict() -> None:

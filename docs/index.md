@@ -72,6 +72,7 @@ high-dimensional behaviors.
 | [LogTSK](models/logtsk.md) | Log-space TSK for stability in high dimensions. |
 | [AdaTSK](models/adatsk.md) | Adaptive Dombi TSK with learned shape. |
 | [FSRE-AdaTSK](models/fsre-adatsk.md) | Feature selection and rule extraction. |
+| [DG-TSK](models/dg-tsk.md) | Dynamic-gating TSK with feature and rule gating. |
 | [Models API](api/models.md) | Model constructors and usage notes. |
 | [Estimators API](api/estimators.md) | sklearn-compatible estimator reference. |
 | [Layers API](api/layers.md) | Layer primitives for fuzzy pipelines. |

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from itertools import product
 from typing import cast
 
@@ -192,9 +192,55 @@ class RuleLayer(nn.Module):
         return self._apply_t_norm(terms)
 
 
-def _gate_activation(u: Tensor) -> Tensor:
-    """Gate function M(u) = u * sqrt(exp(1 - u^2))."""
+def gate1(u: Tensor) -> Tensor:
+    """Compute the sigmoid gate activation."""
+    return torch.sigmoid(u)
+
+
+def gate2(u: Tensor) -> Tensor:
+    """Compute the gate activation 1 - exp(-x^2)."""
+    return 1.0 - torch.exp(-u.pow(2))
+
+
+def gate3(u: Tensor) -> Tensor:
+    """Compute the gate activation exp(-x^2)."""
+    return torch.exp(-u.pow(2))
+
+
+def gate4(u: Tensor) -> Tensor:
+    """Compute the gate activation x * sqrt(exp(1 - x^2))."""
     return u * torch.sqrt(torch.exp(1.0 - u.pow(2)))
+
+
+def gate_m(u: Tensor) -> Tensor:
+    """Compute the gate activation x^2 * exp(1 - x^2)."""
+    return u.pow(2) * torch.exp(1.0 - u.pow(2))
+
+
+GATE_FNS: dict[str, Callable[[Tensor], Tensor]] = {
+    "gate1": gate1,
+    "gate2": gate2,
+    "gate3": gate3,
+    "gate4": gate4,
+    "gate_m": gate_m,
+}
+
+
+def resolve_gate_fn(gate_fn: str | Callable[[Tensor], Tensor] | None) -> Callable[[Tensor], Tensor]:
+    """Resolve a gate name or function to a callable gate function."""
+    if gate_fn is None:
+        return gate4
+    if isinstance(gate_fn, str):
+        try:
+            return GATE_FNS[gate_fn]
+        except KeyError as exc:
+            raise ValueError(f"unsupported gate function '{gate_fn}'") from exc
+    return gate_fn
+
+
+def _gate_activation(u: Tensor) -> Tensor:
+    """Default feature gate activation used by DG-ALETSK and related models."""
+    return gate4(u)
 
 
 class AdaSoftminRuleLayer(RuleLayer):
@@ -294,6 +340,46 @@ class DGALETSKRuleLayer(RuleLayer):
         return torch.exp(log_w)
 
 
+class DGTSKRuleLayer(RuleLayer):
+    """Compute DG-TSK antecedent strengths with learned feature gates."""
+
+    def __init__(
+        self,
+        input_names: list[str],
+        mf_per_input: list[int],
+        rules: Sequence[Sequence[int]] | None = None,
+        rule_base: str = "coco",
+        gate_fea: str | Callable[[Tensor], Tensor] | None = "gate_m",
+        eps: float | None = None,
+    ) -> None:
+        """Initialize DGTSK rule layer."""
+        self.eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else float(eps)
+        self.gate_fn = resolve_gate_fn(gate_fea)
+        super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod", t_norm_fn=None)
+        self.lambda_gates = nn.Parameter(torch.zeros(self.n_rules, self.n_inputs))
+        nn.init.uniform_(self.lambda_gates, -0.1, 0.1)
+
+    def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
+        """Compute DGTSK rule strengths from membership outputs."""
+        mu_list = []
+        for name in self.input_names:
+            if name not in membership_outputs:
+                raise KeyError(f"missing membership output for input '{name}'")
+            mu_list.append(membership_outputs[name])
+
+        mu_flat = torch.cat(mu_list, dim=1)
+        batch_size = mu_flat.shape[0]
+        rule_indices = cast(Tensor, self.rule_indices)
+        indices = rule_indices.unsqueeze(0).expand(batch_size, -1, -1)
+        terms = mu_flat.gather(1, indices.reshape(batch_size, -1)).reshape(batch_size, self.n_rules, self.n_inputs)
+
+        mu = terms.clamp(min=self.eps, max=1.0 - self.eps)
+        feature_gates = self.gate_fn(self.lambda_gates).unsqueeze(0)
+        mu = mu * feature_gates
+
+        return self._apply_t_norm(mu)
+
+
 class AdaptiveDombiRuleLayer(RuleLayer):
     """Compute adaptive Dombi firing strengths with per-rule lambda parameters."""
 
@@ -371,7 +457,13 @@ class ClassificationConsequentLayer(nn.Module):
 class GatedClassificationConsequentLayer(nn.Module):
     """Gated TSK consequent layer for classification logits."""
 
-    def __init__(self, n_rules: int, n_inputs: int, n_classes: int) -> None:
+    def __init__(
+        self,
+        n_rules: int,
+        n_inputs: int,
+        n_classes: int,
+        gate_fn: str | Callable[[Tensor], Tensor] | None = None,
+    ) -> None:
         """Initialize gated consequent parameters for classification logits."""
         super().__init__()
         if n_rules <= 0 or n_inputs <= 0 or n_classes <= 0:
@@ -379,6 +471,7 @@ class GatedClassificationConsequentLayer(nn.Module):
         self.n_rules = n_rules
         self.n_inputs = n_inputs
         self.n_classes = n_classes
+        self.gate_fn = resolve_gate_fn(gate_fn)
         self.weight = nn.Parameter(torch.empty(n_rules, n_classes, n_inputs))
         self.bias = nn.Parameter(torch.empty(n_rules, n_classes))
         self.lambda_gates = nn.Parameter(torch.zeros(n_rules, n_inputs))
@@ -395,8 +488,8 @@ class GatedClassificationConsequentLayer(nn.Module):
         if norm_w.ndim != 2 or norm_w.shape[1] != self.n_rules:
             raise ValueError(f"expected norm_w shape (batch, {self.n_rules}), got {tuple(norm_w.shape)}")
 
-        feature_gates = _gate_activation(self.lambda_gates).unsqueeze(1)
-        rule_gates = _gate_activation(self.theta_gates).view(1, self.n_rules, 1)
+        feature_gates = self.gate_fn(self.lambda_gates).unsqueeze(1)
+        rule_gates = self.gate_fn(self.theta_gates).view(1, self.n_rules, 1)
         gated_weight = self.weight * feature_gates
         f = torch.einsum("bd,rkd->brk", x, gated_weight) + self.bias.unsqueeze(0)
         f = f * rule_gates
@@ -406,7 +499,13 @@ class GatedClassificationConsequentLayer(nn.Module):
 class GatedClassificationZeroOrderConsequentLayer(nn.Module):
     """Gated zero-order TSK consequent layer for classification logits."""
 
-    def __init__(self, n_rules: int, n_inputs: int, n_classes: int) -> None:
+    def __init__(
+        self,
+        n_rules: int,
+        n_inputs: int,
+        n_classes: int,
+        gate_fn: str | Callable[[Tensor], Tensor] | None = None,
+    ) -> None:
         """Initialize zero-order gated consequent parameters for classification logits."""
         super().__init__()
         if n_rules <= 0 or n_inputs <= 0 or n_classes <= 0:
@@ -414,6 +513,7 @@ class GatedClassificationZeroOrderConsequentLayer(nn.Module):
         self.n_rules = n_rules
         self.n_inputs = n_inputs
         self.n_classes = n_classes
+        self.gate_fn = resolve_gate_fn(gate_fn)
         self.bias = nn.Parameter(torch.empty(n_rules, n_classes))
         self.theta_gates = nn.Parameter(torch.zeros(n_rules))
         nn.init.zeros_(self.bias)
@@ -427,7 +527,7 @@ class GatedClassificationZeroOrderConsequentLayer(nn.Module):
             raise ValueError(f"expected norm_w shape (batch, {self.n_rules}), got {tuple(norm_w.shape)}")
 
         f = self.bias.unsqueeze(0)
-        rule_gates = _gate_activation(self.theta_gates).view(1, self.n_rules, 1)
+        rule_gates = self.gate_fn(self.theta_gates).view(1, self.n_rules, 1)
         f = f * rule_gates
         return torch.einsum("br,brk->bk", norm_w, f)
 
@@ -435,13 +535,14 @@ class GatedClassificationZeroOrderConsequentLayer(nn.Module):
 class GatedRegressionZeroOrderConsequentLayer(nn.Module):
     """Gated zero-order TSK consequent layer for regression."""
 
-    def __init__(self, n_rules: int, n_inputs: int) -> None:
+    def __init__(self, n_rules: int, n_inputs: int, gate_fn: str | Callable[[Tensor], Tensor] | None = None) -> None:
         """Initialize zero-order gated consequent parameters for regression."""
         super().__init__()
         if n_rules <= 0 or n_inputs <= 0:
             raise ValueError("n_rules and n_inputs must be positive")
         self.n_rules = n_rules
         self.n_inputs = n_inputs
+        self.gate_fn = resolve_gate_fn(gate_fn)
         self.bias = nn.Parameter(torch.empty(n_rules))
         self.theta_gates = nn.Parameter(torch.zeros(n_rules))
         nn.init.zeros_(self.bias)
@@ -455,7 +556,7 @@ class GatedRegressionZeroOrderConsequentLayer(nn.Module):
             raise ValueError(f"expected norm_w shape (batch, {self.n_rules}), got {tuple(norm_w.shape)}")
 
         f = self.bias.unsqueeze(0)
-        rule_gates = _gate_activation(self.theta_gates).view(1, self.n_rules)
+        rule_gates = self.gate_fn(self.theta_gates).view(1, self.n_rules)
         f = f * rule_gates
         return torch.einsum("br,br->b", norm_w, f).unsqueeze(1)
 
@@ -491,13 +592,14 @@ class RegressionConsequentLayer(nn.Module):
 class GatedRegressionConsequentLayer(nn.Module):
     """Gated TSK consequent layer for scalar regression output."""
 
-    def __init__(self, n_rules: int, n_inputs: int) -> None:
+    def __init__(self, n_rules: int, n_inputs: int, gate_fn: str | Callable[[Tensor], Tensor] | None = None) -> None:
         """Initialize gated consequent parameters for regression."""
         super().__init__()
         if n_rules <= 0 or n_inputs <= 0:
             raise ValueError("n_rules and n_inputs must be positive")
         self.n_rules = n_rules
         self.n_inputs = n_inputs
+        self.gate_fn = resolve_gate_fn(gate_fn)
         self.weight = nn.Parameter(torch.empty(n_rules, n_inputs))
         self.bias = nn.Parameter(torch.empty(n_rules))
         self.lambda_gates = nn.Parameter(torch.zeros(n_rules, n_inputs))
@@ -514,8 +616,8 @@ class GatedRegressionConsequentLayer(nn.Module):
         if norm_w.ndim != 2 or norm_w.shape[1] != self.n_rules:
             raise ValueError(f"expected norm_w shape (batch, {self.n_rules}), got {tuple(norm_w.shape)}")
 
-        feature_gates = _gate_activation(self.lambda_gates)
-        rule_gates = _gate_activation(self.theta_gates).view(1, self.n_rules)
+        feature_gates = self.gate_fn(self.lambda_gates)
+        rule_gates = self.gate_fn(self.theta_gates).view(1, self.n_rules)
         gated_weight = self.weight * feature_gates
         f = torch.einsum("bd,rd->br", x, gated_weight) + self.bias.unsqueeze(0)
         f = f * rule_gates
@@ -527,6 +629,7 @@ __all__: list[str] = [
     "AdaptiveDombiRuleLayer",
     "ClassificationConsequentLayer",
     "DGALETSKRuleLayer",
+    "DGTSKRuleLayer",
     "GatedClassificationConsequentLayer",
     "GatedClassificationZeroOrderConsequentLayer",
     "GatedRegressionConsequentLayer",

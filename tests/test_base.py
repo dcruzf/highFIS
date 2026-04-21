@@ -59,6 +59,22 @@ class TestBaseTSK:
         history = model.fit(x, y, epochs=5, x_val=x, y_val=y, patience=3)
         assert "val" in history
 
+    def test_log_verbose_logs_message(self) -> None:
+        model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
+        model._log("verbose test", verbose=True)
+
+    def test_log_non_verbose_returns_without_logging(self) -> None:
+        model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
+        model._log("quiet test", verbose=False)
+
+    def test_fit_uses_custom_optimizer(self) -> None:
+        model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
+        optimizer = torch.optim.SGD(model.parameters(), lr=1e-2)
+        x = torch.randn(20, 2)
+        y = torch.randint(0, 2, (20,))
+        history = model.fit(x, y, epochs=1, optimizer=optimizer)
+        assert "train" in history
+
     def test_rejects_empty_input_mfs(self) -> None:
         with pytest.raises(ValueError, match="input_mfs must not be empty"):
             _ConcreteClassifier({}, n_classes=2)

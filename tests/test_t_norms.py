@@ -45,3 +45,8 @@ def test_t_norm_dombi_values() -> None:
 def test_resolve_t_norm_rejects_unknown_name() -> None:
     with pytest.raises(ValueError, match="t_norm must be"):
         resolve_t_norm("unknown")
+
+
+def test_dombi_tnorm_rejects_nonpositive_lambda() -> None:
+    with pytest.raises(ValueError, match="lambda_ must be > 0"):
+        DombiTNorm(lambda_=0.0)
