@@ -79,7 +79,7 @@ high-dimensional behaviors.
 
 ### Building blocks
 
-- Memberships: `GaussianMF`, `TriangularMF`, `TrapezoidalMF`, `BellMF`, `SigmoidalMF`, `DiffSigmoidalMF`, `ProdSigmoidalMF`, `SShapedMF`, `LinSShapedMF`, `ZShapedMF`, `LinZShapedMF`, `PiMF`, `GaussianPIMF`
+- Memberships: `GaussianMF`, `TriangularMF`, `TrapezoidalMF`, `BellMF`, `SigmoidalMF`, `DiffSigmoidalMF`, `ProdSigmoidalMF`, `SShapedMF`, `LinSShapedMF`, `ZShapedMF`, `LinZShapedMF`, `PiMF`, `CompositeExponentialMF`, `GaussianPIMF`
 - Defuzzifiers: `SoftmaxLogDefuzzifier`, `SumBasedDefuzzifier`, `LogSumDefuzzifier`
 - T-norms: `prod`, `min`, `gmean`, `dombi`
 - Rule base strategies: `cartesian`, `coco`, `en`, `custom`
