@@ -81,7 +81,7 @@ high-dimensional behaviors.
 
 - Memberships: `GaussianMF`, `TriangularMF`, `TrapezoidalMF`, `BellMF`, `SigmoidalMF`, `DiffSigmoidalMF`, `ProdSigmoidalMF`, `SShapedMF`, `LinSShapedMF`, `ZShapedMF`, `LinZShapedMF`, `PiMF`, `CompositeExponentialMF`, `GaussianPIMF`
 - Defuzzifiers: `SoftmaxLogDefuzzifier`, `SumBasedDefuzzifier`, `LogSumDefuzzifier`
-- T-norms: `prod`, `min`, `gmean`, `dombi`
+- T-norms: `prod`, `min`, `gmean`, `dombi`, `yager`, `yager_simple`, `ale_softmin_yager`
 - Rule base strategies: `cartesian`, `coco`, `en`, `custom`
 - Persistence: estimator `.save(path)` / `.load(path)` and versioned checkpoint validation via `highfis.persistence`
 
