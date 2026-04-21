@@ -125,6 +125,28 @@ def test_dgaletsk_classifier_search_thresholds_with_lse_returns_result() -> None
     assert 0.0 <= result["best_score"] <= 1.0
 
 
+def test_dgaletsk_classifier_search_thresholds_with_validation_and_verbose() -> None:
+    model = DGALETSKClassifier(_build_input_mfs(), n_classes=2)
+    x = torch.randn(16, 3)
+    y = torch.randint(0, 2, (16,))
+    model.fit_dg_phase(x, y, epochs=5, learning_rate=1e-2, batch_size=8, shuffle=False)
+
+    result = model.search_thresholds(
+        x,
+        y,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        x_val=x,
+        y_val=y,
+        use_lse=False,
+        inplace=True,
+        verbose=True,
+    )
+
+    assert set(result) >= {"best_score", "best_zeta_lambda", "best_zeta_theta", "tau_lambda", "tau_theta"}
+    assert 0.0 <= result["best_score"] <= 1.0
+
+
 def test_dgaletsk_regressor_search_thresholds_with_lse_returns_result() -> None:
     model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(20, 2)

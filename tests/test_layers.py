@@ -6,10 +6,20 @@ import torch
 from highfis.layers import (
     AdaptiveDombiRuleLayer,
     ClassificationConsequentLayer,
+    GatedClassificationConsequentLayer,
+    GatedClassificationZeroOrderConsequentLayer,
+    GatedRegressionConsequentLayer,
+    GatedRegressionZeroOrderConsequentLayer,
     MembershipLayer,
     RegressionConsequentLayer,
     RuleLayer,
     _generate_en_frb,
+    gate1,
+    gate2,
+    gate3,
+    gate4,
+    gate_m,
+    resolve_gate_fn,
 )
 from highfis.memberships import GaussianMF
 
@@ -195,6 +205,11 @@ def test_rule_layer_custom_rejects_empty_rules() -> None:
         RuleLayer(["x1", "x2"], [2, 2], rule_base="custom", rules=[])
 
 
+def test_rule_layer_custom_rejects_missing_rules() -> None:
+    with pytest.raises(ValueError, match="rules must be provided when rule_base='custom'"):
+        RuleLayer(["x1", "x2"], [2, 2], rule_base="custom")
+
+
 def test_rule_layer_custom_t_norm_fn_overrides_default() -> None:
     """t_norm_fn parameter uses the custom function (line 195)."""
     layer = RuleLayer(
@@ -245,6 +260,53 @@ def test_classification_consequent_layer_rejects_bad_normw_shape() -> None:
     x = torch.randn(5, 2)
     with pytest.raises(ValueError, match="expected norm_w shape"):
         layer(x, torch.randn(5, 3))
+
+
+def test_dga_ltsk_rule_layer_invalid_alpha_init_raises() -> None:
+    from highfis.layers import DGALETSKRuleLayer
+
+    with pytest.raises(ValueError, match="alpha_init must be > 0"):
+        DGALETSKRuleLayer(["x1", "x2"], [2, 2], alpha_init=0.0)
+
+
+def test_dga_ltsk_rule_layer_missing_membership_output_raises() -> None:
+    from highfis.layers import DGALETSKRuleLayer
+
+    layer = DGALETSKRuleLayer(["x1", "x2"], [2, 2])
+    with pytest.raises(KeyError, match="missing membership output"):
+        layer({"x1": torch.rand(2, 2)})
+
+
+def test_dgtsk_rule_layer_missing_membership_output_raises() -> None:
+    from highfis.layers import DGTSKRuleLayer
+
+    layer = DGTSKRuleLayer(["x1", "x2"], [2, 2])
+    with pytest.raises(KeyError, match="missing membership output"):
+        layer({"x1": torch.rand(2, 2)})
+
+
+def test_adasoftmin_rule_layer_missing_membership_output_raises() -> None:
+    from highfis.layers import AdaSoftminRuleLayer
+
+    layer = AdaSoftminRuleLayer(["x1", "x2"], [2, 2])
+    with pytest.raises(KeyError, match="missing membership output"):
+        layer({"x1": torch.rand(2, 2)})
+
+
+def test_classification_consequent_layer_invalid_init_args() -> None:
+    with pytest.raises(ValueError, match="n_rules, n_inputs and n_classes must be positive"):
+        ClassificationConsequentLayer(n_rules=0, n_inputs=2, n_classes=2)
+
+
+def test_adaptive_dombi_rule_layer_rejects_nonpositive_lambda_init() -> None:
+    with pytest.raises(ValueError, match="lambda_init must be > 0"):
+        AdaptiveDombiRuleLayer(["x1", "x2"], [2, 2], lambda_init=0.0)
+
+
+def test_adaptive_dombi_rule_layer_missing_membership_output_raises() -> None:
+    layer = AdaptiveDombiRuleLayer(["x1", "x2"], [2, 2])
+    with pytest.raises(KeyError, match="missing membership output"):
+        layer({"x1": torch.rand(2, 2)})
 
 
 # ---------------------------------------------------------------------------
@@ -303,3 +365,96 @@ def test_regression_consequent_layer_gradient_flows() -> None:
     assert x.grad is not None
     assert layer.weight.grad is not None
     assert layer.bias.grad is not None
+
+
+def test_gate_functions_and_resolver() -> None:
+    x = torch.tensor([-1.0, 0.0, 1.0])
+    assert torch.allclose(gate1(x), torch.sigmoid(x))
+    assert torch.allclose(gate2(x), 1.0 - torch.exp(-x.pow(2)))
+    assert torch.allclose(gate3(x), torch.exp(-x.pow(2)))
+    assert torch.allclose(gate4(x), x * torch.sqrt(torch.exp(1.0 - x.pow(2))))
+    assert torch.allclose(gate_m(x), x.pow(2) * torch.exp(1.0 - x.pow(2)))
+    assert resolve_gate_fn("gate1") is gate1
+    assert resolve_gate_fn(None) is gate4
+    assert resolve_gate_fn(torch.sigmoid) is torch.sigmoid
+    with pytest.raises(ValueError, match="unsupported gate function"):
+        resolve_gate_fn("invalid")
+
+
+def test_gated_classification_consequent_layer_forward_shape() -> None:
+    layer = GatedClassificationConsequentLayer(n_rules=4, n_inputs=2, n_classes=2, gate_fn="gate1")
+    x = torch.randn(5, 2)
+    norm_w = torch.softmax(torch.randn(5, 4), dim=1)
+
+    out = layer(x, norm_w)
+    assert out.shape == (5, 2)
+
+
+def test_gated_classification_zero_order_consequent_layer_forward_shape() -> None:
+    layer = GatedClassificationZeroOrderConsequentLayer(n_rules=4, n_inputs=2, n_classes=2, gate_fn="gate2")
+    x = torch.randn(5, 2)
+    norm_w = torch.softmax(torch.randn(5, 4), dim=1)
+
+    out = layer(x, norm_w)
+    assert out.shape == (5, 2)
+
+
+def test_gated_regression_consequent_layer_forward_shape() -> None:
+    layer = GatedRegressionConsequentLayer(n_rules=4, n_inputs=2, gate_fn="gate3")
+    x = torch.randn(5, 2)
+    norm_w = torch.softmax(torch.randn(5, 4), dim=1)
+
+    out = layer(x, norm_w)
+    assert out.shape == (5, 1)
+
+
+def test_gated_regression_zero_order_consequent_layer_forward_shape() -> None:
+    layer = GatedRegressionZeroOrderConsequentLayer(n_rules=4, n_inputs=2, gate_fn="gate4")
+    x = torch.randn(5, 2)
+    norm_w = torch.softmax(torch.randn(5, 4), dim=1)
+
+    out = layer(x, norm_w)
+    assert out.shape == (5, 1)
+
+
+def test_gated_consequent_layer_rejects_bad_shapes() -> None:
+    layer = GatedClassificationConsequentLayer(n_rules=4, n_inputs=2, n_classes=2)
+    with pytest.raises(ValueError, match="expected x shape"):
+        layer(torch.randn(5, 3), torch.softmax(torch.randn(5, 4), dim=1))
+    with pytest.raises(ValueError, match="expected norm_w shape"):
+        layer(torch.randn(5, 2), torch.randn(5, 3))
+
+
+def test_gated_classification_zero_order_consequent_layer_rejects_bad_shapes() -> None:
+    layer = GatedClassificationZeroOrderConsequentLayer(n_rules=4, n_inputs=2, n_classes=2)
+    with pytest.raises(ValueError, match="expected x shape"):
+        layer(torch.randn(5, 3), torch.softmax(torch.randn(5, 4), dim=1))
+    with pytest.raises(ValueError, match="expected norm_w shape"):
+        layer(torch.randn(5, 2), torch.randn(5, 3))
+
+
+def test_gated_regression_zero_order_consequent_layer_rejects_bad_shapes() -> None:
+    layer = GatedRegressionZeroOrderConsequentLayer(n_rules=4, n_inputs=2)
+    with pytest.raises(ValueError, match="expected x shape"):
+        layer(torch.randn(5, 3), torch.softmax(torch.randn(5, 4), dim=1))
+    with pytest.raises(ValueError, match="expected norm_w shape"):
+        layer(torch.randn(5, 2), torch.randn(5, 3))
+
+
+def test_gated_regression_consequent_layer_rejects_bad_shapes() -> None:
+    layer = GatedRegressionConsequentLayer(n_rules=4, n_inputs=2)
+    with pytest.raises(ValueError, match="expected x shape"):
+        layer(torch.randn(5, 3), torch.softmax(torch.randn(5, 4), dim=1))
+    with pytest.raises(ValueError, match="expected norm_w shape"):
+        layer(torch.randn(5, 2), torch.randn(5, 3))
+
+
+def test_gated_consequent_layer_invalid_init_args() -> None:
+    with pytest.raises(ValueError, match="n_rules, n_inputs and n_classes must be positive"):
+        GatedClassificationConsequentLayer(n_rules=0, n_inputs=2, n_classes=2)
+    with pytest.raises(ValueError, match="n_rules, n_inputs and n_classes must be positive"):
+        GatedClassificationZeroOrderConsequentLayer(n_rules=0, n_inputs=2, n_classes=2)
+    with pytest.raises(ValueError, match="n_rules and n_inputs must be positive"):
+        GatedRegressionZeroOrderConsequentLayer(n_rules=0, n_inputs=2)
+    with pytest.raises(ValueError, match="n_rules and n_inputs must be positive"):
+        GatedRegressionConsequentLayer(n_rules=0, n_inputs=2)
