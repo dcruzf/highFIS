@@ -22,11 +22,11 @@ from .estimators import (
 )
 from .memberships import (
     BellMF,
+    CompositeExponentialMF,
     CompositeGaussianMF,
     DiffSigmoidalMF,
     GaussianMF,
     GaussianPIMF,
-    LinSShapedMF,
     LinZShapedMF,
     MembershipFunction,
     PiMF,
@@ -64,6 +64,7 @@ __all__: list[str] = [
     "AdaTSKRegressorEstimator",
     "BaseTSK",
     "BellMF",
+    "CompositeExponentialMF",
     "CompositeGaussianMF",
     "DGALETSKClassifier",
     "DGALETSKClassifierEstimator",

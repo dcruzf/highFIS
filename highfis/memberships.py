@@ -158,6 +158,28 @@ class BellMF(MembershipFunction):
         return 1.0 / (1.0 + torch.abs((x - self.center) / self.a).pow(2.0 * self.b))
 
 
+class CompositeExponentialMF(MembershipFunction):
+    """Composite exponential membership function: exp(-|x-c|/sigma)."""
+
+    def __init__(self, center: float = 0.0, sigma: float = 1.0, eps: float | None = None) -> None:
+        """Initialize CompositeExponentialMF with center and scale parameters."""
+        super().__init__(eps=eps)
+        if sigma <= 0:
+            raise ValueError("sigma must be positive")
+        self.center = nn.Parameter(torch.tensor(float(center)))
+        self.raw_sigma = nn.Parameter(torch.tensor(_inv_softplus(float(sigma), eps)))
+
+    @property
+    def sigma(self) -> Tensor:
+        """Return positive sigma using softplus reparameterization."""
+        return F.softplus(self.raw_sigma) + self.eps
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Compute composite exponential membership values for input tensor."""
+        x = self._as_tensor(x)
+        return torch.exp(-torch.abs(x - self.center) / self.sigma)
+
+
 class SigmoidalMF(MembershipFunction):
     """Sigmoidal membership: 1 / (1 + exp(-a*(x-c)))."""
 
@@ -391,6 +413,7 @@ class GaussianPIMF(MembershipFunction):
 
 __all__: list[str] = [
     "BellMF",
+    "CompositeExponentialMF",
     "CompositeGaussianMF",
     "GaussianMF",
     "GaussianPIMF",
