@@ -109,22 +109,24 @@ Notes:
 
 ### CompositeExponentialMF
 
-Composite exponential membership function:
+Composite exponential membership function used in AYATSK:
 
 $$
-\mu(x) = \exp\left(-\frac{|x - c|}{\sigma}\right)
+\mu(x) = k^{-1 + \exp\left(-\frac{(x - c)^2}{2\sigma^2}\right)}
 $$
 
 Parameters:
 
 - `center`: center $c$.
 - `sigma`: scale parameter ($\sigma > 0$, softplus-reparameterized).
+- `k`: lower-bound control parameter ($k > 1$).
 - `eps`: numeric stability constant.
 
 Notes:
 
 - `sigma` is learned through `softplus` to enforce positivity.
-- Produces membership values that peak at 1 at the center and decay exponentially away from the center.
+- The membership infimum is $k^{-1}$.
+- Produces membership values that peak at 1 at the center and decay toward $k^{-1}$.
 - Based on the adaptive exponential membership function described by G. Xue, Y. Yang, and J. Wang in
   "Adaptive Yager T-Norm-Based Takagi–Sugeno–Kang Fuzzy Systems," IEEE Trans. Syst., Man, Cybern.: Syst.,
   vol. 55, no. 12, pp. 9802-9815, Dec. 2025.
