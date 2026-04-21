@@ -2,11 +2,7 @@
 
 ## Reference
 
-> Xue, Guangdong; Chang, Qin; Wang, Jian; Zhang, Kai; Pal, Nikhil R. (2023).
-> "An Adaptive Neuro-Fuzzy System With Integrated Feature Selection and
-> Rule Extraction for High-Dimensional Classification Problems." *IEEE
-> Transactions on Fuzzy Systems* 31(7):2167–2181.
-> DOI: [10.1109/TFUZZ.2022.3220950](https://doi.org/10.1109/TFUZZ.2022.3220950)
+> G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive Neuro-Fuzzy System With Integrated Feature Selection and Rule Extraction for High-Dimensional Classification Problems," in IEEE Transactions on Fuzzy Systems, vol. 31, no. 7, pp. 2167-2181, July 2023, doi: [10.1109/TFUZZ.2022.3220950](https://doi.org/10.1109/TFUZZ.2022.3220950)
 
 ## Mathematical Formulation
 
@@ -87,6 +83,21 @@ $$
   improving numerical stability in high dimensions.
 - `consequent_batch_norm=True` can be enabled to normalize inputs before
   consequent computation.
+
+## Relation to the FSRE-AdaTSK paper
+
+This implementation follows the same AdaTSK core described in the paper
+"An Adaptive Neuro-Fuzzy System With Integrated Feature Selection and Rule
+Extraction for High-Dimensional Classification Problems." In that work,
+AdaTSK is the base adaptive TSK system with smooth, numerically stable
+aggregation.
+
+The paper shows that FSRE-AdaTSK is built on top of AdaTSK by adding gate-
+based consequents and an Enhanced Fuzzy Rule Base (En-FRB) for feature
+selection and rule extraction. In highFIS, `AdaTSKClassifier` and
+`AdaTSKRegressor` implement the core adaptive aggregation and first-order
+TSK consequents, while `FSREAdaTSKClassifier` and `FSREAdaTSKRegressor`
+provide the extended FSRE-AdaTSK behavior.
 
 ## Example
 

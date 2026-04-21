@@ -7,7 +7,6 @@ from highfis.layers import (
     AdaptiveDombiRuleLayer,
     ClassificationConsequentLayer,
     MembershipLayer,
-    NormalizationLayer,
     RegressionConsequentLayer,
     RuleLayer,
     _generate_en_frb,
@@ -93,21 +92,6 @@ def test_rule_layer_forward_requires_all_inputs() -> None:
     layer = RuleLayer(["x1", "x2"], [2, 2])
     with pytest.raises(KeyError, match="missing membership output"):
         layer({"x1": torch.rand(3, 2)})
-
-
-def test_normalization_layer_normalizes_rows() -> None:
-    layer = NormalizationLayer()
-    w = torch.tensor([[1.0, 1.0, 2.0], [2.0, 2.0, 2.0]], dtype=torch.float32)
-    norm = layer(w)
-
-    assert norm.shape == w.shape
-    assert torch.allclose(norm.sum(dim=1), torch.ones(2), atol=1e-6)
-
-
-def test_normalization_layer_rejects_non_matrix() -> None:
-    layer = NormalizationLayer()
-    with pytest.raises(ValueError, match="expected w with 2 dims"):
-        layer(torch.rand(2, 2, 2))
 
 
 def test_classification_consequent_layer_forward_shape() -> None:

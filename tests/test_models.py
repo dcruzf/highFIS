@@ -7,9 +7,32 @@ import torch
 from torch import nn
 
 from highfis.base import _iter_minibatch_indices
-from highfis.layers import AdaptiveDombiRuleLayer
+from highfis.layers import (
+    AdaptiveDombiRuleLayer,
+    GatedClassificationConsequentLayer,
+    GatedClassificationZeroOrderConsequentLayer,
+    GatedRegressionConsequentLayer,
+    GatedRegressionZeroOrderConsequentLayer,
+)
 from highfis.memberships import GaussianMF
-from highfis.models import AdaTSKClassifier, AdaTSKRegressor, DombiTSKClassifier, HTSKClassifier, HTSKRegressor
+from highfis.models import (
+    AdaTSKClassifier,
+    AdaTSKRegressor,
+    DGALETSKClassifier,
+    DGALETSKRegressor,
+    DombiTSKClassifier,
+    DombiTSKRegressor,
+    FSREAdaTSKClassifier,
+    FSREAdaTSKRegressor,
+    HTSKClassifier,
+    HTSKRegressor,
+    LogTSKClassifier,
+    LogTSKRegressor,
+    TSKClassifier,
+    TSKRegressor,
+    _build_first_order_design_matrix,
+    _threshold_from_zeta,
+)
 
 
 def _build_input_mfs(n_inputs: int = 3, n_mfs: int = 2) -> dict[str, list[GaussianMF]]:
@@ -107,6 +130,18 @@ def test_dombitsk_classifier_rejects_nonpositive_lambda() -> None:
         DombiTSKClassifier(_build_input_mfs(), n_classes=2, lambda_=0.0)
 
 
+def test_dombitsk_classifier_invalid_n_classes() -> None:
+    with pytest.raises(ValueError, match="n_classes must be >= 2"):
+        DombiTSKClassifier(_build_input_mfs(), n_classes=1, lambda_=1.0)
+
+
+def test_dombitsk_classifier_default_t_norm_fn_branch() -> None:
+    model = DombiTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_=2.0)
+    x = torch.randn(4, 2)
+    logits = model.forward(x)
+    assert logits.shape == (4, 2)
+
+
 def test_adatsk_classifier_forward_predict_shapes() -> None:
     model = AdaTSKClassifier(_build_input_mfs(), n_classes=3)
     x = torch.randn(8, 3)
@@ -175,6 +210,292 @@ def test_adatsk_regressor_rejects_nonpositive_lambda() -> None:
 def test_adatsk_classifier_rejects_invalid_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
         AdaTSKClassifier(_build_input_mfs(), n_classes=1)
+
+
+def test_fsre_adatsk_classifier_helpers() -> None:
+    model = FSREAdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    x = torch.randn(12, 2)
+    y = torch.randint(0, 2, (12,), dtype=torch.long)
+
+    history_fs = model.fit_fs(x, y, epochs=2, batch_size=6)
+    assert history_fs["stopped_epoch"] == 2
+
+    history_re = model.fit_re(x, y, epochs=2, batch_size=6)
+    assert history_re["stopped_epoch"] == 2
+
+    history_ft = model.fit_finetune(x, y, epochs=2, batch_size=6)
+    assert history_ft["stopped_epoch"] == 2
+
+
+def test_fsre_adatsk_classifier_invalid_n_classes() -> None:
+    with pytest.raises(ValueError, match="n_classes must be >= 2"):
+        FSREAdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=1)
+
+
+def test_fsre_adatsk_regressor_helpers() -> None:
+    model = FSREAdaTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    x = torch.randn(12, 2)
+    y = torch.randn(12)
+
+    history_fs = model.fit_fs(x, y, epochs=2, batch_size=6)
+    assert history_fs["stopped_epoch"] == 2
+
+    history_re = model.fit_re(x, y, epochs=2, batch_size=6)
+    assert history_re["stopped_epoch"] == 2
+
+    history_ft = model.fit_finetune(x, y, epochs=2, batch_size=6)
+    assert history_ft["stopped_epoch"] == 2
+
+
+def test_dg_aletsk_classifier_invalid_lambda_init() -> None:
+    with pytest.raises(ValueError, match="lambda_init must be > 0"):
+        DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=0.0)
+
+
+def test_dg_aletsk_classifier_invalid_n_classes() -> None:
+    with pytest.raises(ValueError, match="n_classes must be >= 2"):
+        DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=1, lambda_init=1.0)
+
+
+def test_dg_aletsk_classifier_thresholds_and_convert() -> None:
+    model = DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    assert isinstance(model.consequent_layer, GatedClassificationZeroOrderConsequentLayer)
+
+    model.convert_to_first_order()
+    assert isinstance(model.consequent_layer, GatedClassificationConsequentLayer)
+
+    tau_lambda, tau_theta = model.compute_thresholds(0.5, 0.5)
+    assert isinstance(tau_lambda, float)
+    assert isinstance(tau_theta, float)
+    assert tau_lambda == tau_lambda
+    assert tau_theta == tau_theta
+
+    with pytest.raises(ValueError, match="thresholds must be finite"):
+        model.apply_thresholds(float("nan"), 0.0)
+
+
+def test_dg_aletsk_classifier_search_thresholds_inplace_false() -> None:
+    torch.manual_seed(0)
+    model = DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    x = torch.randn(16, 2)
+    y = torch.randint(0, 2, (16,), dtype=torch.long)
+
+    before = {k: v.clone() for k, v in model.state_dict().items()}
+    result = model.search_thresholds(x, y, x_val=x, y_val=y, use_lse=True, inplace=False, verbose=True)
+    after = model.state_dict()
+
+    assert set(result.keys()) >= {"best_score", "best_zeta_lambda", "best_zeta_theta", "tau_lambda", "tau_theta"}
+    assert all(torch.equal(before[k], after[k]) for k in before)
+
+
+def test_dg_aletsk_regressor_invalid_lambda_init() -> None:
+    with pytest.raises(ValueError, match="lambda_init must be > 0"):
+        DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=0.0)
+
+
+def test_dg_aletsk_regressor_thresholds_apply_and_search() -> None:
+    torch.manual_seed(0)
+    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    x = torch.randn(16, 2)
+    y = x[:, 0] - x[:, 1]
+
+    with pytest.raises(ValueError, match="thresholds must be finite"):
+        model.apply_thresholds(float("inf"), 0.0)
+
+    result = model.search_thresholds(x, y, x_val=x, y_val=y, use_lse=True, inplace=False)
+    assert set(result.keys()) >= {"best_score", "best_zeta_lambda", "best_zeta_theta", "tau_lambda", "tau_theta"}
+
+
+def test_dg_aletsk_regressor_search_thresholds_inplace_true_and_verbose() -> None:
+    torch.manual_seed(0)
+    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model.convert_to_first_order()
+    x = torch.randn(16, 2)
+    y = x[:, 0] - x[:, 1]
+
+    result = model.search_thresholds(x, y, x_val=x, y_val=y, use_lse=False, inplace=True, verbose=True)
+    assert set(result.keys()) >= {"best_score", "best_zeta_lambda", "best_zeta_theta", "tau_lambda", "tau_theta"}
+
+
+def test_dombi_tsk_regressor_rejects_nonpositive_lambda() -> None:
+    with pytest.raises(ValueError, match="lambda_ must be > 0"):
+        DombiTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_=0.0)
+
+
+def test_dombi_tsk_classifier_rejects_invalid_n_classes() -> None:
+    with pytest.raises(ValueError, match="n_classes must be >= 2"):
+        DombiTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=1, lambda_=1.0)
+
+
+def test_dombi_tsk_classifier_default_t_norm_fn_branch() -> None:
+    model = DombiTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_=1.5)
+    x = torch.randn(4, 2)
+    logits = model.forward(x)
+    assert logits.shape == (4, 2)
+
+
+def test_threshold_from_zeta_invalid_range() -> None:
+    gate_values = torch.tensor([0.2, 0.8])
+    with pytest.raises(ValueError, match=r"zeta must be in \[0, 1\]"):
+        _threshold_from_zeta(gate_values, -0.1)
+    with pytest.raises(ValueError, match=r"zeta must be in \[0, 1\]"):
+        _threshold_from_zeta(gate_values, 1.1)
+
+
+def test_tsk_classifier_invalid_n_classes() -> None:
+    with pytest.raises(ValueError, match="n_classes must be >= 2"):
+        TSKClassifier(_build_input_mfs(), n_classes=1)
+
+
+def test_tsk_regressor_forward_shape() -> None:
+    model = TSKRegressor(_build_input_mfs())
+    x = torch.randn(4, 3)
+    out = model.forward(x)
+    assert out.shape == (4, 1)
+
+
+def test_log_tsk_classifier_invalid_n_classes() -> None:
+    with pytest.raises(ValueError, match="n_classes must be >= 2"):
+        LogTSKClassifier(_build_input_mfs(), n_classes=1)
+
+
+def test_log_tsk_classifier_forward_shapes() -> None:
+    model = LogTSKClassifier(_build_input_mfs(), n_classes=2)
+    x = torch.randn(4, 3)
+    logits = model.forward(x)
+    assert logits.shape == (4, 2)
+    assert torch.allclose(torch.softmax(logits, dim=1).sum(dim=1), torch.ones(4), atol=1e-6)
+
+
+def test_log_tsk_regressor_forward_shape() -> None:
+    model = LogTSKRegressor(_build_input_mfs())
+    x = torch.randn(4, 3)
+    out = model.forward(x)
+    assert out.shape == (4, 1)
+
+
+def test_tsk_classifier_forward_shapes() -> None:
+    model = TSKClassifier(_build_input_mfs(), n_classes=2)
+    x = torch.randn(4, 3)
+    logits = model.forward(x)
+    assert logits.shape == (4, 2)
+    assert torch.allclose(torch.softmax(logits, dim=1).sum(dim=1), torch.ones(4), atol=1e-6)
+
+
+def test_tsk_classifier_default_criterion() -> None:
+    model = TSKClassifier(_build_input_mfs(), n_classes=2)
+    assert isinstance(model._default_criterion(), nn.CrossEntropyLoss)
+
+
+def test_tsk_regressor_default_criterion() -> None:
+    model = TSKRegressor(_build_input_mfs())
+    assert isinstance(model._default_criterion(), nn.MSELoss)
+
+
+def test_dombi_tsk_classifier_default_criterion() -> None:
+    model = DombiTSKClassifier(_build_input_mfs(), n_classes=2, lambda_=1.0)
+    assert isinstance(model._default_criterion(), nn.CrossEntropyLoss)
+
+
+def test_dombi_tsk_regressor_default_criterion() -> None:
+    model = DombiTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_=1.0)
+    assert isinstance(model._default_criterion(), nn.MSELoss)
+
+
+def test_log_tsk_classifier_default_criterion() -> None:
+    model = LogTSKClassifier(_build_input_mfs(), n_classes=2)
+    assert isinstance(model._default_criterion(), nn.CrossEntropyLoss)
+
+
+def test_log_tsk_regressor_default_criterion() -> None:
+    model = LogTSKRegressor(_build_input_mfs())
+    assert isinstance(model._default_criterion(), nn.MSELoss)
+
+
+def test_dg_aletsk_classifier_convert_to_first_order_preserves_theta() -> None:
+    model = DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    assert isinstance(model.consequent_layer, GatedClassificationZeroOrderConsequentLayer)
+    model.convert_to_first_order()
+    assert isinstance(model.consequent_layer, GatedClassificationConsequentLayer)
+
+
+def test_dg_aletsk_regressor_convert_to_first_order_preserves_theta() -> None:
+    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    assert isinstance(model.consequent_layer, GatedRegressionZeroOrderConsequentLayer)
+    model.convert_to_first_order()
+    assert isinstance(model.consequent_layer, GatedRegressionConsequentLayer)
+
+
+def test_dg_aletsk_classifier_default_criterion() -> None:
+    model = DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    assert isinstance(model._default_criterion(), nn.CrossEntropyLoss)
+
+
+def test_dg_aletsk_regressor_default_criterion() -> None:
+    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    assert isinstance(model._default_criterion(), nn.MSELoss)
+
+
+def test_dg_aletsk_regressor_search_thresholds_verbose() -> None:
+    torch.manual_seed(0)
+    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    x = torch.randn(16, 2)
+    y = x[:, 0] - x[:, 1]
+
+    result = model.search_thresholds(x, y, x_val=x, y_val=y, use_lse=True, inplace=False, verbose=True)
+    assert set(result.keys()) >= {"best_score", "best_zeta_lambda", "best_zeta_theta", "tau_lambda", "tau_theta"}
+
+
+def test_dg_aletsk_regressor_search_thresholds_use_lse_false() -> None:
+    torch.manual_seed(0)
+    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    x = torch.randn(16, 2)
+    y = x[:, 0] - x[:, 1]
+
+    result = model.search_thresholds(x, y, x_val=x, y_val=y, use_lse=False, inplace=False, verbose=False)
+    assert set(result.keys()) >= {"best_score", "best_zeta_lambda", "best_zeta_theta", "tau_lambda", "tau_theta"}
+
+
+def test_dg_aletsk_classifier_fit_dg_phase_and_finetune() -> None:
+    model = DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    x = torch.randn(16, 2)
+    y = torch.randint(0, 2, (16,), dtype=torch.long)
+
+    history = model.fit_dg_phase(x, y, epochs=2, batch_size=8)
+    assert history["stopped_epoch"] == 2
+
+    history = model.fit_finetune(x, y, epochs=2, batch_size=8)
+    assert history["stopped_epoch"] == 2
+
+
+def test_dg_aletsk_classifier_search_thresholds_no_candidates_raises() -> None:
+    model = DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    x = torch.randn(8, 2)
+    y = torch.randint(0, 2, (8,), dtype=torch.long)
+
+    with pytest.raises(RuntimeError, match="threshold search did not yield a valid candidate"):
+        model.search_thresholds(x, y, zeta_lambda=[], zeta_theta=[], inplace=False)
+
+
+def test_dg_aletsk_regressor_fit_dg_phase_and_finetune() -> None:
+    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    x = torch.randn(16, 2)
+    y = torch.randn(16)
+
+    history = model.fit_dg_phase(x, y, epochs=2, batch_size=8)
+    assert history["stopped_epoch"] == 2
+
+    history = model.fit_finetune(x, y, epochs=2, batch_size=8)
+    assert history["stopped_epoch"] == 2
+
+
+def test_dg_aletsk_regressor_search_thresholds_no_candidates_raises() -> None:
+    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    x = torch.randn(8, 2)
+    y = torch.randn(8)
+
+    with pytest.raises(RuntimeError, match="threshold search did not yield a valid candidate"):
+        model.search_thresholds(x, y, zeta_lambda=[], zeta_theta=[], inplace=False)
 
 
 def test_adatsk_classifier_consequent_batch_norm() -> None:
@@ -274,6 +595,84 @@ def test_htsk_classifier_fit_validates_val_inputs() -> None:
 def test_iter_minibatch_indices_rejects_nonpositive_batch_size() -> None:
     with pytest.raises(ValueError, match="batch_size must be > 0"):
         _iter_minibatch_indices(100, batch_size=0, shuffle=False)
+
+
+def test_build_first_order_design_matrix_validates_input_shapes() -> None:
+    norm_w = torch.rand(2, 3)
+    x = torch.randn(2, 2)
+
+    with pytest.raises(ValueError, match="feature_gates must have shape"):
+        _build_first_order_design_matrix(norm_w, x, torch.randn(1, 2), torch.randn(3))
+
+    with pytest.raises(ValueError, match="rule_gates must have shape"):
+        _build_first_order_design_matrix(norm_w, x, torch.randn(3, 2), torch.randn(1))
+
+
+def test_dombitsk_classifier_rejects_invalid_n_classes() -> None:
+    with pytest.raises(ValueError, match="n_classes must be >= 2"):
+        DombiTSKClassifier(_build_input_mfs(), n_classes=1, lambda_=1.0)
+
+
+def test_dombi_tsk_regressor_default_t_norm_fn_branch() -> None:
+    model = DombiTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_=1.0)
+    x = torch.randn(4, 2)
+    out = model.forward(x)
+
+    assert out.shape == (4, 1)
+
+
+def test_fsre_adatsk_classifier_rejects_nonpositive_lambda_init() -> None:
+    with pytest.raises(ValueError, match="lambda_init must be > 0"):
+        FSREAdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=0.0)
+
+
+def test_fsre_adatsk_regressor_rejects_nonpositive_lambda_init() -> None:
+    with pytest.raises(ValueError, match="lambda_init must be > 0"):
+        FSREAdaTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=0.0)
+
+
+def test_dg_aletsk_classifier_fit_first_order_consequents_requires_conversion() -> None:
+    model = DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    x = torch.randn(8, 2)
+    y = torch.randint(0, 2, (8,), dtype=torch.long)
+
+    with pytest.raises(ValueError, match=r"convert_to_first_order\(\) must be called before LSE consequent fitting"):
+        model._fit_first_order_consequents_lse(x, y)
+
+
+def test_dg_aletsk_classifier_search_thresholds_inplace_true_loads_state() -> None:
+    torch.manual_seed(0)
+    model = DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model.convert_to_first_order()
+    x = torch.randn(16, 2)
+    y = torch.randint(0, 2, (16,), dtype=torch.long)
+
+    result = model.search_thresholds(x, y, x_val=x, y_val=y, use_lse=True, inplace=True, verbose=False)
+
+    assert set(result.keys()) >= {"best_score", "best_zeta_lambda", "best_zeta_theta", "tau_lambda", "tau_theta"}
+    assert isinstance(result["best_score"], float)
+
+
+def test_dg_aletsk_regressor_convert_to_first_order_and_search_inplace_true() -> None:
+    torch.manual_seed(0)
+    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    x = torch.randn(16, 2)
+    y = x[:, 0] - x[:, 1]
+
+    model.convert_to_first_order()
+    assert isinstance(model.consequent_layer, GatedRegressionConsequentLayer)
+
+    result = model.search_thresholds(x, y, x_val=x, y_val=y, use_lse=True, inplace=True)
+    assert set(result.keys()) >= {"best_score", "best_zeta_lambda", "best_zeta_theta", "tau_lambda", "tau_theta"}
+
+
+def test_dg_aletsk_regressor_fit_first_order_consequents_requires_conversion() -> None:
+    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    x = torch.randn(8, 2)
+    y = torch.randn(8)
+
+    with pytest.raises(ValueError, match=r"convert_to_first_order\(\) must be called before LSE consequent fitting"):
+        model._fit_first_order_consequents_lse(x, y)
 
 
 # ---------------------------------------------------------------------------

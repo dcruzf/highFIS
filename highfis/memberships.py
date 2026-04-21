@@ -1,3 +1,5 @@
+"""Membership functions and shared membership utility routines."""
+
 from __future__ import annotations
 
 import math

@@ -27,6 +27,8 @@ from .memberships import GaussianMF
 from .models import (
     AdaTSKClassifier,
     AdaTSKRegressor,
+    DGALETSKClassifier,
+    DGALETSKRegressor,
     DombiTSKClassifier,
     DombiTSKRegressor,
     FSREAdaTSKClassifier,
@@ -965,6 +967,44 @@ class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
         )
 
 
+class DGALETSKClassifierEstimator(FSREAdaTSKClassifierEstimator):
+    """Sklearn-compatible DG-ALETSK classifier estimator."""
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        n_classes: int,
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create DGALETSKClassifier."""
+        return DGALETSKClassifier(
+            input_mfs,
+            n_classes=n_classes,
+            rule_base=rule_base,
+            lambda_init=self.lambda_init,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+            use_en_frb=self.use_en_frb,
+        )
+
+
+class DGALETSKRegressorEstimator(FSREAdaTSKRegressorEstimator):
+    """Sklearn-compatible DG-ALETSK regressor estimator."""
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create DGALETSKRegressor."""
+        return DGALETSKRegressor(
+            input_mfs,
+            rule_base=rule_base,
+            lambda_init=self.lambda_init,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+            use_en_frb=self.use_en_frb,
+        )
+
+
 # =====================================================================
 # LogTSK Estimators  (Cui, Wu & Xu, IEEE TFS 2021)
 # =====================================================================
@@ -1007,6 +1047,8 @@ class LogTSKRegressorEstimator(_BaseRegressorEstimator):
 __all__: list[str] = [
     "AdaTSKClassifierEstimator",
     "AdaTSKRegressorEstimator",
+    "DGALETSKClassifierEstimator",
+    "DGALETSKRegressorEstimator",
     "DombiTSKClassifierEstimator",
     "DombiTSKRegressorEstimator",
     "FSREAdaTSKClassifierEstimator",

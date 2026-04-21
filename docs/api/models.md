@@ -18,6 +18,7 @@ still be supplied via the `defuzzifier` constructor parameter.
 | **DombiTSK** | `DombiTSKClassifier` | `DombiTSKRegressor` | `dombi` | `SumBasedDefuzzifier` |
 | **AdaTSK** | `AdaTSKClassifier` | `AdaTSKRegressor` | adaptive `dombi` | `SumBasedDefuzzifier` |
 | **FSRE-AdaTSK** | `FSREAdaTSKClassifier` | `FSREAdaTSKRegressor` | adaptive `dombi` | `SoftmaxLogDefuzzifier` |
+| **DG-ALETSK** | `DGALETSKClassifier` | `DGALETSKRegressor` | Ln-Exp softmin | `SoftmaxLogDefuzzifier` |
 | **LogTSK** | `LogTSKClassifier` | `LogTSKRegressor` | `prod` | `LogSumDefuzzifier` |
 
 For the mathematical details and scientific references, see:
@@ -27,6 +28,32 @@ For the mathematical details and scientific references, see:
 - [LogTSK](../models/logtsk.md)
 - [AdaTSK](../models/adatsk.md)
 - [FSRE-AdaTSK](../models/fsre-adatsk.md)
+- [DG-ALETSK](../models/dg-aletsk.md)
+
+## BaseTSKClassifier
+
+`BaseTSKClassifier` is an abstract base class for classification TSK models.
+It extends `BaseTSK` with classification-specific loss handling and evaluation
+logic, including `predict_proba` and `predict`.
+
+### Highlights
+
+- Default loss: `nn.CrossEntropyLoss()` for subclasses that use the shared
+  classifier pipeline.
+- Implements `predict_proba(x)` and `predict(x)` for softmax-based outputs.
+- Uses validation accuracy as the early-stopping metric.
+
+## BaseTSKRegressor
+
+`BaseTSKRegressor` is an abstract base class for regression TSK models.
+It extends `BaseTSK` with regression-specific loss handling and inference.
+
+### Highlights
+
+- Default loss: `nn.MSELoss()` for subclasses that use the shared regressor
+  pipeline.
+- Implements `predict(x)` returning a 1-D tensor of scalar predictions.
+- Uses validation loss as the early-stopping metric.
 
 ## HTSKClassifier
 
@@ -381,6 +408,70 @@ TSK regression model with gated consequents and rule-extraction support.
 - `fit_fs(x, y, ...)`: trains the feature-selection phase.
 - `fit_re(x, y, ...)`: expands to En-FRB and trains the rule-extraction phase.
 - `fit_finetune(x, y, ...)`: fine-tunes the reduced model.
+
+### Training Notes
+
+- Default loss: `nn.MSELoss()`.
+- Default optimizer: `AdamW` with separate weight decay groups.
+- Supports mini-batches, shuffling, and optional uniform regularization.
+- Early stopping can be enabled via validation data.
+
+## DGALETSKClassifier
+
+`DGALETSKClassifier` is a `torch.nn.Module` implementing the DG-ALETSK architecture for classification with a Ln-Exp softmin antecedent and double-gated consequents.
+
+### Constructor Highlights
+
+- `input_mfs`: dictionary of input names to membership-function lists.
+- `n_classes`: number of output classes.
+- `rule_base`: `"cartesian"`, `"coco"`, `"en"`, or `"custom"`.
+- `lambda_init`: positive initial value for the adaptive Ln-Exp softmin parameter.
+- `use_en_frb`: whether to expand to the enhanced fuzzy rule base for joint feature selection and rule extraction.
+- `defuzzifier`: optional custom defuzzifier (default `SoftmaxLogDefuzzifier`).
+- `eps`: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.
+- `consequent_batch_norm`: optional batch normalization before consequents.
+
+### Main Methods
+
+- `forward(x)`: returns class logits.
+- `predict_proba(x)`: returns softmax probabilities.
+- `predict(x)`: returns class indices.
+- `forward_antecedents(x)`: returns normalized rule strengths.
+- `fit_dg_phase(x, y, ...)`: train the DG phase with zero-order gated consequents.
+- `convert_to_first_order()`: convert the model to first-order gated consequents.
+- `fit_finetune(x, y, ...)`: fine-tune the converted first-order model.
+- `search_thresholds(...)`: search threshold coefficients for feature and rule pruning.
+
+### Training Notes
+
+- Default loss: `nn.CrossEntropyLoss()`.
+- Default optimizer: `AdamW` with separate weight decay groups.
+- Supports mini-batches, shuffling, and optional uniform regularization.
+- Early stopping can be enabled via validation data.
+
+## DGALETSKRegressor
+
+`DGALETSKRegressor` is a `torch.nn.Module` implementing the DG-ALETSK architecture for regression with a Ln-Exp softmin antecedent and double-gated consequents.
+
+### Constructor Highlights
+
+- `input_mfs`: dictionary of input names to membership-function lists.
+- `rule_base`: `"cartesian"`, `"coco"`, `"en"`, or `"custom"`.
+- `lambda_init`: positive initial value for the adaptive Ln-Exp softmin parameter.
+- `use_en_frb`: whether to expand to the enhanced fuzzy rule base for joint feature selection and rule extraction.
+- `defuzzifier`: optional custom defuzzifier (default `SoftmaxLogDefuzzifier`).
+- `eps`: if omitted, built-in defuzzifiers infer a dtype-aware epsilon from the input tensor.
+- `consequent_batch_norm`: optional batch normalization before consequents.
+
+### Main Methods
+
+- `forward(x)`: returns predictions with shape `(batch, 1)`.
+- `predict(x)`: returns predictions as a 1-D tensor.
+- `forward_antecedents(x)`: returns normalized rule strengths.
+- `fit_dg_phase(x, y, ...)`: train the DG phase with zero-order gated consequents.
+- `convert_to_first_order()`: convert the model to first-order gated consequents.
+- `fit_finetune(x, y, ...)`: fine-tune the converted first-order model.
+- `search_thresholds(...)`: search threshold coefficients for feature and rule pruning.
 
 ### Training Notes
 

@@ -27,6 +27,20 @@ Parameters:
 - `sigma`: spread parameter $\sigma > 0$.
 - `eps`: numerical stability constant.
 
+### CompositeGaussianMF
+
+Composite Gaussian membership function with a nonzero lower bound.
+
+$$
+\mu(x)=\epsilon + (1-\epsilon)\exp\left(-\frac{(x-c)^2}{2\sigma^2}\right)
+$$
+
+Parameters:
+
+- `mean`: center $c$.
+- `sigma`: spread parameter $\sigma > 0$.
+- `eps`: numerical stability floor.
+
 Implementation notes:
 
 - `sigma` is parameterized through softplus to remain positive during training.

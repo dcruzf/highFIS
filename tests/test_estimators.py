@@ -1,17 +1,29 @@
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
+
 import numpy as np
 import pytest
 from sklearn.exceptions import NotFittedError
+from sklearn.pipeline import Pipeline
 
 from highfis.estimators import (
     AdaTSKClassifierEstimator,
     AdaTSKRegressorEstimator,
+    DGALETSKClassifierEstimator,
+    DGALETSKRegressorEstimator,
+    DombiTSKClassifierEstimator,
+    DombiTSKRegressorEstimator,
     FSREAdaTSKClassifierEstimator,
     FSREAdaTSKRegressorEstimator,
     HTSKClassifierEstimator,
     HTSKRegressorEstimator,
     InputConfig,
+    LogTSKClassifierEstimator,
+    LogTSKRegressorEstimator,
+    TSKClassifierEstimator,
+    TSKRegressorEstimator,
     _build_gaussian_input_mfs,
     _build_kmeans_input_mfs,
 )
@@ -66,6 +78,50 @@ def test_estimator_fit_predict_proba_predict_score() -> None:
     assert pred.shape == (x.shape[0],)
     assert np.allclose(proba.sum(axis=1), 1.0, atol=1e-6)
     assert 0.0 <= score <= 1.0
+
+
+def test_dgaletsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
+    x, y = _make_dataset(80)
+    est = DGALETSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        lambda_init=1.5,
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+
+    est.fit(x, y)
+    proba = est.predict_proba(x)
+    pred = est.predict(x)
+    score = est.score(x, y)
+
+    assert proba.shape == (x.shape[0], 2)
+    assert pred.shape == (x.shape[0],)
+    assert np.allclose(proba.sum(axis=1), 1.0, atol=1e-6)
+    assert 0.0 <= score <= 1.0
+
+
+def test_dgaletsk_regressor_estimator_fit_predict_score() -> None:
+    x = np.random.default_rng(123).normal(size=(80, 3)).astype(np.float32)
+    y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=80).astype(np.float32)
+    est = DGALETSKRegressorEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        lambda_init=1.5,
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+
+    est.fit(x, y)
+    pred = est.predict(x)
+    score = est.score(x, y)
+
+    assert pred.shape == (x.shape[0],)
+    assert isinstance(score, float)
 
 
 def test_estimator_grid_init_fit_predict() -> None:
@@ -213,6 +269,293 @@ def test_estimator_invalid_mf_init_raises() -> None:
 def test_adatsk_classifier_estimator_rejects_nonpositive_lambda() -> None:
     with pytest.raises(ValueError, match="lambda_init must be > 0"):
         AdaTSKClassifierEstimator(n_mfs=2, mf_init="kmeans", lambda_init=0.0, epochs=1, batch_size=16)
+
+
+def test_dombi_tsk_classifier_estimator_fit_predict() -> None:
+    x, y = _make_dataset(60)
+    est = DombiTSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+    est.fit(x, y)
+    pred = est.predict(x)
+
+    assert pred.shape == (x.shape[0],)
+
+
+def test_dombi_tsk_regressor_estimator_fit_predict_score() -> None:
+    x, y = _make_regression_dataset(80)
+    est = DombiTSKRegressorEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+    est.fit(x, y)
+    pred = est.predict(x)
+    assert pred.shape == (x.shape[0],)
+
+
+def test_tsk_classifier_estimator_fit_predict() -> None:
+    x, y = _make_dataset(60)
+    est = TSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+    est.fit(x, y)
+    pred = est.predict(x)
+
+    assert pred.shape == (x.shape[0],)
+
+
+def test_tsk_regressor_estimator_fit_predict() -> None:
+    x, y = _make_regression_dataset(80)
+    est = TSKRegressorEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+    est.fit(x, y)
+    pred = est.predict(x)
+
+    assert pred.shape == (x.shape[0],)
+
+
+def test_tsk_regressor_estimator_save_load_roundtrip() -> None:
+    x, y = _make_regression_dataset(80)
+    est = TSKRegressorEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+    est.fit(x, y)
+
+    with tempfile.NamedTemporaryFile(suffix=".pth", delete=False) as tmp:
+        path = tmp.name
+    try:
+        est.save(path)
+        loaded = TSKRegressorEstimator.load(path)
+        pred = loaded.predict(x)
+        assert pred.shape == (x.shape[0],)
+    finally:
+        Path(path).unlink()
+
+
+def test_tsk_regressor_estimator_invalid_input_configs_length() -> None:
+    x, y = _make_regression_dataset(20)
+    configs = [InputConfig(name="x1", n_mfs=2)]
+    est = TSKRegressorEstimator(input_configs=configs, epochs=1, batch_size=8)
+    with pytest.raises(ValueError, match="input_configs length"):
+        est.fit(x, y)
+
+
+def test_logtsk_classifier_estimator_fit_predict() -> None:
+    x, y = _make_dataset(60)
+    est = LogTSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+    est.fit(x, y)
+    pred = est.predict(x)
+
+    assert pred.shape == (x.shape[0],)
+
+
+def test_logtsk_regressor_estimator_fit_predict() -> None:
+    x, y = _make_regression_dataset(80)
+    est = LogTSKRegressorEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+    est.fit(x, y)
+    pred = est.predict(x)
+
+    assert pred.shape == (x.shape[0],)
+
+
+def test_fsre_adatsk_classifier_estimator_rejects_nonpositive_lambda() -> None:
+    with pytest.raises(ValueError, match="lambda_init must be > 0"):
+        FSREAdaTSKClassifierEstimator(n_mfs=2, mf_init="kmeans", lambda_init=0.0, epochs=1, batch_size=16)
+
+
+def test_fsre_adatsk_regressor_estimator_rejects_nonpositive_lambda() -> None:
+    with pytest.raises(ValueError, match="lambda_init must be > 0"):
+        FSREAdaTSKRegressorEstimator(n_mfs=2, mf_init="kmeans", lambda_init=0.0, epochs=1, batch_size=16)
+
+
+def test_estimator_input_configs_length_validator_regressor() -> None:
+    x, y = _make_regression_dataset(20)
+    configs = [InputConfig(name="x1", n_mfs=2)]
+    est = HTSKRegressorEstimator(input_configs=configs, epochs=1, batch_size=8)
+    with pytest.raises(ValueError, match="input_configs length"):
+        est.fit(x, y)
+
+
+def test_classifier_estimator_save_load_roundtrip() -> None:
+    x, y = _make_dataset(60)
+    est = HTSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+    est.fit(x, y)
+
+    with tempfile.NamedTemporaryFile(suffix=".pth", delete=False) as tmp:
+        path = tmp.name
+    try:
+        est.save(path)
+        loaded = HTSKClassifierEstimator.load(path)
+        assert np.array_equal(loaded.classes_, est.classes_)
+        assert np.allclose(loaded.predict_proba(x), est.predict_proba(x), atol=1e-6)
+    finally:
+        Path(path).unlink()
+
+
+def test_dgaletsk_classifier_estimator_pipeline_integration() -> None:
+    x, y = _make_dataset(60)
+    est = DGALETSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        lambda_init=1.5,
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+    pipe = Pipeline([("model", est)])
+    pipe.fit(x, y)
+    pred = pipe.predict(x[:10])
+
+    assert pred.shape == (10,)
+
+
+def test_tsk_classifier_estimator_save_load_roundtrip() -> None:
+    x, y = _make_dataset(60)
+    est = TSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+    est.fit(x, y)
+
+    with tempfile.NamedTemporaryFile(suffix=".pth", delete=False) as tmp:
+        path = tmp.name
+    try:
+        est.save(path)
+        loaded = TSKClassifierEstimator.load(path)
+        assert np.array_equal(loaded.classes_, est.classes_)
+        assert np.allclose(loaded.predict_proba(x), est.predict_proba(x), atol=1e-6)
+    finally:
+        Path(path).unlink()
+
+
+def test_tsk_classifier_estimator_invalid_input_configs_length() -> None:
+    x, y = _make_dataset(20)
+    configs = [InputConfig(name="x1", n_mfs=2)]
+    est = TSKClassifierEstimator(input_configs=configs, epochs=1, batch_size=8)
+    with pytest.raises(ValueError, match="input_configs length"):
+        est.fit(x, y)
+
+
+def test_tsk_classifier_resolve_input_configs_invalid_length() -> None:
+    x, _ = _make_dataset(20)
+    configs = [InputConfig(name="x1", n_mfs=2)]
+    est = TSKClassifierEstimator(input_configs=configs, epochs=1, batch_size=8)
+    with pytest.raises(ValueError, match="input_configs length"):
+        est._resolve_input_configs(x)
+
+
+def test_tsk_regressor_resolve_input_configs_invalid_length() -> None:
+    x, _ = _make_dataset(20)
+    configs = [InputConfig(name="x1", n_mfs=2)]
+    est = TSKRegressorEstimator(input_configs=configs, epochs=1, batch_size=8)
+    with pytest.raises(ValueError, match="input_configs length"):
+        est._resolve_input_configs(x)
+
+
+def test_tsk_classifier_estimator_fit_with_input_configs() -> None:
+    x, y = _make_dataset(60)
+    configs = [InputConfig(name=f"x{i + 1}", n_mfs=2) for i in range(3)]
+    est = TSKClassifierEstimator(
+        input_configs=configs,
+        mf_init="grid",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+    est.fit(x, y)
+    pred = est.predict(x)
+    assert pred.shape == (x.shape[0],)
+
+
+def test_tsk_regressor_estimator_fit_with_input_configs() -> None:
+    x, y = _make_regression_dataset(80)
+    configs = [InputConfig(name=f"x{i + 1}", n_mfs=2) for i in range(3)]
+    est = TSKRegressorEstimator(
+        input_configs=configs,
+        mf_init="grid",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+    est.fit(x, y)
+    pred = est.predict(x)
+    assert pred.shape == (x.shape[0],)
+
+
+def test_logtsk_classifier_estimator_save_load_roundtrip() -> None:
+    x, y = _make_dataset(60)
+    est = LogTSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+    est.fit(x, y)
+
+    with tempfile.NamedTemporaryFile(suffix=".pth", delete=False) as tmp:
+        path = tmp.name
+    try:
+        est.save(path)
+        loaded = LogTSKClassifierEstimator.load(path)
+        assert np.array_equal(loaded.classes_, est.classes_)
+        assert np.allclose(loaded.predict_proba(x), est.predict_proba(x), atol=1e-6)
+    finally:
+        Path(path).unlink()
 
 
 def test_estimator_kmeans_default_rule_base_is_coco() -> None:

@@ -47,6 +47,7 @@ highFIS works with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and
 - `TSKClassifier`, `TSKRegressor`
 - `DombiTSKClassifier`, `DombiTSKRegressor`
 - `AdaTSKClassifier`, `AdaTSKRegressor`
+- `DGALETSKClassifier`, `DGALETSKRegressor`
 - `FSREAdaTSKClassifier`, `FSREAdaTSKRegressor`
 - `LogTSKClassifier`, `LogTSKRegressor`
 
@@ -56,6 +57,7 @@ highFIS works with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and
 - `TSKClassifierEstimator`, `TSKRegressorEstimator`
 - `LogTSKClassifierEstimator`, `LogTSKRegressorEstimator`
 - `AdaTSKClassifierEstimator`, `AdaTSKRegressorEstimator`
+- `DGALETSKClassifierEstimator`, `DGALETSKRegressorEstimator`
 - `FSREAdaTSKClassifierEstimator`, `FSREAdaTSKRegressorEstimator`
 
 ### Building blocks
@@ -77,6 +79,7 @@ Key reference pages:
 - [HTSK](https://dcruzf.github.io/highFIS/latest/models/htsk)
 - [DombiTSK](https://dcruzf.github.io/highFIS/latest/models/dombitsk)
 - [AdaTSK](https://dcruzf.github.io/highFIS/latest/models/adatsk)
+- [DG-ALETSK](https://dcruzf.github.io/highFIS/latest/models/dg-aletsk)
 - [FSRE-AdaTSK](https://dcruzf.github.io/highFIS/latest/models/fsre-adatsk)
 - [Persistence API](https://dcruzf.github.io/highFIS/latest/api/persistence)
 

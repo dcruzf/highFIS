@@ -79,7 +79,7 @@ Conclusion: the implemented HTSK core is mathematically consistent with the pape
   receive `weight_decay=0`, while consequent parameters use a configurable
   `weight_decay` (default $10^{-8}$).
 - **Normalization:**
-  `NormalizationLayer` uses `softmax(log(w))`, which is mathematically
+  `SoftmaxLogDefuzzifier` uses `softmax(log(w))`, which is mathematically
   equivalent to $w_r / \sum_i w_i$ but numerically stable in high dimensions.
 - **Uniform regularization:**
   uses `sum` (not `mean`) over the rule-deviation vector, matching PyTSK.
@@ -198,7 +198,7 @@ $$
 
 1. `MembershipLayer`: computes $\mu_{r,d}(x_d)$ for every rule/input pair.
 2. `RuleLayer`: aggregates antecedents with the selected t-norm (default HTSK: `gmean`).
-3. `NormalizationLayer`: normalizes rule strengths across rules.
+3. `SoftmaxLogDefuzzifier`: normalizes rule strengths across rules.
 4. `ClassificationConsequentLayer`: computes linear consequents and weighted logits.
 5. `softmax` (in prediction): converts logits to class probabilities.
 

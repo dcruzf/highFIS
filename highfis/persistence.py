@@ -1,3 +1,5 @@
+"""Checkpoint serialization helpers for estimator persistence."""
+
 from __future__ import annotations
 
 from pathlib import Path
