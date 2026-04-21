@@ -315,34 +315,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Models Available">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#classification" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Classification
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#regression" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Regression
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -932,34 +904,6 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Models Available">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#classification" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Classification
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#regression" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Regression
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
 </li>
       
         <li class="md-nav__item">
@@ -1039,24 +983,24 @@ experimentation.</p>
 <h2 id="models-available">Models Available</h2>
 <p>highFIS offers a family of TSK fuzzy models optimized for different
 high-dimensional behaviors.</p>
-<h3 id="classification">Classification</h3>
 <ul>
-<li><code>HTSKClassifier</code> — geometric-mean inference for high-dimensional stability.</li>
-<li><code>TSKClassifier</code> — classical product t-norm TSK.</li>
-<li><code>DombiTSKClassifier</code> — Dombi aggregation with a tunable shape parameter.</li>
-<li><code>AdaTSKClassifier</code> — adaptive Dombi inference with per-rule learnable shape.</li>
-<li><code>FSREAdaTSKClassifier</code> — adaptive softmin with feature selection and rule
-  extraction.</li>
-<li><code>LogTSKClassifier</code> — log-space normalization with temperature control.</li>
-</ul>
-<h3 id="regression">Regression</h3>
-<ul>
-<li><code>HTSKRegressor</code></li>
-<li><code>TSKRegressor</code></li>
-<li><code>DombiTSKRegressor</code></li>
-<li><code>AdaTSKRegressor</code></li>
-<li><code>FSREAdaTSKRegressor</code></li>
-<li><code>LogTSKRegressor</code></li>
+<li><a href="models/tsk-vanilla/"><code>Vanilla TSK</code></a> — the original Takagi-Sugeno-Kang model
+  with Gaussian MFs, product antecedent aggregation, and sum-based
+  normalization.</li>
+<li><a href="models/htsk/"><code>HTSK</code></a> — high-dimensional TSK with geometric mean
+  aggregation and log-space normalization to reduce dimensionality bias.</li>
+<li><a href="models/logtsk/"><code>LogTSK</code></a> — log-space defuzzification with temperature
+  scaling for numerically stable high-dimensional aggregation.</li>
+<li><a href="models/dombitsk/"><code>DombiTSK</code></a> — Dombi t-norm aggregation with first-order
+  consequents and a learnable shape parameter.</li>
+<li><a href="models/adatsk/"><code>AdaTSK</code></a> — adaptive Dombi inference using Composite
+  Gaussian MFs with a positive lower bound.</li>
+<li><a href="models/fsre-adatsk/"><code>FSRE-AdaTSK</code></a> — adaptive model with gated feature
+  selection and rule extraction in the consequent.</li>
+<li><a href="models/dg-tsk/"><code>DG-TSK</code></a> — double-gated training for simultaneous
+  feature selection and rule extraction, followed by first-order fine tuning.</li>
+<li><a href="models/dg-aletsk/"><code>DG-ALETSK</code></a> — DG-based adaptive Ln-Exp softmin with
+  embedded feature and rule gates for sparse high-dimensional modeling.</li>
 </ul>
 <h2 id="documentation">Documentation</h2>
 <table>
@@ -1072,63 +1016,39 @@ high-dimensional behaviors.</p>
 <td>Installation and first model run.</td>
 </tr>
 <tr>
-<td><a href="htsk-modelo/">HTSK Technical Notes</a></td>
-<td>Deep dive into HTSK inference design.</td>
-</tr>
-<tr>
-<td><a href="models/tsk-vanilla/">TSK Vanilla</a></td>
-<td>Standard Takagi-Sugeno-Kang model.</td>
-</tr>
-<tr>
-<td><a href="models/logtsk/">LogTSK</a></td>
-<td>Log-space TSK for stability in high dimensions.</td>
-</tr>
-<tr>
-<td><a href="models/adatsk/">AdaTSK</a></td>
-<td>Adaptive Dombi TSK with learned shape.</td>
-</tr>
-<tr>
-<td><a href="models/fsre-adatsk/">FSRE-AdaTSK</a></td>
-<td>Feature selection and rule extraction.</td>
-</tr>
-<tr>
-<td><a href="models/dg-tsk/">DG-TSK</a></td>
-<td>Dynamic-gating TSK with feature and rule gating.</td>
-</tr>
-<tr>
-<td><a href="api/models/">Models API</a></td>
+<td><a href="api/models/">Models</a></td>
 <td>Model constructors and usage notes.</td>
 </tr>
 <tr>
-<td><a href="api/estimators/">Estimators API</a></td>
+<td><a href="api/estimators/">Estimators</a></td>
 <td>sklearn-compatible estimator reference.</td>
 </tr>
 <tr>
-<td><a href="api/layers/">Layers API</a></td>
+<td><a href="api/layers/">Layers</a></td>
 <td>Layer primitives for fuzzy pipelines.</td>
 </tr>
 <tr>
-<td><a href="api/defuzzifiers/">Defuzzifiers API</a></td>
+<td><a href="api/defuzzifiers/">Defuzzifiers</a></td>
 <td>Normalization strategies.</td>
 </tr>
 <tr>
-<td><a href="api/t_norms/">T-Norms API</a></td>
+<td><a href="api/t_norms/">T-Norms</a></td>
 <td>Built-in and custom aggregation functions.</td>
 </tr>
 <tr>
-<td><a href="api/memberships/">Memberships API</a></td>
+<td><a href="api/memberships/">Memberships</a></td>
 <td>Membership functions for antecedents.</td>
 </tr>
 <tr>
-<td><a href="api/base/">Base TSK API</a></td>
+<td><a href="api/base/">Base TSK</a></td>
 <td>Unified training loop and shared logic.</td>
 </tr>
 <tr>
-<td><a href="api/protocols/">Protocols API</a></td>
+<td><a href="api/protocols/">Protocols</a></td>
 <td>Structural typing interfaces.</td>
 </tr>
 <tr>
-<td><a href="api/persistence/">Persistence API</a></td>
+<td><a href="api/persistence/">Persistence</a></td>
 <td>Estimator checkpoint serialization and load validation.</td>
 </tr>
 <tr>

@@ -566,15 +566,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#classes" class="md-nav__link">
+  <a href="#base-class" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Classes
+        Base class
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Classes">
+    <nav class="md-nav" aria-label="Base class">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -587,6 +587,23 @@
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#membership-function-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Membership function classes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Membership function classes">
+      <ul class="md-nav__list">
         
           <li class="md-nav__item">
   <a href="#gaussianmf" class="md-nav__link">
@@ -744,6 +761,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation details
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1034,15 +1062,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#classes" class="md-nav__link">
+  <a href="#base-class" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Classes
+        Base class
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Classes">
+    <nav class="md-nav" aria-label="Base class">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1055,6 +1083,23 @@
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#membership-function-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Membership function classes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Membership function classes">
+      <ul class="md-nav__list">
         
           <li class="md-nav__item">
   <a href="#gaussianmf" class="md-nav__link">
@@ -1216,6 +1261,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#implementation-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation details
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#example" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1252,13 +1308,17 @@
 <h1 id="membership-functions-api">Membership Functions API</h1>
 <h2 id="module">Module</h2>
 <p><code>highfis.memberships</code></p>
-<h2 id="classes">Classes</h2>
+<p>This module exposes differentiable membership functions designed for fuzzy
+models in highFIS.</p>
+<h2 id="base-class">Base class</h2>
 <h3 id="membershipfunction">MembershipFunction</h3>
-<p>Base class for differentiable membership functions in PyTorch.</p>
+<p><code>MembershipFunction</code> is the abstract base class for all membership functions.</p>
 <ul>
 <li>Inherits from <code>torch.nn.Module</code>.</li>
-<li>Provides numerical-stability epsilon handling.</li>
+<li>Stores numeric stability epsilon <code>eps</code>.</li>
+<li>Provides <code>_as_tensor(x)</code> to convert scalar inputs into tensors.</li>
 </ul>
+<h2 id="membership-function-classes">Membership function classes</h2>
 <h3 id="gaussianmf">GaussianMF</h3>
 <p>Gaussian membership function:</p>
 <div class="arithmatex">\[
@@ -1268,44 +1328,54 @@
 <ul>
 <li><code>mean</code>: center <span class="arithmatex">\(c\)</span>.</li>
 <li><code>sigma</code>: spread parameter <span class="arithmatex">\(\sigma &gt; 0\)</span>.</li>
-<li><code>eps</code>: numerical stability constant.</li>
+<li><code>eps</code>: numeric stability constant.</li>
+</ul>
+<p>Notes:</p>
+<ul>
+<li><code>sigma</code> is parameterized through <code>softplus</code> so it remains positive.</li>
+<li><code>mean</code> and <code>sigma</code> are learnable parameters.</li>
 </ul>
 <h3 id="compositegaussianmf">CompositeGaussianMF</h3>
-<p>Composite Gaussian membership function with a nonzero lower bound.</p>
+<p>Composite Gaussian membership function with a positive lower bound:</p>
 <div class="arithmatex">\[
-\mu(x)=\epsilon + (1-\epsilon)\exp\left(-\frac{(x-c)^2}{2\sigma^2}\right)
+\mu(x)=\epsilon + (1 - \epsilon)\exp\left(-\frac{(x-c)^2}{2\sigma^2}\right)
 \]</div>
 <p>Parameters:</p>
 <ul>
 <li><code>mean</code>: center <span class="arithmatex">\(c\)</span>.</li>
 <li><code>sigma</code>: spread parameter <span class="arithmatex">\(\sigma &gt; 0\)</span>.</li>
-<li><code>eps</code>: numerical stability floor.</li>
+<li><code>eps</code>: numeric stability floor.</li>
 </ul>
-<p>Implementation notes:</p>
+<p>Notes:</p>
 <ul>
-<li><code>sigma</code> is parameterized through softplus to remain positive during training.</li>
-<li>Both center and spread are trainable parameters.</li>
+<li>Ensures membership values never fall below <code>eps</code>.</li>
+<li>Useful for models where a nonzero infimum is needed.</li>
 </ul>
 <h3 id="triangularmf">TriangularMF</h3>
 <p>Triangular membership function defined by three vertices:</p>
 <div class="arithmatex">\[
-\mu(x) = \max\!\left(0,\;\min\!\left(\frac{x - l}{c - l},\;\frac{r - x}{r - c}\right)\right)
+\mu(x) = \max\left(0,\;\min\left(\frac{x - l}{c - l},\;\frac{r - x}{r - c}\right)\right)
 \]</div>
 <p>Parameters:</p>
 <ul>
 <li><code>left</code>: left vertex <span class="arithmatex">\(l\)</span>.</li>
 <li><code>center</code>: peak vertex <span class="arithmatex">\(c\)</span>.</li>
 <li><code>right</code>: right vertex <span class="arithmatex">\(r\)</span>.</li>
-<li>Must satisfy <span class="arithmatex">\(l \le c \le r\)</span> with <span class="arithmatex">\(l \neq r\)</span>.</li>
+</ul>
+<p>Constraints:</p>
+<ul>
+<li><span class="arithmatex">\(l \le c \le r\)</span></li>
+<li><span class="arithmatex">\(l \neq r\)</span></li>
 </ul>
 <h3 id="trapezoidalmf">TrapezoidalMF</h3>
-<p>Trapezoidal membership function with a flat-top plateau:</p>
+<p>Trapezoidal membership function with a plateau:</p>
 <div class="arithmatex">\[
-\mu(x) = \max\!\left(0,\;\min\!\left(\frac{x - a}{b - a},\;1,\;\frac{d - x}{d - c}\right)\right)
+\mu(x) = \max\left(0,\;\min\left(\frac{x - a}{b - a},\;1,\;\frac{d - x}{d - c}\right)\right)
 \]</div>
 <p>Parameters:</p>
 <ul>
-<li><code>a</code>, <code>b</code>, <code>c</code>, <code>d</code>: four vertices with <span class="arithmatex">\(a \le b \le c \le d\)</span> and <span class="arithmatex">\(a \neq d\)</span>.</li>
+<li><code>a</code>, <code>b</code>, <code>c</code>, <code>d</code>: vertices with <span class="arithmatex">\(a \le b \le c \le d\)</span>.</li>
+<li>Must satisfy <span class="arithmatex">\(a \neq d\)</span>.</li>
 </ul>
 <h3 id="bellmf">BellMF</h3>
 <p>Generalized bell membership function:</p>
@@ -1314,9 +1384,13 @@
 \]</div>
 <p>Parameters:</p>
 <ul>
-<li><code>a</code>: width parameter <span class="arithmatex">\(a &gt; 0\)</span> (softplus-reparameterized).</li>
-<li><code>b</code>: slope parameter <span class="arithmatex">\(b &gt; 0\)</span> (softplus-reparameterized).</li>
+<li><code>a</code>: width parameter (<span class="arithmatex">\(a &gt; 0\)</span>, softplus-reparameterized).</li>
+<li><code>b</code>: slope parameter (<span class="arithmatex">\(b &gt; 0\)</span>, softplus-reparameterized).</li>
 <li><code>center</code>: center <span class="arithmatex">\(c\)</span>.</li>
+</ul>
+<p>Notes:</p>
+<ul>
+<li>Both <code>a</code> and <code>b</code> are learned in a way that enforces positivity.</li>
 </ul>
 <h3 id="sigmoidalmf">SigmoidalMF</h3>
 <p>Sigmoidal membership function:</p>
@@ -1325,18 +1399,24 @@
 \]</div>
 <p>Parameters:</p>
 <ul>
-<li><code>a</code>: slope control (positive = left-to-right, negative = right-to-left).</li>
+<li><code>a</code>: slope parameter.</li>
 <li><code>center</code>: inflection point <span class="arithmatex">\(c\)</span>.</li>
 </ul>
 <h3 id="diffsigmoidalmf">DiffSigmoidalMF</h3>
-<p>Difference of two sigmoids leading to a localized activation interval.</p>
+<p>Difference of two sigmoid functions:</p>
+<div class="arithmatex">\[
+\mu(x) = \sigma(a_1, x-c_1) - \sigma(a_2, x-c_2)
+\]</div>
 <p>Parameters:</p>
 <ul>
 <li><code>a1</code>, <code>center1</code>: slope and center of the first sigmoid.</li>
 <li><code>a2</code>, <code>center2</code>: slope and center of the second sigmoid.</li>
 </ul>
 <h3 id="prodsigmoidalmf">ProdSigmoidalMF</h3>
-<p>Product of two sigmoids, producing a smooth window between thresholds.</p>
+<p>Product of two sigmoid functions:</p>
+<div class="arithmatex">\[
+\mu(x) = \sigma(a_1, x-c_1) \cdot \sigma(a_2, x-c_2)
+\]</div>
 <p>Parameters:</p>
 <ul>
 <li><code>a1</code>, <code>center1</code>: slope and center of the first sigmoid.</li>
@@ -1347,42 +1427,61 @@
 <p>Parameters:</p>
 <ul>
 <li><code>a</code>: start of the transition.</li>
-<li><code>b</code>: end of the transition with <span class="arithmatex">\(a &lt; b\)</span>.</li>
+<li><code>b</code>: end of the transition, with <span class="arithmatex">\(a &lt; b\)</span>.</li>
 </ul>
 <h3 id="linsshapedmf">LinSShapedMF</h3>
 <p>Linear S-shaped membership from 0 to 1.</p>
 <p>Parameters:</p>
 <ul>
 <li><code>a</code>: start of the transition.</li>
-<li><code>b</code>: end of the transition with <span class="arithmatex">\(a &lt; b\)</span>.</li>
+<li><code>b</code>: end of the transition, with <span class="arithmatex">\(a &lt; b\)</span>.</li>
 </ul>
 <h3 id="zshapedmf">ZShapedMF</h3>
-<p>Smooth Z-shaped membership from 1 to 0 using an inverted cubic smoothstep.</p>
+<p>Smooth Z-shaped membership from 1 to 0 using an inverted smoothstep.</p>
 <p>Parameters:</p>
 <ul>
 <li><code>a</code>: start of the transition.</li>
-<li><code>b</code>: end of the transition with <span class="arithmatex">\(a &lt; b\)</span>.</li>
+<li><code>b</code>: end of the transition, with <span class="arithmatex">\(a &lt; b\)</span>.</li>
 </ul>
 <h3 id="linzshapedmf">LinZShapedMF</h3>
 <p>Linear Z-shaped membership from 1 to 0.</p>
 <p>Parameters:</p>
 <ul>
 <li><code>a</code>: start of the transition.</li>
-<li><code>b</code>: end of the transition with <span class="arithmatex">\(a &lt; b\)</span>.</li>
+<li><code>b</code>: end of the transition, with <span class="arithmatex">\(a &lt; b\)</span>.</li>
 </ul>
 <h3 id="pimf">PiMF</h3>
-<p>Pi-shaped membership with smooth S/Z transitions and a flat top region.</p>
+<p>Pi-shaped membership function with smooth rising and falling edges.</p>
 <p>Parameters:</p>
 <ul>
-<li><code>a</code>, <code>b</code>, <code>c</code>, <code>d</code>: four boundary points with <span class="arithmatex">\(a &lt; b \le c &lt; d\)</span>.</li>
+<li><code>a</code>, <code>b</code>, <code>c</code>, <code>d</code>: four boundary points satisfying <span class="arithmatex">\(a &lt; b \le c &lt; d\)</span>.</li>
+</ul>
+<p>Notes:</p>
+<ul>
+<li>Combines a smooth S-shaped left edge, a flat plateau, and a smooth Z-shaped right edge.</li>
 </ul>
 <h3 id="gaussianpimf">GaussianPIMF</h3>
-<p>Gaussian membership with a positive infimum controlled by parameter <code>K</code>, which can help avoid underflow in high-dimensional softmin-based aggregation.</p>
+<p>Gaussian membership with a positive infimum controlled by <code>K</code>:</p>
+<div class="arithmatex">\[
+\mu(x)=\exp\left(-K\left(1-\exp\left(-\frac{(x-m)^2}{2\sigma^2}\right)\right)\right)
+\]</div>
 <p>Parameters:</p>
 <ul>
-<li><code>mean</code>: center <span class="arithmatex">\(c\)</span>.</li>
+<li><code>mean</code>: center <span class="arithmatex">\(m\)</span>.</li>
 <li><code>sigma</code>: spread parameter <span class="arithmatex">\(\sigma &gt; 0\)</span>.</li>
-<li><code>K</code>: positive infimum control parameter, with $   ext{infimum} = e^{-K}$.</li>
+<li><code>K</code>: positive infimum control parameter with <span class="arithmatex">\(0 &lt; K \le 745\)</span>.</li>
+<li><code>eps</code>: numeric stability constant.</li>
+</ul>
+<p>Notes:</p>
+<ul>
+<li>The membership infimum is <span class="arithmatex">\(\exp(-K) &gt; 0\)</span>.</li>
+<li>Designed to prevent numeric underflow in high-dimensional softmin-based aggregation.</li>
+</ul>
+<h2 id="implementation-details">Implementation details</h2>
+<ul>
+<li>All classes inherit from <code>MembershipFunction</code>.</li>
+<li>Several classes use <code>softplus</code> reparameterization to enforce positive parameters.</li>
+<li><code>_as_tensor</code> supports scalar or tensor inputs with the default torch dtype.</li>
 </ul>
 <h2 id="example">Example</h2>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianMF</span><span class="p">,</span> <span class="n">PiMF</span><span class="p">,</span> <span class="n">GaussianPIMF</span>
