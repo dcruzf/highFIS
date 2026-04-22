@@ -27,6 +27,8 @@ from .memberships import GaussianMF
 from .models import (
     AdaTSKClassifier,
     AdaTSKRegressor,
+    AYATSKClassifier,
+    AYATSKRegressor,
     DGALETSKClassifier,
     DGALETSKRegressor,
     DGTSKClassifier,
@@ -694,6 +696,40 @@ class TSKRegressorEstimator(_BaseRegressorEstimator):
     ) -> BaseTSK:
         """Create TSKRegressor."""
         return TSKRegressor(
+            input_mfs,
+            rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+
+class AYATSKClassifierEstimator(_BaseClassifierEstimator):
+    """Sklearn-compatible AYATSK classifier with adaptive Yager aggregation."""
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        n_classes: int,
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create AYATSKClassifier."""
+        return AYATSKClassifier(
+            input_mfs,
+            n_classes=n_classes,
+            rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+
+class AYATSKRegressorEstimator(_BaseRegressorEstimator):
+    """Sklearn-compatible AYATSK regressor with adaptive Yager aggregation."""
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create AYATSKRegressor."""
+        return AYATSKRegressor(
             input_mfs,
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),

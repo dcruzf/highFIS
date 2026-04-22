@@ -108,6 +108,10 @@ class RuleLayer(nn.Module):
             raise ValueError("input_names must not be empty")
         if len(input_names) != len(mf_per_input):
             raise ValueError("input_names and mf_per_input must have the same length")
+
+        rule_base = str(rule_base).lower()
+        if rule_base in {"fuco", "fuco-frb"}:
+            rule_base = "cartesian"
         if rule_base not in {"cartesian", "custom", "coco", "en"}:
             raise ValueError("rule_base must be 'cartesian', 'custom', 'coco', or 'en'")
 

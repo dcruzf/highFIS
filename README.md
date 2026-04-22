@@ -48,6 +48,7 @@ high-dimensional behaviors.
 - `Vanilla TSK` — the original Takagi-Sugeno-Kang model with Gaussian MFs, product antecedent aggregation, and sum-based normalization.
 - `HTSK` — high-dimensional TSK with geometric mean aggregation and log-space normalization to reduce dimensionality bias.
 - `LogTSK` — log-space defuzzification with temperature scaling for numerically stable high-dimensional aggregation.
+- `AYATSK` — adaptive Yager aggregation with sum-based consequent normalization.
 - `DombiTSK` — Dombi t-norm aggregation with first-order consequents and a learnable shape parameter.
 - `AdaTSK` — adaptive Dombi inference using Composite Gaussian MFs with a positive lower bound.
 - `FSRE-AdaTSK` — adaptive model with gated feature selection and rule extraction in the consequent.
@@ -61,6 +62,7 @@ high-dimensional behaviors.
 - `HTSKClassifier`, `HTSKRegressor`
 - `TSKClassifier`, `TSKRegressor`
 - `DombiTSKClassifier`, `DombiTSKRegressor`
+- `AYATSKClassifier`, `AYATSKRegressor`
 - `AdaTSKClassifier`, `AdaTSKRegressor`
 - `DGALETSKClassifier`, `DGALETSKRegressor`
 - `DGTSKClassifier`, `DGTSKRegressor`
@@ -73,15 +75,16 @@ high-dimensional behaviors.
 - `TSKClassifierEstimator`, `TSKRegressorEstimator`
 - `LogTSKClassifierEstimator`, `LogTSKRegressorEstimator`
 - `AdaTSKClassifierEstimator`, `AdaTSKRegressorEstimator`
+- `AYATSKClassifierEstimator`, `AYATSKRegressorEstimator`
 - `DGALETSKClassifierEstimator`, `DGALETSKRegressorEstimator`
 - `DGTSKClassifierEstimator`, `DGTSKRegressorEstimator`
 - `FSREAdaTSKClassifierEstimator`, `FSREAdaTSKRegressorEstimator`
 
 ### Building blocks
 
-- Memberships: `GaussianMF`, `TriangularMF`, `TrapezoidalMF`, `BellMF`, `SigmoidalMF`, `DiffSigmoidalMF`, `ProdSigmoidalMF`, `SShapedMF`, `LinSShapedMF`, `ZShapedMF`, `LinZShapedMF`, `PiMF`, `GaussianPIMF`
+- Memberships: `GaussianMF`, `TriangularMF`, `TrapezoidalMF`, `BellMF`, `SigmoidalMF`, `DiffSigmoidalMF`, `ProdSigmoidalMF`, `SShapedMF`, `LinSShapedMF`, `ZShapedMF`, `LinZShapedMF`, `PiMF`, `CompositeExponentialMF`, `GaussianPIMF`
 - Defuzzifiers: `SoftmaxLogDefuzzifier`, `SumBasedDefuzzifier`, `LogSumDefuzzifier`
-- T-norms: `prod`, `min`, `gmean`, `dombi`
+- T-norms: `prod`, `min`, `gmean`, `dombi`, `yager`, `yager_simple`, `ale_softmin_yager`
 - Rule base strategies: `cartesian`, `coco`, `en`, `custom`
 - Persistence: estimator `.save(path)` / `.load(path)` and versioned checkpoint validation via `highfis.persistence`
 
@@ -93,6 +96,7 @@ Key reference pages:
 
 - [TSK Vanilla](https://dcruzf.github.io/highFIS/latest/models/tsk-vanilla)
 - [LogTSK](https://dcruzf.github.io/highFIS/latest/models/logtsk)
+- [AYATSK](https://dcruzf.github.io/highFIS/latest/models/ayatsk)
 - [HTSK](https://dcruzf.github.io/highFIS/latest/models/htsk)
 - [DombiTSK](https://dcruzf.github.io/highFIS/latest/models/dombitsk)
 - [AdaTSK](https://dcruzf.github.io/highFIS/latest/models/adatsk)

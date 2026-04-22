@@ -33,7 +33,7 @@ Structural type for any callable that aggregates antecedent term activations.
 
 - The protocol defines `__call__(terms: Tensor) -> Tensor`.
 - Used for aggregating input-term memberships into rule firing strengths.
-- Built-in t-norms such as `t_norm_prod`, `t_norm_min`, and `t_norm_gmean`
+- Built-in t-norm classes such as `ProductTNorm`, `MinimumTNorm`, and `GMeanTNorm`
   conform to this protocol.
 
 ## Defuzzifier

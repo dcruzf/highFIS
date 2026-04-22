@@ -72,24 +72,69 @@ class DombiTNorm(BaseTNorm):
         return 1.0 / (1.0 + torch.pow(summed, 1.0 / self.lambda_))
 
 
-def t_norm_prod(terms: Tensor) -> Tensor:
-    """Product t-norm over antecedent terms with shape (batch, n_inputs)."""
-    return ProductTNorm()(terms, dim=1)
+class YagerTNorm(BaseTNorm):
+    """Yager T-norm strategy."""
+
+    def __init__(self, lambda_: float = 1.0, eps: float | None = None) -> None:
+        """Initialize the Yager t-norm with a lambda parameter and optional epsilon."""
+        super().__init__()
+        if lambda_ <= 0.0:
+            raise ValueError("lambda_ must be > 0")
+        self.lambda_ = float(lambda_)
+        self.eps = eps
+
+    def forward(self, terms: Tensor, dim: int = -1) -> Tensor:
+        """Compute the Yager aggregation over the specified dimension."""
+        eps = torch.finfo(terms.dtype).eps if self.eps is None else self.eps
+        clamped = terms.clamp(min=eps, max=1.0)
+        power_sum = (1.0 - clamped).pow(self.lambda_).sum(dim=dim)
+        result = 1.0 - power_sum.pow(1.0 / self.lambda_)
+        return torch.maximum(result, torch.tensor(0.0, dtype=terms.dtype, device=terms.device))
 
 
-def t_norm_min(terms: Tensor) -> Tensor:
-    """Minimum t-norm over antecedent terms with shape (batch, n_inputs)."""
-    return MinimumTNorm()(terms, dim=1)
+class YagerSimpleTNorm(BaseTNorm):
+    """Simplified Yager T-norm strategy without an extra minimum operator."""
+
+    def __init__(self, lambda_: float = 1.0, eps: float | None = None) -> None:
+        """Initialize the simplified Yager t-norm with a lambda parameter and optional epsilon."""
+        super().__init__()
+        if lambda_ <= 0.0:
+            raise ValueError("lambda_ must be > 0")
+        self.lambda_ = float(lambda_)
+        self.eps = eps
+
+    def forward(self, terms: Tensor, dim: int = -1) -> Tensor:
+        """Compute the simplified Yager aggregation over the specified dimension."""
+        eps = torch.finfo(terms.dtype).eps if self.eps is None else self.eps
+        clamped = terms.clamp(min=eps, max=1.0)
+        power_sum = (1.0 - clamped).pow(self.lambda_).sum(dim=dim)
+        return 1.0 - power_sum.pow(1.0 / self.lambda_)
 
 
-def t_norm_gmean(terms: Tensor, eps: float | None = None) -> Tensor:
-    """Geometric mean aggregation for HTSK defuzzification."""
-    return GMeanTNorm(eps=eps)(terms, dim=1)
+class ALESoftminYagerTNorm(BaseTNorm):
+    """ALE-softmin based Yager T-norm strategy."""
 
+    def __init__(self, lambda_: float = 1.0, eps: float | None = None) -> None:
+        """Initialize the ALE-softmin Yager t-norm with a lambda parameter and optional epsilon."""
+        super().__init__()
+        if lambda_ <= 0.0:
+            raise ValueError("lambda_ must be > 0")
+        self.lambda_ = float(lambda_)
+        self.eps = eps
 
-def t_norm_dombi(terms: Tensor, lambda_: float = 1.0, eps: float | None = None) -> Tensor:
-    """Dombi t-norm aggregation over antecedent terms."""
-    return DombiTNorm(lambda_=lambda_, eps=eps)(terms, dim=1)
+    @staticmethod
+    def _adaptive_softmin(values: Tensor, dim: int = -1) -> Tensor:
+        values = values.double()
+        q = -700.0 / values.data.max(dim=dim).values
+        return (values * q.unsqueeze(dim=dim)).exp().sum(dim=dim).log() / q
+
+    def forward(self, terms: Tensor, dim: int = -1) -> Tensor:
+        """Compute ALE-softmin Yager aggregation over the specified dimension."""
+        eps = torch.finfo(terms.dtype).eps if self.eps is None else self.eps
+        clamped = terms.clamp(min=eps, max=1.0)
+        y = (1.0 - clamped).pow(self.lambda_).sum(dim=dim).pow(1.0 / self.lambda_)
+        softmin = self._adaptive_softmin(torch.stack([torch.ones_like(y), y], dim=0), dim=0)
+        return 1.0 - softmin
 
 
 def resolve_t_norm(name: str) -> TNormFn:
@@ -102,19 +147,24 @@ def resolve_t_norm(name: str) -> TNormFn:
         return GMeanTNorm()
     if name == "dombi":
         return DombiTNorm()
-    raise ValueError("t_norm must be 'prod', 'min', 'gmean', or 'dombi'")
+    if name == "yager":
+        return YagerTNorm()
+    if name == "yager_simple":
+        return YagerSimpleTNorm()
+    if name in {"ale_softmin_yager", "ale-yager", "yager_ale"}:
+        return ALESoftminYagerTNorm()
+    raise ValueError("t_norm must be 'prod', 'min', 'gmean', 'dombi', 'yager', 'yager_simple', or 'ale_softmin_yager'")
 
 
 __all__: list[str] = [
+    "ALESoftminYagerTNorm",
     "BaseTNorm",
     "DombiTNorm",
     "GMeanTNorm",
     "MinimumTNorm",
     "ProductTNorm",
     "TNormFn",
+    "YagerSimpleTNorm",
+    "YagerTNorm",
     "resolve_t_norm",
-    "t_norm_dombi",
-    "t_norm_gmean",
-    "t_norm_min",
-    "t_norm_prod",
 ]

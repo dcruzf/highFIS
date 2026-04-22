@@ -439,6 +439,72 @@ class DombiTSKRegressor(BaseTSKRegressor):
         return nn.MSELoss()
 
 
+class AYATSKClassifier(BaseTSKClassifier):
+    """AYATSK classifier using adaptive Yager aggregation in the antecedent."""
+
+    def __init__(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        n_classes: int,
+        rule_base: str = "coco",
+        t_norm: str = "yager",
+        t_norm_fn: TNormFn | None = None,
+        rules: Sequence[Sequence[int]] | None = None,
+        defuzzifier: nn.Module | None = None,
+        consequent_batch_norm: bool = False,
+    ) -> None:
+        """Initialize AYATSK classifier architecture and consequent head."""
+        if n_classes < 2:
+            raise ValueError("n_classes must be >= 2")
+        self.n_classes = int(n_classes)
+        super().__init__(
+            input_mfs,
+            rule_base=rule_base,
+            t_norm=t_norm,
+            t_norm_fn=t_norm_fn,
+            rules=rules,
+            defuzzifier=defuzzifier or SumBasedDefuzzifier(),
+            consequent_batch_norm=consequent_batch_norm,
+        )
+
+    def _build_consequent_layer(self) -> nn.Module:
+        return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
+
+    def _default_criterion(self) -> nn.Module:
+        return nn.CrossEntropyLoss()
+
+
+class AYATSKRegressor(BaseTSKRegressor):
+    """AYATSK regressor using adaptive Yager aggregation in the antecedent."""
+
+    def __init__(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        rule_base: str = "coco",
+        t_norm: str = "yager",
+        t_norm_fn: TNormFn | None = None,
+        rules: Sequence[Sequence[int]] | None = None,
+        defuzzifier: nn.Module | None = None,
+        consequent_batch_norm: bool = False,
+    ) -> None:
+        """Initialize AYATSK regressor architecture."""
+        super().__init__(
+            input_mfs,
+            rule_base=rule_base,
+            t_norm=t_norm,
+            t_norm_fn=t_norm_fn,
+            rules=rules,
+            defuzzifier=defuzzifier or SumBasedDefuzzifier(),
+            consequent_batch_norm=consequent_batch_norm,
+        )
+
+    def _build_consequent_layer(self) -> nn.Module:
+        return RegressionConsequentLayer(self.n_rules, self.n_inputs)
+
+    def _default_criterion(self) -> nn.Module:
+        return nn.MSELoss()
+
+
 class AdaTSKClassifier(BaseTSKClassifier):
     """AdaTSK classifier using adaptive per-rule Dombi aggregation."""
 
