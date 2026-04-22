@@ -661,6 +661,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#compositeexponentialmf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CompositeExponentialMF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#sigmoidalmf" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1157,6 +1168,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#compositeexponentialmf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CompositeExponentialMF
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#sigmoidalmf" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1392,6 +1414,27 @@ models in highFIS.</p>
 <ul>
 <li>Both <code>a</code> and <code>b</code> are learned in a way that enforces positivity.</li>
 </ul>
+<h3 id="compositeexponentialmf">CompositeExponentialMF</h3>
+<p>Composite exponential membership function used in AYATSK:</p>
+<div class="arithmatex">\[
+\mu(x) = k^{-1 + \exp\left(-\frac{(x - c)^2}{2\sigma^2}\right)}
+\]</div>
+<p>Parameters:</p>
+<ul>
+<li><code>center</code>: center <span class="arithmatex">\(c\)</span>.</li>
+<li><code>sigma</code>: scale parameter (<span class="arithmatex">\(\sigma &gt; 0\)</span>, softplus-reparameterized).</li>
+<li><code>k</code>: lower-bound control parameter (<span class="arithmatex">\(k &gt; 1\)</span>).</li>
+<li><code>eps</code>: numeric stability constant.</li>
+</ul>
+<p>Notes:</p>
+<ul>
+<li><code>sigma</code> is learned through <code>softplus</code> to enforce positivity.</li>
+<li>The membership infimum is <span class="arithmatex">\(k^{-1}\)</span>.</li>
+<li>Produces membership values that peak at 1 at the center and decay toward <span class="arithmatex">\(k^{-1}\)</span>.</li>
+<li>Based on the adaptive exponential membership function described by G. Xue, Y. Yang, and J. Wang in
+  "Adaptive Yager T-Norm-Based Takagi–Sugeno–Kang Fuzzy Systems," IEEE Trans. Syst., Man, Cybern.: Syst.,
+  vol. 55, no. 12, pp. 9802-9815, Dec. 2025.</li>
+</ul>
 <h3 id="sigmoidalmf">SigmoidalMF</h3>
 <p>Sigmoidal membership function:</p>
 <div class="arithmatex">\[
@@ -1484,13 +1527,14 @@ models in highFIS.</p>
 <li><code>_as_tensor</code> supports scalar or tensor inputs with the default torch dtype.</li>
 </ul>
 <h2 id="example">Example</h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianMF</span><span class="p">,</span> <span class="n">PiMF</span><span class="p">,</span> <span class="n">GaussianPIMF</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">CompositeExponentialMF</span><span class="p">,</span> <span class="n">GaussianMF</span><span class="p">,</span> <span class="n">PiMF</span><span class="p">,</span> <span class="n">GaussianPIMF</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">gauss</span> <span class="o">=</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">pi_mf</span> <span class="o">=</span> <span class="n">PiMF</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="mf">1.5</span><span class="p">)</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">gauss_pimf</span> <span class="o">=</span> <span class="n">GaussianPIMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">K</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">values</span> <span class="o">=</span> <span class="n">gauss</span><span class="p">(</span><span class="n">x_column</span><span class="p">)</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">composite_exp_mf</span> <span class="o">=</span> <span class="n">CompositeExponentialMF</span><span class="p">(</span><span class="n">center</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">gauss_pimf</span> <span class="o">=</span> <span class="n">GaussianPIMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">K</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="n">values</span> <span class="o">=</span> <span class="n">gauss</span><span class="p">(</span><span class="n">x_column</span><span class="p">)</span>
 </span></code></pre></div>
 
 
