@@ -11,6 +11,8 @@ from sklearn.pipeline import Pipeline
 from highfis.estimators import (
     AdaTSKClassifierEstimator,
     AdaTSKRegressorEstimator,
+    AYATSKClassifierEstimator,
+    AYATSKRegressorEstimator,
     DGALETSKClassifierEstimator,
     DGALETSKRegressorEstimator,
     DGTSKClassifierEstimator,
@@ -82,6 +84,68 @@ def test_estimator_fit_predict_proba_predict_score() -> None:
     assert pred.shape == (x.shape[0],)
     assert np.allclose(proba.sum(axis=1), 1.0, atol=1e-6)
     assert 0.0 <= score <= 1.0
+
+
+def test_ayatsk_classifier_estimator_fit_predict_score() -> None:
+    x, y = _make_dataset(80)
+    est = AYATSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+
+    est.fit(x, y)
+    proba = est.predict_proba(x)
+    pred = est.predict(x)
+    score = est.score(x, y)
+
+    assert proba.shape == (x.shape[0], 2)
+    assert pred.shape == (x.shape[0],)
+    assert np.allclose(proba.sum(axis=1), 1.0, atol=1e-6)
+    assert 0.0 <= score <= 1.0
+
+
+def test_ayatsk_classifier_estimator_fit_predict_score_short() -> None:
+    x, y = _make_dataset(80)
+    est = AYATSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=3,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+
+    est.fit(x, y)
+    proba = est.predict_proba(x)
+    pred = est.predict(x)
+    score = est.score(x, y)
+
+    assert proba.shape == (x.shape[0], 2)
+    assert pred.shape == (x.shape[0],)
+    assert np.allclose(proba.sum(axis=1), 1.0, atol=1e-6)
+    assert 0.0 <= score <= 1.0
+
+
+def test_ayatsk_regressor_estimator_fit_predict() -> None:
+    x = np.random.default_rng(123).normal(size=(40, 3)).astype(np.float32)
+    y = x[:, 0] + 0.5 * x[:, 1]
+    est = AYATSKRegressorEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=3,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+
+    est.fit(x, y)
+    pred = est.predict(x)
+
+    assert pred.shape == (x.shape[0],)
 
 
 def test_dgaletsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
