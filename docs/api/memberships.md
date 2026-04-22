@@ -107,6 +107,30 @@ Notes:
 
 - Both `a` and `b` are learned in a way that enforces positivity.
 
+### CompositeExponentialMF
+
+Composite exponential membership function used in AYATSK:
+
+$$
+\mu(x) = k^{-1 + \exp\left(-\frac{(x - c)^2}{2\sigma^2}\right)}
+$$
+
+Parameters:
+
+- `center`: center $c$.
+- `sigma`: scale parameter ($\sigma > 0$, softplus-reparameterized).
+- `k`: lower-bound control parameter ($k > 1$).
+- `eps`: numeric stability constant.
+
+Notes:
+
+- `sigma` is learned through `softplus` to enforce positivity.
+- The membership infimum is $k^{-1}$.
+- Produces membership values that peak at 1 at the center and decay toward $k^{-1}$.
+- Based on the adaptive exponential membership function described by G. Xue, Y. Yang, and J. Wang in
+  "Adaptive Yager T-Norm-Based Takagi–Sugeno–Kang Fuzzy Systems," IEEE Trans. Syst., Man, Cybern.: Syst.,
+  vol. 55, no. 12, pp. 9802-9815, Dec. 2025.
+
 ### SigmoidalMF
 
 Sigmoidal membership function:
@@ -223,10 +247,11 @@ Notes:
 ## Example
 
 ```python
-from highfis import GaussianMF, PiMF, GaussianPIMF
+from highfis import CompositeExponentialMF, GaussianMF, PiMF, GaussianPIMF
 
 gauss = GaussianMF(mean=0.0, sigma=1.0)
 pi_mf = PiMF(a=0.0, b=0.5, c=1.0, d=1.5)
+composite_exp_mf = CompositeExponentialMF(center=0.0, sigma=1.0)
 gauss_pimf = GaussianPIMF(mean=0.0, sigma=1.0, K=2.0)
 
 values = gauss(x_column)

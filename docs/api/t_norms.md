@@ -94,23 +94,79 @@ summed = powered.sum(dim=dim)
 return 1.0 / (1.0 + torch.pow(summed, 1.0 / lambda_))
 ```
 
-## Convenience functions
+## YagerTNorm
 
-### `t_norm_prod(terms)`
+Yager t-norm module.
 
-Product t-norm over antecedent terms with shape `(batch, n_inputs)`.
+### Constructor parameters
 
-### `t_norm_min(terms)`
+- `lambda_`: positive shape parameter (`lambda_ > 0`).
+- `eps`: optional numeric stability floor for input clamping.
 
-Minimum t-norm over antecedent terms with shape `(batch, n_inputs)`.
+### Behavior
 
-### `t_norm_gmean(terms, eps=None)`
+- Implements the Yager aggregation strategy.
+- Clamps inputs to `(eps, 1.0]` before computing the Yager formula.
+- Ensures outputs stay in `[0, 1]`.
 
-Geometric mean aggregation for HTSK-like behavior.
+### `forward(terms, dim=-1)`
 
-### `t_norm_dombi(terms, lambda_=1.0, eps=None)`
+Computes:
 
-Dombi aggregation over antecedent terms.
+```python
+clamped = terms.clamp(min=eps, max=1.0)
+power_sum = (1.0 - clamped).pow(lambda_).sum(dim=dim)
+return torch.maximum(1.0 - power_sum.pow(1.0 / lambda_), torch.tensor(0.0))
+```
+
+## YagerSimpleTNorm
+
+Simplified Yager t-norm module without the extra upper clipping.
+
+### Constructor parameters
+
+- `lambda_`: positive shape parameter (`lambda_ > 0`).
+- `eps`: optional numeric stability floor for input clamping.
+
+### Behavior
+
+- Computes the simplified Yager aggregation.
+- May produce values below 0 when the power sum exceeds 1.
+
+### `forward(terms, dim=-1)`
+
+Computes:
+
+```python
+clamped = terms.clamp(min=eps, max=1.0)
+power_sum = (1.0 - clamped).pow(lambda_).sum(dim=dim)
+return 1.0 - power_sum.pow(1.0 / lambda_)
+```
+
+## ALESoftminYagerTNorm
+
+ALE-softmin based Yager t-norm module.
+
+### Constructor parameters
+
+- `lambda_`: positive shape parameter (`lambda_ > 0`).
+- `eps`: optional numeric stability floor for input clamping.
+
+### Behavior
+
+- Uses an adaptive softmin approximation in place of the minimum operator.
+- Computes a smooth version of the Yager t-norm.
+
+### `forward(terms, dim=-1)`
+
+Computes:
+
+```python
+clamped = terms.clamp(min=eps, max=1.0)
+y = (1.0 - clamped).pow(lambda_).sum(dim=dim).pow(1.0 / lambda_)
+softmin = adaptive_softmin(torch.stack([ones_like(y), y], dim=0), dim=0)
+return 1.0 - softmin
+```
 
 ## resolve_t_norm
 
@@ -124,6 +180,11 @@ Supported names:
 - `"min"` → `MinimumTNorm()`
 - `"gmean"` → `GMeanTNorm()`
 - `"dombi"` → `DombiTNorm()`
+- `"yager"` → `YagerTNorm()`
+- `"yager_simple"` → `YagerSimpleTNorm()`
+- `"ale_softmin_yager"` → `ALESoftminYagerTNorm()`
+- `"ale-yager"` → `ALESoftminYagerTNorm()`
+- `"yager_ale"` → `ALESoftminYagerTNorm()`
 
 Raises `ValueError` if the name is not one of the supported strings.
 
@@ -134,20 +195,17 @@ Raises `ValueError` if the name is not one of the supported strings.
 - `MinimumTNorm`
 - `GMeanTNorm`
 - `DombiTNorm`
+- `YagerTNorm`
+- `YagerSimpleTNorm`
+- `ALESoftminYagerTNorm`
 - `TNormFn`
 - `resolve_t_norm`
-- `t_norm_prod`
-- `t_norm_min`
-- `t_norm_gmean`
-- `t_norm_dombi`
 
 ## Example
 
 ```python
-from highfis.t_norms import resolve_t_norm, t_norm_prod
+from highfis.t_norms import resolve_t_norm
 
 prod = resolve_t_norm("prod")
 result = prod(terms, dim=1)
-
-result2 = t_norm_prod(terms)
 ```

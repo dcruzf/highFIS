@@ -218,6 +218,31 @@ def test_rule_layer_custom_t_norm_fn_overrides_default() -> None:
         t_norm_fn=lambda t: t.prod(dim=-1),
     )
     m = MembershipLayer(_build_input_mfs())
+    x = torch.randn(3, 2)
+    w = layer(m(x))
+
+    mu = m(x)
+    expected = []
+    for rule in layer.rules:
+        terms = [mu[name][:, idx] for name, idx in zip(layer.input_names, rule, strict=False)]
+        expected.append(torch.stack(terms, dim=1).prod(dim=1))
+    expected_tensor = torch.stack(expected, dim=1)
+
+    assert w.shape == expected_tensor.shape
+    assert torch.allclose(w, expected_tensor)
+
+
+def test_rule_layer_supports_fuco_alias() -> None:
+    layer = RuleLayer(["x1", "x2"], [2, 2], rule_base="fuco")
+    x = torch.randn(3, 2)
+    m = MembershipLayer(_build_input_mfs())
+    w = layer(m(x))
+
+    cartesian = RuleLayer(["x1", "x2"], [2, 2], rule_base="cartesian")
+    expected = cartesian(m(x))
+
+    assert w.shape == (3, 4)
+    assert torch.allclose(w, expected)
     w = layer(m(torch.randn(4, 2)))
     assert w.shape == (4, layer.n_rules)
 

@@ -33,6 +33,7 @@ Output:
 Supported rule-base strategies:
 
 - `"cartesian"`: full combinatorial rule base.
+- `"fuco"`: alias for `"cartesian"` (full combination fuzzy rule base).
 - `"coco"`: consistent same-index rule base for identical MF counts.
 - `"en"`: enhanced fuzzy rule base (En-FRB).
 - `"custom"`: user-specified rule index tuples.
