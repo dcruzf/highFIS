@@ -14,6 +14,7 @@ still be supplied via the `defuzzifier` constructor parameter.
 | Variant | Classifier | Regressor | T-norm | Defuzzifier |
 |---------|-----------|-----------|--------|-------------|
 | **HTSK** | `HTSKClassifier` | `HTSKRegressor` | `gmean` | `SoftmaxLogDefuzzifier` |
+| **AYATSK** | `AYATSKClassifier` | `AYATSKRegressor` | `yager` | `SumBasedDefuzzifier` |
 | **TSK (vanilla)** | `TSKClassifier` | `TSKRegressor` | `prod` | `SumBasedDefuzzifier` |
 | **DombiTSK** | `DombiTSKClassifier` | `DombiTSKRegressor` | `dombi` | `SumBasedDefuzzifier` |
 | **AdaTSK** | `AdaTSKClassifier` | `AdaTSKRegressor` | adaptive `dombi` | `SumBasedDefuzzifier` |
@@ -26,6 +27,7 @@ For the mathematical details and scientific references, see:
 
 - [TSK Vanilla](../models/tsk-vanilla.md)
 - [HTSK](../models/htsk.md)
+- [AYATSK](../models/ayatsk.md)
 - [LogTSK](../models/logtsk.md)
 - [DombiTSK](../models/dombitsk.md)
 - [AdaTSK](../models/adatsk.md)

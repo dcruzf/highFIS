@@ -48,6 +48,8 @@ high-dimensional behaviors.
   normalization.
 - [`HTSK`](models/htsk.md) — high-dimensional TSK with geometric mean
   aggregation and log-space normalization to reduce dimensionality bias.
+- [`AYATSK`](models/ayatsk.md) — adaptive Yager aggregation with sum-based
+  consequent normalization.
 - [`LogTSK`](models/logtsk.md) — log-space defuzzification with temperature
   scaling for numerically stable high-dimensional aggregation.
 - [`DombiTSK`](models/dombitsk.md) — Dombi t-norm aggregation with first-order
