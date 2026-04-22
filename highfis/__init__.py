@@ -62,14 +62,14 @@ from .models import (
 from .version import __version__
 
 __all__: list[str] = [
-    "AdaTSKClassifier",
-    "AdaTSKClassifierEstimator",
-    "AdaTSKRegressor",
-    "AdaTSKRegressorEstimator",
     "AYATSKClassifier",
     "AYATSKClassifierEstimator",
     "AYATSKRegressor",
     "AYATSKRegressorEstimator",
+    "AdaTSKClassifier",
+    "AdaTSKClassifierEstimator",
+    "AdaTSKRegressor",
+    "AdaTSKRegressorEstimator",
     "BaseTSK",
     "BellMF",
     "CompositeExponentialMF",
