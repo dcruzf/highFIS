@@ -1,6 +1,7 @@
 """highFIS public API."""
 
 from .base import BaseTSK
+from .defuzzifiers import InvLogDefuzzifier, LogSumDefuzzifier, SoftmaxLogDefuzzifier, SumBasedDefuzzifier
 from .estimators import (
     AdaTSKClassifierEstimator,
     AdaTSKRegressorEstimator,
@@ -98,8 +99,10 @@ __all__: list[str] = [
     "HTSKRegressor",
     "HTSKRegressorEstimator",
     "InputConfig",
+    "InvLogDefuzzifier",
     "LinSShapedMF",
     "LinZShapedMF",
+    "LogSumDefuzzifier",
     "LogTSKClassifier",
     "LogTSKClassifierEstimator",
     "LogTSKRegressor",

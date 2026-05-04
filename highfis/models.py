@@ -67,7 +67,7 @@ explicit and the defuzzification strategy is pluggable:
 * **TSK**:  ``t_norm="prod"`` + ``SumBasedDefuzzifier`` = ``w_r / Σw``
 * **HTSK**: ``t_norm="gmean"`` + ``SoftmaxLogDefuzzifier``
             = ``softmax(log(w^{1/D}))``
-* **LogTSK**: ``t_norm="prod"`` + ``LogSumDefuzzifier(temperature)``
+* **LogTSK**: ``t_norm="prod"`` + ``InvLogDefuzzifier``
               = ``softmax(log(w) / τ)``  (Cui et al., IEEE TFS 2021 §III-B)
 """
 
@@ -81,7 +81,7 @@ import torch
 from torch import Tensor, nn
 
 from .base import BaseTSK
-from .defuzzifiers import LogSumDefuzzifier, SoftmaxLogDefuzzifier, SumBasedDefuzzifier
+from .defuzzifiers import InvLogDefuzzifier, SoftmaxLogDefuzzifier, SumBasedDefuzzifier
 from .layers import (
     AdaptiveDombiRuleLayer,
     AdaSoftminRuleLayer,
@@ -2075,24 +2075,25 @@ class DGTSKRegressor(BaseTSKRegressor):
 
 
 class LogTSKClassifier(BaseTSKClassifier):
-    r"""LogTSK classifier with log-space defuzzification.
+    r"""LogTSK classifier with scale-invariant log-space defuzzification.
 
-    Normalization operates entirely in log-space to avoid underflow in
-    high-dimensional settings:
+    Firing strengths are normalized using the inverse-log formula from
+    Du et al. (2020), which is immune to softmax saturation in
+    high-dimensional input spaces:
 
     .. math::
-        \log \bar{f}_r = \frac{\log w_r}{\tau}
-        - \log\!\left(\sum_{i=1}^{R}
-          \exp\!\left(\frac{\log w_i}{\tau}\right)\right)
+        \bar{f}_r = \frac{1/|Z_r|}{\sum_{i=1}^{R} 1/|Z_i|}
 
-    where :math:`\tau` is a temperature parameter (default 1).
+    where :math:`Z_r = \log f_r = \sum_{d=1}^{D} \log \mu_{r,d} \leq 0`.
+    Because the normalized weights depend only on the *relative magnitudes*
+    of :math:`Z_r`, the output is scale-invariant in log-space.
 
     References:
     ----------
     Cui, Y., Wu, D. & Xu, Y. (2021). "Optimize TSK Fuzzy Systems for
     Regression Problems: Mini-Batch Gradient Descent With Regularization,
     DropRule, and AdaBound (MBGD-RDA)." *IEEE Trans. Fuzzy Syst.*
-    29(5):1003-1015.
+    29(5):1003-1015. §III-A.
     """
 
     def __init__(
@@ -2105,7 +2106,6 @@ class LogTSKClassifier(BaseTSKClassifier):
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
-        temperature: float = 1.0,
     ) -> None:
         """Initialise the LogTSK classifier.
 
@@ -2118,10 +2118,8 @@ class LogTSKClassifier(BaseTSKClassifier):
             t_norm_fn: Optional custom t-norm callable.
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to
-                :class:`~highfis.defuzzifiers.LogSumDefuzzifier`.
+                :class:`~highfis.defuzzifiers.InvLogDefuzzifier`.
             consequent_batch_norm: Batch normalisation on consequent inputs.
-            temperature: Softmax temperature ``τ > 0`` for the log-sum
-                defuzzifier.  ``τ = 1`` (default) gives standard log-softmax.
 
         Raises:
             ValueError: If ``n_classes < 2``.
@@ -2135,7 +2133,7 @@ class LogTSKClassifier(BaseTSKClassifier):
             t_norm=t_norm,
             t_norm_fn=t_norm_fn,
             rules=rules,
-            defuzzifier=defuzzifier or LogSumDefuzzifier(temperature=temperature),
+            defuzzifier=defuzzifier or InvLogDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
         )
 
@@ -2149,24 +2147,25 @@ class LogTSKClassifier(BaseTSKClassifier):
 
 
 class LogTSKRegressor(BaseTSKRegressor):
-    r"""LogTSK regressor with log-space defuzzification.
+    r"""LogTSK regressor with scale-invariant log-space defuzzification.
 
-    Normalization operates entirely in log-space to avoid underflow in
-    high-dimensional settings:
+    Firing strengths are normalized using the inverse-log formula from
+    Du et al. (2020), which is immune to softmax saturation in
+    high-dimensional input spaces:
 
     .. math::
-        \log \bar{f}_r = \frac{\log w_r}{\tau}
-        - \log\!\left(\sum_{i=1}^{R}
-          \exp\!\left(\frac{\log w_i}{\tau}\right)\right)
+        \bar{f}_r = \frac{1/|Z_r|}{\sum_{i=1}^{R} 1/|Z_i|}
 
-    where :math:`\tau` is a temperature parameter (default 1).
+    where :math:`Z_r = \log f_r = \sum_{d=1}^{D} \log \mu_{r,d} \leq 0`.
+    Because the normalized weights depend only on the *relative magnitudes*
+    of :math:`Z_r`, the output is scale-invariant in log-space.
 
     References:
     ----------
     Cui, Y., Wu, D. & Xu, Y. (2021). "Optimize TSK Fuzzy Systems for
     Regression Problems: Mini-Batch Gradient Descent With Regularization,
     DropRule, and AdaBound (MBGD-RDA)." *IEEE Trans. Fuzzy Syst.*
-    29(5):1003-1015.
+    29(5):1003-1015. §III-A.
     """
 
     def __init__(
@@ -2178,7 +2177,6 @@ class LogTSKRegressor(BaseTSKRegressor):
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
-        temperature: float = 1.0,
     ) -> None:
         """Initialise the LogTSK regressor.
 
@@ -2190,10 +2188,8 @@ class LogTSKRegressor(BaseTSKRegressor):
             t_norm_fn: Optional custom t-norm callable.
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to
-                :class:`~highfis.defuzzifiers.LogSumDefuzzifier`.
+                :class:`~highfis.defuzzifiers.InvLogDefuzzifier`.
             consequent_batch_norm: Batch normalisation on consequent inputs.
-            temperature: Softmax temperature ``τ > 0``.  ``τ = 1`` (default)
-                gives standard log-softmax.
         """
         super().__init__(
             input_mfs,
@@ -2201,7 +2197,7 @@ class LogTSKRegressor(BaseTSKRegressor):
             t_norm=t_norm,
             t_norm_fn=t_norm_fn,
             rules=rules,
-            defuzzifier=defuzzifier or LogSumDefuzzifier(temperature=temperature),
+            defuzzifier=defuzzifier or InvLogDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
         )
 
