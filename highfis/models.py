@@ -1,5 +1,10 @@
 """Concrete TSK model variants.
 
+Each class in this module is a :class:`~highfis.base.BaseTSK` subclass that
+bundles a specific antecedent strategy (t-norm), defuzzification head, and
+consequent architecture.  Users typically access these through the sklearn
+estimator wrappers in :mod:`highfis.estimators`.
+
 Model family overview
 ---------------------
 
@@ -12,20 +17,40 @@ Model family overview
      - Reference
    * - **HTSK**
      - ``gmean``
-     - ``SoftmaxLogDefuzzifier``
+     - :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`
      - Cui, Wu & Xu (IJCNN 2021)
    * - **TSK (vanilla)**
      - ``prod``
-     - ``SumBasedDefuzzifier``
+     - :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`
      - Takagi & Sugeno (IEEE SMC 1985)
-   * - **DombiTSK**
-     - ``dombi``
-     - ``SumBasedDefuzzifier``
-     - Dombi (1982)
    * - **LogTSK**
      - ``prod``
-     - ``LogSumDefuzzifier``
+     - :class:`~highfis.defuzzifiers.LogSumDefuzzifier`
      - Cui, Wu & Xu (IEEE TFS 2021)
+   * - **DombiTSK**
+     - ``dombi``
+     - :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`
+     - Dombi (1982)
+   * - **AYATSK**
+     - ``yager``
+     - :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`
+     - Xue et al. (IEEE TSMC 2025)
+   * - **AdaTSK**
+     - adaptive Dombi (per-rule λ)
+     - :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`
+     - Xue et al. (IEEE TFS 2025)
+   * - **FSRE-AdaTSK**
+     - adaptive softmin
+     - :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`
+     - Xue et al. (IEEE TFS 2023)
+   * - **DG-ALETSK**
+     - ALE-softmin
+     - :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`
+     - Xue et al. (IEEE TFUZZ 2023)
+   * - **DG-TSK**
+     - product + M-gate
+     - :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`
+     - Xue et al. (Fuzzy Sets Syst. 2023)
 
 Scientific correspondence
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -178,8 +203,15 @@ class BaseTSKRegressor(BaseTSK):
 class HTSKClassifier(BaseTSKClassifier):
     """TSK classifier with HTSK defuzzification for high-dimensional data.
 
-    Uses the geometric-mean t-norm (``gmean``) and ``SoftmaxLogDefuzzifier``
-    by default, following Cui, Wu & Xu (IJCNN 2021).
+    Replaces the standard softmax-based rule normalisation with a
+    dimensionality-normalised variant (geometric-mean t-norm +
+    :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`) that prevents
+    softmax saturation as the number of inputs grows.
+
+    Reference:
+        Cui, Y., Wu, D., & Xu, Y. (2021). Curse of dimensionality for TSK
+        fuzzy neural networks: Explanation and solutions. In *Proc. IJCNN*,
+        pp. 1-8. https://doi.org/10.1109/IJCNN52387.2021.9534265
     """
 
     def __init__(
@@ -193,7 +225,29 @@ class HTSKClassifier(BaseTSKClassifier):
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
     ) -> None:
-        """Initialize HTSK classifier architecture and consequent head."""
+        """Initialise the HTSK classifier.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+            n_classes: Number of output classes (must be ≥ 2).
+            rule_base: Rule-base construction strategy.  ``"cartesian"``
+                builds the full Cartesian product; ``"coco"`` uses a
+                one-cluster-per-rule scheme.
+            t_norm: Antecedent aggregation operator name (default
+                ``"gmean"`` for HTSK).
+            t_norm_fn: Optional custom t-norm callable; overrides
+                ``t_norm`` when provided.
+            rules: Explicit rule antecedent indices.  If ``None``, rules
+                are inferred from ``rule_base``.
+            defuzzifier: Custom defuzzifier module.  Defaults to
+                :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`.
+            consequent_batch_norm: Apply batch normalisation to the
+                consequent layer inputs.
+
+        Raises:
+            ValueError: If ``n_classes < 2``.
+        """
         if n_classes < 2:
             raise ValueError("n_classes must be >= 2")
         self.n_classes = int(n_classes)
@@ -219,8 +273,12 @@ class HTSKClassifier(BaseTSKClassifier):
 class HTSKRegressor(BaseTSKRegressor):
     """TSK regressor with HTSK defuzzification for high-dimensional data.
 
-    Uses the geometric-mean t-norm (``gmean``) and ``SoftmaxLogDefuzzifier``
-    by default, following Cui, Wu & Xu (IJCNN 2021).
+    See :class:`HTSKClassifier` for a description of the HTSK mechanism.
+
+    Reference:
+        Cui, Y., Wu, D., & Xu, Y. (2021). Curse of dimensionality for TSK
+        fuzzy neural networks: Explanation and solutions. In *Proc. IJCNN*,
+        pp. 1-8. https://doi.org/10.1109/IJCNN52387.2021.9534265
     """
 
     def __init__(
@@ -233,7 +291,20 @@ class HTSKRegressor(BaseTSKRegressor):
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
     ) -> None:
-        """Initialize HTSK regressor architecture and consequent head."""
+        """Initialise the HTSK regressor.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+            rule_base: Rule-base construction strategy (``"cartesian"`` or
+                ``"coco"``).
+            t_norm: Antecedent aggregation operator (default ``"gmean"``).
+            t_norm_fn: Optional custom t-norm callable.
+            rules: Explicit rule antecedent indices.
+            defuzzifier: Custom defuzzifier.  Defaults to
+                :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+        """
         super().__init__(
             input_mfs,
             rule_base=rule_base,
@@ -288,7 +359,23 @@ class TSKClassifier(BaseTSKClassifier):
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
     ) -> None:
-        """Initialize vanilla TSK classifier."""
+        """Initialise the vanilla TSK classifier.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+            n_classes: Number of output classes (must be ≥ 2).
+            rule_base: ``"cartesian"`` or ``"coco"`` rule-base strategy.
+            t_norm: Antecedent aggregation operator (default ``"prod"``).
+            t_norm_fn: Optional custom t-norm callable.
+            rules: Explicit rule antecedent indices.
+            defuzzifier: Custom defuzzifier.  Defaults to
+                :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+
+        Raises:
+            ValueError: If ``n_classes < 2``.
+        """
         if n_classes < 2:
             raise ValueError("n_classes must be >= 2")
         self.n_classes = int(n_classes)
@@ -337,7 +424,19 @@ class TSKRegressor(BaseTSKRegressor):
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
     ) -> None:
-        """Initialize vanilla TSK regressor."""
+        """Initialise the vanilla TSK regressor.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+            rule_base: ``"cartesian"`` or ``"coco"`` rule-base strategy.
+            t_norm: Antecedent aggregation operator (default ``"prod"``).
+            t_norm_fn: Optional custom t-norm callable.
+            rules: Explicit rule antecedent indices.
+            defuzzifier: Custom defuzzifier.  Defaults to
+                :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+        """
         super().__init__(
             input_mfs,
             rule_base=rule_base,
@@ -358,7 +457,24 @@ class TSKRegressor(BaseTSKRegressor):
 
 
 class DombiTSKClassifier(BaseTSKClassifier):
-    """Dombi TSK classifier using Dombi aggregation in the antecedent."""
+    r"""TSK classifier with a fixed Dombi T-norm in the antecedent.
+
+    The Dombi T-norm with parameter :math:`\lambda > 0` is defined as:
+
+    .. math::
+        T_\lambda(a, b) =
+        \frac{1}{1 + \left[\left(\frac{1-a}{a}\right)^\lambda
+        + \left(\frac{1-b}{b}\right)^\lambda\right]^{1/\lambda}}
+
+    For :math:`\lambda = 1` it recovers the algebraic product T-norm.
+    Unlike :class:`AdaTSKClassifier`, the parameter is shared across all
+    rules and is *not* learned during training.
+
+    Reference:
+        Dombi, J. (1982). A general class of fuzzy operators, the De Morgan
+        class of fuzzy operators and fuzziness measures induced by fuzzy
+        operators. *Fuzzy Sets and Systems*, 8(2):149-163.
+    """
 
     def __init__(
         self,
@@ -372,7 +488,26 @@ class DombiTSKClassifier(BaseTSKClassifier):
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
     ) -> None:
-        """Initialize Dombi TSK classifier."""
+        """Initialise the Dombi TSK classifier.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+            n_classes: Number of output classes (must be ≥ 2).
+            rule_base: ``"cartesian"`` or ``"coco"`` rule-base strategy.
+            t_norm: T-norm identifier (default ``"dombi"``).
+            lambda_: Dombi parameter ``λ > 0``.  ``λ = 1`` gives the
+                algebraic product.
+            t_norm_fn: Optional custom t-norm callable; overrides
+                ``lambda_`` and ``t_norm`` when provided.
+            rules: Explicit rule antecedent indices.
+            defuzzifier: Custom defuzzifier.  Defaults to
+                :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+
+        Raises:
+            ValueError: If ``n_classes < 2`` or ``lambda_ <= 0``.
+        """
         if n_classes < 2:
             raise ValueError("n_classes must be >= 2")
         if lambda_ <= 0.0:
@@ -401,7 +536,10 @@ class DombiTSKClassifier(BaseTSKClassifier):
 
 
 class DombiTSKRegressor(BaseTSKRegressor):
-    """Dombi TSK regressor using Dombi aggregation in the antecedent."""
+    """TSK regressor with a fixed Dombi T-norm in the antecedent.
+
+    See :class:`DombiTSKClassifier` for a description of the Dombi T-norm.
+    """
 
     def __init__(
         self,
@@ -414,7 +552,23 @@ class DombiTSKRegressor(BaseTSKRegressor):
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
     ) -> None:
-        """Initialize Dombi TSK regressor."""
+        """Initialise the Dombi TSK regressor.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+            rule_base: ``"cartesian"`` or ``"coco"`` rule-base strategy.
+            t_norm: T-norm identifier (default ``"dombi"``).
+            lambda_: Dombi parameter ``λ > 0``.
+            t_norm_fn: Optional custom t-norm callable.
+            rules: Explicit rule antecedent indices.
+            defuzzifier: Custom defuzzifier.  Defaults to
+                :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+
+        Raises:
+            ValueError: If ``lambda_ <= 0``.
+        """
         if lambda_ <= 0.0:
             raise ValueError("lambda_ must be > 0")
 
@@ -440,7 +594,22 @@ class DombiTSKRegressor(BaseTSKRegressor):
 
 
 class AYATSKClassifier(BaseTSKClassifier):
-    """AYATSK classifier using adaptive Yager aggregation in the antecedent."""
+    r"""TSK classifier with an adaptive Yager T-norm in the antecedent.
+
+    The Yager T-norm with learnable per-rule exponent :math:`p_r > 0` is:
+
+    .. math::
+        T_{p_r}(a_1, \ldots, a_D) =
+        \max\!\left(0,\; 1 - \left[\sum_{d=1}^{D}(1-a_d)^{p_r}\right]^{1/p_r}\right)
+
+    Each rule maintains its own exponent, which is jointly optimised with
+    the consequent parameters via back-propagation.
+
+    Reference:
+        Xue, Y., et al. (2025). Adaptive Yager T-norm for TSK fuzzy
+        systems. *IEEE Trans. Syst., Man, Cybern.: Syst.*
+        https://doi.org/10.1109/TSMC.2025.XXXXXXX
+    """
 
     def __init__(
         self,
@@ -453,7 +622,23 @@ class AYATSKClassifier(BaseTSKClassifier):
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
     ) -> None:
-        """Initialize AYATSK classifier architecture and consequent head."""
+        """Initialise the AYATSK classifier.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+            n_classes: Number of output classes (must be ≥ 2).
+            rule_base: ``"coco"`` (default) or ``"cartesian"``.
+            t_norm: T-norm identifier (default ``"yager"``).
+            t_norm_fn: Optional custom t-norm callable.
+            rules: Explicit rule antecedent indices.
+            defuzzifier: Custom defuzzifier.  Defaults to
+                :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+
+        Raises:
+            ValueError: If ``n_classes < 2``.
+        """
         if n_classes < 2:
             raise ValueError("n_classes must be >= 2")
         self.n_classes = int(n_classes)
@@ -475,7 +660,10 @@ class AYATSKClassifier(BaseTSKClassifier):
 
 
 class AYATSKRegressor(BaseTSKRegressor):
-    """AYATSK regressor using adaptive Yager aggregation in the antecedent."""
+    """TSK regressor with an adaptive Yager T-norm in the antecedent.
+
+    See :class:`AYATSKClassifier` for a description of the AYATSK model.
+    """
 
     def __init__(
         self,
@@ -487,7 +675,19 @@ class AYATSKRegressor(BaseTSKRegressor):
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
     ) -> None:
-        """Initialize AYATSK regressor architecture."""
+        """Initialise the AYATSK regressor.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+            rule_base: ``"coco"`` (default) or ``"cartesian"``.
+            t_norm: T-norm identifier (default ``"yager"``).
+            t_norm_fn: Optional custom t-norm callable.
+            rules: Explicit rule antecedent indices.
+            defuzzifier: Custom defuzzifier.  Defaults to
+                :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+        """
         super().__init__(
             input_mfs,
             rule_base=rule_base,
@@ -506,7 +706,18 @@ class AYATSKRegressor(BaseTSKRegressor):
 
 
 class AdaTSKClassifier(BaseTSKClassifier):
-    """AdaTSK classifier using adaptive per-rule Dombi aggregation."""
+    r"""TSK classifier with per-rule adaptive Dombi T-norm (AdaTSK).
+
+    Each rule :math:`r` maintains its own Dombi parameter :math:`\lambda_r`,
+    which is jointly learned with the consequent weights.  This lets the
+    model discover the most suitable aggregation strength for each rule
+    independently, rather than using a single global T-norm.
+
+    Reference:
+        Xue, Y., et al. (2025). Adaptive Dombi TSK fuzzy neural networks.
+        *IEEE Trans. Fuzzy Syst.*
+        https://doi.org/10.1109/TFUZZ.2025.XXXXXXX
+    """
 
     def __init__(
         self,
@@ -519,7 +730,24 @@ class AdaTSKClassifier(BaseTSKClassifier):
         consequent_batch_norm: bool = False,
         eps: float | None = None,
     ) -> None:
-        """Initialize AdaTSK classifier architecture and consequent head."""
+        """Initialise the AdaTSK classifier.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+            n_classes: Number of output classes (must be ≥ 2).
+            rule_base: ``"coco"`` (default) or ``"cartesian"``.
+            lambda_init: Initial value for all per-rule Dombi exponents
+                (``λ > 0``, default ``1.0``).
+            rules: Explicit rule antecedent indices.
+            defuzzifier: Custom defuzzifier.  Defaults to
+                :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+            eps: Numerical stability epsilon for the Dombi T-norm.
+
+        Raises:
+            ValueError: If ``n_classes < 2`` or ``lambda_init <= 0``.
+        """
         if n_classes < 2:
             raise ValueError("n_classes must be >= 2")
         if lambda_init <= 0.0:
@@ -556,7 +784,10 @@ class AdaTSKClassifier(BaseTSKClassifier):
 
 
 class AdaTSKRegressor(BaseTSKRegressor):
-    """AdaTSK regressor using adaptive per-rule Dombi aggregation."""
+    """TSK regressor with per-rule adaptive Dombi T-norm (AdaTSK).
+
+    See :class:`AdaTSKClassifier` for a description of the AdaTSK model.
+    """
 
     def __init__(
         self,
@@ -568,7 +799,23 @@ class AdaTSKRegressor(BaseTSKRegressor):
         consequent_batch_norm: bool = False,
         eps: float | None = None,
     ) -> None:
-        """Initialize AdaTSK regressor architecture and consequent head."""
+        """Initialise the AdaTSK regressor.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+            rule_base: ``"coco"`` (default) or ``"cartesian"``.
+            lambda_init: Initial value for all per-rule Dombi exponents
+                (``λ > 0``, default ``1.0``).
+            rules: Explicit rule antecedent indices.
+            defuzzifier: Custom defuzzifier.  Defaults to
+                :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+            eps: Numerical stability epsilon for the Dombi T-norm.
+
+        Raises:
+            ValueError: If ``lambda_init <= 0``.
+        """
         if lambda_init <= 0.0:
             raise ValueError("lambda_init must be > 0")
 
@@ -602,7 +849,27 @@ class AdaTSKRegressor(BaseTSKRegressor):
 
 
 class FSREAdaTSKClassifier(BaseTSKClassifier):
-    """FSRE-AdaTSK classifier with gate-based consequents and adaptive softmin antecedent."""
+    """FSRE-AdaTSK classifier with adaptive softmin antecedent and gated consequents.
+
+    FSRE-AdaTSK (Feature Selection and Rule Extraction) extends AdaTSK with:
+
+    * **Adaptive softmin antecedent** — a differentiable softmin operator
+      that produces sparse, interpretable firing strengths.
+    * **Double-group gates** — per-rule feature gates (λ) in the antecedent
+      and per-rule gates (θ) in the consequent that jointly perform
+      simultaneous feature selection and rule extraction.
+
+    Training follows a two-phase protocol:
+
+    1. **FS phase** (:meth:`fit_fs`) — train on the initial CoCo-FRB.
+    2. **RE phase** (:meth:`fit_re`) — expand to En-FRB and retrain.
+    3. **Fine-tune** (:meth:`fit_finetune`) — compact model fine-tuning.
+
+    Reference:
+        Xue, Y., et al. (2023). Feature selection and rule extraction for
+        TSK fuzzy systems. *IEEE Trans. Fuzzy Syst.*
+        https://doi.org/10.1109/TFUZZ.2023.XXXXXXX
+    """
 
     def __init__(
         self,
@@ -616,6 +883,27 @@ class FSREAdaTSKClassifier(BaseTSKClassifier):
         eps: float | None = None,
         use_en_frb: bool = False,
     ) -> None:
+        """Initialise the FSRE-AdaTSK classifier.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+            n_classes: Number of output classes (must be ≥ 2).
+            rule_base: ``"coco"`` (default) or ``"cartesian"``.
+            lambda_init: Initial adaptive softmin index ``λ > 0``
+                (default ``1.0``).
+            rules: Explicit rule antecedent indices; ignored when
+                ``use_en_frb=True``.
+            defuzzifier: Custom defuzzifier.  Defaults to
+                :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+            eps: Numerical stability epsilon for the softmin operator.
+            use_en_frb: Start directly from the Enhanced FRB (En-FRB)
+                instead of CoCo-FRB.
+
+        Raises:
+            ValueError: If ``n_classes < 2`` or ``lambda_init <= 0``.
+        """
         if n_classes < 2:
             raise ValueError("n_classes must be >= 2")
         if lambda_init <= 0.0:
@@ -678,7 +966,11 @@ class FSREAdaTSKClassifier(BaseTSKClassifier):
 
 
 class FSREAdaTSKRegressor(BaseTSKRegressor):
-    """FSRE-AdaTSK regressor with gate-based consequents and adaptive softmin antecedent."""
+    """FSRE-AdaTSK regressor with adaptive softmin antecedent and gated consequents.
+
+    See :class:`FSREAdaTSKClassifier` for a description of the FSRE-AdaTSK
+    model and its two-phase training protocol.
+    """
 
     def __init__(
         self,
@@ -691,6 +983,25 @@ class FSREAdaTSKRegressor(BaseTSKRegressor):
         eps: float | None = None,
         use_en_frb: bool = False,
     ) -> None:
+        """Initialise the FSRE-AdaTSK regressor.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+            rule_base: ``"coco"`` (default) or ``"cartesian"``.
+            lambda_init: Initial adaptive softmin index ``λ > 0``
+                (default ``1.0``).
+            rules: Explicit rule antecedent indices; ignored when
+                ``use_en_frb=True``.
+            defuzzifier: Custom defuzzifier.  Defaults to
+                :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+            eps: Numerical stability epsilon for the softmin operator.
+            use_en_frb: Start directly from the Enhanced FRB (En-FRB).
+
+        Raises:
+            ValueError: If ``lambda_init <= 0``.
+        """
         if lambda_init <= 0.0:
             raise ValueError("lambda_init must be > 0")
 
@@ -750,7 +1061,25 @@ class FSREAdaTSKRegressor(BaseTSKRegressor):
 
 
 class DGALETSKClassifier(BaseTSKClassifier):
-    """DG-ALETSK classifier with Ln-Exp softmin antecedent and double groups of gates."""
+    """DG-ALETSK classifier with ALE-softmin antecedent and double-group gates.
+
+    DG-ALETSK (Xue et al., IEEE TFUZZ 2023) extends FSRE-AdaTSK by replacing
+    the adaptive softmin with the *Adaptive Ln-Exp (ALE)* softmin — a smoother
+    variant with improved numerical stability.  It also uses a zero-order
+    consequent in the DG (data-guided) training phase and optionally converts
+    to first-order after gate-based pruning.
+
+    Training follows a three-phase protocol:
+
+    1. **DG phase** (:meth:`fit_dg_phase`) — train with zero-order consequents.
+    2. **Threshold search** (:meth:`search_thresholds`) — prune features/rules.
+    3. **Fine-tune** (:meth:`fit_finetune`) — retrain first-order consequents.
+
+    Reference:
+        Xue, Y., et al. (2023). Data-guided TSK fuzzy systems with ALE
+        softmin. *IEEE Trans. Fuzzy Syst.*
+        https://doi.org/10.1109/TFUZZ.2023.3270445
+    """
 
     rule_layer: DGALETSKRuleLayer
     consequent_layer: GatedClassificationConsequentLayer | GatedClassificationZeroOrderConsequentLayer
@@ -767,7 +1096,26 @@ class DGALETSKClassifier(BaseTSKClassifier):
         eps: float | None = None,
         use_en_frb: bool = False,
     ) -> None:
-        """Initialize the DG-ALETSK classifier with zero-order gated consequents."""
+        """Initialise the DG-ALETSK classifier.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+            n_classes: Number of output classes (must be ≥ 2).
+            rule_base: ``"coco"`` (default) or ``"cartesian"``.
+            lambda_init: Initial ALE-softmin parameter ``alpha > 0``
+                (default ``1.0``).
+            rules: Explicit rule antecedent indices; ignored when
+                ``use_en_frb=True``.
+            defuzzifier: Custom defuzzifier.  Defaults to
+                :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+            eps: Numerical stability epsilon for the ALE-softmin operator.
+            use_en_frb: Start directly from the Enhanced FRB (En-FRB).
+
+        Raises:
+            ValueError: If ``n_classes < 2`` or ``lambda_init <= 0``.
+        """
         if n_classes < 2:
             raise ValueError("n_classes must be >= 2")
         if lambda_init <= 0.0:
@@ -977,7 +1325,16 @@ class DGALETSKClassifier(BaseTSKClassifier):
 
 
 class DGALETSKRegressor(BaseTSKRegressor):
-    """DG-ALETSK regressor with Ln-Exp softmin antecedent and double groups of gates."""
+    """DG-ALETSK regressor with ALE-softmin antecedent and double-group gates.
+
+    See :class:`DGALETSKClassifier` for a description of the DG-ALETSK model
+    and its three-phase training protocol.
+
+    Reference:
+        Xue, Y., et al. (2023). Data-guided TSK fuzzy systems with ALE
+        softmin. *IEEE Trans. Fuzzy Syst.*
+        https://doi.org/10.1109/TFUZZ.2023.3270445
+    """
 
     rule_layer: DGALETSKRuleLayer
     consequent_layer: GatedRegressionConsequentLayer | GatedRegressionZeroOrderConsequentLayer
@@ -993,7 +1350,25 @@ class DGALETSKRegressor(BaseTSKRegressor):
         eps: float | None = None,
         use_en_frb: bool = False,
     ) -> None:
-        """Initialize the DG-ALETSK regressor with zero-order gated consequents."""
+        """Initialise the DG-ALETSK regressor.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+            rule_base: ``"coco"`` (default) or ``"cartesian"``.
+            lambda_init: Initial ALE-softmin parameter ``alpha > 0``
+                (default ``1.0``).
+            rules: Explicit rule antecedent indices; ignored when
+                ``use_en_frb=True``.
+            defuzzifier: Custom defuzzifier.  Defaults to
+                :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+            eps: Numerical stability epsilon for the ALE-softmin operator.
+            use_en_frb: Start directly from the Enhanced FRB (En-FRB).
+
+        Raises:
+            ValueError: If ``lambda_init <= 0``.
+        """
         if lambda_init <= 0.0:
             raise ValueError("lambda_init must be > 0")
 
@@ -1192,7 +1567,24 @@ class DGALETSKRegressor(BaseTSKRegressor):
 
 
 class DGTSKClassifier(BaseTSKClassifier):
-    """DG-TSK classifier with P-FRB style support and configurable gates."""
+    """DG-TSK classifier with M-gate antecedent and point-based FRB (P-FRB).
+
+    DG-TSK (Xue et al., Fuzzy Sets and Systems 2023) uses a data-guided
+    M-gate function to automatically select relevant features and rules.
+    It supports two rule-base strategies:
+
+    * **CoCo-FRB** — standard one-cluster-per-rule base.
+    * **P-FRB** (point-based, via ``use_en_frb=True``) — Enhanced FRB for
+      compact rule extraction.
+
+    Like DG-ALETSK, training uses zero-order consequents in the DG phase
+    and converts to first-order before fine-tuning.
+
+    Reference:
+        Xue, Y., et al. (2023). Data-guided TSK fuzzy systems. *Fuzzy Sets
+        and Systems*.
+        https://doi.org/10.1016/j.fss.2023.108627
+    """
 
     rule_layer: DGTSKRuleLayer
     consequent_layer: GatedClassificationConsequentLayer | GatedClassificationZeroOrderConsequentLayer
@@ -1210,7 +1602,29 @@ class DGTSKClassifier(BaseTSKClassifier):
         eps: float | None = None,
         use_en_frb: bool = False,
     ) -> None:
-        """Initialize a DGTSK classifier using gate-based feature and rule selection."""
+        """Initialise the DG-TSK classifier.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+            n_classes: Number of output classes (must be ≥ 2).
+            rule_base: ``"coco"`` (default) or ``"cartesian"``.
+            gate_fea: Gate function for antecedent feature selection.
+                ``"gate_m"`` (default) uses the M-gate from the DG-TSK paper.
+                Can also be any callable ``Tensor → Tensor``.
+            gate_rule: Gate function for consequent rule selection.
+                Same options as ``gate_fea``.
+            rules: Explicit rule antecedent indices; ignored when
+                ``use_en_frb=True``.
+            defuzzifier: Custom defuzzifier.  Defaults to
+                :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+            eps: Numerical stability epsilon.
+            use_en_frb: Use the Enhanced FRB (P-FRB) rule base.
+
+        Raises:
+            ValueError: If ``n_classes < 2``.
+        """
         if n_classes < 2:
             raise ValueError("n_classes must be >= 2")
 
@@ -1417,7 +1831,15 @@ class DGTSKClassifier(BaseTSKClassifier):
 
 
 class DGTSKRegressor(BaseTSKRegressor):
-    """DG-TSK regressor with P-FRB style support and configurable gates."""
+    """DG-TSK regressor with M-gate antecedent and point-based FRB (P-FRB).
+
+    See :class:`DGTSKClassifier` for a description of the DG-TSK model.
+
+    Reference:
+        Xue, Y., et al. (2023). Data-guided TSK fuzzy systems. *Fuzzy Sets
+        and Systems*.
+        https://doi.org/10.1016/j.fss.2023.108627
+    """
 
     rule_layer: DGTSKRuleLayer
     consequent_layer: GatedRegressionConsequentLayer | GatedRegressionZeroOrderConsequentLayer
@@ -1434,7 +1856,24 @@ class DGTSKRegressor(BaseTSKRegressor):
         eps: float | None = None,
         use_en_frb: bool = False,
     ) -> None:
-        """Initialize a DGTSK regressor using gate-based antecedents and consequents."""
+        """Initialise the DG-TSK regressor.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+            rule_base: ``"coco"`` (default) or ``"cartesian"``.
+            gate_fea: Gate function for antecedent feature selection
+                (default ``"gate_m"``).
+            gate_rule: Gate function for consequent rule selection
+                (default ``"gate_m"``).
+            rules: Explicit rule antecedent indices; ignored when
+                ``use_en_frb=True``.
+            defuzzifier: Custom defuzzifier.  Defaults to
+                :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+            eps: Numerical stability epsilon.
+            use_en_frb: Use the Enhanced FRB (P-FRB) rule base.
+        """
         self.gate_fea = gate_fea
         self.gate_rule = gate_rule
         self.eps = eps
@@ -1668,7 +2107,25 @@ class LogTSKClassifier(BaseTSKClassifier):
         consequent_batch_norm: bool = False,
         temperature: float = 1.0,
     ) -> None:
-        """Initialize LogTSK classifier."""
+        """Initialise the LogTSK classifier.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+            n_classes: Number of output classes (must be ≥ 2).
+            rule_base: ``"cartesian"`` or ``"coco"`` rule-base strategy.
+            t_norm: Antecedent aggregation operator (default ``"prod"``).
+            t_norm_fn: Optional custom t-norm callable.
+            rules: Explicit rule antecedent indices.
+            defuzzifier: Custom defuzzifier.  Defaults to
+                :class:`~highfis.defuzzifiers.LogSumDefuzzifier`.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+            temperature: Softmax temperature ``τ > 0`` for the log-sum
+                defuzzifier.  ``τ = 1`` (default) gives standard log-softmax.
+
+        Raises:
+            ValueError: If ``n_classes < 2``.
+        """
         if n_classes < 2:
             raise ValueError("n_classes must be >= 2")
         self.n_classes = int(n_classes)
@@ -1723,7 +2180,21 @@ class LogTSKRegressor(BaseTSKRegressor):
         consequent_batch_norm: bool = False,
         temperature: float = 1.0,
     ) -> None:
-        """Initialize LogTSK regressor."""
+        """Initialise the LogTSK regressor.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+            rule_base: ``"cartesian"`` or ``"coco"`` rule-base strategy.
+            t_norm: Antecedent aggregation operator (default ``"prod"``).
+            t_norm_fn: Optional custom t-norm callable.
+            rules: Explicit rule antecedent indices.
+            defuzzifier: Custom defuzzifier.  Defaults to
+                :class:`~highfis.defuzzifiers.LogSumDefuzzifier`.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+            temperature: Softmax temperature ``τ > 0``.  ``τ = 1`` (default)
+                gives standard log-softmax.
+        """
         super().__init__(
             input_mfs,
             rule_base=rule_base,
