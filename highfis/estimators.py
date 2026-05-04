@@ -1,10 +1,39 @@
-"""Scikit-learn compatible estimator wrappers for TSK models.
+"""Scikit-learn compatible estimator wrappers for highFIS TSK models.
 
-Each concrete estimator inherits from a shared ``_BaseClassifierEstimator``
-or ``_BaseRegressorEstimator`` that factors out input-configuration
-resolution, MF building, and the training-loop invocation.  Subclasses
-only implement :meth:`_build_model` to select the appropriate model class
-and its default parameters.
+This module provides high-level, sklearn-compatible wrappers for every TSK
+variant implemented in :mod:`highfis.models`. Each estimator follows the
+standard ``fit`` / ``predict`` / ``score`` interface and handles membership-
+function initialisation, model construction and the training loop internally.
+
+Two abstract base classes share the common logic:
+
+* :class:`_BaseClassifierEstimator` — for classification tasks.
+* :class:`_BaseRegressorEstimator` — for regression tasks.
+
+Concrete estimators cover the following model families:
+
+* **TSK** — vanilla Takagi-Sugeno-Kang (Takagi & Sugeno, 1985).
+* **HTSK** — high-dimensional TSK via averaged defuzzification
+  (Cui et al., IJCNN 2021).
+* **LogTSK** — log-transformed defuzzification for high-dimensional data
+  (Du et al., 2020; analysed by Cui et al., IJCNN 2021).
+* **DombiTSK** — Dombi T-norm based TSK (Xue et al., TFS 2025).
+* **AYATSK** — adaptive Yager T-norm based TSK (Xue et al., TSMC 2025).
+* **AdaTSK** — adaptive softmin based TSK (Xue et al., IJCNN 2022).
+* **FSRE-AdaTSK** — AdaTSK with feature-selection and rule-extraction gates
+  (Xue et al., TFS 2022).
+* **DG-ALETSK** — double-gate adaptive Ln-Exp softmin TSK
+  (Xue et al., TFS 2023).
+* **DG-TSK** — double-gate TSK with point-based FRB
+  (Xue et al., Fuzzy Sets and Systems, 2023).
+
+Membership-function initialisation:
+
+* ``mf_init="kmeans"`` (default) — k-means cluster centroids become MF
+  centres; sigma is derived from within-cluster spread scaled by
+  ``sigma_scale``. Produces a CoCo rule base by default.
+* ``mf_init="grid"`` — regular-grid placement controlled by
+  :class:`InputConfig`. Produces a Cartesian rule base by default.
 """
 
 from __future__ import annotations
@@ -55,7 +84,32 @@ from .persistence import (
 
 @dataclass(frozen=True)
 class InputConfig:
-    """Input configuration for Gaussian MF initialization."""
+    """Per-feature configuration for Gaussian MF grid initialisation.
+
+    This dataclass controls how membership functions are placed on a single
+    input feature when ``mf_init="grid"``. When ``mf_init="kmeans"`` only
+    the ``name`` field is used; centres and sigmas are derived from k-means
+    cluster centroids.
+
+    Attributes:
+        name: Feature name. Used as the key in the membership-function
+            dictionary passed to the underlying TSK model.
+        n_mfs: Number of Gaussian MFs to place on this feature. Must be
+            ``>= 1``.
+        overlap: Spacing factor between neighbouring MF centres. A larger
+            value widens each MF (more overlap); ``0.5`` corresponds to
+            roughly half-width overlap at the midpoint between centres.
+        margin: Fractional padding added to the observed feature range before
+            centre placement. ``0.10`` extends each side of ``[x_min, x_max]``
+            by 10 percent so edge centres are not clipped to extreme values.
+
+    Example:
+        >>> from highfis.estimators import InputConfig
+        >>> configs = [
+        ...     InputConfig(name="sepal_length", n_mfs=3),
+        ...     InputConfig(name="sepal_width", n_mfs=5, overlap=0.3),
+        ... ]
+    """
 
     name: str
     n_mfs: int = 3
@@ -165,7 +219,26 @@ def _build_pfrb_input_mfs(
 
 
 class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[misc]
-    """Shared logic for all TSK classifier estimators."""
+    """Abstract base class for all highFIS TSK classifier estimators.
+
+    Implements the full scikit-learn estimator protocol — ``fit``,
+    ``predict_proba``, ``predict``, ``score``, ``save`` and ``load`` — and
+    delegates only model construction to concrete subclasses via the abstract
+    method :meth:`_build_model`.
+
+    Subclasses must **not** override ``fit``; they should only implement
+    ``_build_model`` (and optionally their own ``__init__`` to add extra
+    hyperparameters).
+
+    Attributes:
+        model_: Fitted :class:`~highfis.base.BaseTSK` instance. Available
+            after :meth:`fit`.
+        classes_: Unique class labels discovered during :meth:`fit`.
+        n_features_in_: Number of input features seen during :meth:`fit`.
+        feature_names_in_: Array of feature name strings.
+        history_: Training history dictionary returned by the underlying model.
+        rule_base_: Rule-base type actually used during the last :meth:`fit`.
+    """
 
     model_: BaseTSK
 
@@ -191,7 +264,67 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
-        """Configure estimator hyperparameters and training options."""
+        """Initialise shared hyperparameters for TSK classifier estimators.
+
+        Args:
+            input_configs: Optional list of :class:`InputConfig` instances,
+                one per input feature. Must match the number of columns in
+                ``X`` when supplied. When ``mf_init="kmeans"`` only the
+                ``name`` field is used; centres and sigmas are computed from
+                cluster statistics.
+            n_mfs: Number of MFs per feature when ``mf_init="grid"``, or
+                number of k-means clusters when ``mf_init="kmeans"``. Cui
+                et al. (IJCNN 2021) used ``R=30`` for all datasets.
+            mf_init: MF initialisation strategy. ``"kmeans"`` (default)
+                derives MF centres from k-means cluster centroids following
+                Cui et al. (IJCNN 2021). ``"grid"`` places centres on a
+                regular grid controlled by :class:`InputConfig`.
+            sigma_scale: Scale factor for sigma initialisation when
+                ``mf_init="kmeans"``. Each sigma is drawn from
+                ``N(h, 0.2)`` where ``h = sigma_scale * within_cluster_std``
+                (Cui et al., IJCNN 2021). Pass ``"auto"`` to set
+                ``sigma_scale = sqrt(D)`` as recommended for vanilla TSK on
+                high-dimensional data; HTSK and LogTSK handle dimensionality
+                internally and use ``1.0``.
+            random_state: Integer seed forwarded to k-means initialisation
+                and ``torch.manual_seed``. Ensures reproducible runs.
+            epochs: Maximum number of full passes over the training data.
+                Training may stop earlier if ``patience`` is exhausted.
+            learning_rate: Initial learning rate for the Adam optimiser.
+                Cui et al. (IJCNN 2021) selected ``0.01`` via cross-
+                validation across most datasets.
+            verbose: If ``True``, prints per-epoch loss and accuracy to
+                stdout during :meth:`fit`.
+            rule_base: Explicit rule-base construction type. ``"coco"``
+                (compactly combined) pairs rule ``r`` with MF ``r`` on every
+                feature. ``"cartesian"`` enumerates all MF combinations.
+                Defaults to ``"coco"`` for ``mf_init="kmeans"`` and
+                ``"cartesian"`` for ``mf_init="grid"``.
+            batch_size: Mini-batch size for gradient descent. Cui et al.
+                (IJCNN 2021) used ``512`` (or ``min(N, 60)`` when the
+                training set is smaller). ``None`` uses the full dataset.
+            shuffle: If ``True``, training samples are reshuffled before
+                each epoch.
+            ur_weight: Weight of the uncertainty regularisation (UR) term
+                added to the cross-entropy loss. ``0.0`` disables UR.
+                Cui et al. (TFS 2020) describe the UR formulation.
+            ur_target: Optional target firing-level for UR. ``None`` uses
+                the model default.
+            consequent_batch_norm: Apply batch normalisation to the
+                consequent linear layers. Can improve training stability on
+                large datasets.
+            pfrb_max_rules: Maximum number of rules when using the point-
+                based FRB (P-FRB) initialisation introduced by DG-TSK (Xue
+                et al., Fuzzy Sets and Systems, 2023). ``None`` uses all
+                training samples as rule prototypes.
+            patience: Number of consecutive epochs without improvement on
+                the validation loss before training is stopped early. Only
+                active when ``validation_data`` is provided.
+            validation_data: Optional ``(X_val, y_val)`` tuple used for
+                early stopping and held-out performance monitoring.
+            weight_decay: L2 weight-decay coefficient applied to consequent
+                layer parameters by the Adam optimiser.
+        """
         self.input_configs = input_configs
         self.n_mfs = n_mfs
         self.mf_init = mf_init
@@ -409,7 +542,25 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
 
 
 class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[misc]
-    """Shared logic for all TSK regressor estimators."""
+    """Abstract base class for all highFIS TSK regressor estimators.
+
+    Implements the full scikit-learn estimator protocol — ``fit``,
+    ``predict``, ``score``, ``save`` and ``load`` — and delegates only model
+    construction to concrete subclasses via the abstract method
+    :meth:`_build_model`.
+
+    Subclasses must **not** override ``fit``; they should only implement
+    ``_build_model`` (and optionally their own ``__init__`` to add extra
+    hyperparameters).
+
+    Attributes:
+        model_: Fitted :class:`~highfis.base.BaseTSK` instance. Available
+            after :meth:`fit`.
+        n_features_in_: Number of input features seen during :meth:`fit`.
+        feature_names_in_: Array of feature name strings.
+        history_: Training history dictionary returned by the underlying model.
+        rule_base_: Rule-base type actually used during the last :meth:`fit`.
+    """
 
     model_: BaseTSK
 
@@ -434,7 +585,62 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
-        """Configure estimator hyperparameters and training options."""
+        """Initialise shared hyperparameters for TSK regressor estimators.
+
+        Args:
+            input_configs: Optional list of :class:`InputConfig` instances,
+                one per input feature. Must match the number of columns in
+                ``X`` when supplied. When ``mf_init="kmeans"`` only the
+                ``name`` field is used; centres and sigmas are computed from
+                cluster statistics.
+            n_mfs: Number of MFs per feature when ``mf_init="grid"``, or
+                number of k-means clusters when ``mf_init="kmeans"``. Cui
+                et al. (IJCNN 2021) used ``R=30`` for all datasets.
+            mf_init: MF initialisation strategy. ``"kmeans"`` (default)
+                derives MF centres from k-means cluster centroids following
+                Cui et al. (IJCNN 2021). ``"grid"`` places centres on a
+                regular grid controlled by :class:`InputConfig`.
+            sigma_scale: Scale factor for sigma initialisation when
+                ``mf_init="kmeans"``. Each sigma is drawn from
+                ``N(h, 0.2)`` where ``h = sigma_scale * within_cluster_std``
+                (Cui et al., IJCNN 2021). Pass ``"auto"`` to set
+                ``sigma_scale = sqrt(D)`` as recommended for vanilla TSK on
+                high-dimensional data; HTSK and LogTSK handle dimensionality
+                internally and use ``1.0``.
+            random_state: Integer seed forwarded to k-means initialisation
+                and ``torch.manual_seed``. Ensures reproducible runs.
+            epochs: Maximum number of full passes over the training data.
+                Training may stop earlier if ``patience`` is exhausted.
+            learning_rate: Initial learning rate for the Adam optimiser.
+                Cui et al. (IJCNN 2021) selected ``0.01`` via cross-
+                validation across most datasets.
+            verbose: If ``True``, prints per-epoch loss and metrics to
+                stdout during :meth:`fit`.
+            rule_base: Explicit rule-base construction type. ``"coco"``
+                (compactly combined) pairs rule ``r`` with MF ``r`` on every
+                feature. ``"cartesian"`` enumerates all MF combinations.
+                Defaults to ``"coco"`` for ``mf_init="kmeans"`` and
+                ``"cartesian"`` for ``mf_init="grid"``.
+            batch_size: Mini-batch size for gradient descent. Cui et al.
+                (IJCNN 2021) used ``512`` (or ``min(N, 60)`` when the
+                training set is smaller). ``None`` uses the full dataset.
+            shuffle: If ``True``, training samples are reshuffled before
+                each epoch.
+            ur_weight: Weight of the uncertainty regularisation (UR) term
+                added to the MSE loss. ``0.0`` disables UR.
+            ur_target: Optional target firing-level for UR. ``None`` uses
+                the model default.
+            consequent_batch_norm: Apply batch normalisation to the
+                consequent linear layers. Can improve training stability on
+                large datasets.
+            patience: Number of consecutive epochs without improvement on
+                the validation loss before training is stopped early. Only
+                active when ``validation_data`` is provided.
+            validation_data: Optional ``(X_val, y_val)`` tuple used for
+                early stopping and held-out performance monitoring.
+            weight_decay: L2 weight-decay coefficient applied to consequent
+                layer parameters by the Adam optimiser.
+        """
         self.input_configs = input_configs
         self.n_mfs = n_mfs
         self.mf_init = mf_init
@@ -630,7 +836,111 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
 
 
 class HTSKClassifierEstimator(_BaseClassifierEstimator):
-    """High-level HTSK classifier facade with sklearn-compatible API."""
+    """High-dimensional TSK classifier (Cui et al., IJCNN 2021).
+
+    Wraps :class:`~highfis.models.HTSKClassifier`. HTSK replaces the standard
+    softmax-based defuzzification with a D-th-root variant that eliminates
+    saturation on high-dimensional inputs without inflating sigma. It is the
+    recommended default TSK classifier for datasets with more than ~50
+    features.
+
+    The experimental setup from the original paper used ``n_mfs=30``,
+    ``sigma_scale=1.0``, ``mf_init="kmeans"``, ``epochs=200``,
+    ``learning_rate=0.01``, ``batch_size=512``, and ``patience=20``.
+
+    Example:
+        >>> from highfis import HTSKClassifierEstimator
+        >>> clf = HTSKClassifierEstimator(n_mfs=30, random_state=0)
+        >>> clf.fit(X_train, y_train)
+        HTSKClassifierEstimator(...)
+        >>> clf.score(X_test, y_test)
+        0.95...
+    """
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 30,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 200,
+        learning_rate: float = 1e-2,
+        verbose: bool = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        pfrb_max_rules: int | None = None,
+        patience: int = 20,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+    ) -> None:
+        """Initialise an HTSK classifier.
+
+        HTSK (Cui et al., IJCNN 2021) replaces the standard softmax
+        defuzzification with a dimensionality-normalised variant that averages
+        the exponent over all input features::
+
+            f_r(x)^{1/D} / sum_i f_i(x)^{1/D}
+
+        This prevents softmax saturation on high-dimensional data without
+        requiring an inflated ``sigma_scale``. The recommended initialisation
+        is ``sigma_scale=1.0`` regardless of dimensionality.
+
+        Reference:
+            Cui, Y., Wu, D., & Xu, Y. (2021). Curse of dimensionality for
+            TSK fuzzy neural networks: Explanation and solutions. In *Proc.
+            IJCNN*, pp. 1-8. https://doi.org/10.1109/IJCNN52387.2021.9534265
+
+        Args:
+            input_configs: Per-feature :class:`InputConfig` list. Only
+                ``name`` is used when ``mf_init="kmeans"``.
+            n_mfs: Number of k-means clusters / grid MFs. Cui et al.
+                (2021) used ``R=30``.
+            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            sigma_scale: Sigma scale factor. ``1.0`` is recommended for
+                HTSK because the defuzzifier already compensates for
+                dimensionality.
+            random_state: Seed for k-means and weight initialisation.
+            epochs: Maximum training epochs (default ``200``).
+            learning_rate: Adam learning rate (default ``0.01``).
+            verbose: Print per-epoch progress.
+            rule_base: ``"coco"`` or ``"cartesian"``. Defaults to
+                ``"coco"`` for kmeans and ``"cartesian"`` for grid.
+            batch_size: Mini-batch size (default ``512``).
+            shuffle: Reshuffle each epoch.
+            ur_weight: Uncertainty regularisation weight.
+            ur_target: Uncertainty regularisation target.
+            consequent_batch_norm: Batch normalisation on consequent layers.
+            pfrb_max_rules: Maximum point-based FRB rules (unused by HTSK).
+            patience: Early-stopping patience (default ``20``).
+            validation_data: Optional ``(X_val, y_val)`` for early stopping.
+            weight_decay: L2 weight decay for consequent parameters.
+        """
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            pfrb_max_rules=pfrb_max_rules,
+            patience=patience,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
 
     def _build_model(
         self,
@@ -648,7 +958,91 @@ class HTSKClassifierEstimator(_BaseClassifierEstimator):
 
 
 class HTSKRegressorEstimator(_BaseRegressorEstimator):
-    """High-level HTSK regressor facade with sklearn-compatible API."""
+    """High-dimensional TSK regressor (Cui et al., IJCNN 2021).
+
+    Wraps :class:`~highfis.models.HTSKRegressor`. HTSK replaces the standard
+    softmax-based defuzzification with a D-th-root variant that eliminates
+    saturation on high-dimensional inputs without inflating sigma. It is the
+    recommended default TSK regressor for datasets with more than ~50
+    features.
+
+    The experimental setup from the original paper used ``n_mfs=30``,
+    ``sigma_scale=1.0``, ``mf_init="kmeans"``, ``epochs=200``,
+    ``learning_rate=0.01``, ``batch_size=512``, and ``patience=20``.
+
+    Example:
+        >>> from highfis import HTSKRegressorEstimator
+        >>> reg = HTSKRegressorEstimator(n_mfs=30, random_state=0)
+        >>> reg.fit(X_train, y_train)
+        HTSKRegressorEstimator(...)
+        >>> reg.score(X_test, y_test)
+        0.87...
+    """
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 30,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 200,
+        learning_rate: float = 1e-2,
+        verbose: bool = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        patience: int = 20,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+    ) -> None:
+        """Initialise an HTSK regressor.
+
+        Args:
+            input_configs: Per-feature :class:`InputConfig` list. Only
+                ``name`` is used when ``mf_init="kmeans"``.
+            n_mfs: Number of k-means clusters / grid MFs.
+            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            sigma_scale: Sigma scale factor. ``1.0`` is recommended because
+                HTSK defuzzification already compensates for dimensionality.
+            random_state: Seed for k-means and weight initialisation.
+            epochs: Maximum training epochs (default ``200``).
+            learning_rate: Adam learning rate (default ``0.01``).
+            verbose: Print per-epoch progress.
+            rule_base: ``"coco"`` or ``"cartesian"``. Defaults to
+                ``"coco"`` for kmeans and ``"cartesian"`` for grid.
+            batch_size: Mini-batch size (default ``512``).
+            shuffle: Reshuffle each epoch.
+            ur_weight: Uncertainty regularisation weight.
+            ur_target: Uncertainty regularisation target.
+            consequent_batch_norm: Batch normalisation on consequent layers.
+            patience: Early-stopping patience (default ``20``).
+            validation_data: Optional ``(X_val, y_val)`` for early stopping.
+            weight_decay: L2 weight decay for consequent parameters.
+        """
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            patience=patience,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
 
     def _build_model(
         self,
@@ -669,7 +1063,94 @@ class HTSKRegressorEstimator(_BaseRegressorEstimator):
 
 
 class TSKClassifierEstimator(_BaseClassifierEstimator):
-    """Sklearn-compatible vanilla TSK classifier with sum-based defuzzification."""
+    """Vanilla TSK classifier with sum-based (softmax) defuzzification.
+
+    Wraps :class:`~highfis.models.TSKClassifier`. Implements the original
+    Takagi-Sugeno-Kang inference with product T-norm and centre-of-gravity
+    defuzzification. On high-dimensional data (``D ≥ ~50``) the softmax
+    normalisation saturates, causing most inputs to fire only one rule. In
+    that scenario consider :class:`HTSKClassifierEstimator` or
+    :class:`LogTSKClassifierEstimator`, or increase ``sigma_scale`` (``"auto"``
+    sets it to ``sqrt(D)`` as analysed by Cui et al., IJCNN 2021).
+
+    Example:
+        >>> from highfis import TSKClassifierEstimator
+        >>> clf = TSKClassifierEstimator(n_mfs=30, random_state=0)
+        >>> clf.fit(X_train, y_train)
+        TSKClassifierEstimator(...)
+        >>> clf.score(X_test, y_test)
+        0.91...
+    """
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 30,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 200,
+        learning_rate: float = 1e-2,
+        verbose: bool = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        pfrb_max_rules: int | None = None,
+        patience: int = 20,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+    ) -> None:
+        """Initialise a vanilla TSK classifier.
+
+        Args:
+            input_configs: Per-feature :class:`InputConfig` list. Only
+                ``name`` is used when ``mf_init="kmeans"``.
+            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            sigma_scale: Sigma scale factor. Use ``"auto"`` (= ``sqrt(D)``)
+                for high-dimensional data to mitigate softmax saturation
+                (Cui et al., IJCNN 2021). ``1.0`` is appropriate for low-
+                to medium-dimensional problems.
+            random_state: Seed for k-means and weight initialisation.
+            epochs: Maximum training epochs (default ``200``).
+            learning_rate: Adam learning rate (default ``0.01``).
+            verbose: Print per-epoch progress.
+            rule_base: ``"coco"`` or ``"cartesian"``. Defaults to
+                ``"coco"`` for kmeans and ``"cartesian"`` for grid.
+            batch_size: Mini-batch size (default ``512``).
+            shuffle: Reshuffle each epoch.
+            ur_weight: Uncertainty regularisation weight.
+            ur_target: Uncertainty regularisation target.
+            consequent_batch_norm: Batch normalisation on consequent layers.
+            pfrb_max_rules: Maximum point-based FRB rules (unused by TSK).
+            patience: Early-stopping patience (default ``20``).
+            validation_data: Optional ``(X_val, y_val)`` for early stopping.
+            weight_decay: L2 weight decay for consequent parameters.
+        """
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            pfrb_max_rules=pfrb_max_rules,
+            patience=patience,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
 
     def _build_model(
         self,
@@ -687,7 +1168,86 @@ class TSKClassifierEstimator(_BaseClassifierEstimator):
 
 
 class TSKRegressorEstimator(_BaseRegressorEstimator):
-    """Sklearn-compatible vanilla TSK regressor with sum-based defuzzification."""
+    """Vanilla TSK regressor with sum-based (softmax) defuzzification.
+
+    Wraps :class:`~highfis.models.TSKRegressor`. Implements the original
+    Takagi-Sugeno-Kang inference. For high-dimensional datasets consider
+    :class:`HTSKRegressorEstimator` or :class:`LogTSKRegressorEstimator`.
+
+    Example:
+        >>> from highfis import TSKRegressorEstimator
+        >>> reg = TSKRegressorEstimator(n_mfs=30, random_state=0)
+        >>> reg.fit(X_train, y_train)
+        TSKRegressorEstimator(...)
+        >>> reg.score(X_test, y_test)
+        0.85...
+    """
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 30,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 200,
+        learning_rate: float = 1e-2,
+        verbose: bool = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        patience: int = 20,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+    ) -> None:
+        """Initialise a vanilla TSK regressor.
+
+        Args:
+            input_configs: Per-feature :class:`InputConfig` list. Only
+                ``name`` is used when ``mf_init="kmeans"``.
+            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            sigma_scale: Sigma scale factor. Use ``"auto"`` (= ``sqrt(D)``)
+                for high-dimensional data to mitigate softmax saturation.
+                ``1.0`` is appropriate for low-to-medium-dimensional problems.
+            random_state: Seed for k-means and weight initialisation.
+            epochs: Maximum training epochs (default ``200``).
+            learning_rate: Adam learning rate (default ``0.01``).
+            verbose: Print per-epoch progress.
+            rule_base: ``"coco"`` or ``"cartesian"``. Defaults to
+                ``"coco"`` for kmeans and ``"cartesian"`` for grid.
+            batch_size: Mini-batch size (default ``512``).
+            shuffle: Reshuffle each epoch.
+            ur_weight: Uncertainty regularisation weight.
+            ur_target: Uncertainty regularisation target.
+            consequent_batch_norm: Batch normalisation on consequent layers.
+            patience: Early-stopping patience (default ``20``).
+            validation_data: Optional ``(X_val, y_val)`` for early stopping.
+            weight_decay: L2 weight decay for consequent parameters.
+        """
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            patience=patience,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
 
     def _build_model(
         self,
@@ -703,7 +1263,102 @@ class TSKRegressorEstimator(_BaseRegressorEstimator):
 
 
 class AYATSKClassifierEstimator(_BaseClassifierEstimator):
-    """Sklearn-compatible AYATSK classifier with adaptive Yager aggregation."""
+    """Adaptive Yager T-norm TSK classifier (Xue et al., TSMC 2025).
+
+    Wraps :class:`~highfis.models.AYATSKClassifier`. AYATSK uses the Yager
+    T-norm with an adaptive index parameter ``λ`` derived from the input
+    dimensionality ``D`` and the lower bound ``ε`` of the Composite
+    Exponential Membership Function (CEMF)::
+
+        λ = -ln(D) / ln(1 - ε)
+
+    This guarantees that the Yager T-norm remains numerically stable on
+    high-dimensional data (no underflow) while being a proper T-norm,
+    unlike softmin-based approaches. CEMF has a positive lower bound
+    ``1/K > 0``, required for the adaptive strategy to be well-defined.
+
+    Experiments in Xue et al. (2025) cover datasets with dimensionality
+    from 8 to 120 432, making AYATSK one of the most broadly validated
+    high-dimensional fuzzy classifiers available.
+
+    Example:
+        >>> from highfis import AYATSKClassifierEstimator
+        >>> clf = AYATSKClassifierEstimator(n_mfs=30, random_state=0)
+        >>> clf.fit(X_train, y_train)
+        AYATSKClassifierEstimator(...)
+        >>> clf.score(X_test, y_test)
+        0.94...
+    """
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 30,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 200,
+        learning_rate: float = 1e-2,
+        verbose: bool = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        pfrb_max_rules: int | None = None,
+        patience: int = 20,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+    ) -> None:
+        """Initialise an AYATSK classifier.
+
+        Args:
+            input_configs: Per-feature :class:`InputConfig` list. Only
+                ``name`` is used when ``mf_init="kmeans"``.
+            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            sigma_scale: Sigma scale factor for k-means initialisation.
+                ``1.0`` is recommended; the adaptive Yager T-norm handles
+                high-dimensional stability internally.
+            random_state: Seed for k-means and weight initialisation.
+            epochs: Maximum training epochs (default ``200``).
+            learning_rate: Adam learning rate (default ``0.01``).
+            verbose: Print per-epoch progress.
+            rule_base: ``"coco"`` or ``"cartesian"``. Defaults to
+                ``"coco"`` for kmeans and ``"cartesian"`` for grid.
+            batch_size: Mini-batch size (default ``512``).
+            shuffle: Reshuffle each epoch.
+            ur_weight: Uncertainty regularisation weight.
+            ur_target: Uncertainty regularisation target.
+            consequent_batch_norm: Batch normalisation on consequent layers.
+            pfrb_max_rules: Maximum point-based FRB rules (unused by
+                AYATSK).
+            patience: Early-stopping patience (default ``20``).
+            validation_data: Optional ``(X_val, y_val)`` for early stopping.
+            weight_decay: L2 weight decay for consequent parameters.
+        """
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            pfrb_max_rules=pfrb_max_rules,
+            patience=patience,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
 
     def _build_model(
         self,
@@ -721,7 +1376,83 @@ class AYATSKClassifierEstimator(_BaseClassifierEstimator):
 
 
 class AYATSKRegressorEstimator(_BaseRegressorEstimator):
-    """Sklearn-compatible AYATSK regressor with adaptive Yager aggregation."""
+    """Adaptive Yager T-norm TSK regressor (Xue et al., TSMC 2025).
+
+    Wraps :class:`~highfis.models.AYATSKRegressor`. See
+    :class:`AYATSKClassifierEstimator` for a description of the AYATSK
+    model.
+
+    Example:
+        >>> from highfis import AYATSKRegressorEstimator
+        >>> reg = AYATSKRegressorEstimator(n_mfs=30, random_state=0)
+        >>> reg.fit(X_train, y_train)
+        AYATSKRegressorEstimator(...)
+        >>> reg.score(X_test, y_test)
+        0.88...
+    """
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 30,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 200,
+        learning_rate: float = 1e-2,
+        verbose: bool = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        patience: int = 20,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+    ) -> None:
+        """Initialise an AYATSK regressor.
+
+        Args:
+            input_configs: Per-feature :class:`InputConfig` list. Only
+                ``name`` is used when ``mf_init="kmeans"``.
+            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            sigma_scale: Sigma scale factor. ``1.0`` recommended.
+            random_state: Seed for k-means and weight initialisation.
+            epochs: Maximum training epochs (default ``200``).
+            learning_rate: Adam learning rate (default ``0.01``).
+            verbose: Print per-epoch progress.
+            rule_base: ``"coco"`` or ``"cartesian"``.
+            batch_size: Mini-batch size (default ``512``).
+            shuffle: Reshuffle each epoch.
+            ur_weight: Uncertainty regularisation weight.
+            ur_target: Uncertainty regularisation target.
+            consequent_batch_norm: Batch normalisation on consequent layers.
+            patience: Early-stopping patience (default ``20``).
+            validation_data: Optional ``(X_val, y_val)`` for early stopping.
+            weight_decay: L2 weight decay for consequent parameters.
+        """
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            patience=patience,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
 
     def _build_model(
         self,
@@ -737,7 +1468,103 @@ class AYATSKRegressorEstimator(_BaseRegressorEstimator):
 
 
 class DombiTSKClassifierEstimator(_BaseClassifierEstimator):
-    """Sklearn-compatible DombiTSK classifier with sum-based defuzzification."""
+    """Dombi T-norm based TSK classifier (Xue et al., TFS 2025).
+
+    Wraps :class:`~highfis.models.DombiTSKClassifier`. DombiTSK replaces the
+    product T-norm with the Dombi T-norm::
+
+        φ_r(x) = 1 / (1 + [Σ_d (1/μ_{r,d}(x) - 1)^λ]^{1/λ})
+
+    Dombi T-norm is differentiable and does not trigger numeric underflow even
+    for very high-dimensional inputs (Xue et al., TFS 2025, Table I shows no
+    underflow up to ``D=120432``). The static ``DombiTSK`` variant uses a
+    fixed ``λ``; see :class:`AdaTSKClassifierEstimator` for the adaptive
+    version (**ADMTSK**) in which ``λ`` is set automatically from ``D`` and
+    the membership lower bound.
+
+    Reference:
+        Xue, G., Hu, L., Wang, J., & Ablameyko, S. (2025). ADMTSK: A
+        high-dimensional TSK fuzzy system based on adaptive Dombi T-norm.
+        *IEEE Trans. Fuzzy Systems*.
+        https://doi.org/10.1109/TFUZZ.2025.3535640
+
+    Example:
+        >>> from highfis import DombiTSKClassifierEstimator
+        >>> clf = DombiTSKClassifierEstimator(n_mfs=30, random_state=0)
+        >>> clf.fit(X_train, y_train)
+        DombiTSKClassifierEstimator(...)
+        >>> clf.score(X_test, y_test)
+        0.93...
+    """
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 30,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 200,
+        learning_rate: float = 1e-2,
+        verbose: bool = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        pfrb_max_rules: int | None = None,
+        patience: int = 20,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+    ) -> None:
+        """Initialise a DombiTSK classifier.
+
+        Args:
+            input_configs: Per-feature :class:`InputConfig` list. Only
+                ``name`` is used when ``mf_init="kmeans"``.
+            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            sigma_scale: Sigma scale factor. ``1.0`` recommended; the Dombi
+                T-norm handles high-dimensional stability without inflating
+                sigma.
+            random_state: Seed for k-means and weight initialisation.
+            epochs: Maximum training epochs (default ``200``).
+            learning_rate: Adam learning rate (default ``0.01``).
+            verbose: Print per-epoch progress.
+            rule_base: ``"coco"`` or ``"cartesian"``.
+            batch_size: Mini-batch size (default ``512``).
+            shuffle: Reshuffle each epoch.
+            ur_weight: Uncertainty regularisation weight.
+            ur_target: Uncertainty regularisation target.
+            consequent_batch_norm: Batch normalisation on consequent layers.
+            pfrb_max_rules: Maximum point-based FRB rules (unused by
+                DombiTSK).
+            patience: Early-stopping patience (default ``20``).
+            validation_data: Optional ``(X_val, y_val)`` for early stopping.
+            weight_decay: L2 weight decay for consequent parameters.
+        """
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            pfrb_max_rules=pfrb_max_rules,
+            patience=patience,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
 
     def _build_model(
         self,
@@ -755,7 +1582,83 @@ class DombiTSKClassifierEstimator(_BaseClassifierEstimator):
 
 
 class DombiTSKRegressorEstimator(_BaseRegressorEstimator):
-    """Sklearn-compatible DombiTSK regressor with sum-based defuzzification."""
+    """Dombi T-norm based TSK regressor (Xue et al., TFS 2025).
+
+    Wraps :class:`~highfis.models.DombiTSKRegressor`. See
+    :class:`DombiTSKClassifierEstimator` for a description of the DombiTSK
+    model.
+
+    Example:
+        >>> from highfis import DombiTSKRegressorEstimator
+        >>> reg = DombiTSKRegressorEstimator(n_mfs=30, random_state=0)
+        >>> reg.fit(X_train, y_train)
+        DombiTSKRegressorEstimator(...)
+        >>> reg.score(X_test, y_test)
+        0.87...
+    """
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 30,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 200,
+        learning_rate: float = 1e-2,
+        verbose: bool = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        patience: int = 20,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+    ) -> None:
+        """Initialise a DombiTSK regressor.
+
+        Args:
+            input_configs: Per-feature :class:`InputConfig` list. Only
+                ``name`` is used when ``mf_init="kmeans"``.
+            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            sigma_scale: Sigma scale factor. ``1.0`` recommended.
+            random_state: Seed for k-means and weight initialisation.
+            epochs: Maximum training epochs (default ``200``).
+            learning_rate: Adam learning rate (default ``0.01``).
+            verbose: Print per-epoch progress.
+            rule_base: ``"coco"`` or ``"cartesian"``.
+            batch_size: Mini-batch size (default ``512``).
+            shuffle: Reshuffle each epoch.
+            ur_weight: Uncertainty regularisation weight.
+            ur_target: Uncertainty regularisation target.
+            consequent_batch_norm: Batch normalisation on consequent layers.
+            patience: Early-stopping patience (default ``20``).
+            validation_data: Optional ``(X_val, y_val)`` for early stopping.
+            weight_decay: L2 weight decay for consequent parameters.
+        """
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            patience=patience,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
 
     def _build_model(
         self,
@@ -771,7 +1674,31 @@ class DombiTSKRegressorEstimator(_BaseRegressorEstimator):
 
 
 class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
-    """Sklearn-compatible AdaTSK classifier with adaptive Dombi aggregation."""
+    """Adaptive Dombi T-norm TSK classifier — ADMTSK (Xue et al., TFS 2025).
+
+    Wraps :class:`~highfis.models.AdaTSKClassifier`. Extends
+    :class:`DombiTSKClassifierEstimator` with an **adaptive** index parameter
+    ``λ`` for the Dombi T-norm. The adaptive strategy sets ``λ`` from the
+    input dimensionality ``D`` and the theoretical lower bound ``ε`` of the
+    membership function, ensuring no numeric underflow regardless of ``D``.
+
+    The extra hyperparameter ``lambda_init`` seeds the initial value of ``λ``
+    before training begins.
+
+    Reference:
+        Xue, G., Hu, L., Wang, J., & Ablameyko, S. (2025). ADMTSK: A
+        high-dimensional TSK fuzzy system based on adaptive Dombi T-norm.
+        *IEEE Trans. Fuzzy Systems*.
+        https://doi.org/10.1109/TFUZZ.2025.3535640
+
+    Example:
+        >>> from highfis import AdaTSKClassifierEstimator
+        >>> clf = AdaTSKClassifierEstimator(n_mfs=30, lambda_init=1.0, random_state=0)
+        >>> clf.fit(X_train, y_train)
+        AdaTSKClassifierEstimator(...)
+        >>> clf.score(X_test, y_test)
+        0.95...
+    """
 
     def __init__(
         self,
@@ -795,7 +1722,36 @@ class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
         validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
-        """Configure AdaTSK classifier estimator options."""
+        """Initialise an AdaTSK (ADMTSK) classifier.
+
+        Args:
+            lambda_init: Initial value of the Dombi T-norm index parameter
+                ``λ > 0``. The adaptive strategy will adjust ``λ`` during
+                the forward pass based on current membership values and
+                dimensionality. Xue et al. (2025) used ``lambda_init=1.0``.
+            input_configs: Per-feature :class:`InputConfig` list. Only
+                ``name`` is used when ``mf_init="kmeans"``.
+            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            sigma_scale: Sigma scale factor. ``1.0`` recommended; the
+                adaptive Dombi T-norm handles high-dimensional stability.
+            random_state: Seed for k-means and weight initialisation.
+            epochs: Maximum training epochs (default ``200``).
+            learning_rate: Adam learning rate (default ``0.01``).
+            verbose: Print per-epoch progress.
+            rule_base: ``"coco"`` or ``"cartesian"``.
+            batch_size: Mini-batch size (default ``512``).
+            shuffle: Reshuffle each epoch.
+            ur_weight: Uncertainty regularisation weight.
+            ur_target: Uncertainty regularisation target.
+            consequent_batch_norm: Batch normalisation on consequent layers.
+            patience: Early-stopping patience (default ``20``).
+            validation_data: Optional ``(X_val, y_val)`` for early stopping.
+            weight_decay: L2 weight decay for consequent parameters.
+
+        Raises:
+            ValueError: If ``lambda_init <= 0``.
+        """
         if lambda_init <= 0.0:
             raise ValueError("lambda_init must be > 0")
         self.lambda_init = float(lambda_init)
@@ -836,7 +1792,19 @@ class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
 
 
 class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
-    """Sklearn-compatible AdaTSK regressor with adaptive Dombi aggregation."""
+    """Adaptive Dombi T-norm TSK regressor — ADMTSK (Xue et al., TFS 2025).
+
+    Wraps :class:`~highfis.models.AdaTSKRegressor`. See
+    :class:`AdaTSKClassifierEstimator` for a description of the ADMTSK model.
+
+    Example:
+        >>> from highfis import AdaTSKRegressorEstimator
+        >>> reg = AdaTSKRegressorEstimator(n_mfs=30, lambda_init=1.0, random_state=0)
+        >>> reg.fit(X_train, y_train)
+        AdaTSKRegressorEstimator(...)
+        >>> reg.score(X_test, y_test)
+        0.89...
+    """
 
     def __init__(
         self,
@@ -860,7 +1828,33 @@ class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
         validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
-        """Configure AdaTSK regressor estimator options."""
+        """Initialise an AdaTSK (ADMTSK) regressor.
+
+        Args:
+            lambda_init: Initial Dombi T-norm index ``λ > 0``. Xue et al.
+                (2025) used ``lambda_init=1.0``.
+            input_configs: Per-feature :class:`InputConfig` list. Only
+                ``name`` is used when ``mf_init="kmeans"``.
+            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            sigma_scale: Sigma scale factor. ``1.0`` recommended.
+            random_state: Seed for k-means and weight initialisation.
+            epochs: Maximum training epochs (default ``200``).
+            learning_rate: Adam learning rate (default ``0.01``).
+            verbose: Print per-epoch progress.
+            rule_base: ``"coco"`` or ``"cartesian"``.
+            batch_size: Mini-batch size (default ``512``).
+            shuffle: Reshuffle each epoch.
+            ur_weight: Uncertainty regularisation weight.
+            ur_target: Uncertainty regularisation target.
+            consequent_batch_norm: Batch normalisation on consequent layers.
+            patience: Early-stopping patience (default ``20``).
+            validation_data: Optional ``(X_val, y_val)`` for early stopping.
+            weight_decay: L2 weight decay for consequent parameters.
+
+        Raises:
+            ValueError: If ``lambda_init <= 0``.
+        """
         if lambda_init <= 0.0:
             raise ValueError("lambda_init must be > 0")
         self.lambda_init = float(lambda_init)
@@ -899,12 +1893,44 @@ class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
 
 
 class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
-    """Sklearn-compatible FSRE-AdaTSK classifier with adaptive softmin and gates."""
+    """FSRE-AdaTSK classifier with feature selection and rule extraction.
+
+    Wraps :class:`~highfis.models.FSREAdaTSKClassifier`. FSRE-AdaTSK extends
+    AdaTSK by embedding **gate functions** in both the antecedents (for
+    feature selection, FS) and the consequents (for rule extraction, RE).
+    Training is performed in two sequential phases:
+
+    1. FS phase — feature gates are trained alongside all system parameters;
+       low-gate features are pruned.
+    2. RE phase — rule gates are trained after building an Enhanced FRB
+       (En-FRB) from the remaining features; low-gate rules are pruned.
+
+    When ``use_en_frb=True`` the Enhanced FRB (En-FRB), whose size grows
+    linearly with the number of features, is used; the default ``False``
+    keeps the standard CoCo-FRB.
+
+    Reference:
+        Xue, G., Wang, J., Yuan, B., & Dai, C. (2023). DG-ALETSK: A
+        high-dimensional fuzzy approach with simultaneous feature selection
+        and rule extraction. *IEEE Trans. Fuzzy Systems*, 31(11).
+        https://doi.org/10.1109/TFUZZ.2023.3270445
+
+    Example:
+        >>> from highfis import FSREAdaTSKClassifierEstimator
+        >>> clf = FSREAdaTSKClassifierEstimator(
+        ...     n_mfs=30, lambda_init=1.0, use_en_frb=False, random_state=0
+        ... )
+        >>> clf.fit(X_train, y_train)
+        FSREAdaTSKClassifierEstimator(...)
+        >>> clf.score(X_test, y_test)
+        0.94...
+    """
 
     def __init__(
         self,
         *,
         lambda_init: float = 1.0,
+        use_en_frb: bool = False,
         input_configs: list[InputConfig] | None = None,
         n_mfs: int = 30,
         mf_init: str = "kmeans",
@@ -922,9 +1948,40 @@ class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
         patience: int = 20,
         validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
-        use_en_frb: bool = False,
     ) -> None:
-        """Configure FSRE-AdaTSK classifier estimator options."""
+        """Initialise an FSRE-AdaTSK classifier.
+
+        Args:
+            lambda_init: Initial adaptive softmin index parameter ``λ > 0``.
+                Controls the initial approximation quality to the minimum
+                T-norm. Xue et al. (2023) used ``lambda_init=1.0``.
+            use_en_frb: If ``True``, use the Enhanced FRB (En-FRB) whose
+                size grows linearly with the number of features, allowing
+                more candidate rules for the RE phase. Xue et al. (2023)
+                activate En-FRB after the FS phase; set ``False`` (default)
+                to keep the compact CoCo-FRB.
+            input_configs: Per-feature :class:`InputConfig` list. Only
+                ``name`` is used when ``mf_init="kmeans"``.
+            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            sigma_scale: Sigma scale factor. ``1.0`` recommended.
+            random_state: Seed for k-means and weight initialisation.
+            epochs: Maximum training epochs (default ``200``).
+            learning_rate: Adam learning rate (default ``0.01``).
+            verbose: Print per-epoch progress.
+            rule_base: ``"coco"`` or ``"cartesian"``.
+            batch_size: Mini-batch size (default ``512``).
+            shuffle: Reshuffle each epoch.
+            ur_weight: Uncertainty regularisation weight.
+            ur_target: Uncertainty regularisation target.
+            consequent_batch_norm: Batch normalisation on consequent layers.
+            patience: Early-stopping patience (default ``20``).
+            validation_data: Optional ``(X_val, y_val)`` for early stopping.
+            weight_decay: L2 weight decay for consequent parameters.
+
+        Raises:
+            ValueError: If ``lambda_init <= 0``.
+        """
         if lambda_init <= 0.0:
             raise ValueError("lambda_init must be > 0")
         self.lambda_init = float(lambda_init)
@@ -967,12 +2024,28 @@ class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
 
 
 class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
-    """Sklearn-compatible FSRE-AdaTSK regressor with adaptive softmin and gates."""
+    """FSRE-AdaTSK regressor with feature selection and rule extraction.
+
+    Wraps :class:`~highfis.models.FSREAdaTSKRegressor`. See
+    :class:`FSREAdaTSKClassifierEstimator` for a description of the
+    FSRE-AdaTSK model.
+
+    Example:
+        >>> from highfis import FSREAdaTSKRegressorEstimator
+        >>> reg = FSREAdaTSKRegressorEstimator(
+        ...     n_mfs=30, lambda_init=1.0, use_en_frb=False, random_state=0
+        ... )
+        >>> reg.fit(X_train, y_train)
+        FSREAdaTSKRegressorEstimator(...)
+        >>> reg.score(X_test, y_test)
+        0.88...
+    """
 
     def __init__(
         self,
         *,
         lambda_init: float = 1.0,
+        use_en_frb: bool = False,
         input_configs: list[InputConfig] | None = None,
         n_mfs: int = 30,
         mf_init: str = "kmeans",
@@ -990,9 +2063,36 @@ class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
         patience: int = 20,
         validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
-        use_en_frb: bool = False,
     ) -> None:
-        """Configure FSRE-AdaTSK regressor estimator options."""
+        """Initialise an FSRE-AdaTSK regressor.
+
+        Args:
+            lambda_init: Initial adaptive softmin index ``λ > 0``. Xue et al.
+                (2023) used ``lambda_init=1.0``.
+            use_en_frb: If ``True``, use the Enhanced FRB (En-FRB) for rule
+                extraction. Default ``False`` keeps CoCo-FRB.
+            input_configs: Per-feature :class:`InputConfig` list. Only
+                ``name`` is used when ``mf_init="kmeans"``.
+            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            sigma_scale: Sigma scale factor. ``1.0`` recommended.
+            random_state: Seed for k-means and weight initialisation.
+            epochs: Maximum training epochs (default ``200``).
+            learning_rate: Adam learning rate (default ``0.01``).
+            verbose: Print per-epoch progress.
+            rule_base: ``"coco"`` or ``"cartesian"``.
+            batch_size: Mini-batch size (default ``512``).
+            shuffle: Reshuffle each epoch.
+            ur_weight: Uncertainty regularisation weight.
+            ur_target: Uncertainty regularisation target.
+            consequent_batch_norm: Batch normalisation on consequent layers.
+            patience: Early-stopping patience (default ``20``).
+            validation_data: Optional ``(X_val, y_val)`` for early stopping.
+            weight_decay: L2 weight decay for consequent parameters.
+
+        Raises:
+            ValueError: If ``lambda_init <= 0``.
+        """
         if lambda_init <= 0.0:
             raise ValueError("lambda_init must be > 0")
         self.lambda_init = float(lambda_init)
@@ -1033,7 +2133,26 @@ class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
 
 
 class DGALETSKClassifierEstimator(FSREAdaTSKClassifierEstimator):
-    """Sklearn-compatible DG-ALETSK classifier estimator."""
+    """DG-ALETSK classifier with ALE-softmin firing strength.
+
+    Wraps :class:`~highfis.models.DGALETSKClassifier`. DG-ALETSK (Xue et al.,
+    IEEE TFUZZ 2023, https://doi.org/10.1109/TFUZZ.2023.3270445) extends
+    FSRE-AdaTSK by replacing the adaptive softmin with the *Adaptive
+    Ln-Exp (ALE)* softmin, a smoother and more numerically stable variant.
+
+    All constructor parameters are identical to
+    :class:`FSREAdaTSKClassifierEstimator`.
+
+    Example:
+        >>> from highfis import DGALETSKClassifierEstimator
+        >>> clf = DGALETSKClassifierEstimator(
+        ...     n_mfs=30, lambda_init=1.0, use_en_frb=False, random_state=0
+        ... )
+        >>> clf.fit(X_train, y_train)
+        DGALETSKClassifierEstimator(...)
+        >>> clf.score(X_test, y_test)
+        0.91...
+    """
 
     def _build_model(
         self,
@@ -1053,7 +2172,24 @@ class DGALETSKClassifierEstimator(FSREAdaTSKClassifierEstimator):
 
 
 class DGALETSKRegressorEstimator(FSREAdaTSKRegressorEstimator):
-    """Sklearn-compatible DG-ALETSK regressor estimator."""
+    """DG-ALETSK regressor with ALE-softmin firing strength.
+
+    Wraps :class:`~highfis.models.DGALETSKRegressor`. See
+    :class:`DGALETSKClassifierEstimator` for a description of the model.
+
+    All constructor parameters are identical to
+    :class:`FSREAdaTSKRegressorEstimator`.
+
+    Example:
+        >>> from highfis import DGALETSKRegressorEstimator
+        >>> reg = DGALETSKRegressorEstimator(
+        ...     n_mfs=30, lambda_init=1.0, use_en_frb=False, random_state=0
+        ... )
+        >>> reg.fit(X_train, y_train)
+        DGALETSKRegressorEstimator(...)
+        >>> reg.score(X_test, y_test)
+        0.88...
+    """
 
     def _build_model(
         self,
@@ -1071,11 +2207,26 @@ class DGALETSKRegressorEstimator(FSREAdaTSKRegressorEstimator):
 
 
 class DGTSKClassifierEstimator(_BaseClassifierEstimator):
-    """Sklearn-compatible DG-TSK classifier estimator."""
+    """DG-TSK classifier with M-gate and point-based FRB (P-FRB).
+
+    Wraps :class:`~highfis.models.DGTSKClassifier`. DG-TSK (Xue et al.,
+    Fuzzy Sets and Systems 2023, https://doi.org/10.1016/j.fss.2023.108627)
+    introduces a *data-driven gate* (M-gate) to automatically select relevant
+    rules and supports a *point-based FRB* (P-FRB) for compact rule sets.
+
+    Example:
+        >>> from highfis import DGTSKClassifierEstimator
+        >>> clf = DGTSKClassifierEstimator(n_mfs=30, use_en_frb=False, random_state=0)
+        >>> clf.fit(X_train, y_train)
+        DGTSKClassifierEstimator(...)
+        >>> clf.score(X_test, y_test)
+        0.92...
+    """
 
     def __init__(
         self,
         *,
+        use_en_frb: bool = False,
         input_configs: list[InputConfig] | None = None,
         n_mfs: int = 30,
         mf_init: str = "kmeans",
@@ -1093,9 +2244,30 @@ class DGTSKClassifierEstimator(_BaseClassifierEstimator):
         patience: int = 20,
         validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
-        use_en_frb: bool = False,
     ) -> None:
-        """Configure DG-TSK classifier estimator options."""
+        """Initialise a DG-TSK classifier.
+
+        Args:
+            use_en_frb: If ``True``, use the Enhanced FRB (En-FRB) for rule
+                extraction (P-FRB). Default ``False`` keeps CoCo-FRB.
+            input_configs: Per-feature :class:`InputConfig` list.
+            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            sigma_scale: Sigma scale factor. ``1.0`` recommended.
+            random_state: Seed for reproducibility.
+            epochs: Maximum training epochs (default ``200``).
+            learning_rate: Adam learning rate (default ``0.01``).
+            verbose: Print per-epoch progress.
+            rule_base: ``"coco"`` or ``"cartesian"``.
+            batch_size: Mini-batch size (default ``512``).
+            shuffle: Reshuffle each epoch.
+            ur_weight: Uncertainty regularisation weight.
+            ur_target: Uncertainty regularisation target.
+            consequent_batch_norm: Batch normalisation on consequent layers.
+            patience: Early-stopping patience (default ``20``).
+            validation_data: Optional ``(X_val, y_val)`` for early stopping.
+            weight_decay: L2 weight decay for consequent parameters.
+        """
         self.use_en_frb = bool(use_en_frb)
         super().__init__(
             input_configs=input_configs,
@@ -1134,11 +2306,24 @@ class DGTSKClassifierEstimator(_BaseClassifierEstimator):
 
 
 class DGTSKRegressorEstimator(_BaseRegressorEstimator):
-    """Sklearn-compatible DG-TSK regressor estimator."""
+    """DG-TSK regressor with M-gate and point-based FRB (P-FRB).
+
+    Wraps :class:`~highfis.models.DGTSKRegressor`. See
+    :class:`DGTSKClassifierEstimator` for a description of the model.
+
+    Example:
+        >>> from highfis import DGTSKRegressorEstimator
+        >>> reg = DGTSKRegressorEstimator(n_mfs=30, use_en_frb=False, random_state=0)
+        >>> reg.fit(X_train, y_train)
+        DGTSKRegressorEstimator(...)
+        >>> reg.score(X_test, y_test)
+        0.88...
+    """
 
     def __init__(
         self,
         *,
+        use_en_frb: bool = False,
         input_configs: list[InputConfig] | None = None,
         n_mfs: int = 30,
         mf_init: str = "kmeans",
@@ -1156,9 +2341,30 @@ class DGTSKRegressorEstimator(_BaseRegressorEstimator):
         patience: int = 20,
         validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
-        use_en_frb: bool = False,
     ) -> None:
-        """Configure DG-TSK regressor estimator options."""
+        """Initialise a DG-TSK regressor.
+
+        Args:
+            use_en_frb: If ``True``, use the Enhanced FRB (En-FRB) for rule
+                extraction (P-FRB). Default ``False`` keeps CoCo-FRB.
+            input_configs: Per-feature :class:`InputConfig` list.
+            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            sigma_scale: Sigma scale factor. ``1.0`` recommended.
+            random_state: Seed for reproducibility.
+            epochs: Maximum training epochs (default ``200``).
+            learning_rate: Adam learning rate (default ``0.01``).
+            verbose: Print per-epoch progress.
+            rule_base: ``"coco"`` or ``"cartesian"``.
+            batch_size: Mini-batch size (default ``512``).
+            shuffle: Reshuffle each epoch.
+            ur_weight: Uncertainty regularisation weight.
+            ur_target: Uncertainty regularisation target.
+            consequent_batch_norm: Batch normalisation on consequent layers.
+            patience: Early-stopping patience (default ``20``).
+            validation_data: Optional ``(X_val, y_val)`` for early stopping.
+            weight_decay: L2 weight decay for consequent parameters.
+        """
         self.use_en_frb = bool(use_en_frb)
         super().__init__(
             input_configs=input_configs,
@@ -1200,7 +2406,85 @@ class DGTSKRegressorEstimator(_BaseRegressorEstimator):
 
 
 class LogTSKClassifierEstimator(_BaseClassifierEstimator):
-    """Sklearn-compatible LogTSK classifier with log-space defuzzification."""
+    """LogTSK classifier with log-space defuzzification.
+
+    Wraps :class:`~highfis.models.LogTSKClassifier`. LogTSK (Du et al., 2020;
+    analysed by Cui et al., IJCNN 2021, https://doi.org/10.1109/IJCNN52387.2021.9534099)
+    computes firing strengths in log-space to improve numerical stability.
+    L1 normalisation makes the model scale-invariant (Section III-F of Cui et
+    al.), so ``sigma_scale=1.0`` is the recommended default.
+
+    Example:
+        >>> from highfis import LogTSKClassifierEstimator
+        >>> clf = LogTSKClassifierEstimator(n_mfs=30, random_state=0)
+        >>> clf.fit(X_train, y_train)
+        LogTSKClassifierEstimator(...)
+        >>> clf.score(X_test, y_test)
+        0.90...
+    """
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 30,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 200,
+        learning_rate: float = 1e-2,
+        verbose: bool = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        patience: int = 20,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+    ) -> None:
+        """Initialise a LogTSK classifier.
+
+        Args:
+            input_configs: Per-feature :class:`InputConfig` list.
+            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            sigma_scale: Sigma scale factor. ``1.0`` is recommended (the
+                log-space defuzzifier is scale-invariant).
+            random_state: Seed for reproducibility.
+            epochs: Maximum training epochs (default ``200``).
+            learning_rate: Adam learning rate (default ``0.01``).
+            verbose: Print per-epoch progress.
+            rule_base: ``"coco"`` or ``"cartesian"``.
+            batch_size: Mini-batch size (default ``512``).
+            shuffle: Reshuffle each epoch.
+            ur_weight: Uncertainty regularisation weight.
+            ur_target: Uncertainty regularisation target.
+            consequent_batch_norm: Batch normalisation on consequent layers.
+            patience: Early-stopping patience (default ``20``).
+            validation_data: Optional ``(X_val, y_val)`` for early stopping.
+            weight_decay: L2 weight decay for consequent parameters.
+        """
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            patience=patience,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
 
     def _build_model(
         self,
@@ -1218,7 +2502,82 @@ class LogTSKClassifierEstimator(_BaseClassifierEstimator):
 
 
 class LogTSKRegressorEstimator(_BaseRegressorEstimator):
-    """Sklearn-compatible LogTSK regressor with log-space defuzzification."""
+    """LogTSK regressor with log-space defuzzification.
+
+    Wraps :class:`~highfis.models.LogTSKRegressor`. See
+    :class:`LogTSKClassifierEstimator` for a description of the model.
+
+    Example:
+        >>> from highfis import LogTSKRegressorEstimator
+        >>> reg = LogTSKRegressorEstimator(n_mfs=30, random_state=0)
+        >>> reg.fit(X_train, y_train)
+        LogTSKRegressorEstimator(...)
+        >>> reg.score(X_test, y_test)
+        0.88...
+    """
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 30,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 200,
+        learning_rate: float = 1e-2,
+        verbose: bool = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        patience: int = 20,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+    ) -> None:
+        """Initialise a LogTSK regressor.
+
+        Args:
+            input_configs: Per-feature :class:`InputConfig` list.
+            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            sigma_scale: Sigma scale factor. ``1.0`` is recommended (the
+                log-space defuzzifier is scale-invariant).
+            random_state: Seed for reproducibility.
+            epochs: Maximum training epochs (default ``200``).
+            learning_rate: Adam learning rate (default ``0.01``).
+            verbose: Print per-epoch progress.
+            rule_base: ``"coco"`` or ``"cartesian"``.
+            batch_size: Mini-batch size (default ``512``).
+            shuffle: Reshuffle each epoch.
+            ur_weight: Uncertainty regularisation weight.
+            ur_target: Uncertainty regularisation target.
+            consequent_batch_norm: Batch normalisation on consequent layers.
+            patience: Early-stopping patience (default ``20``).
+            validation_data: Optional ``(X_val, y_val)`` for early stopping.
+            weight_decay: L2 weight decay for consequent parameters.
+        """
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            patience=patience,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
 
     def _build_model(
         self,
