@@ -1,7 +1,6 @@
 """highFIS public API."""
 
 from .base import BaseTSK
-from .defuzzifiers import InvLogDefuzzifier, LogSumDefuzzifier, SoftmaxLogDefuzzifier, SumBasedDefuzzifier
 from .estimators import (
     AdaTSKClassifierEstimator,
     AdaTSKRegressorEstimator,
