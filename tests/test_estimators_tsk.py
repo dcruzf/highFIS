@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from sklearn.exceptions import NotFittedError
 
-from highfis.defuzzifiers import LogSumDefuzzifier, SumBasedDefuzzifier
+from highfis.defuzzifiers import InvLogDefuzzifier, SumBasedDefuzzifier
 from highfis.estimators import (
     InputConfig,
     LogTSKClassifierEstimator,
@@ -190,7 +190,7 @@ class TestLogTSKClassifierEstimator:
         x, y = _make_clf_dataset(40)
         est = LogTSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=16, random_state=0)
         est.fit(x, y)
-        assert isinstance(est.model_.defuzzifier, LogSumDefuzzifier)
+        assert isinstance(est.model_.defuzzifier, InvLogDefuzzifier)
 
     def test_predict_requires_fit(self) -> None:
         x, _ = _make_clf_dataset(10)
@@ -239,7 +239,7 @@ class TestLogTSKRegressorEstimator:
         x, y = _make_reg_dataset(40)
         est = LogTSKRegressorEstimator(n_mfs=2, epochs=1, batch_size=16, random_state=0)
         est.fit(x, y)
-        assert isinstance(est.model_.defuzzifier, LogSumDefuzzifier)
+        assert isinstance(est.model_.defuzzifier, InvLogDefuzzifier)
 
     def test_predict_requires_fit(self) -> None:
         x, _ = _make_reg_dataset(10)

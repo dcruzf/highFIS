@@ -1,10 +1,12 @@
-"""Tests for LogTSK models (Cui, Wu & Xu, IEEE Trans. Fuzzy Syst. 2021).
+"""Tests for LogTSK models (Cui, Wu & Xu, IEEE Trans. Fuzzy Syst. 2021, §III-A).
 
-LogTSK normalizes in log-space with optional temperature scaling:
+LogTSK normalizes firing strengths using the scale-invariant inverse-log formula:
 
-    log f̄_r = log(w_r)/τ - log(Σ exp(log(w_i)/τ))
+    f̄_r = (1/|Z_r|) / Σ_i (1/|Z_i|)
 
-At τ=1 it is mathematically equivalent to SoftmaxLogDefuzzifier.
+where Z_r = log f_r = Σ_d log μ_{r,d} ≤ 0.  The key property is scale-invariance:
+multiplying all Z_r by the same positive constant k does not change the output,
+making this defuzzifier immune to softmax saturation as input dimension D grows.
 """
 
 from __future__ import annotations
@@ -12,7 +14,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from highfis.defuzzifiers import LogSumDefuzzifier
+from highfis.defuzzifiers import InvLogDefuzzifier
 from highfis.memberships import GaussianMF
 from highfis.models import LogTSKClassifier, LogTSKRegressor
 
@@ -35,14 +37,16 @@ class TestLogTSKClassifierInit:
         with pytest.raises(ValueError, match="n_classes must be >= 2"):
             LogTSKClassifier(_build_input_mfs(), n_classes=1)
 
-    def test_default_defuzzifier_is_log_sum(self) -> None:
+    def test_default_defuzzifier_is_inv_log(self) -> None:
         model = LogTSKClassifier(_build_input_mfs(), n_classes=3)
-        assert isinstance(model.defuzzifier, LogSumDefuzzifier)
+        assert isinstance(model.defuzzifier, InvLogDefuzzifier)
 
-    def test_temperature_is_passed_to_defuzzifier(self) -> None:
-        model = LogTSKClassifier(_build_input_mfs(), n_classes=3, temperature=0.5)
-        assert isinstance(model.defuzzifier, LogSumDefuzzifier)
-        assert model.defuzzifier.temperature == 0.5
+    def test_custom_defuzzifier_is_accepted(self) -> None:
+        from highfis.defuzzifiers import LogSumDefuzzifier
+
+        custom = LogSumDefuzzifier(temperature=0.5)
+        model = LogTSKClassifier(_build_input_mfs(), n_classes=3, defuzzifier=custom)
+        assert model.defuzzifier is custom
 
 
 class TestLogTSKClassifierForward:
@@ -65,7 +69,7 @@ class TestLogTSKClassifierForward:
         assert pred.shape == (8,)
 
     def test_antecedent_norm_w_sums_to_one(self) -> None:
-        """LogSumDefuzzifier output sums to 1 (softmax guarantee)."""
+        """InvLogDefuzzifier output sums to 1."""
         model = LogTSKClassifier(_build_input_mfs(), n_classes=2)
         x = torch.randn(6, 3)
         norm_w = model.forward_antecedents(x)
@@ -73,43 +77,59 @@ class TestLogTSKClassifierForward:
 
 
 class TestLogTSKClassifierMath:
-    def test_temperature_1_equivalent_to_softmax_log(self) -> None:
-        """At τ=1, LogSumDefuzzifier ≈ SoftmaxLogDefuzzifier end-to-end."""
+    def test_inv_log_scale_invariance(self) -> None:
+        """Multiplying all log-firing strengths by k > 0 must not change output.
+
+        This is the key property that makes InvLogDefuzzifier immune to
+        softmax saturation: if we scale Z_r → k·Z_r for all r, then
+        (1/|k·Z_r|) / Σ(1/|k·Z_i|) = (1/|Z_r|) / Σ(1/|Z_i|).
+        """
+        defuzz = InvLogDefuzzifier()
+        torch.manual_seed(0)
+        # Values in [0.4, 0.9] — safely above eps even after cubing
+        w = torch.rand(10, 4) * 0.5 + 0.4
+        out1 = defuzz(w)
+        # w^3 → Z_r scaled by 3: should give identical normalized output
+        out2 = defuzz(w**3.0)
+        assert torch.allclose(out1, out2, atol=1e-5), (
+            "InvLogDefuzzifier is not scale-invariant: outputs differ after scaling Z_r by k"
+        )
+
+    def test_inv_log_not_saturation_prone(self) -> None:
+        """Unlike softmax, InvLogDefuzzifier does not saturate with high D.
+
+        Design rule 1 to fire at 0.9^D and rules 2-4 at 0.5^D.
+        Softmax(log(w)) saturates (max ≈ 1); InvLog stays bounded.
+        """
         from highfis.defuzzifiers import SoftmaxLogDefuzzifier
-        from highfis.models import HTSKClassifier
 
-        torch.manual_seed(99)
-        mfs = _build_input_mfs(n_inputs=2, n_mfs=2)
+        N, R, D = 20, 4, 100
+        w_high = torch.full((N, 1), 0.9) ** D
+        w_low = torch.full((N, R - 1), 0.5) ** D
+        w = torch.cat([w_high, w_low], dim=1)
 
-        m_log = LogTSKClassifier(mfs, n_classes=2, t_norm="gmean", temperature=1.0)
-        m_htsk = HTSKClassifier(mfs, n_classes=2, t_norm="gmean")
+        inv_log_defuzz = InvLogDefuzzifier()
+        softmax_defuzz = SoftmaxLogDefuzzifier()
 
-        assert isinstance(m_htsk.defuzzifier, SoftmaxLogDefuzzifier)
+        norm_inv = inv_log_defuzz(w)
+        norm_soft = softmax_defuzz(w)
 
-        x = torch.randn(10, 2)
-        # Same architecture but freshly init'd—just verify both produce valid output
-        norm_log = m_log.forward_antecedents(x)
-        norm_htsk = m_htsk.forward_antecedents(x)
-        assert torch.allclose(norm_log.sum(dim=1), torch.ones(10), atol=1e-6)
-        assert torch.allclose(norm_htsk.sum(dim=1), torch.ones(10), atol=1e-6)
+        max_inv = norm_inv.max(dim=1).values.mean().item()
+        max_soft = norm_soft.max(dim=1).values.mean().item()
 
-    def test_lower_temperature_sharpens_distribution(self) -> None:
-        """Lower τ concentrates probability on the max-firing rule."""
-        torch.manual_seed(42)
-        mfs = _build_input_mfs(n_inputs=2, n_mfs=3)
-        x = torch.randn(20, 2)
+        # Softmax should be very close to 1 (saturated); InvLog should not
+        assert max_soft > 0.97, f"Expected softmax saturation, got {max_soft:.4f}"
+        assert max_inv < 0.99, f"Expected InvLog not saturated, got {max_inv:.4f}"
 
-        m_high = LogTSKClassifier(mfs, n_classes=2, temperature=2.0)
-        m_low = LogTSKClassifier(mfs, n_classes=2, temperature=0.1)
-
-        # Copy antecedent weights so firing strengths are identical
-        m_low.load_state_dict(m_high.state_dict(), strict=False)
-
-        norm_high = m_high.forward_antecedents(x)
-        norm_low = m_low.forward_antecedents(x)
-
-        # Lower temperature → higher max → lower entropy
-        assert norm_low.max(dim=1).values.mean() > norm_high.max(dim=1).values.mean()
+    def test_inv_log_defuzzifier_values(self) -> None:
+        """Verify numerics for a known small case."""
+        defuzz = InvLogDefuzzifier()
+        # Two rules: w1=e^{-1}, w2=e^{-2} → Z1=-1, Z2=-2
+        # 1/|Z1|=1, 1/|Z2|=0.5 → normalized: [2/3, 1/3]
+        w = torch.tensor([[torch.e**-1, torch.e**-2]])
+        out = defuzz(w)
+        expected = torch.tensor([[2.0 / 3.0, 1.0 / 3.0]])
+        assert torch.allclose(out, expected, atol=1e-5)
 
 
 class TestLogTSKClassifierFit:
@@ -150,14 +170,16 @@ class TestLogTSKRegressorInit:
         with pytest.raises(ValueError, match="input_mfs must not be empty"):
             LogTSKRegressor({})
 
-    def test_default_defuzzifier_is_log_sum(self) -> None:
+    def test_default_defuzzifier_is_inv_log(self) -> None:
         model = LogTSKRegressor(_build_input_mfs())
-        assert isinstance(model.defuzzifier, LogSumDefuzzifier)
+        assert isinstance(model.defuzzifier, InvLogDefuzzifier)
 
-    def test_temperature_is_passed_to_defuzzifier(self) -> None:
-        model = LogTSKRegressor(_build_input_mfs(), temperature=0.5)
-        assert isinstance(model.defuzzifier, LogSumDefuzzifier)
-        assert model.defuzzifier.temperature == 0.5
+    def test_custom_defuzzifier_is_accepted(self) -> None:
+        from highfis.defuzzifiers import LogSumDefuzzifier
+
+        custom = LogSumDefuzzifier(temperature=0.5)
+        model = LogTSKRegressor(_build_input_mfs(), defuzzifier=custom)
+        assert model.defuzzifier is custom
 
 
 class TestLogTSKRegressorForward:
