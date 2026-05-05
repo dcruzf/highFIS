@@ -596,19 +596,21 @@ class DombiTSKRegressor(BaseTSKRegressor):
 class AYATSKClassifier(BaseTSKClassifier):
     r"""TSK classifier with an adaptive Yager T-norm in the antecedent.
 
-    The Yager T-norm with learnable per-rule exponent :math:`p_r > 0` is:
+    The Yager T-norm with learnable per-rule exponent $p_r > 0$ is:
 
-    .. math::
+    Math:
+        $$
         T_{p_r}(a_1, \ldots, a_D) =
         \max\!\left(0,\; 1 - \left[\sum_{d=1}^{D}(1-a_d)^{p_r}\right]^{1/p_r}\right)
+        $$
 
     Each rule maintains its own exponent, which is jointly optimised with
     the consequent parameters via back-propagation.
 
     Reference:
-        Xue, Y., et al. (2025). Adaptive Yager T-norm for TSK fuzzy
-        systems. *IEEE Trans. Syst., Man, Cybern.: Syst.*
-        https://doi.org/10.1109/TSMC.2025.XXXXXXX
+        G. Xue, Y. Yang and J. Wang, "Adaptive Yager T-Norm-Based Takagi-Sugeno-Kang Fuzzy Systems,"
+        in IEEE Transactions on Systems, Man, and Cybernetics: Systems,
+        vol. 55, no. 12, pp. 9802-9815, Dec. 2025, doi: 10.1109/TSMC.2025.3621346.
     """
 
     def __init__(

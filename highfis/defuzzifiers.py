@@ -1,4 +1,34 @@
-"""Defuzzification strategies for normalized rule firing strengths."""
+"""Defuzzification strategies for normalized rule firing strengths.
+
+Defuzzifiers convert raw rule firing strengths produced by the antecedent
+pipeline into a valid probability-like distribution over rules, which is
+then used for consequent aggregation.  All built-in defuzzifiers accept a
+tensor of shape ``(N, R)`` and return a normalized tensor of the same shape.
+
+Built-in strategies:
+
+- :class:`SoftmaxLogDefuzzifier` — ``softmax(log(w))``, numerically stable
+  equivalent of ``w / sum(w)`` (default for HTSK and DG variants).
+- :class:`SumBasedDefuzzifier` — classic ``w / sum(w)`` normalization
+  (used by TSK, AYATSK, DombiTSK, AdaTSK).
+- :class:`LogSumDefuzzifier` — temperature-scaled ``softmax(log(w) / T)``
+  (used by LogTSK).
+- :class:`InvLogDefuzzifier` — scale-invariant inverse-log normalization
+  (Du et al. 2020 / Cui et al. 2021).
+
+A custom defuzzifier can be supplied to any model via the ``defuzzifier``
+constructor parameter; it only needs to accept a 2-D firing-strength tensor
+and return a normalized tensor of the same shape.
+
+Examples:
+    >>> from highfis import HTSKClassifier
+    >>> from highfis.defuzzifiers import SumBasedDefuzzifier
+    >>> from highfis.memberships import GaussianMF
+    >>> input_mfs = {"x1": [GaussianMF(0.0, 1.0), GaussianMF(1.0, 1.0)]}
+    >>> model = HTSKClassifier(
+    ...     input_mfs, n_classes=3, defuzzifier=SumBasedDefuzzifier()
+    ... )
+"""
 
 from __future__ import annotations
 
@@ -15,12 +45,30 @@ class SoftmaxLogDefuzzifier(nn.Module):
     """
 
     def __init__(self, eps: float | None = None) -> None:
-        """Initialize with numeric stability *eps*."""
+        """Initialize with optional numeric stability floor.
+
+        Args:
+            eps: Small positive constant used to clamp weights before
+                taking the logarithm.  ``None`` infers it from
+                :func:`torch.finfo` for the input dtype at call time.
+        """
         super().__init__()
         self.eps = eps
 
     def forward(self, w: Tensor) -> Tensor:
-        """Normalize firing strengths via softmax(log(w))."""
+        """Normalize firing strengths via softmax(log(w)).
+
+        Args:
+            w: Firing-strength tensor of shape ``(N, R)`` with positive
+                values.
+
+        Returns:
+            Normalized weight tensor of shape ``(N, R)`` summing to 1
+            along the rule dimension.
+
+        Raises:
+            ValueError: If *w* does not have exactly 2 dimensions.
+        """
         if w.ndim != 2:
             raise ValueError(f"expected w with 2 dims, got shape {tuple(w.shape)}")
         eps = self.eps if self.eps is not None else torch.finfo(w.dtype).eps
@@ -32,12 +80,30 @@ class SumBasedDefuzzifier(nn.Module):
     """Classic ``w / sum(w)`` normalization."""
 
     def __init__(self, eps: float | None = None) -> None:
-        """Initialize with numeric stability *eps*."""
+        """Initialize with optional numeric stability floor.
+
+        Args:
+            eps: Small positive constant used to clamp weights before
+                division.  ``None`` infers it from :func:`torch.finfo`
+                for the input dtype at call time.
+        """
         super().__init__()
         self.eps = eps
 
     def forward(self, w: Tensor) -> Tensor:
-        """Normalize firing strengths via sum-based division."""
+        """Normalize firing strengths via sum-based division.
+
+        Args:
+            w: Firing-strength tensor of shape ``(N, R)`` with positive
+                values.
+
+        Returns:
+            Normalized weight tensor of shape ``(N, R)`` summing to 1
+            along the rule dimension.
+
+        Raises:
+            ValueError: If *w* does not have exactly 2 dimensions.
+        """
         if w.ndim != 2:
             raise ValueError(f"expected w with 2 dims, got shape {tuple(w.shape)}")
         eps = self.eps if self.eps is not None else torch.finfo(w.dtype).eps
@@ -58,7 +124,20 @@ class LogSumDefuzzifier(nn.Module):
     """
 
     def __init__(self, temperature: float = 1.0, eps: float | None = None) -> None:
-        """Initialize with *temperature* and numeric stability *eps*."""
+        """Initialize with temperature and optional numeric stability floor.
+
+        Args:
+            temperature: Positive scaling factor ``T > 0`` applied to the
+                log-space weights before softmax.  ``1.0`` recovers
+                :class:`SoftmaxLogDefuzzifier` behaviour; lower values
+                sharpen the distribution, higher values flatten it.
+            eps: Small positive constant used to clamp weights before
+                taking the logarithm.  ``None`` infers it from
+                :func:`torch.finfo` for the input dtype at call time.
+
+        Raises:
+            ValueError: If *temperature* is not positive.
+        """
         super().__init__()
         if temperature <= 0:
             raise ValueError("temperature must be positive")
@@ -66,7 +145,19 @@ class LogSumDefuzzifier(nn.Module):
         self.eps = eps
 
     def forward(self, w: Tensor) -> Tensor:
-        """Normalize firing strengths via temperature-scaled softmax(log(w))."""
+        """Normalize firing strengths via temperature-scaled softmax(log(w)).
+
+        Args:
+            w: Firing-strength tensor of shape ``(N, R)`` with positive
+                values.
+
+        Returns:
+            Normalized weight tensor of shape ``(N, R)`` summing to 1
+            along the rule dimension.
+
+        Raises:
+            ValueError: If *w* does not have exactly 2 dimensions.
+        """
         if w.ndim != 2:
             raise ValueError(f"expected w with 2 dims, got shape {tuple(w.shape)}")
         eps = self.eps if self.eps is not None else torch.finfo(w.dtype).eps

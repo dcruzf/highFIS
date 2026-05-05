@@ -1,4 +1,30 @@
-"""Structural typing protocols for the highFIS fuzzy inference pipeline."""
+"""Runtime-checkable structural typing protocols for the highFIS pipeline.
+
+All protocols are decorated with ``@runtime_checkable`` so they can be used
+with :func:`isinstance` at runtime.
+
+Protocols:
+
+- :class:`MembershipFn` — any callable ``(x: Tensor) -> Tensor`` that
+  computes membership degrees.  Satisfied by all classes in
+  :mod:`highfis.memberships`.
+- :class:`TNorm` — any callable ``(terms: Tensor) -> Tensor`` that
+  aggregates antecedent activations.  Satisfied by T-norm classes in
+  :mod:`highfis.t_norms`.
+- :class:`Defuzzifier` — any callable ``(w: Tensor) -> Tensor`` that
+  normalizes rule firing strengths.  Satisfied by all classes in
+  :mod:`highfis.defuzzifiers`.
+- :class:`ConsequentFn` — any callable
+  ``(x: Tensor, norm_w: Tensor) -> Tensor`` that computes the model output.
+  Satisfied by consequent layers in :mod:`highfis.layers`.
+
+Examples:
+    >>> from highfis.protocols import MembershipFn
+    >>> from highfis import GaussianMF
+    >>> mf = GaussianMF(mean=0.0, sigma=1.0)
+    >>> isinstance(mf, MembershipFn)
+    True
+"""
 
 from __future__ import annotations
 

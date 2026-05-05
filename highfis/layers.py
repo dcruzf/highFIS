@@ -1,4 +1,35 @@
-"""Antecedent and consequent layers for highFIS fuzzy models."""
+"""Antecedent and consequent layers for highFIS fuzzy models.
+
+This module provides all :class:`~torch.nn.Module` building blocks for the
+TSK fuzzy antecedent pipeline and consequent computation.
+
+Antecedent layers:
+
+- :class:`MembershipLayer` — evaluates each input feature against its
+  membership functions; returns a dict of ``(N, n_mfs)`` tensors.
+- :class:`RuleLayer` — aggregates membership degrees into rule firing
+  strengths using a configurable rule base and T-norm.  Supported
+  rule-base strategies: ``"cartesian"``, ``"coco"``, ``"en"``,
+  or ``"custom"``.
+- :class:`AdaSoftminRuleLayer` — adaptive softmin aggregation used by
+  FSRE-AdaTSK and AdaTSK.
+- :class:`DGALETSKRuleLayer` — DG-ALETSK antecedent with per-rule feature
+  gates and ALE-softmin aggregation.
+- :class:`DGTSKRuleLayer` — DG-TSK antecedent with per-rule feature gates
+  and product aggregation.
+- :class:`AdaptiveDombiRuleLayer` — per-rule adaptive Dombi aggregation
+  (ADMTSK).
+
+Consequent layers:
+
+- :class:`ClassificationConsequentLayer` — linear consequent for
+  multi-class TSK classification.
+- :class:`RegressionConsequentLayer` — linear consequent for scalar TSK
+  regression.
+
+Gate activations (used by DG-ALETSK, DG-TSK):
+:func:`gate1`, :func:`gate2`, :func:`gate3`, :func:`gate4`, :func:`gate_m`.
+"""
 
 from __future__ import annotations
 
@@ -53,7 +84,19 @@ def _generate_en_frb(s: int, d: int) -> list[tuple[int, ...]]:
 
 
 class MembershipLayer(nn.Module):
-    """Apply membership functions for each input feature."""
+    """Apply membership functions for each input feature.
+
+    Evaluates each input variable against its sequence of
+    :class:`~highfis.memberships.MembershipFunction` objects and returns
+    a dictionary of per-variable membership tensors.
+
+    Attributes:
+        input_names: Ordered list of input feature names.
+        n_inputs: Number of input features.
+        mf_per_input: Number of membership functions per feature.
+        input_mfs: ``nn.ModuleDict`` mapping feature names to their
+            ``nn.ModuleList`` of membership functions.
+    """
 
     def __init__(self, input_mfs: Mapping[str, Sequence[MembershipFunction]]) -> None:
         """Initialize membership layer with input-to-membership mapping."""
@@ -76,7 +119,19 @@ class MembershipLayer(nn.Module):
         self.input_mfs = nn.ModuleDict(modules)
 
     def forward(self, x: Tensor) -> dict[str, Tensor]:
-        """Compute membership outputs for each input variable."""
+        """Compute membership outputs for each input variable.
+
+        Args:
+            x: Input tensor of shape ``(N, n_inputs)``.
+
+        Returns:
+            Dictionary mapping each input name to a membership tensor of
+            shape ``(N, n_mfs_for_input)``.
+
+        Raises:
+            ValueError: If *x* is not 2-dimensional or has the wrong
+                number of columns.
+        """
         if x.ndim != 2:
             raise ValueError(f"expected x with 2 dims, got shape {tuple(x.shape)}")
         if x.shape[1] != self.n_inputs:
@@ -91,7 +146,25 @@ class MembershipLayer(nn.Module):
 
 
 class RuleLayer(nn.Module):
-    """Compute firing strengths from membership degrees."""
+    """Compute firing strengths from membership degrees.
+
+    Generates a rule base from the specified strategy and aggregates
+    per-input membership degrees into scalar firing strengths using a
+    configurable T-norm.
+
+    Supported rule-base strategies (``rule_base`` parameter):
+
+    - ``"cartesian"`` / ``"fuco"`` — full combinatorial rule base.
+    - ``"coco"`` — same-index rule base; requires identical MF counts
+      across all inputs.
+    - ``"en"`` — enhanced FRB; requires identical MF counts across all
+      inputs.
+    - ``"custom"`` — user-supplied rule index sequences.
+
+    Attributes:
+        rules: List of rule index tuples, one per rule.
+        n_rules: Number of rules in the rule base.
+    """
 
     def __init__(
         self,
@@ -181,7 +254,20 @@ class RuleLayer(nn.Module):
         return self._resolved_t_norm(terms, dim=dim)
 
     def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
-        """Compute rule firing strengths from membership outputs."""
+        """Compute rule firing strengths from membership outputs.
+
+        Args:
+            membership_outputs: Dictionary returned by
+                :class:`MembershipLayer`, mapping each input name to a
+                membership tensor of shape ``(N, n_mfs)``.
+
+        Returns:
+            Firing-strength tensor of shape ``(N, n_rules)``.
+
+        Raises:
+            KeyError: If a required input name is missing from
+                *membership_outputs*.
+        """
         mu_list = []
         for name in self.input_names:
             if name not in membership_outputs:

@@ -104,11 +104,13 @@ class InputConfig:
             by 10 percent so edge centres are not clipped to extreme values.
 
     Example:
+        ```python
         >>> from highfis.estimators import InputConfig
         >>> configs = [
         ...     InputConfig(name="sepal_length", n_mfs=3),
         ...     InputConfig(name="sepal_width", n_mfs=5, overlap=0.3),
         ... ]
+        ```
     """
 
     name: str
@@ -849,12 +851,14 @@ class HTSKClassifierEstimator(_BaseClassifierEstimator):
     ``learning_rate=0.01``, ``batch_size=512``, and ``patience=20``.
 
     Example:
+        ```python
         >>> from highfis import HTSKClassifierEstimator
         >>> clf = HTSKClassifierEstimator(n_mfs=30, random_state=0)
         >>> clf.fit(X_train, y_train)
         HTSKClassifierEstimator(...)
         >>> clf.score(X_test, y_test)
         0.95...
+        ```
     """
 
     def __init__(
@@ -971,12 +975,14 @@ class HTSKRegressorEstimator(_BaseRegressorEstimator):
     ``learning_rate=0.01``, ``batch_size=512``, and ``patience=20``.
 
     Example:
+        ```python
         >>> from highfis import HTSKRegressorEstimator
         >>> reg = HTSKRegressorEstimator(n_mfs=30, random_state=0)
         >>> reg.fit(X_train, y_train)
         HTSKRegressorEstimator(...)
         >>> reg.score(X_test, y_test)
         0.87...
+        ```
     """
 
     def __init__(
@@ -1074,12 +1080,14 @@ class TSKClassifierEstimator(_BaseClassifierEstimator):
     sets it to ``sqrt(D)`` as analysed by Cui et al., IJCNN 2021).
 
     Example:
+        ```python
         >>> from highfis import TSKClassifierEstimator
         >>> clf = TSKClassifierEstimator(n_mfs=30, random_state=0)
         >>> clf.fit(X_train, y_train)
         TSKClassifierEstimator(...)
         >>> clf.score(X_test, y_test)
         0.91...
+        ```
     """
 
     def __init__(
@@ -1175,12 +1183,14 @@ class TSKRegressorEstimator(_BaseRegressorEstimator):
     :class:`HTSKRegressorEstimator` or :class:`LogTSKRegressorEstimator`.
 
     Example:
+        ```python
         >>> from highfis import TSKRegressorEstimator
         >>> reg = TSKRegressorEstimator(n_mfs=30, random_state=0)
         >>> reg.fit(X_train, y_train)
         TSKRegressorEstimator(...)
         >>> reg.score(X_test, y_test)
         0.85...
+        ```
     """
 
     def __init__(
@@ -1282,12 +1292,14 @@ class AYATSKClassifierEstimator(_BaseClassifierEstimator):
     high-dimensional fuzzy classifiers available.
 
     Example:
+        ```python
         >>> from highfis import AYATSKClassifierEstimator
         >>> clf = AYATSKClassifierEstimator(n_mfs=30, random_state=0)
         >>> clf.fit(X_train, y_train)
         AYATSKClassifierEstimator(...)
         >>> clf.score(X_test, y_test)
         0.94...
+        ```
     """
 
     def __init__(
@@ -1383,12 +1395,14 @@ class AYATSKRegressorEstimator(_BaseRegressorEstimator):
     model.
 
     Example:
+        ```python
         >>> from highfis import AYATSKRegressorEstimator
         >>> reg = AYATSKRegressorEstimator(n_mfs=30, random_state=0)
         >>> reg.fit(X_train, y_train)
         AYATSKRegressorEstimator(...)
         >>> reg.score(X_test, y_test)
         0.88...
+        ```
     """
 
     def __init__(
@@ -1489,12 +1503,14 @@ class DombiTSKClassifierEstimator(_BaseClassifierEstimator):
         https://doi.org/10.1109/TFUZZ.2025.3535640
 
     Example:
+        ```python
         >>> from highfis import DombiTSKClassifierEstimator
         >>> clf = DombiTSKClassifierEstimator(n_mfs=30, random_state=0)
         >>> clf.fit(X_train, y_train)
         DombiTSKClassifierEstimator(...)
         >>> clf.score(X_test, y_test)
         0.93...
+        ```
     """
 
     def __init__(
@@ -1589,12 +1605,14 @@ class DombiTSKRegressorEstimator(_BaseRegressorEstimator):
     model.
 
     Example:
+        ```python
         >>> from highfis import DombiTSKRegressorEstimator
         >>> reg = DombiTSKRegressorEstimator(n_mfs=30, random_state=0)
         >>> reg.fit(X_train, y_train)
         DombiTSKRegressorEstimator(...)
         >>> reg.score(X_test, y_test)
         0.87...
+        ```
     """
 
     def __init__(
@@ -1692,12 +1710,14 @@ class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
         https://doi.org/10.1109/TFUZZ.2025.3535640
 
     Example:
+        ```python
         >>> from highfis import AdaTSKClassifierEstimator
         >>> clf = AdaTSKClassifierEstimator(n_mfs=30, lambda_init=1.0, random_state=0)
         >>> clf.fit(X_train, y_train)
         AdaTSKClassifierEstimator(...)
         >>> clf.score(X_test, y_test)
         0.95...
+        ```
     """
 
     def __init__(
@@ -1798,12 +1818,14 @@ class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
     :class:`AdaTSKClassifierEstimator` for a description of the ADMTSK model.
 
     Example:
+        ```python
         >>> from highfis import AdaTSKRegressorEstimator
         >>> reg = AdaTSKRegressorEstimator(n_mfs=30, lambda_init=1.0, random_state=0)
         >>> reg.fit(X_train, y_train)
         AdaTSKRegressorEstimator(...)
         >>> reg.score(X_test, y_test)
         0.89...
+        ```
     """
 
     def __init__(
@@ -1916,6 +1938,7 @@ class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
         https://doi.org/10.1109/TFUZZ.2023.3270445
 
     Example:
+        ```python
         >>> from highfis import FSREAdaTSKClassifierEstimator
         >>> clf = FSREAdaTSKClassifierEstimator(
         ...     n_mfs=30, lambda_init=1.0, use_en_frb=False, random_state=0
@@ -1924,6 +1947,7 @@ class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
         FSREAdaTSKClassifierEstimator(...)
         >>> clf.score(X_test, y_test)
         0.94...
+        ```
     """
 
     def __init__(
@@ -2031,6 +2055,7 @@ class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
     FSRE-AdaTSK model.
 
     Example:
+        ```python
         >>> from highfis import FSREAdaTSKRegressorEstimator
         >>> reg = FSREAdaTSKRegressorEstimator(
         ...     n_mfs=30, lambda_init=1.0, use_en_frb=False, random_state=0
@@ -2039,6 +2064,7 @@ class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
         FSREAdaTSKRegressorEstimator(...)
         >>> reg.score(X_test, y_test)
         0.88...
+        ```
     """
 
     def __init__(
@@ -2144,6 +2170,7 @@ class DGALETSKClassifierEstimator(FSREAdaTSKClassifierEstimator):
     :class:`FSREAdaTSKClassifierEstimator`.
 
     Example:
+        ```python
         >>> from highfis import DGALETSKClassifierEstimator
         >>> clf = DGALETSKClassifierEstimator(
         ...     n_mfs=30, lambda_init=1.0, use_en_frb=False, random_state=0
@@ -2152,6 +2179,7 @@ class DGALETSKClassifierEstimator(FSREAdaTSKClassifierEstimator):
         DGALETSKClassifierEstimator(...)
         >>> clf.score(X_test, y_test)
         0.91...
+        ```
     """
 
     def _build_model(
@@ -2181,6 +2209,7 @@ class DGALETSKRegressorEstimator(FSREAdaTSKRegressorEstimator):
     :class:`FSREAdaTSKRegressorEstimator`.
 
     Example:
+        ```python
         >>> from highfis import DGALETSKRegressorEstimator
         >>> reg = DGALETSKRegressorEstimator(
         ...     n_mfs=30, lambda_init=1.0, use_en_frb=False, random_state=0
@@ -2189,6 +2218,7 @@ class DGALETSKRegressorEstimator(FSREAdaTSKRegressorEstimator):
         DGALETSKRegressorEstimator(...)
         >>> reg.score(X_test, y_test)
         0.88...
+        ```
     """
 
     def _build_model(
@@ -2215,12 +2245,14 @@ class DGTSKClassifierEstimator(_BaseClassifierEstimator):
     rules and supports a *point-based FRB* (P-FRB) for compact rule sets.
 
     Example:
+        ```python
         >>> from highfis import DGTSKClassifierEstimator
         >>> clf = DGTSKClassifierEstimator(n_mfs=30, use_en_frb=False, random_state=0)
         >>> clf.fit(X_train, y_train)
         DGTSKClassifierEstimator(...)
         >>> clf.score(X_test, y_test)
         0.92...
+        ```
     """
 
     def __init__(
@@ -2312,12 +2344,14 @@ class DGTSKRegressorEstimator(_BaseRegressorEstimator):
     :class:`DGTSKClassifierEstimator` for a description of the model.
 
     Example:
+        ```python
         >>> from highfis import DGTSKRegressorEstimator
         >>> reg = DGTSKRegressorEstimator(n_mfs=30, use_en_frb=False, random_state=0)
         >>> reg.fit(X_train, y_train)
         DGTSKRegressorEstimator(...)
         >>> reg.score(X_test, y_test)
         0.88...
+        ```
     """
 
     def __init__(
@@ -2415,12 +2449,14 @@ class LogTSKClassifierEstimator(_BaseClassifierEstimator):
     al.), so ``sigma_scale=1.0`` is the recommended default.
 
     Example:
+        ```python
         >>> from highfis import LogTSKClassifierEstimator
         >>> clf = LogTSKClassifierEstimator(n_mfs=30, random_state=0)
         >>> clf.fit(X_train, y_train)
         LogTSKClassifierEstimator(...)
         >>> clf.score(X_test, y_test)
         0.90...
+        ```
     """
 
     def __init__(
@@ -2508,12 +2544,14 @@ class LogTSKRegressorEstimator(_BaseRegressorEstimator):
     :class:`LogTSKClassifierEstimator` for a description of the model.
 
     Example:
+        ```python
         >>> from highfis import LogTSKRegressorEstimator
         >>> reg = LogTSKRegressorEstimator(n_mfs=30, random_state=0)
         >>> reg.fit(X_train, y_train)
         LogTSKRegressorEstimator(...)
         >>> reg.score(X_test, y_test)
         0.88...
+        ```
     """
 
     def __init__(
