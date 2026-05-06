@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import copy
 import logging
+import sys
 from abc import abstractmethod
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, cast
@@ -146,6 +147,12 @@ class BaseTSK(nn.Module):
         self.consequent_bn = nn.BatchNorm1d(self.n_inputs) if self.consequent_batch_norm else None
         self.consequent_layer = self._build_consequent_layer()
         self.logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}")
+        if not self.logger.handlers:
+            stream_handler = logging.StreamHandler(sys.stdout)
+            stream_handler.setFormatter(logging.Formatter("%(message)s"))
+            self.logger.addHandler(stream_handler)
+            self.logger.setLevel(logging.INFO)
+            self.logger.propagate = False
 
     # ------------------------------------------------------------------
     # Abstract hooks
