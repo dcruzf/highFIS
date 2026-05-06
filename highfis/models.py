@@ -55,12 +55,6 @@ Model family overview
 Scientific correspondence
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In PyTSK (reference implementation) the antecedent computes log-space
-firing strengths and applies one of two aggregation operators:
-
-* ``torch.sum``  → product t-norm  (vanilla TSK)
-* ``torch.mean`` → geometric mean  (HTSK)
-
 Normalization is always ``softmax`` over rules.  In highFIS each step is
 explicit and the defuzzification strategy is pluggable:
 
@@ -209,9 +203,10 @@ class HTSKClassifier(BaseTSKClassifier):
     softmax saturation as the number of inputs grows.
 
     Reference:
-        Cui, Y., Wu, D., & Xu, Y. (2021). Curse of dimensionality for TSK
-        fuzzy neural networks: Explanation and solutions. In *Proc. IJCNN*,
-        pp. 1-8. https://doi.org/10.1109/IJCNN52387.2021.9534265
+        Y. Cui, D. Wu and Y. Xu, "Curse of Dimensionality for TSK Fuzzy
+        Neural Networks: Explanation and Solutions," 2021 International
+        Joint Conference on Neural Networks (IJCNN), Shenzhen, China,
+        2021, pp. 1-8, doi: 10.1109/IJCNN52387.2021.9534265.
     """
 
     def __init__(
@@ -273,12 +268,16 @@ class HTSKClassifier(BaseTSKClassifier):
 class HTSKRegressor(BaseTSKRegressor):
     """TSK regressor with HTSK defuzzification for high-dimensional data.
 
-    See :class:`HTSKClassifier` for a description of the HTSK mechanism.
+    Replaces the standard softmax-based rule normalisation with a
+    dimensionality-normalised variant (geometric-mean t-norm +
+    :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`) that prevents
+    softmax saturation as the number of inputs grows.
 
     Reference:
-        Cui, Y., Wu, D., & Xu, Y. (2021). Curse of dimensionality for TSK
-        fuzzy neural networks: Explanation and solutions. In *Proc. IJCNN*,
-        pp. 1-8. https://doi.org/10.1109/IJCNN52387.2021.9534265
+        Y. Cui, D. Wu and Y. Xu, "Curse of Dimensionality for TSK Fuzzy
+        Neural Networks: Explanation and Solutions," 2021 International
+        Joint Conference on Neural Networks (IJCNN), Shenzhen, China,
+        2021, pp. 1-8, doi: 10.1109/IJCNN52387.2021.9534265.
     """
 
     def __init__(
@@ -335,17 +334,14 @@ class HTSKRegressor(BaseTSKRegressor):
 class TSKClassifier(BaseTSKClassifier):
     r"""Vanilla TSK classifier with sum-based defuzzification.
 
-    Implements the original Takagi-Sugeno-Kang inference:
-
-    .. math::
-        w_r = \prod_{d=1}^{D} \mu_{r,d}(x_d), \qquad
-        \bar{f}_r = \frac{w_r}{\sum_{i=1}^{R} w_i}
+    Implements the original Takagi-Sugeno-Kang inference.
 
     References:
-    ----------
-    Takagi, T. & Sugeno, M. (1985). "Fuzzy identification of systems and
-    its applications to modeling and control." *IEEE Trans. Syst., Man,
-    Cybern.* 15(1):116-132.
+        T. Takagi and M. Sugeno, "Fuzzy identification of systems and
+        its applications to modeling and control," in IEEE
+        Transactions on Systems, Man, and Cybernetics, vol. SMC-15,
+        no. 1, pp. 116-132, Jan.-Feb. 1985,
+        doi: 10.1109/TSMC.1985.6313399.
     """
 
     def __init__(
@@ -401,17 +397,14 @@ class TSKClassifier(BaseTSKClassifier):
 class TSKRegressor(BaseTSKRegressor):
     r"""Vanilla TSK regressor with sum-based defuzzification.
 
-    Implements the original Takagi-Sugeno-Kang inference:
-
-    .. math::
-        w_r = \prod_{d=1}^{D} \mu_{r,d}(x_d), \qquad
-        \bar{f}_r = \frac{w_r}{\sum_{i=1}^{R} w_i}
+    Implements the original Takagi-Sugeno-Kang inference.
 
     References:
-    ----------
-    Takagi, T. & Sugeno, M. (1985). "Fuzzy identification of systems and
-    its applications to modeling and control." *IEEE Trans. Syst., Man,
-    Cybern.* 15(1):116-132.
+        T. Takagi and M. Sugeno, "Fuzzy identification of systems and
+        its applications to modeling and control," in IEEE
+        Transactions on Systems, Man, and Cybernetics, vol. SMC-15,
+        no. 1, pp. 116-132, Jan.-Feb. 1985,
+        doi: 10.1109/TSMC.1985.6313399.
     """
 
     def __init__(
@@ -536,9 +529,23 @@ class DombiTSKClassifier(BaseTSKClassifier):
 
 
 class DombiTSKRegressor(BaseTSKRegressor):
-    """TSK regressor with a fixed Dombi T-norm in the antecedent.
+    r"""TSK regressor with a fixed Dombi T-norm in the antecedent.
 
-    See :class:`DombiTSKClassifier` for a description of the Dombi T-norm.
+    The Dombi T-norm with parameter :math:`\\lambda > 0` is defined as:
+
+    .. math::
+        T_\\lambda(a, b) =
+        \frac{1}{1 + \\left[\\left(\frac{1-a}{a}\right)^\\lambda
+        + \\left(\frac{1-b}{b}\right)^\\lambda\right]^{1/\\lambda}}
+
+    For :math:`\\lambda = 1` it recovers the algebraic product T-norm.
+    Unlike :class:`AdaTSKRegressor`, the parameter is shared across all
+    rules and is *not* learned during training.
+
+    Reference:
+        Dombi, J. (1982). A general class of fuzzy operators, the De Morgan
+        class of fuzzy operators and fuzziness measures induced by fuzzy
+        operators. *Fuzzy Sets and Systems*, 8(2):149-163.
     """
 
     def __init__(
@@ -662,9 +669,23 @@ class AYATSKClassifier(BaseTSKClassifier):
 
 
 class AYATSKRegressor(BaseTSKRegressor):
-    """TSK regressor with an adaptive Yager T-norm in the antecedent.
+    r"""TSK regressor with an adaptive Yager T-norm in the antecedent.
 
-    See :class:`AYATSKClassifier` for a description of the AYATSK model.
+    The Yager T-norm with learnable per-rule exponent $p_r > 0$ is:
+
+    Math:
+        $$
+        T_{p_r}(a_1, \\ldots, a_D) =
+        \\max\\!\\left(0,\\; 1 - \\left[\\sum_{d=1}^{D}(1-a_d)^{p_r}\right]^{1/p_r}\right)
+        $$
+
+    Each rule maintains its own exponent, which is jointly optimised with
+    the consequent parameters via back-propagation.
+
+    Reference:
+        G. Xue, Y. Yang and J. Wang, "Adaptive Yager T-Norm-Based Takagi-Sugeno-Kang Fuzzy Systems,"
+        in IEEE Transactions on Systems, Man, and Cybernetics: Systems,
+        vol. 55, no. 12, pp. 9802-9815, Dec. 2025, doi: 10.1109/TSMC.2025.3621346.
     """
 
     def __init__(
@@ -716,9 +737,11 @@ class AdaTSKClassifier(BaseTSKClassifier):
     independently, rather than using a single global T-norm.
 
     Reference:
-        Xue, Y., et al. (2025). Adaptive Dombi TSK fuzzy neural networks.
-        *IEEE Trans. Fuzzy Syst.*
-        https://doi.org/10.1109/TFUZZ.2025.XXXXXXX
+        G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive
+        Neuro-Fuzzy System With Integrated Feature Selection and Rule
+        Extraction for High-Dimensional Classification Problems," in
+        IEEE Transactions on Fuzzy Systems, vol. 31, no. 7, pp. 2167-2181,
+        July 2023, doi: 10.1109/TFUZZ.2022.3220950.
     """
 
     def __init__(
