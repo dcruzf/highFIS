@@ -52,3 +52,131 @@ def test_fsre_adatsk_expand_to_en_frb_increases_rule_count() -> None:
 
     assert model.n_rules > initial_rules
     assert isinstance(model.rule_layer, AdaSoftminRuleLayer)
+
+
+# ---------------------------------------------------------------------------
+# lambda_gates shape — per-feature (n_inputs,), not per-rule-feature
+# ---------------------------------------------------------------------------
+
+
+def test_fsre_adatsk_classifier_lambda_gates_shared_per_feature() -> None:
+    n_inputs = 4
+    model = FSREAdaTSKClassifier(_build_input_mfs(n_inputs=n_inputs, n_mfs=2), n_classes=2)
+    lam = model.consequent_layer.lambda_gates
+    assert lam.shape == (n_inputs,), f"expected ({n_inputs},), got {lam.shape}"
+
+
+def test_fsre_adatsk_regressor_lambda_gates_shared_per_feature() -> None:
+    n_inputs = 3
+    model = FSREAdaTSKRegressor(_build_input_mfs(n_inputs=n_inputs, n_mfs=2))
+    lam = model.consequent_layer.lambda_gates
+    assert lam.shape == (n_inputs,), f"expected ({n_inputs},), got {lam.shape}"
+
+
+# ---------------------------------------------------------------------------
+# mode attribute — initial and after each training phase
+# ---------------------------------------------------------------------------
+
+
+def test_fsre_adatsk_classifier_initial_mode_is_fs() -> None:
+    model = FSREAdaTSKClassifier(_build_input_mfs(), n_classes=2)
+    assert model.consequent_layer.mode == "fs"
+
+
+def test_fsre_adatsk_regressor_initial_mode_is_fs() -> None:
+    model = FSREAdaTSKRegressor(_build_input_mfs())
+    assert model.consequent_layer.mode == "fs"
+
+
+def test_fsre_adatsk_classifier_expand_to_en_frb_resets_mode_to_fs() -> None:
+    model = FSREAdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model.expand_to_en_frb()
+    assert model.consequent_layer.mode == "fs"
+
+
+# ---------------------------------------------------------------------------
+# phase-specific gate activation: forward output differs between modes
+# ---------------------------------------------------------------------------
+
+
+def test_fsre_adatsk_classifier_mode_fs_uses_only_feature_gates() -> None:
+    """FS mode: lambda_gates affect output; zeroing theta_gates has no effect."""
+    model = FSREAdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    x = torch.randn(4, 2)
+    model.consequent_layer.mode = "fs"
+
+    with torch.no_grad():
+        out_before = model.forward(x).clone()
+        model.consequent_layer.theta_gates.zero_()
+        out_after = model.forward(x)
+
+    assert torch.allclose(out_before, out_after), "FS mode must ignore theta_gates"
+
+
+def test_fsre_adatsk_classifier_mode_re_uses_only_rule_gates() -> None:
+    """RE mode: theta_gates affect output; zeroing lambda_gates has no effect."""
+    model = FSREAdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    x = torch.randn(4, 2)
+    model.consequent_layer.mode = "re"
+
+    with torch.no_grad():
+        out_before = model.forward(x).clone()
+        model.consequent_layer.lambda_gates.zero_()
+        out_after = model.forward(x)
+
+    assert torch.allclose(out_before, out_after), "RE mode must ignore lambda_gates"
+
+
+def test_fsre_adatsk_classifier_mode_finetune_ignores_all_gates() -> None:
+    """Finetune mode: neither gate family affects output."""
+    model = FSREAdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    x = torch.randn(4, 2)
+    model.consequent_layer.mode = "finetune"
+
+    with torch.no_grad():
+        out_before = model.forward(x).clone()
+        model.consequent_layer.lambda_gates.zero_()
+        model.consequent_layer.theta_gates.zero_()
+        out_after = model.forward(x)
+
+    assert torch.allclose(out_before, out_after), "Finetune mode must ignore all gates"
+
+
+def test_fsre_adatsk_regressor_mode_fs_uses_only_feature_gates() -> None:
+    model = FSREAdaTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    x = torch.randn(4, 2)
+    model.consequent_layer.mode = "fs"
+
+    with torch.no_grad():
+        out_before = model.forward(x).clone()
+        model.consequent_layer.theta_gates.zero_()
+        out_after = model.forward(x)
+
+    assert torch.allclose(out_before, out_after), "FS mode must ignore theta_gates"
+
+
+def test_fsre_adatsk_regressor_mode_re_uses_only_rule_gates() -> None:
+    model = FSREAdaTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    x = torch.randn(4, 2)
+    model.consequent_layer.mode = "re"
+
+    with torch.no_grad():
+        out_before = model.forward(x).clone()
+        model.consequent_layer.lambda_gates.zero_()
+        out_after = model.forward(x)
+
+    assert torch.allclose(out_before, out_after), "RE mode must ignore lambda_gates"
+
+
+def test_fsre_adatsk_regressor_mode_finetune_ignores_all_gates() -> None:
+    model = FSREAdaTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    x = torch.randn(4, 2)
+    model.consequent_layer.mode = "finetune"
+
+    with torch.no_grad():
+        out_before = model.forward(x).clone()
+        model.consequent_layer.lambda_gates.zero_()
+        model.consequent_layer.theta_gates.zero_()
+        out_after = model.forward(x)
+
+    assert torch.allclose(out_before, out_after), "Finetune mode must ignore all gates"

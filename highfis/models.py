@@ -916,21 +916,25 @@ class AdaTSKRegressor(BaseTSKRegressor):
 
 
 class FSREAdaTSKClassifier(BaseTSKClassifier):
-    """FSRE-AdaTSK classifier with adaptive softmin antecedent and gated consequents.
+    r"""FSRE-AdaTSK classifier with adaptive softmin antecedent and gated consequents.
 
     FSRE-AdaTSK (Feature Selection and Rule Extraction) extends AdaTSK with:
 
     * **Adaptive softmin antecedent** — a differentiable softmin operator
       that produces sparse, interpretable firing strengths.
-    * **Double-group gates** — per-rule feature gates (λ) in the antecedent
-      and per-rule gates (θ) in the consequent that jointly perform
-      simultaneous feature selection and rule extraction.
+    * **Double-group gates** — per-feature gates (λ_d) **in the consequent**
+      only that perform feature selection, and per-rule gates (θ_r) also
+      **in the consequent** that perform rule extraction.  Gates are never
+      applied to antecedent membership values.
 
-    Training follows a two-phase protocol:
+    Training follows a three-phase protocol:
 
-    1. **FS phase** (:meth:`fit_fs`) — train on the initial CoCo-FRB.
-    2. **RE phase** (:meth:`fit_re`) — expand to En-FRB and retrain.
-    3. **Fine-tune** (:meth:`fit_finetune`) — compact model fine-tuning.
+    1. **FS phase** (:meth:`fit_fs`) — train on the initial CoCo-FRB;
+       only feature gates :math:`M(\\lambda_d)` are active (eq. 21).
+    2. **RE phase** (:meth:`fit_re`) — expand to En-FRB and retrain;
+       only rule gates :math:`M(\\theta_r)` are active (eq. 22).
+    3. **Fine-tune** (:meth:`fit_finetune`) — compact model fine-tuning
+       with no gates (plain eq. 5).
 
     Reference:
         G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive
@@ -939,6 +943,8 @@ class FSREAdaTSKClassifier(BaseTSKClassifier):
         IEEE Transactions on Fuzzy Systems, vol. 31, no. 7, pp. 2167-2181,
         July 2023, doi: 10.1109/TFUZZ.2022.3220950.
     """
+
+    consequent_layer: GatedClassificationConsequentLayer
 
     def __init__(
         self,
@@ -997,8 +1003,10 @@ class FSREAdaTSKClassifier(BaseTSKClassifier):
         self.n_rules = self.rule_layer.n_rules
         self.consequent_layer = self._build_consequent_layer()
 
-    def _build_consequent_layer(self) -> nn.Module:
-        return GatedClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
+    def _build_consequent_layer(self) -> GatedClassificationConsequentLayer:
+        layer = GatedClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes, shared_lambda=True)
+        layer.mode = "fs"
+        return layer
 
     def _default_criterion(self) -> nn.Module:
         return nn.CrossEntropyLoss()
@@ -1015,35 +1023,42 @@ class FSREAdaTSKClassifier(BaseTSKClassifier):
         self.consequent_layer = self._build_consequent_layer()
 
     def fit_fs(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Train the FS phase on the current rule base."""
+        """Train the FS phase: only feature gates M(λ_d) are active (eq. 21)."""
+        self.consequent_layer.mode = "fs"
         return self.fit(x, y, **kwargs)
 
     def fit_re(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Expand to En-FRB and train the RE phase."""
+        """Expand to En-FRB and train the RE phase: only rule gates M(θ_r) active (eq. 22)."""
         self.expand_to_en_frb()
+        self.consequent_layer.mode = "re"
         return self.fit(x, y, **kwargs)
 
     def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Fine-tune the reduced FSRE-AdaTSK model."""
+        """Fine-tune with no gates — plain TSK consequent (eq. 5)."""
+        self.consequent_layer.mode = "finetune"
         return self.fit(x, y, **kwargs)
 
 
 class FSREAdaTSKRegressor(BaseTSKRegressor):
-    """FSRE-AdaTSK regressor with adaptive softmin antecedent and gated consequents.
+    r"""FSRE-AdaTSK regressor with adaptive softmin antecedent and gated consequents.
 
     FSRE-AdaTSK (Feature Selection and Rule Extraction) extends AdaTSK with:
 
     * **Adaptive softmin antecedent** — a differentiable softmin operator
       that produces sparse, interpretable firing strengths.
-    * **Double-group gates** — per-rule feature gates (λ) in the antecedent
-      and per-rule gates (θ) in the consequent that jointly perform
-      simultaneous feature selection and rule extraction.
+    * **Double-group gates** — per-feature gates (λ_d) **in the consequent**
+      only that perform feature selection, and per-rule gates (θ_r) also
+      **in the consequent** that perform rule extraction.  Gates are never
+      applied to antecedent membership values.
 
-    Training follows a two-phase protocol:
+    Training follows a three-phase protocol:
 
-    1. **FS phase** (:meth:`fit_fs`) — train on the initial CoCo-FRB.
-    2. **RE phase** (:meth:`fit_re`) — expand to En-FRB and retrain.
-    3. **Fine-tune** (:meth:`fit_finetune`) — compact model fine-tuning.
+    1. **FS phase** (:meth:`fit_fs`) — train on the initial CoCo-FRB;
+       only feature gates :math:`M(\\lambda_d)` are active (eq. 21).
+    2. **RE phase** (:meth:`fit_re`) — expand to En-FRB and retrain;
+       only rule gates :math:`M(\\theta_r)` are active (eq. 22).
+    3. **Fine-tune** (:meth:`fit_finetune`) — compact model fine-tuning
+       with no gates (plain eq. 5).
 
     Reference:
         G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive
@@ -1052,6 +1067,8 @@ class FSREAdaTSKRegressor(BaseTSKRegressor):
         IEEE Transactions on Fuzzy Systems, vol. 31, no. 7, pp. 2167-2181,
         July 2023, doi: 10.1109/TFUZZ.2022.3220950.
     """
+
+    consequent_layer: GatedRegressionConsequentLayer
 
     def __init__(
         self,
@@ -1100,8 +1117,10 @@ class FSREAdaTSKRegressor(BaseTSKRegressor):
         self.n_rules = self.rule_layer.n_rules
         self.consequent_layer = self._build_consequent_layer()
 
-    def _build_consequent_layer(self) -> nn.Module:
-        return GatedRegressionConsequentLayer(self.n_rules, self.n_inputs)
+    def _build_consequent_layer(self) -> GatedRegressionConsequentLayer:
+        layer = GatedRegressionConsequentLayer(self.n_rules, self.n_inputs, shared_lambda=True)
+        layer.mode = "fs"
+        return layer
 
     def _default_criterion(self) -> nn.Module:
         return nn.MSELoss()
@@ -1118,16 +1137,19 @@ class FSREAdaTSKRegressor(BaseTSKRegressor):
         self.consequent_layer = self._build_consequent_layer()
 
     def fit_fs(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Train the FS phase on the current rule base."""
+        """Train the FS phase: only feature gates M(λ_d) are active (eq. 21)."""
+        self.consequent_layer.mode = "fs"
         return self.fit(x, y, **kwargs)
 
     def fit_re(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Expand to En-FRB and train the RE phase."""
+        """Expand to En-FRB and train the RE phase: only rule gates M(θ_r) active (eq. 22)."""
         self.expand_to_en_frb()
+        self.consequent_layer.mode = "re"
         return self.fit(x, y, **kwargs)
 
     def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Fine-tune the reduced FSRE-AdaTSK model."""
+        """Fine-tune with no gates — plain TSK consequent (eq. 5)."""
+        self.consequent_layer.mode = "finetune"
         return self.fit(x, y, **kwargs)
 
 
