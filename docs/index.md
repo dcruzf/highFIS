@@ -50,8 +50,8 @@ high-dimensional behaviors.
   aggregation and log-space normalization to reduce dimensionality bias.
 - [`AYATSK`](models/ayatsk.md) — adaptive Yager aggregation with sum-based
   consequent normalization.
-- [`LogTSK`](models/logtsk.md) — log-space defuzzification with temperature
-  scaling for numerically stable high-dimensional aggregation.
+- [`LogTSK`](models/logtsk.md) — inverse-log normalization of log-domain
+  rule weights for numerically stable high-dimensional aggregation.
 - [`DombiTSK`](models/dombitsk.md) — Dombi t-norm aggregation with first-order
   consequents and a learnable shape parameter.
 - [`AdaTSK`](models/adatsk.md) — adaptive Dombi inference using Composite

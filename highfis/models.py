@@ -70,7 +70,7 @@ classes defined in this module are grouped as follows:
 * **LogTSK**: ``t_norm="prod"`` + ``InvLogDefuzzifier``
   - ``LogTSKClassifier``
   - ``LogTSKRegressor``
-  - behaviour: ``softmax(log(w) / τ)``
+  - behaviour: ``inverse-log normalization``
 * **DombiTSK**: ``t_norm="dombi"`` + ``SumBasedDefuzzifier``
   - ``DombiTSKClassifier``
   - ``DombiTSKRegressor``
@@ -2192,19 +2192,18 @@ class DGTSKRegressor(BaseTSKRegressor):
 # LogTSK  (Cui, Wu & Xu, IEEE Trans. Fuzzy Syst. 2021)
 #
 #   w_r = ∏_{d=1}^{D} μ_{r,d}(x_d)               (product t-norm)
-#   f̄_r = softmax(log(w) / τ)                     (log-space, tempered)
+#   f̄_r = (1 / |log w_r|) / Σ_i (1 / |log w_i|)   (inverse-log normalisation)
 #
-# The temperature τ controls the sharpness of the distribution.
-# τ = 1 recovers softmax(log(w)) ≡ w / Σw; τ < 1 sharpens.
+# This defuzzification is scale-invariant in log-space and avoids softmax
+# saturation as input dimension grows.
 # =====================================================================
 
 
 class LogTSKClassifier(BaseTSKClassifier):
     r"""LogTSK classifier with scale-invariant log-space defuzzification.
 
-    Firing strengths are normalized using the inverse-log formula from
-    Du et al. (2020), which is immune to softmax saturation in
-    high-dimensional input spaces:
+    Firing strengths are normalized using the inverse-log formula, which
+    is immune to softmax saturation in high-dimensional input spaces:
 
     .. math::
         \bar{f}_r = \frac{1/|Z_r|}{\sum_{i=1}^{R} 1/|Z_i|}
@@ -2214,11 +2213,10 @@ class LogTSKClassifier(BaseTSKClassifier):
     of :math:`Z_r`, the output is scale-invariant in log-space.
 
     References:
-    ----------
-    Cui, Y., Wu, D. & Xu, Y. (2021). "Optimize TSK Fuzzy Systems for
-    Regression Problems: Mini-Batch Gradient Descent With Regularization,
-    DropRule, and AdaBound (MBGD-RDA)." *IEEE Trans. Fuzzy Syst.*
-    29(5):1003-1015. §III-A.
+        Y. Cui, D. Wu and Y. Xu, "Curse of Dimensionality for TSK Fuzzy
+        Neural Networks: Explanation and Solutions," 2021 International
+        Joint Conference on Neural Networks (IJCNN), Shenzhen, China,
+        2021, pp. 1-8, doi: 10.1109/IJCNN52387.2021.9534265.
     """
 
     def __init__(
@@ -2274,9 +2272,8 @@ class LogTSKClassifier(BaseTSKClassifier):
 class LogTSKRegressor(BaseTSKRegressor):
     r"""LogTSK regressor with scale-invariant log-space defuzzification.
 
-    Firing strengths are normalized using the inverse-log formula from
-    Du et al. (2020), which is immune to softmax saturation in
-    high-dimensional input spaces:
+    Firing strengths are normalized using the inverse-log formula, which
+    is immune to softmax saturation in high-dimensional input spaces:
 
     .. math::
         \bar{f}_r = \frac{1/|Z_r|}{\sum_{i=1}^{R} 1/|Z_i|}
@@ -2286,11 +2283,10 @@ class LogTSKRegressor(BaseTSKRegressor):
     of :math:`Z_r`, the output is scale-invariant in log-space.
 
     References:
-    ----------
-    Cui, Y., Wu, D. & Xu, Y. (2021). "Optimize TSK Fuzzy Systems for
-    Regression Problems: Mini-Batch Gradient Descent With Regularization,
-    DropRule, and AdaBound (MBGD-RDA)." *IEEE Trans. Fuzzy Syst.*
-    29(5):1003-1015. §III-A.
+        Y. Cui, D. Wu and Y. Xu, "Curse of Dimensionality for TSK Fuzzy
+        Neural Networks: Explanation and Solutions," 2021 International
+        Joint Conference on Neural Networks (IJCNN), Shenzhen, China,
+        2021, pp. 1-8, doi: 10.1109/IJCNN52387.2021.9534265.
     """
 
     def __init__(
