@@ -223,14 +223,27 @@ class BaseTSKRegressor(BaseTSK):
 
 
 class HTSKClassifier(BaseTSKClassifier):
-    """TSK classifier with HTSK defuzzification for high-dimensional data.
+    r"""HTSK classifier for high-dimensional TSK inference.
 
-    Replaces the standard softmax-based rule normalisation with a
-    dimensionality-normalised variant (geometric-mean t-norm +
-    :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`) that prevents
-    softmax saturation as the number of inputs grows.
+    HTSK replaces the standard product t-norm with a geometric mean over
+    membership values and performs rule normalization in log-space.
 
-    Reference:
+    The HTSK firing strength for rule :math:`r` is:
+
+    .. math::
+        w_r = \left(\prod_{d=1}^{D} \mu_{r,d}(x_d)\right)^{1/D}
+            = \exp\left(\frac{1}{D} \sum_{d=1}^{D} \log \mu_{r,d}(x_d)\right)
+
+    Normalisation is then performed with a softmax over the log-domain
+    activations:
+
+    .. math::
+        \bar{w}_r = \frac{\exp(\log w_r)}{\sum_{i=1}^{R} \exp(\log w_i)}.
+
+    This formulation is numerically stable for large input dimensionality
+    because the log-domain activations are scaled by :math:`1/D`.
+
+    References:
         Y. Cui, D. Wu and Y. Xu, "Curse of Dimensionality for TSK Fuzzy
         Neural Networks: Explanation and Solutions," 2021 International
         Joint Conference on Neural Networks (IJCNN), Shenzhen, China,
@@ -294,14 +307,27 @@ class HTSKClassifier(BaseTSKClassifier):
 
 
 class HTSKRegressor(BaseTSKRegressor):
-    """TSK regressor with HTSK defuzzification for high-dimensional data.
+    r"""HTSK regressor for high-dimensional TSK inference.
 
-    Replaces the standard softmax-based rule normalisation with a
-    dimensionality-normalised variant (geometric-mean t-norm +
-    :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`) that prevents
-    softmax saturation as the number of inputs grows.
+    HTSK replaces the standard product t-norm with a geometric mean over
+    membership values and performs rule normalization in log-space.
 
-    Reference:
+    The HTSK firing strength for rule :math:`r` is:
+
+    .. math::
+        w_r = \left(\prod_{d=1}^{D} \mu_{r,d}(x_d)\right)^{1/D}
+            = \exp\left(\frac{1}{D} \sum_{d=1}^{D} \log \mu_{r,d}(x_d)\right)
+
+    Normalisation is then performed with a softmax over the log-domain
+    activations:
+
+    .. math::
+        \bar{w}_r = \frac{\exp(\log w_r)}{\sum_{i=1}^{R} \exp(\log w_i)}.
+
+    This formulation is numerically stable for large input dimensionality
+    because the log-domain activations are scaled by :math:`1/D`.
+
+    References:
         Y. Cui, D. Wu and Y. Xu, "Curse of Dimensionality for TSK Fuzzy
         Neural Networks: Explanation and Solutions," 2021 International
         Joint Conference on Neural Networks (IJCNN), Shenzhen, China,
@@ -360,9 +386,23 @@ class HTSKRegressor(BaseTSKRegressor):
 
 
 class TSKClassifier(BaseTSKClassifier):
-    r"""Vanilla TSK classifier with sum-based defuzzification.
+    r"""Vanilla TSK classifier with sum-based rule normalization.
 
-    Implements the original Takagi-Sugeno-Kang inference.
+    The vanilla Takagi-Sugeno-Kang inference computes rule firing strengths
+    with the product t-norm and normalizes them by their total sum.
+
+    The firing strength for rule :math:`r` is:
+
+    .. math::
+        w_r = \prod_{d=1}^{D} \mu_{r,d}(x_d)
+
+    and the normalized rule weights are:
+
+    .. math::
+        \bar{w}_r = \frac{w_r}{\sum_{i=1}^{R} w_i}.
+
+    These normalized weights are then used to aggregate first-order
+    consequents into the final class output.
 
     References:
         T. Takagi and M. Sugeno, "Fuzzy identification of systems and
@@ -423,9 +463,23 @@ class TSKClassifier(BaseTSKClassifier):
 
 
 class TSKRegressor(BaseTSKRegressor):
-    r"""Vanilla TSK regressor with sum-based defuzzification.
+    r"""Vanilla TSK regressor with sum-based rule normalization.
 
-    Implements the original Takagi-Sugeno-Kang inference.
+    The vanilla Takagi-Sugeno-Kang inference computes rule firing strengths
+    with the product t-norm and normalizes them by their total sum.
+
+    The firing strength for rule :math:`r` is:
+
+    .. math::
+        w_r = \prod_{d=1}^{D} \mu_{r,d}(x_d)
+
+    and the normalized rule weights are:
+
+    .. math::
+        \bar{w}_r = \frac{w_r}{\sum_{i=1}^{R} w_i}.
+
+    These normalized weights are then used to aggregate first-order
+    consequents into the final regression output.
 
     References:
         T. Takagi and M. Sugeno, "Fuzzy identification of systems and

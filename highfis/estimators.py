@@ -14,9 +14,9 @@ Concrete estimators cover the following model families:
 
 * **TSK** — vanilla Takagi-Sugeno-Kang (Takagi & Sugeno, 1985).
 * **HTSK** — high-dimensional TSK via averaged defuzzification
-  (Cui et al., IJCNN 2021).
+  (Cui et al., IJCNN 2021; implemented with :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`).
 * **LogTSK** — inverse-log normalization of log-domain rule weights for high-dimensional data
-  (Cui, Wu & Xu, IJCNN 2021; implementation in this repo uses InvLogDefuzzifier).
+  (Cui, Wu & Xu, IJCNN 2021; implemented with :class:`~highfis.defuzzifiers.InvLogDefuzzifier`).
 * **DombiTSK** — Dombi T-norm based TSK (Xue et al., TFS 2025).
 * **AYATSK** — adaptive Yager T-norm based TSK (Xue et al., TSMC 2025).
 * **AdaTSK** — adaptive softmin based TSK (Xue et al., IJCNN 2022).
@@ -838,13 +838,22 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
 
 
 class HTSKClassifierEstimator(_BaseClassifierEstimator):
-    """High-dimensional TSK classifier (Cui et al., IJCNN 2021).
+    r"""High-dimensional TSK classifier (Cui et al., IJCNN 2021).
 
-    Wraps :class:`~highfis.models.HTSKClassifier`. HTSK replaces the standard
-    softmax-based defuzzification with a D-th-root variant that eliminates
-    saturation on high-dimensional inputs without inflating sigma. It is the
-    recommended default TSK classifier for datasets with more than ~50
-    features.
+    Wraps :class:`~highfis.models.HTSKClassifier` with
+    :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`. HTSK computes rule
+    firing strengths as the geometric mean of antecedent memberships and
+    normalizes them using a softmax over log-domain activations:
+
+    .. math::
+        w_r = \\left(\\prod_{d=1}^{D} \\mu_{r,d}(x_d)\right)^{1/D}
+
+    .. math::
+        \bar{w}_r = \frac{\\exp(\\log w_r)}{\\sum_{i=1}^{R} \\exp(\\log w_i)}.
+
+    This avoids softmax saturation in high-dimensional inputs without inflating
+    the Gaussian width, while keeping the standard first-order TSK consequent
+    structure.
 
     The experimental setup from the original paper used ``n_mfs=30``,
     ``sigma_scale=1.0``, ``mf_init="kmeans"``, ``epochs=200``,
@@ -885,30 +894,12 @@ class HTSKClassifierEstimator(_BaseClassifierEstimator):
     ) -> None:
         """Initialise an HTSK classifier.
 
-        HTSK (Cui et al., IJCNN 2021) replaces the standard softmax
-        defuzzification with a dimensionality-normalised variant that averages
-        the exponent over all input features::
-
-            f_r(x)^{1/D} / sum_i f_i(x)^{1/D}
-
-        This prevents softmax saturation on high-dimensional data without
-        requiring an inflated ``sigma_scale``. The recommended initialisation
-        is ``sigma_scale=1.0`` regardless of dimensionality.
-
-        Reference:
-            Cui, Y., Wu, D., & Xu, Y. (2021). Curse of dimensionality for
-            TSK fuzzy neural networks: Explanation and solutions. In *Proc.
-            IJCNN*, pp. 1-8. https://doi.org/10.1109/IJCNN52387.2021.9534265
-
         Args:
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
-            n_mfs: Number of k-means clusters / grid MFs. Cui et al.
-                (2021) used ``R=30``.
+            n_mfs: Number of k-means clusters / grid MFs.
             mf_init: ``"kmeans"`` (default) or ``"grid"``.
-            sigma_scale: Sigma scale factor. ``1.0`` is recommended for
-                HTSK because the defuzzifier already compensates for
-                dimensionality.
+            sigma_scale: Sigma scale factor. ``1.0`` is recommended for HTSK.
             random_state: Seed for k-means and weight initialisation.
             epochs: Maximum training epochs (default ``200``).
             learning_rate: Adam learning rate (default ``0.01``).
@@ -962,13 +953,21 @@ class HTSKClassifierEstimator(_BaseClassifierEstimator):
 
 
 class HTSKRegressorEstimator(_BaseRegressorEstimator):
-    """High-dimensional TSK regressor (Cui et al., IJCNN 2021).
+    r"""High-dimensional TSK regressor (Cui et al., IJCNN 2021).
 
-    Wraps :class:`~highfis.models.HTSKRegressor`. HTSK replaces the standard
-    softmax-based defuzzification with a D-th-root variant that eliminates
-    saturation on high-dimensional inputs without inflating sigma. It is the
-    recommended default TSK regressor for datasets with more than ~50
-    features.
+    Wraps :class:`~highfis.models.HTSKRegressor` with
+    :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`. HTSK computes rule
+    weights as the geometric mean of antecedent memberships and normalizes
+    them with a log-domain softmax:
+
+    .. math::
+        w_r = \\left(\\prod_{d=1}^{D} \\mu_{r,d}(x_d)\right)^{1/D}
+
+    .. math::
+        \bar{w}_r = \frac{\\exp(\\log w_r)}{\\sum_{i=1}^{R} \\exp(\\log w_i)}.
+
+    This avoids softmax saturation in high-dimensional inputs without
+    requiring inflated Gaussian widths.
 
     The experimental setup from the original paper used ``n_mfs=30``,
     ``sigma_scale=1.0``, ``mf_init="kmeans"``, ``epochs=200``,
@@ -1013,8 +1012,7 @@ class HTSKRegressorEstimator(_BaseRegressorEstimator):
                 ``name`` is used when ``mf_init="kmeans"``.
             n_mfs: Number of k-means clusters / grid MFs.
             mf_init: ``"kmeans"`` (default) or ``"grid"``.
-            sigma_scale: Sigma scale factor. ``1.0`` is recommended because
-                HTSK defuzzification already compensates for dimensionality.
+            sigma_scale: Sigma scale factor. ``1.0`` is recommended for HTSK.
             random_state: Seed for k-means and weight initialisation.
             epochs: Maximum training epochs (default ``200``).
             learning_rate: Adam learning rate (default ``0.01``).
@@ -1069,12 +1067,12 @@ class HTSKRegressorEstimator(_BaseRegressorEstimator):
 
 
 class TSKClassifierEstimator(_BaseClassifierEstimator):
-    """Vanilla TSK classifier with sum-based (softmax) defuzzification.
+    """Vanilla TSK classifier with sum-based rule normalization.
 
     Wraps :class:`~highfis.models.TSKClassifier`. Implements the original
-    Takagi-Sugeno-Kang inference with product T-norm and centre-of-gravity
-    defuzzification. On high-dimensional data (``D ≥ ~50``) the softmax
-    normalisation saturates, causing most inputs to fire only one rule. In
+    Takagi-Sugeno-Kang inference with product T-norm and sum-based
+    normalization. On high-dimensional data (``D ≥ ~50``) the normalization
+    saturates, causing most inputs to fire only one rule. In
     that scenario consider :class:`HTSKClassifierEstimator` or
     :class:`LogTSKClassifierEstimator`, or increase ``sigma_scale`` (``"auto"``
     sets it to ``sqrt(D)`` as analysed by Cui et al., IJCNN 2021).
@@ -1176,7 +1174,7 @@ class TSKClassifierEstimator(_BaseClassifierEstimator):
 
 
 class TSKRegressorEstimator(_BaseRegressorEstimator):
-    """Vanilla TSK regressor with sum-based (softmax) defuzzification.
+    """Vanilla TSK regressor with sum-based rule normalization.
 
     Wraps :class:`~highfis.models.TSKRegressor`. Implements the original
     Takagi-Sugeno-Kang inference. For high-dimensional datasets consider
@@ -2419,7 +2417,8 @@ class DGTSKRegressorEstimator(_BaseRegressorEstimator):
 class LogTSKClassifierEstimator(_BaseClassifierEstimator):
     r"""LogTSK classifier with inverse-log rule normalization.
 
-    Wraps :class:`~highfis.models.LogTSKClassifier`. LogTSK uses product
+    Wraps :class:`~highfis.models.LogTSKClassifier` with
+    :class:`~highfis.defuzzifiers.InvLogDefuzzifier`. LogTSK uses product
     antecedent aggregation and inverse-log normalization of log-domain rule
     strengths:
 
@@ -2536,7 +2535,8 @@ class LogTSKClassifierEstimator(_BaseClassifierEstimator):
 class LogTSKRegressorEstimator(_BaseRegressorEstimator):
     r"""LogTSK regressor with inverse-log rule normalization.
 
-    Wraps :class:`~highfis.models.LogTSKRegressor`. LogTSK uses product
+    Wraps :class:`~highfis.models.LogTSKRegressor` with
+    :class:`~highfis.defuzzifiers.InvLogDefuzzifier`. LogTSK uses product
     antecedent aggregation and inverse-log normalization of log-domain rule
     strengths:
 
