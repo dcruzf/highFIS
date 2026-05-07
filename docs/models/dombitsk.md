@@ -2,13 +2,11 @@
 
 ## Reference
 
-> Dombi, J. (1982). "A general class of fuzzy operators." *Fuzzy Sets and
-> Systems* 8(2): 149–163.
+> G. Xue, L. Hu, J. Wang and S. Ablameyko, "ADMTSK: A High-Dimensional Takagi–Sugeno–Kang Fuzzy System Based on Adaptive Dombi T-Norm," in IEEE Transactions on Fuzzy Systems, vol. 33, no. 6, pp. 1767-1780, June 2025, doi: 10.1109/TFUZZ.2025.3535640.
+
+> J. Dombi, "A general class of fuzzy operators, the demorgan class of fuzzy operators and fuzziness measures induced by fuzzy operators," Fuzzy Sets and Systems, vol. 8, no. 2, 1982, pp. 149-163, doi: 10.1016/0165-0114(82)90005-7.
 
 ## Mathematical Formulation
-
-DombiTSK extends TSK fuzzy inference by using a Dombi t-norm aggregation in
-antecedent evaluation while keeping first-order linear consequents.
 
 ### Antecedent
 
@@ -75,16 +73,44 @@ $$
 \hat{y} = \sum_{r=1}^{R} \bar{\phi}_r \hat{y}_r
 $$
 
-## Practical Notes
+## Code ↔ Paper Correspondence
 
-- `DombiTSKClassifier` and `DombiTSKRegressor` use `t_norm="dombi"` with
-  `SumBasedDefuzzifier`.
-- The `lambda_` hyperparameter controls the Dombi t-norm shape and must be
-  positive.
-- The default `rule_base` is `"cartesian"`, producing a conventional TSK rule
-  grid from input membership functions.
-- `consequent_batch_norm=True` can be used to normalize the consequent inputs
-  before the linear output head.
+| Equation | Class / Method | Description |
+|----------|----------------|-------------|
+| Dombi aggregation | `DombiTSKClassifier` / `DombiTSKRegressor` | Fixed-λ Dombi antecedent aggregation with `t_norm="dombi"` |
+| Normalization | `SumBasedDefuzzifier` | Sum-based rule strength normalization |
+| Consequent | `ClassificationConsequentLayer` / `RegressionConsequentLayer` | First-order linear consequents |
+| Membership functions | `GaussianMF` | Standard Gaussian antecedent MFs |
+
+## Implementation notes
+
+- `DombiTSKClassifier` and `DombiTSKRegressor` use a fixed Dombi parameter
+  `lambda_ > 0` in the antecedent and default to `SumBasedDefuzzifier`.
+- `DombiTSKClassifierEstimator` and `DombiTSKRegressorEstimator` are
+  sklearn-compatible wrappers that build the rule base and membership
+  functions from `input_configs`, `n_mfs`, `mf_init`, and `sigma_scale`.
+- The estimators default to `mf_init="kmeans"` and `sigma_scale=1.0`.
+- The default `rule_base` for estimator-built models is `"coco"` with
+  `mf_init="kmeans"` and `"cartesian"` with `mf_init="grid"`.
+- `CompositeGaussianMF` is available when a positive lower bound on
+  antecedent membership values is desired, supporting ADMTSK-style stability.
+- `AdaptiveDombiRuleLayer` is implemented in the codebase and provides
+  per-rule adaptive Dombi exponents, but there is currently no dedicated
+  `ADMTSK` wrapper class exposing this behavior directly.
+
+## Alignment with the paper
+
+- The paper defines a Dombi TSK baseline with Dombi antecedent aggregation and
+  first-order consequent structure.
+- highFIS implements this baseline directly through `DombiTSKClassifier` and
+  `DombiTSKRegressor`.
+- Rule strengths are normalized by sum-based defuzzification, matching the
+  paper's TSK output aggregation.
+- The package also includes building blocks for the ADMTSK extension:
+  `CompositeGaussianMF` and `AdaptiveDombiRuleLayer`.
+- A full ADMTSK-style model would require combining these components with an
+  adaptive λ selection mechanism, which is not currently wrapped by a single
+  model class.
 
 ## Example
 

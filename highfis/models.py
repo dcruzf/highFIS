@@ -221,21 +221,6 @@ class HTSKClassifier(BaseTSKClassifier):
     HTSK replaces the standard product t-norm with a geometric mean over
     membership values and performs rule normalization in log-space.
 
-    The HTSK firing strength for rule :math:`r` is:
-
-    .. math::
-        w_r = \left(\prod_{d=1}^{D} \mu_{r,d}(x_d)\right)^{1/D}
-            = \exp\left(\frac{1}{D} \sum_{d=1}^{D} \log \mu_{r,d}(x_d)\right)
-
-    Normalisation is then performed with a softmax over the log-domain
-    activations:
-
-    .. math::
-        \bar{w}_r = \frac{\exp(\log w_r)}{\sum_{i=1}^{R} \exp(\log w_i)}.
-
-    This formulation is numerically stable for large input dimensionality
-    because the log-domain activations are scaled by :math:`1/D`.
-
     References:
         Y. Cui, D. Wu and Y. Xu, "Curse of Dimensionality for TSK Fuzzy
         Neural Networks: Explanation and Solutions," 2021 International
@@ -305,21 +290,6 @@ class HTSKRegressor(BaseTSKRegressor):
     HTSK replaces the standard product t-norm with a geometric mean over
     membership values and performs rule normalization in log-space.
 
-    The HTSK firing strength for rule :math:`r` is:
-
-    .. math::
-        w_r = \left(\prod_{d=1}^{D} \mu_{r,d}(x_d)\right)^{1/D}
-            = \exp\left(\frac{1}{D} \sum_{d=1}^{D} \log \mu_{r,d}(x_d)\right)
-
-    Normalisation is then performed with a softmax over the log-domain
-    activations:
-
-    .. math::
-        \bar{w}_r = \frac{\exp(\log w_r)}{\sum_{i=1}^{R} \exp(\log w_i)}.
-
-    This formulation is numerically stable for large input dimensionality
-    because the log-domain activations are scaled by :math:`1/D`.
-
     References:
         Y. Cui, D. Wu and Y. Xu, "Curse of Dimensionality for TSK Fuzzy
         Neural Networks: Explanation and Solutions," 2021 International
@@ -383,19 +353,6 @@ class TSKClassifier(BaseTSKClassifier):
 
     The vanilla Takagi-Sugeno-Kang inference computes rule firing strengths
     with the product t-norm and normalizes them by their total sum.
-
-    The firing strength for rule :math:`r` is:
-
-    .. math::
-        w_r = \prod_{d=1}^{D} \mu_{r,d}(x_d)
-
-    and the normalized rule weights are:
-
-    .. math::
-        \bar{w}_r = \frac{w_r}{\sum_{i=1}^{R} w_i}.
-
-    These normalized weights are then used to aggregate first-order
-    consequents into the final class output.
 
     References:
         T. Takagi and M. Sugeno, "Fuzzy identification of systems and
@@ -461,19 +418,6 @@ class TSKRegressor(BaseTSKRegressor):
     The vanilla Takagi-Sugeno-Kang inference computes rule firing strengths
     with the product t-norm and normalizes them by their total sum.
 
-    The firing strength for rule :math:`r` is:
-
-    .. math::
-        w_r = \prod_{d=1}^{D} \mu_{r,d}(x_d)
-
-    and the normalized rule weights are:
-
-    .. math::
-        \bar{w}_r = \frac{w_r}{\sum_{i=1}^{R} w_i}.
-
-    These normalized weights are then used to aggregate first-order
-    consequents into the final regression output.
-
     References:
         T. Takagi and M. Sugeno, "Fuzzy identification of systems and
         its applications to modeling and control," in IEEE
@@ -527,22 +471,16 @@ class TSKRegressor(BaseTSKRegressor):
 class DombiTSKClassifier(BaseTSKClassifier):
     r"""TSK classifier with a fixed Dombi T-norm in the antecedent.
 
-    The Dombi T-norm with parameter :math:`\lambda > 0` is defined as:
-
-    .. math::
-        T_\lambda(a, b) =
-        \frac{1}{1 + \left[\left(\frac{1-a}{a}\right)^\lambda
-        + \left(\frac{1-b}{b}\right)^\lambda\right]^{1/\lambda}}
-
-    For :math:`\lambda = 1` it recovers the algebraic product T-norm.
-    The parameter is fixed at construction time and shared across all rules;
-    use :class:`AdaTSKClassifier` for a high-dimensional alternative based
-    on Ada-softmin.
+    DombiTSK extends TSK fuzzy inference by using a Dombi t-norm
+    aggregation in antecedent evaluation while keeping first-order
+    linear consequents.
 
     Reference:
-        Dombi, J. (1982). A general class of fuzzy operators, the De Morgan
-        class of fuzzy operators and fuzziness measures induced by fuzzy
-        operators. *Fuzzy Sets and Systems*, 8(2):149-163.
+        G. Xue, L. Hu, J. Wang and S. Ablameyko, "ADMTSK: A
+        High-Dimensional Takagi-Sugeno-Kang Fuzzy System Based on
+        Adaptive Dombi T-Norm," in IEEE Transactions on Fuzzy
+        Systems, vol. 33, no. 6, pp. 1767-1780, June 2025,
+        doi: 10.1109/TFUZZ.2025.3535640.
     """
 
     def __init__(
@@ -607,22 +545,16 @@ class DombiTSKClassifier(BaseTSKClassifier):
 class DombiTSKRegressor(BaseTSKRegressor):
     r"""TSK regressor with a fixed Dombi T-norm in the antecedent.
 
-    The Dombi T-norm with parameter :math:`\\lambda > 0` is defined as:
-
-    .. math::
-        T_\\lambda(a, b) =
-        \frac{1}{1 + \\left[\\left(\frac{1-a}{a}\right)^\\lambda
-        + \\left(\frac{1-b}{b}\right)^\\lambda\right]^{1/\\lambda}}
-
-    For :math:`\\lambda = 1` it recovers the algebraic product T-norm.
-    The parameter is fixed at construction time and shared across all rules;
-    use :class:`AdaTSKRegressor` for a high-dimensional alternative based
-    on Ada-softmin.
+    DombiTSK extends TSK fuzzy inference by using a Dombi t-norm
+    aggregation in antecedent evaluation while keeping first-order
+    linear consequents.
 
     Reference:
-        Dombi, J. (1982). A general class of fuzzy operators, the De Morgan
-        class of fuzzy operators and fuzziness measures induced by fuzzy
-        operators. *Fuzzy Sets and Systems*, 8(2):149-163.
+        G. Xue, L. Hu, J. Wang and S. Ablameyko, "ADMTSK: A
+        High-Dimensional Takagi-Sugeno-Kang Fuzzy System Based on
+        Adaptive Dombi T-Norm," in IEEE Transactions on Fuzzy
+        Systems, vol. 33, no. 6, pp. 1767-1780, June 2025,
+        doi: 10.1109/TFUZZ.2025.3535640.
     """
 
     def __init__(
@@ -808,20 +740,7 @@ class AYATSKRegressor(BaseTSKRegressor):
 class AdaTSKClassifier(BaseTSKClassifier):
     r"""TSK classifier with adaptive softmin antecedent (AdaTSK).
 
-    The firing strength of each rule is computed with the Ada-softmin operator
-    (Xue et al., 2023, eqs. 15-16):
-
-    .. math::
-        f_r(\mathbf{x}) =
-        \left(\frac{1}{D}\sum_{d=1}^{D}\mu_{r,d}^{\hat{q}}(\mathbf{x})
-        \right)^{1/\hat{q}},\quad
-        \hat{q} = \left\lceil\frac{690}{\ln\!\min_d \mu_{r,d}(\mathbf{x})}
-        \right\rceil \in [-1000,\,-1].
-
-    The index :math:`\hat{q}` is computed from the current membership values
-    on every forward pass and is *not* a learnable parameter.  This adaptive
-    scheme prevents both *numeric underflow* and *fake minimum* that plague
-    fixed-parameter softmin operators for high-dimensional data.
+    The firing strength of each rule is computed with the Ada-softmin operator.
 
     Reference:
         G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive
@@ -891,20 +810,7 @@ class AdaTSKClassifier(BaseTSKClassifier):
 class AdaTSKRegressor(BaseTSKRegressor):
     r"""TSK regressor with adaptive softmin antecedent (AdaTSK).
 
-    The firing strength of each rule is computed with the Ada-softmin operator
-    (Xue et al., 2023, eqs. 15-16):
-
-    .. math::
-        f_r(\mathbf{x}) =
-        \left(\frac{1}{D}\sum_{d=1}^{D}\mu_{r,d}^{\hat{q}}(\mathbf{x})
-        \right)^{1/\hat{q}},\quad
-        \hat{q} = \left\lceil\frac{690}{\ln\!\min_d \mu_{r,d}(\mathbf{x})}
-        \right\rceil \in [-1000,\,-1].
-
-    The index :math:`\hat{q}` is computed from the current membership values
-    on every forward pass and is *not* a learnable parameter.  This adaptive
-    scheme prevents both *numeric underflow* and *fake minimum* that plague
-    fixed-parameter softmin operators for high-dimensional data.
+    The firing strength of each rule is computed with the Ada-softmin operator.
 
     Reference:
         G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive
@@ -965,23 +871,7 @@ class AdaTSKRegressor(BaseTSKRegressor):
 class FSREAdaTSKClassifier(BaseTSKClassifier):
     r"""FSRE-AdaTSK classifier with adaptive softmin antecedent and gated consequents.
 
-    FSRE-AdaTSK (Feature Selection and Rule Extraction) extends AdaTSK with:
-
-    * **Adaptive softmin antecedent** — a differentiable softmin operator
-      that produces sparse, interpretable firing strengths.
-    * **Double-group gates** — per-feature gates (λ_d) **in the consequent**
-      only that perform feature selection, and per-rule gates (θ_r) also
-      **in the consequent** that perform rule extraction.  Gates are never
-      applied to antecedent membership values.
-
-    Training follows a three-phase protocol:
-
-    1. **FS phase** (:meth:`fit_fs`) — train on the initial CoCo-FRB;
-       only feature gates :math:`M(\\lambda_d)` are active (eq. 21).
-    2. **RE phase** (:meth:`fit_re`) — expand to En-FRB and retrain;
-       only rule gates :math:`M(\\theta_r)` are active (eq. 22).
-    3. **Fine-tune** (:meth:`fit_finetune`) — compact model fine-tuning
-       with no gates (plain eq. 5).
+    FSRE-AdaTSK (Feature Selection and Rule Extraction) extends AdaTSK.
 
     Reference:
         G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive
@@ -1089,23 +979,7 @@ class FSREAdaTSKClassifier(BaseTSKClassifier):
 class FSREAdaTSKRegressor(BaseTSKRegressor):
     r"""FSRE-AdaTSK regressor with adaptive softmin antecedent and gated consequents.
 
-    FSRE-AdaTSK (Feature Selection and Rule Extraction) extends AdaTSK with:
-
-    * **Adaptive softmin antecedent** — a differentiable softmin operator
-      that produces sparse, interpretable firing strengths.
-    * **Double-group gates** — per-feature gates (λ_d) **in the consequent**
-      only that perform feature selection, and per-rule gates (θ_r) also
-      **in the consequent** that perform rule extraction.  Gates are never
-      applied to antecedent membership values.
-
-    Training follows a three-phase protocol:
-
-    1. **FS phase** (:meth:`fit_fs`) — train on the initial CoCo-FRB;
-       only feature gates :math:`M(\\lambda_d)` are active (eq. 21).
-    2. **RE phase** (:meth:`fit_re`) — expand to En-FRB and retrain;
-       only rule gates :math:`M(\\theta_r)` are active (eq. 22).
-    3. **Fine-tune** (:meth:`fit_finetune`) — compact model fine-tuning
-       with no gates (plain eq. 5).
+    FSRE-AdaTSK (Feature Selection and Rule Extraction) extends AdaTSK.
 
     Reference:
         G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive
@@ -1208,12 +1082,6 @@ class DGALETSKClassifier(BaseTSKClassifier):
     numerical stability.  It also uses a zero-order consequent in the DG
     (data-guided) training phase and optionally converts to first-order
     after gate-based pruning.
-
-    Training follows a three-phase protocol:
-
-    1. **DG phase** (:meth:`fit_dg_phase`) — train with zero-order consequents.
-    2. **Threshold search** (:meth:`search_thresholds`) — prune features/rules.
-    3. **Fine-tune** (:meth:`fit_finetune`) — retrain first-order consequents.
 
     Reference:
         G. Xue, J. Wang, B. Yuan and C. Dai, "DG-ALETSK: A High-Dimensional
@@ -1476,12 +1344,6 @@ class DGALETSKRegressor(BaseTSKRegressor):
     (data-guided) training phase and optionally converts to first-order
     after gate-based pruning.
 
-    Training follows a three-phase protocol:
-
-    1. **DG phase** (:meth:`fit_dg_phase`) — train with zero-order consequents.
-    2. **Threshold search** (:meth:`search_thresholds`) — prune features/rules.
-    3. **Fine-tune** (:meth:`fit_finetune`) — retrain first-order consequents.
-
     Reference:
         G. Xue, J. Wang, B. Yuan and C. Dai, "DG-ALETSK: A High-Dimensional
         Fuzzy Approach With Simultaneous Feature Selection and Rule
@@ -1726,14 +1588,6 @@ class DGTSKClassifier(BaseTSKClassifier):
 
     DG-TSK uses a data-guided M-gate function to automatically select
     relevant features and rules.
-    It supports two rule-base strategies:
-
-    * **CoCo-FRB** — standard one-cluster-per-rule base.
-    * **P-FRB** (point-based, via ``use_en_frb=True``) — Enhanced FRB for
-      compact rule extraction.
-
-    Like DG-ALETSK, training uses zero-order consequents in the DG phase
-    and converts to first-order before fine-tuning.
 
     Reference:
         Guangdong Xue, Jian Wang, Bingjie Zhang, Bin Yuan, Caili Dai,
@@ -1994,14 +1848,6 @@ class DGTSKRegressor(BaseTSKRegressor):
 
     DG-TSK uses a data-guided M-gate function to automatically select
     relevant features and rules.
-    It supports two rule-base strategies:
-
-    * **CoCo-FRB** — standard one-cluster-per-rule base.
-    * **P-FRB** (point-based, via ``use_en_frb=True``) — Enhanced FRB for
-      compact rule extraction.
-
-    Like DG-ALETSK, training uses zero-order consequents in the DG phase
-    and converts to first-order before fine-tuning.
 
     Reference:
         Guangdong Xue, Jian Wang, Bingjie Zhang, Bin Yuan, Caili Dai,
@@ -2235,30 +2081,11 @@ class DGTSKRegressor(BaseTSKRegressor):
         return self.fit(x, y, **kwargs)
 
 
-# =====================================================================
-# LogTSK  (Cui, Wu & Xu, IEEE Trans. Fuzzy Syst. 2021)
-#
-#   w_r = ∏_{d=1}^{D} μ_{r,d}(x_d)               (product t-norm)
-#   f̄_r = (1 / |log w_r|) / Σ_i (1 / |log w_i|)   (inverse-log normalisation)
-#
-# This normalization is implemented in highFIS by InvLogDefuzzifier and is
-# scale-invariant in log-space, which avoids softmax saturation as input
-# dimension grows.
-# =====================================================================
-
-
 class LogTSKClassifier(BaseTSKClassifier):
     r"""LogTSK classifier with inverse-log normalization of log-domain rules.
 
     Firing strengths are normalized using the inverse-log formula, which
-    is immune to softmax saturation in high-dimensional input spaces:
-
-    .. math::
-        \bar{f}_r = \frac{1/|Z_r|}{\sum_{i=1}^{R} 1/|Z_i|}
-
-    where :math:`Z_r = \log f_r = \sum_{d=1}^{D} \log \mu_{r,d} \leq 0`.
-    Because the normalized weights depend only on the *relative magnitudes*
-    of :math:`Z_r`, the output is scale-invariant in log-space.
+    is immune to softmax saturation in high-dimensional input spaces.
 
     References:
         Y. Cui, D. Wu and Y. Xu, "Curse of Dimensionality for TSK Fuzzy
@@ -2320,15 +2147,8 @@ class LogTSKClassifier(BaseTSKClassifier):
 class LogTSKRegressor(BaseTSKRegressor):
     r"""LogTSK regressor with inverse-log normalization of log-domain rules.
 
-    LogTSK uses product antecedent aggregation and inverse-log rule weights:
-
-    .. math::
-        \bar{f}_r = \frac{1/|Z_r|}{\sum_{i=1}^{R} 1/|Z_i|}
-
-    where :math:`Z_r = \log w_r = \sum_{d=1}^{D} \log \mu_{r,d}(x_d) \leq 0`.
-    The weights are normalized across rules using L1 normalization, making the
-    model scale-invariant in log-space and avoiding softmax saturation in high
-    dimensional inputs.
+    Firing strengths are normalized using the inverse-log formula, which
+    is immune to softmax saturation in high-dimensional input spaces.
 
     References:
         Y. Cui, D. Wu and Y. Xu, "Curse of Dimensionality for TSK Fuzzy
