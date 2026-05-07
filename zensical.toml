@@ -339,4 +339,7 @@ paths = ["highfis"]
 [project.plugins.mkdocstrings.handlers.python.options]
 docstring_style = "google"
 inherited_members = true
-show_source = false
+show_source = true
+show_signature = false
+group_by_category = true
+annotations_path = "source"

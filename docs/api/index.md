@@ -1,8 +1,9 @@
-# Docstrings
+# HighFIS API Reference
 
-Esta seção agrega páginas geradas por `mkdocstrings` a partir das docstrings do pacote `highfis`.
+::: highfis
+    options:
+        members: false
 
-- [highfis package](highfis.md)
 - [Base](base.md)
 - [Defuzzifiers](defuzzifiers.md)
 - [Estimators](estimators.md)

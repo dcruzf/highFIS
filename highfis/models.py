@@ -1,97 +1,90 @@
 """Concrete TSK model variants.
 
-Each class in this module is a :class:`~highfis.base.BaseTSK` subclass that
-bundles a specific antecedent strategy (t-norm), defuzzification head, and
-consequent architecture.  Users typically access these through the sklearn
-estimator wrappers in :mod:`highfis.estimators`.
+Each class in this module is a subclass of `BaseTSK` that bundles a specific
+antecedent strategy (t-norm), defuzzification head, and consequent architecture.
+Users typically access these through the sklearn-style estimator wrappers in
+`highfis.estimators`.
 
-Model family overview
----------------------
+Model Family Overview:
+    **HTSK**
+        Configuration: `t_norm="gmean"` + `SoftmaxLogDefuzzifier`
 
-.. list-table::
-   :header-rows: 1
+        Classes:
+            - `HTSKClassifier`
+            - `HTSKRegressor`
 
-   * - Variant
-     - T-norm default
-     - Defuzzifier
-     - Reference
-   * - **HTSK**
-     - ``gmean``
-     - :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`
-     - Cui, Wu & Xu (IJCNN 2021)
-   * - **TSK (vanilla)**
-     - ``prod``
-     - :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`
-     - Takagi & Sugeno (IEEE SMC 1985)
-   * - **LogTSK**
-     - ``prod``
-     - :class:`~highfis.defuzzifiers.InvLogDefuzzifier` (inverse-log normalization)
-     - Cui, Wu & Xu (IJCNN 2021)
-   * - **DombiTSK**
-     - ``dombi``
-     - :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`
-     - Dombi (1982)
-   * - **AYATSK**
-     - ``yager``
-     - :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`
-     - Xue et al. (IEEE TSMC 2025)
-   * - **AdaTSK**
-     - adaptive softmin (Ada-softmin)
-     - :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`
-     - Xue et al. (IEEE TFS 2023)
-   * - **FSRE-AdaTSK**
-     - adaptive softmin
-     - :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`
-     - Xue et al. (IEEE TFS 2023)
-   * - **DG-ALETSK**
-     - ALE-softmin
-     - :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`
-     - Xue et al. (IEEE TFUZZ 2023)
-   * - **DG-TSK**
-     - product + M-gate
-     - :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`
-     - Xue et al. (Fuzzy Sets Syst. 2023)
+        Behavior:
+            - `softmax(log(w^{1/D}))`
 
-Scientific correspondence
-~~~~~~~~~~~~~~~~~~~~~~~~~
+    **TSK (vanilla)**
+        Configuration: `t_norm="prod"` + `SumBasedDefuzzifier`
 
-Normalization is always computed over rules. In highFIS each model variant
-pairs an antecedent aggregation operator with a defuzzifier, and the public
-classes defined in this module are grouped as follows:
+        Classes:
+            - `TSKClassifier`
+            - `TSKRegressor`
 
-* **HTSK**: ``t_norm="gmean"`` + ``SoftmaxLogDefuzzifier``
-  - ``HTSKClassifier``
-  - ``HTSKRegressor``
-  - behaviour: ``softmax(log(w^{1/D}))``
-* **TSK**: ``t_norm="prod"`` + ``SumBasedDefuzzifier``
-  - ``TSKClassifier``
-  - ``TSKRegressor``
-  - behaviour: ``w_r / Σw``
-* **LogTSK**: ``t_norm="prod"`` + ``InvLogDefuzzifier``
-  - ``LogTSKClassifier``
-  - ``LogTSKRegressor``
-  - behaviour: ``inverse-log normalization`` of log-domain rule weights
-* **DombiTSK**: ``t_norm="dombi"`` + ``SumBasedDefuzzifier``
-  - ``DombiTSKClassifier``
-  - ``DombiTSKRegressor``
-* **AYATSK**: ``t_norm="yager"`` + ``SumBasedDefuzzifier``
-  - ``AYATSKClassifier``
-  - ``AYATSKRegressor``
-* **AdaTSK**: adaptive softmin (Ada-softmin) + ``SumBasedDefuzzifier``
-  - ``AdaTSKClassifier``
-  - ``AdaTSKRegressor``
-* **FSRE-AdaTSK**: adaptive softmin + ``SoftmaxLogDefuzzifier``
-  - ``FSREAdaTSKClassifier``
-  - ``FSREAdaTSKRegressor``
-* **DG-ALETSK**: ALE-softmin + ``SoftmaxLogDefuzzifier``
-  - ``DGALETSKClassifier``
-  - ``DGALETSKRegressor``
-* **DG-TSK**: product + M-gate + ``SoftmaxLogDefuzzifier``
-  - ``DGTSKClassifier``
-  - ``DGTSKRegressor``
+        Behavior:
+            - `w_r / Σw`
 
-All of these classes are exported by the module and are intended for use as
-concrete TSK classifiers and regressors.
+    **LogTSK**
+        Configuration: `t_norm="prod"` + `InvLogDefuzzifier`
+
+        Classes:
+            - `LogTSKClassifier`
+            - `LogTSKRegressor`
+
+        Behavior:
+            - Inverse-log normalization of log-domain rule weights
+
+    **DombiTSK**
+        Configuration: `t_norm="dombi"` + `SumBasedDefuzzifier`
+
+        Classes:
+            - `DombiTSKClassifier`
+            - `DombiTSKRegressor`
+
+    **AYATSK**
+        Configuration: `t_norm="yager"` + `SumBasedDefuzzifier`
+
+        Classes:
+            - `AYATSKClassifier`
+            - `AYATSKRegressor`
+
+    **AdaTSK**
+        Configuration: adaptive softmin (Ada-softmin) + `SumBasedDefuzzifier`
+
+        Classes:
+            - `AdaTSKClassifier`
+            - `AdaTSKRegressor`
+
+    **FSRE-AdaTSK**
+        Configuration: adaptive softmin + `SoftmaxLogDefuzzifier`
+
+        Classes:
+            - `FSREAdaTSKClassifier`
+            - `FSREAdaTSKRegressor`
+
+    **DG-ALETSK**
+        Configuration: ALE-softmin + `SoftmaxLogDefuzzifier`
+
+        Classes:
+            - `DGALETSKClassifier`
+            - `DGALETSKRegressor`
+
+    **DG-TSK**
+        Configuration: product + M-gate + `SoftmaxLogDefuzzifier`
+
+        Classes:
+            - `DGTSKClassifier`
+            - `DGTSKRegressor`
+
+Notes:
+    - All variants normalize rule firing strengths across rules.
+    - `SoftmaxLogDefuzzifier` improves numerical stability via log-space normalization.
+    - `InvLogDefuzzifier` applies inverse-log normalization.
+    - Adaptive softmin variants dynamically adjust aggregation behavior.
+    - All classes are exported by this module and are intended for use as
+      concrete TSK classifiers and regressors.
 """
 
 from __future__ import annotations
