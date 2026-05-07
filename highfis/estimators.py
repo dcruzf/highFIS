@@ -15,8 +15,8 @@ Concrete estimators cover the following model families:
 * **TSK** — vanilla Takagi-Sugeno-Kang (Takagi & Sugeno, 1985).
 * **HTSK** — high-dimensional TSK via averaged defuzzification
   (Cui et al., IJCNN 2021).
-* **LogTSK** — log-transformed defuzzification for high-dimensional data
-  (Du et al., 2020; analysed by Cui et al., IJCNN 2021).
+* **LogTSK** — inverse-log normalization of log-domain rule weights for high-dimensional data
+  (Cui, Wu & Xu, IJCNN 2021; implementation in this repo uses InvLogDefuzzifier).
 * **DombiTSK** — Dombi T-norm based TSK (Xue et al., TFS 2025).
 * **AYATSK** — adaptive Yager T-norm based TSK (Xue et al., TSMC 2025).
 * **AdaTSK** — adaptive softmin based TSK (Xue et al., IJCNN 2022).
@@ -2417,13 +2417,32 @@ class DGTSKRegressorEstimator(_BaseRegressorEstimator):
 
 
 class LogTSKClassifierEstimator(_BaseClassifierEstimator):
-    """LogTSK classifier with log-space defuzzification.
+    r"""LogTSK classifier with inverse-log rule normalization.
 
-    Wraps :class:`~highfis.models.LogTSKClassifier`. LogTSK (Du et al., 2020;
-    analysed by Cui et al., IJCNN 2021, https://doi.org/10.1109/IJCNN52387.2021.9534099)
-    computes firing strengths in log-space to improve numerical stability.
-    L1 normalisation makes the model scale-invariant (Section III-F of Cui et
-    al.), so ``sigma_scale=1.0`` is the recommended default.
+    Wraps :class:`~highfis.models.LogTSKClassifier`. LogTSK uses product
+    antecedent aggregation and inverse-log normalization of log-domain rule
+    strengths:
+
+    $\bar{f}_r \propto 1/|\log w_r|$
+
+    The resulting rule weights are normalized with L1 normalization across
+    rules, which makes the model scale-invariant in log-space and avoids the
+    softmax saturation that occurs in high-dimensional inputs.
+
+    Reference:
+        Y. Cui, D. Wu and Y. Xu, "Curse of Dimensionality for TSK Fuzzy Neural
+        Networks: Explanation and Solutions," 2021 International Joint
+        Conference on Neural Networks (IJCNN), pp. 1-8,
+        doi: 10.1109/IJCNN52387.2021.9534265.
+
+    The estimator builds Gaussian membership functions automatically from
+    ``input_configs`` or from ``n_mfs`` / ``mf_init``. The default
+    ``sigma_scale=1.0`` is recommended because the log-space defuzzifier is
+    scale-invariant.
+
+    Training uses the shared :meth:`~highfis.base.BaseTSK.fit` procedure with
+    mini-batch AdamW, optional validation-based early stopping, and optional
+    uniform-rule regularization via ``ur_weight`` and ``ur_target``.
 
     Example:
         ```python
@@ -2515,10 +2534,32 @@ class LogTSKClassifierEstimator(_BaseClassifierEstimator):
 
 
 class LogTSKRegressorEstimator(_BaseRegressorEstimator):
-    """LogTSK regressor with log-space defuzzification.
+    r"""LogTSK regressor with inverse-log rule normalization.
 
-    Wraps :class:`~highfis.models.LogTSKRegressor`. See
-    :class:`LogTSKClassifierEstimator` for a description of the model.
+    Wraps :class:`~highfis.models.LogTSKRegressor`. LogTSK uses product
+    antecedent aggregation and inverse-log normalization of log-domain rule
+    strengths:
+
+    $\bar{f}_r \\propto 1/|\\log w_r|$
+
+    The resulting rule weights are normalized with L1 normalization across
+    rules, which makes the model scale-invariant in log-space and avoids the
+    softmax saturation that occurs in high-dimensional inputs.
+
+    Reference:
+        Y. Cui, D. Wu and Y. Xu, "Curse of Dimensionality for TSK Fuzzy Neural
+        Networks: Explanation and Solutions," 2021 International Joint
+        Conference on Neural Networks (IJCNN), pp. 1-8,
+        doi: 10.1109/IJCNN52387.2021.9534265.
+
+    The estimator builds Gaussian membership functions automatically from
+    ``input_configs`` or from ``n_mfs`` / ``mf_init``. The default
+    ``sigma_scale=1.0`` is recommended because the log-space defuzzifier is
+    scale-invariant.
+
+    Training uses the shared :meth:`~highfis.base.BaseTSK.fit` procedure with
+    mini-batch AdamW, optional validation-based early stopping, and optional
+    uniform-rule regularization via ``ur_weight`` and ``ur_target``.
 
     Example:
         ```python

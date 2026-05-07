@@ -25,8 +25,8 @@ Model family overview
      - Takagi & Sugeno (IEEE SMC 1985)
    * - **LogTSK**
      - ``prod``
-     - :class:`~highfis.defuzzifiers.InvLogDefuzzifier`
-     - Cui, Wu & Xu (IEEE TFS 2021)
+     - :class:`~highfis.defuzzifiers.InvLogDefuzzifier` (inverse-log normalization)
+     - Cui, Wu & Xu (IJCNN 2021)
    * - **DombiTSK**
      - ``dombi``
      - :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`
@@ -70,7 +70,7 @@ classes defined in this module are grouped as follows:
 * **LogTSK**: ``t_norm="prod"`` + ``InvLogDefuzzifier``
   - ``LogTSKClassifier``
   - ``LogTSKRegressor``
-  - behaviour: ``inverse-log normalization``
+  - behaviour: ``inverse-log normalization`` of log-domain rule weights
 * **DombiTSK**: ``t_norm="dombi"`` + ``SumBasedDefuzzifier``
   - ``DombiTSKClassifier``
   - ``DombiTSKRegressor``
@@ -2194,13 +2194,14 @@ class DGTSKRegressor(BaseTSKRegressor):
 #   w_r = ∏_{d=1}^{D} μ_{r,d}(x_d)               (product t-norm)
 #   f̄_r = (1 / |log w_r|) / Σ_i (1 / |log w_i|)   (inverse-log normalisation)
 #
-# This defuzzification is scale-invariant in log-space and avoids softmax
-# saturation as input dimension grows.
+# This normalization is implemented in highFIS by InvLogDefuzzifier and is
+# scale-invariant in log-space, which avoids softmax saturation as input
+# dimension grows.
 # =====================================================================
 
 
 class LogTSKClassifier(BaseTSKClassifier):
-    r"""LogTSK classifier with scale-invariant log-space defuzzification.
+    r"""LogTSK classifier with inverse-log normalization of log-domain rules.
 
     Firing strengths are normalized using the inverse-log formula, which
     is immune to softmax saturation in high-dimensional input spaces:
@@ -2270,17 +2271,17 @@ class LogTSKClassifier(BaseTSKClassifier):
 
 
 class LogTSKRegressor(BaseTSKRegressor):
-    r"""LogTSK regressor with scale-invariant log-space defuzzification.
+    r"""LogTSK regressor with inverse-log normalization of log-domain rules.
 
-    Firing strengths are normalized using the inverse-log formula, which
-    is immune to softmax saturation in high-dimensional input spaces:
+    LogTSK uses product antecedent aggregation and inverse-log rule weights:
 
     .. math::
         \bar{f}_r = \frac{1/|Z_r|}{\sum_{i=1}^{R} 1/|Z_i|}
 
-    where :math:`Z_r = \log f_r = \sum_{d=1}^{D} \log \mu_{r,d} \leq 0`.
-    Because the normalized weights depend only on the *relative magnitudes*
-    of :math:`Z_r`, the output is scale-invariant in log-space.
+    where :math:`Z_r = \log w_r = \sum_{d=1}^{D} \log \mu_{r,d}(x_d) \leq 0`.
+    The weights are normalized across rules using L1 normalization, making the
+    model scale-invariant in log-space and avoiding softmax saturation in high
+    dimensional inputs.
 
     References:
         Y. Cui, D. Wu and Y. Xu, "Curse of Dimensionality for TSK Fuzzy
