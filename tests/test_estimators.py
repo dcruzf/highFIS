@@ -331,7 +331,6 @@ def test_adatsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
     est = AdaTSKClassifierEstimator(
         n_mfs=2,
         mf_init="kmeans",
-        lambda_init=1.5,
         epochs=5,
         learning_rate=1e-2,
         random_state=7,
@@ -446,11 +445,6 @@ def test_estimator_invalid_mf_init_raises() -> None:
     est = HTSKClassifierEstimator(n_mfs=2, mf_init="random", epochs=1, batch_size=16)
     with pytest.raises(ValueError, match="mf_init"):
         est.fit(x, y)
-
-
-def test_adatsk_classifier_estimator_rejects_nonpositive_lambda() -> None:
-    with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        AdaTSKClassifierEstimator(n_mfs=2, mf_init="kmeans", lambda_init=0.0, epochs=1, batch_size=16)
 
 
 def test_dombi_tsk_classifier_estimator_fit_predict() -> None:
@@ -959,7 +953,6 @@ def test_adatsk_regressor_estimator_fit_predict() -> None:
     est = AdaTSKRegressorEstimator(
         n_mfs=2,
         mf_init="kmeans",
-        lambda_init=2.0,
         epochs=5,
         learning_rate=1e-2,
         random_state=7,
@@ -1009,11 +1002,6 @@ def test_regressor_estimator_invalid_mf_init_raises() -> None:
     est = HTSKRegressorEstimator(n_mfs=2, mf_init="random", epochs=1, batch_size=16)
     with pytest.raises(ValueError, match="mf_init"):
         est.fit(x, y)
-
-
-def test_adatsk_regressor_estimator_rejects_nonpositive_lambda() -> None:
-    with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        AdaTSKRegressorEstimator(n_mfs=2, mf_init="kmeans", lambda_init=0.0, epochs=1, batch_size=16)
 
 
 def test_regressor_estimator_kmeans_default_rule_base_is_coco() -> None:

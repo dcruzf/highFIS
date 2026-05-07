@@ -25,7 +25,7 @@ Model family overview
      - Takagi & Sugeno (IEEE SMC 1985)
    * - **LogTSK**
      - ``prod``
-     - :class:`~highfis.defuzzifiers.LogSumDefuzzifier`
+     - :class:`~highfis.defuzzifiers.InvLogDefuzzifier`
      - Cui, Wu & Xu (IEEE TFS 2021)
    * - **DombiTSK**
      - ``dombi``
@@ -36,9 +36,9 @@ Model family overview
      - :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`
      - Xue et al. (IEEE TSMC 2025)
    * - **AdaTSK**
-     - adaptive Dombi (per-rule λ)
+     - adaptive softmin (Ada-softmin)
      - :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`
-     - Xue et al. (IEEE TFS 2025)
+     - Xue et al. (IEEE TFS 2023)
    * - **FSRE-AdaTSK**
      - adaptive softmin
      - :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`
@@ -55,14 +55,43 @@ Model family overview
 Scientific correspondence
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Normalization is always ``softmax`` over rules.  In highFIS each step is
-explicit and the defuzzification strategy is pluggable:
+Normalization is always computed over rules. In highFIS each model variant
+pairs an antecedent aggregation operator with a defuzzifier, and the public
+classes defined in this module are grouped as follows:
 
-* **TSK**:  ``t_norm="prod"`` + ``SumBasedDefuzzifier`` = ``w_r / Σw``
 * **HTSK**: ``t_norm="gmean"`` + ``SoftmaxLogDefuzzifier``
-            = ``softmax(log(w^{1/D}))``
+  - ``HTSKClassifier``
+  - ``HTSKRegressor``
+  - behaviour: ``softmax(log(w^{1/D}))``
+* **TSK**: ``t_norm="prod"`` + ``SumBasedDefuzzifier``
+  - ``TSKClassifier``
+  - ``TSKRegressor``
+  - behaviour: ``w_r / Σw``
 * **LogTSK**: ``t_norm="prod"`` + ``InvLogDefuzzifier``
-              = ``softmax(log(w) / τ)``  (Cui et al., IEEE TFS 2021 §III-B)
+  - ``LogTSKClassifier``
+  - ``LogTSKRegressor``
+  - behaviour: ``softmax(log(w) / τ)``
+* **DombiTSK**: ``t_norm="dombi"`` + ``SumBasedDefuzzifier``
+  - ``DombiTSKClassifier``
+  - ``DombiTSKRegressor``
+* **AYATSK**: ``t_norm="yager"`` + ``SumBasedDefuzzifier``
+  - ``AYATSKClassifier``
+  - ``AYATSKRegressor``
+* **AdaTSK**: adaptive softmin (Ada-softmin) + ``SumBasedDefuzzifier``
+  - ``AdaTSKClassifier``
+  - ``AdaTSKRegressor``
+* **FSRE-AdaTSK**: adaptive softmin + ``SoftmaxLogDefuzzifier``
+  - ``FSREAdaTSKClassifier``
+  - ``FSREAdaTSKRegressor``
+* **DG-ALETSK**: ALE-softmin + ``SoftmaxLogDefuzzifier``
+  - ``DGALETSKClassifier``
+  - ``DGALETSKRegressor``
+* **DG-TSK**: product + M-gate + ``SoftmaxLogDefuzzifier``
+  - ``DGTSKClassifier``
+  - ``DGTSKRegressor``
+
+All of these classes are exported by the module and are intended for use as
+concrete TSK classifiers and regressors.
 """
 
 from __future__ import annotations
@@ -77,7 +106,6 @@ from torch import Tensor, nn
 from .base import BaseTSK
 from .defuzzifiers import InvLogDefuzzifier, SoftmaxLogDefuzzifier, SumBasedDefuzzifier
 from .layers import (
-    AdaptiveDombiRuleLayer,
     AdaSoftminRuleLayer,
     ClassificationConsequentLayer,
     DGALETSKRuleLayer,
@@ -460,8 +488,9 @@ class DombiTSKClassifier(BaseTSKClassifier):
         + \left(\frac{1-b}{b}\right)^\lambda\right]^{1/\lambda}}
 
     For :math:`\lambda = 1` it recovers the algebraic product T-norm.
-    Unlike :class:`AdaTSKClassifier`, the parameter is shared across all
-    rules and is *not* learned during training.
+    The parameter is fixed at construction time and shared across all rules;
+    use :class:`AdaTSKClassifier` for a high-dimensional alternative based
+    on Ada-softmin.
 
     Reference:
         Dombi, J. (1982). A general class of fuzzy operators, the De Morgan
@@ -539,8 +568,9 @@ class DombiTSKRegressor(BaseTSKRegressor):
         + \\left(\frac{1-b}{b}\right)^\\lambda\right]^{1/\\lambda}}
 
     For :math:`\\lambda = 1` it recovers the algebraic product T-norm.
-    Unlike :class:`AdaTSKRegressor`, the parameter is shared across all
-    rules and is *not* learned during training.
+    The parameter is fixed at construction time and shared across all rules;
+    use :class:`AdaTSKRegressor` for a high-dimensional alternative based
+    on Ada-softmin.
 
     Reference:
         Dombi, J. (1982). A general class of fuzzy operators, the De Morgan
@@ -729,12 +759,22 @@ class AYATSKRegressor(BaseTSKRegressor):
 
 
 class AdaTSKClassifier(BaseTSKClassifier):
-    r"""TSK classifier with per-rule adaptive Dombi T-norm (AdaTSK).
+    r"""TSK classifier with adaptive softmin antecedent (AdaTSK).
 
-    Each rule :math:`r` maintains its own Dombi parameter :math:`\lambda_r`,
-    which is jointly learned with the consequent weights.  This lets the
-    model discover the most suitable aggregation strength for each rule
-    independently, rather than using a single global T-norm.
+    The firing strength of each rule is computed with the Ada-softmin operator
+    (Xue et al., 2023, eqs. 15-16):
+
+    .. math::
+        f_r(\mathbf{x}) =
+        \left(\frac{1}{D}\sum_{d=1}^{D}\mu_{r,d}^{\hat{q}}(\mathbf{x})
+        \right)^{1/\hat{q}},\quad
+        \hat{q} = \left\lceil\frac{690}{\ln\!\min_d \mu_{r,d}(\mathbf{x})}
+        \right\rceil \in [-1000,\,-1].
+
+    The index :math:`\hat{q}` is computed from the current membership values
+    on every forward pass and is *not* a learnable parameter.  This adaptive
+    scheme prevents both *numeric underflow* and *fake minimum* that plague
+    fixed-parameter softmin operators for high-dimensional data.
 
     Reference:
         G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive
@@ -749,7 +789,6 @@ class AdaTSKClassifier(BaseTSKClassifier):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str = "coco",
-        lambda_init: float = 1.0,
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -762,24 +801,19 @@ class AdaTSKClassifier(BaseTSKClassifier):
                 :class:`~highfis.memberships.MembershipFunction` objects.
             n_classes: Number of output classes (must be ≥ 2).
             rule_base: ``"coco"`` (default) or ``"cartesian"``.
-            lambda_init: Initial value for all per-rule Dombi exponents
-                (``λ > 0``, default ``1.0``).
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to
                 :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
             consequent_batch_norm: Batch normalisation on consequent inputs.
-            eps: Numerical stability epsilon for the Dombi T-norm.
+            eps: Numerical stability epsilon for the Ada-softmin operator.
 
         Raises:
-            ValueError: If ``n_classes < 2`` or ``lambda_init <= 0``.
+            ValueError: If ``n_classes < 2``.
         """
         if n_classes < 2:
             raise ValueError("n_classes must be >= 2")
-        if lambda_init <= 0.0:
-            raise ValueError("lambda_init must be > 0")
 
         self.n_classes = int(n_classes)
-        self.lambda_init = float(lambda_init)
         self.eps = eps
 
         super().__init__(
@@ -792,12 +826,11 @@ class AdaTSKClassifier(BaseTSKClassifier):
             consequent_batch_norm=consequent_batch_norm,
         )
 
-        self.rule_layer = AdaptiveDombiRuleLayer(
+        self.rule_layer = AdaSoftminRuleLayer(
             self.input_names,
             [len(input_mfs[name]) for name in self.input_names],
             rules=rules,
             rule_base=rule_base,
-            lambda_init=self.lambda_init,
             eps=self.eps,
         )
 
@@ -809,16 +842,35 @@ class AdaTSKClassifier(BaseTSKClassifier):
 
 
 class AdaTSKRegressor(BaseTSKRegressor):
-    """TSK regressor with per-rule adaptive Dombi T-norm (AdaTSK).
+    r"""TSK regressor with adaptive softmin antecedent (AdaTSK).
 
-    See :class:`AdaTSKClassifier` for a description of the AdaTSK model.
+    The firing strength of each rule is computed with the Ada-softmin operator
+    (Xue et al., 2023, eqs. 15-16):
+
+    .. math::
+        f_r(\mathbf{x}) =
+        \left(\frac{1}{D}\sum_{d=1}^{D}\mu_{r,d}^{\hat{q}}(\mathbf{x})
+        \right)^{1/\hat{q}},\quad
+        \hat{q} = \left\lceil\frac{690}{\ln\!\min_d \mu_{r,d}(\mathbf{x})}
+        \right\rceil \in [-1000,\,-1].
+
+    The index :math:`\hat{q}` is computed from the current membership values
+    on every forward pass and is *not* a learnable parameter.  This adaptive
+    scheme prevents both *numeric underflow* and *fake minimum* that plague
+    fixed-parameter softmin operators for high-dimensional data.
+
+    Reference:
+        G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive
+        Neuro-Fuzzy System With Integrated Feature Selection and Rule
+        Extraction for High-Dimensional Classification Problems," in
+        IEEE Transactions on Fuzzy Systems, vol. 31, no. 7, pp. 2167-2181,
+        July 2023, doi: 10.1109/TFUZZ.2022.3220950.
     """
 
     def __init__(
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str = "coco",
-        lambda_init: float = 1.0,
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -830,21 +882,12 @@ class AdaTSKRegressor(BaseTSKRegressor):
             input_mfs: Mapping from feature name to a sequence of
                 :class:`~highfis.memberships.MembershipFunction` objects.
             rule_base: ``"coco"`` (default) or ``"cartesian"``.
-            lambda_init: Initial value for all per-rule Dombi exponents
-                (``λ > 0``, default ``1.0``).
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to
                 :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
             consequent_batch_norm: Batch normalisation on consequent inputs.
-            eps: Numerical stability epsilon for the Dombi T-norm.
-
-        Raises:
-            ValueError: If ``lambda_init <= 0``.
+            eps: Numerical stability epsilon for the Ada-softmin operator.
         """
-        if lambda_init <= 0.0:
-            raise ValueError("lambda_init must be > 0")
-
-        self.lambda_init = float(lambda_init)
         self.eps = eps
 
         super().__init__(
@@ -857,12 +900,11 @@ class AdaTSKRegressor(BaseTSKRegressor):
             consequent_batch_norm=consequent_batch_norm,
         )
 
-        self.rule_layer = AdaptiveDombiRuleLayer(
+        self.rule_layer = AdaSoftminRuleLayer(
             self.input_names,
             [len(input_mfs[name]) for name in self.input_names],
             rules=rules,
             rule_base=rule_base,
-            lambda_init=self.lambda_init,
             eps=self.eps,
         )
 
@@ -891,9 +933,11 @@ class FSREAdaTSKClassifier(BaseTSKClassifier):
     3. **Fine-tune** (:meth:`fit_finetune`) — compact model fine-tuning.
 
     Reference:
-        Xue, Y., et al. (2023). Feature selection and rule extraction for
-        TSK fuzzy systems. *IEEE Trans. Fuzzy Syst.*
-        https://doi.org/10.1109/TFUZZ.2023.XXXXXXX
+        G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive
+        Neuro-Fuzzy System With Integrated Feature Selection and Rule
+        Extraction for High-Dimensional Classification Problems," in
+        IEEE Transactions on Fuzzy Systems, vol. 31, no. 7, pp. 2167-2181,
+        July 2023, doi: 10.1109/TFUZZ.2022.3220950.
     """
 
     def __init__(
@@ -901,7 +945,6 @@ class FSREAdaTSKClassifier(BaseTSKClassifier):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str = "coco",
-        lambda_init: float = 1.0,
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -915,27 +958,22 @@ class FSREAdaTSKClassifier(BaseTSKClassifier):
                 :class:`~highfis.memberships.MembershipFunction` objects.
             n_classes: Number of output classes (must be ≥ 2).
             rule_base: ``"coco"`` (default) or ``"cartesian"``.
-            lambda_init: Initial adaptive softmin index ``λ > 0``
-                (default ``1.0``).
             rules: Explicit rule antecedent indices; ignored when
                 ``use_en_frb=True``.
             defuzzifier: Custom defuzzifier.  Defaults to
                 :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`.
             consequent_batch_norm: Batch normalisation on consequent inputs.
-            eps: Numerical stability epsilon for the softmin operator.
+            eps: Numerical stability epsilon for the Ada-softmin operator.
             use_en_frb: Start directly from the Enhanced FRB (En-FRB)
                 instead of CoCo-FRB.
 
         Raises:
-            ValueError: If ``n_classes < 2`` or ``lambda_init <= 0``.
+            ValueError: If ``n_classes < 2``.
         """
         if n_classes < 2:
             raise ValueError("n_classes must be >= 2")
-        if lambda_init <= 0.0:
-            raise ValueError("lambda_init must be > 0")
 
         self.n_classes = int(n_classes)
-        self.lambda_init = float(lambda_init)
         self.eps = eps
         self.use_en_frb = bool(use_en_frb)
 
@@ -993,15 +1031,32 @@ class FSREAdaTSKClassifier(BaseTSKClassifier):
 class FSREAdaTSKRegressor(BaseTSKRegressor):
     """FSRE-AdaTSK regressor with adaptive softmin antecedent and gated consequents.
 
-    See :class:`FSREAdaTSKClassifier` for a description of the FSRE-AdaTSK
-    model and its two-phase training protocol.
+    FSRE-AdaTSK (Feature Selection and Rule Extraction) extends AdaTSK with:
+
+    * **Adaptive softmin antecedent** — a differentiable softmin operator
+      that produces sparse, interpretable firing strengths.
+    * **Double-group gates** — per-rule feature gates (λ) in the antecedent
+      and per-rule gates (θ) in the consequent that jointly perform
+      simultaneous feature selection and rule extraction.
+
+    Training follows a two-phase protocol:
+
+    1. **FS phase** (:meth:`fit_fs`) — train on the initial CoCo-FRB.
+    2. **RE phase** (:meth:`fit_re`) — expand to En-FRB and retrain.
+    3. **Fine-tune** (:meth:`fit_finetune`) — compact model fine-tuning.
+
+    Reference:
+        G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive
+        Neuro-Fuzzy System With Integrated Feature Selection and Rule
+        Extraction for High-Dimensional Classification Problems," in
+        IEEE Transactions on Fuzzy Systems, vol. 31, no. 7, pp. 2167-2181,
+        July 2023, doi: 10.1109/TFUZZ.2022.3220950.
     """
 
     def __init__(
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str = "coco",
-        lambda_init: float = 1.0,
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -1014,23 +1069,14 @@ class FSREAdaTSKRegressor(BaseTSKRegressor):
             input_mfs: Mapping from feature name to a sequence of
                 :class:`~highfis.memberships.MembershipFunction` objects.
             rule_base: ``"coco"`` (default) or ``"cartesian"``.
-            lambda_init: Initial adaptive softmin index ``λ > 0``
-                (default ``1.0``).
             rules: Explicit rule antecedent indices; ignored when
                 ``use_en_frb=True``.
             defuzzifier: Custom defuzzifier.  Defaults to
                 :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`.
             consequent_batch_norm: Batch normalisation on consequent inputs.
-            eps: Numerical stability epsilon for the softmin operator.
+            eps: Numerical stability epsilon for the Ada-softmin operator.
             use_en_frb: Start directly from the Enhanced FRB (En-FRB).
-
-        Raises:
-            ValueError: If ``lambda_init <= 0``.
         """
-        if lambda_init <= 0.0:
-            raise ValueError("lambda_init must be > 0")
-
-        self.lambda_init = float(lambda_init)
         self.eps = eps
         self.use_en_frb = bool(use_en_frb)
 
@@ -1088,11 +1134,11 @@ class FSREAdaTSKRegressor(BaseTSKRegressor):
 class DGALETSKClassifier(BaseTSKClassifier):
     """DG-ALETSK classifier with ALE-softmin antecedent and double-group gates.
 
-    DG-ALETSK (Xue et al., IEEE TFUZZ 2023) extends FSRE-AdaTSK by replacing
-    the adaptive softmin with the *Adaptive Ln-Exp (ALE)* softmin — a smoother
-    variant with improved numerical stability.  It also uses a zero-order
-    consequent in the DG (data-guided) training phase and optionally converts
-    to first-order after gate-based pruning.
+    DG-ALETSK extends FSRE-AdaTSK by replacing the adaptive softmin with the
+    *Adaptive Ln-Exp (ALE)* softmin — a smoother variant with improved
+    numerical stability.  It also uses a zero-order consequent in the DG
+    (data-guided) training phase and optionally converts to first-order
+    after gate-based pruning.
 
     Training follows a three-phase protocol:
 
@@ -1101,9 +1147,10 @@ class DGALETSKClassifier(BaseTSKClassifier):
     3. **Fine-tune** (:meth:`fit_finetune`) — retrain first-order consequents.
 
     Reference:
-        Xue, Y., et al. (2023). Data-guided TSK fuzzy systems with ALE
-        softmin. *IEEE Trans. Fuzzy Syst.*
-        https://doi.org/10.1109/TFUZZ.2023.3270445
+        G. Xue, J. Wang, B. Yuan and C. Dai, "DG-ALETSK: A High-Dimensional
+        Fuzzy Approach With Simultaneous Feature Selection and Rule
+        Extraction," in IEEE Transactions on Fuzzy Systems, vol. 31, no.
+        11, pp. 3866-3880, Nov. 2023, doi: 10.1109/TFUZZ.2023.3270445.
     """
 
     rule_layer: DGALETSKRuleLayer
@@ -1352,13 +1399,23 @@ class DGALETSKClassifier(BaseTSKClassifier):
 class DGALETSKRegressor(BaseTSKRegressor):
     """DG-ALETSK regressor with ALE-softmin antecedent and double-group gates.
 
-    See :class:`DGALETSKClassifier` for a description of the DG-ALETSK model
-    and its three-phase training protocol.
+    DG-ALETSK extends FSRE-AdaTSK by replacing the adaptive softmin with the
+    *Adaptive Ln-Exp (ALE)* softmin — a smoother variant with improved
+    numerical stability.  It also uses a zero-order consequent in the DG
+    (data-guided) training phase and optionally converts to first-order
+    after gate-based pruning.
+
+    Training follows a three-phase protocol:
+
+    1. **DG phase** (:meth:`fit_dg_phase`) — train with zero-order consequents.
+    2. **Threshold search** (:meth:`search_thresholds`) — prune features/rules.
+    3. **Fine-tune** (:meth:`fit_finetune`) — retrain first-order consequents.
 
     Reference:
-        Xue, Y., et al. (2023). Data-guided TSK fuzzy systems with ALE
-        softmin. *IEEE Trans. Fuzzy Syst.*
-        https://doi.org/10.1109/TFUZZ.2023.3270445
+        G. Xue, J. Wang, B. Yuan and C. Dai, "DG-ALETSK: A High-Dimensional
+        Fuzzy Approach With Simultaneous Feature Selection and Rule
+        Extraction," in IEEE Transactions on Fuzzy Systems, vol. 31, no.
+        11, pp. 3866-3880, Nov. 2023, doi: 10.1109/TFUZZ.2023.3270445.
     """
 
     rule_layer: DGALETSKRuleLayer

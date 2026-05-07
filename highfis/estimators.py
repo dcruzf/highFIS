@@ -1692,27 +1692,25 @@ class DombiTSKRegressorEstimator(_BaseRegressorEstimator):
 
 
 class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
-    """Adaptive Dombi T-norm TSK classifier — ADMTSK (Xue et al., TFS 2025).
+    r"""AdaTSK classifier with adaptive softmin antecedent (Xue et al., TFS 2023).
 
-    Wraps :class:`~highfis.models.AdaTSKClassifier`. Extends
-    :class:`DombiTSKClassifierEstimator` with an **adaptive** index parameter
-    ``λ`` for the Dombi T-norm. The adaptive strategy sets ``λ`` from the
-    input dimensionality ``D`` and the theoretical lower bound ``ε`` of the
-    membership function, ensuring no numeric underflow regardless of ``D``.
-
-    The extra hyperparameter ``lambda_init`` seeds the initial value of ``λ``
-    before training begins.
+    Wraps :class:`~highfis.models.AdaTSKClassifier`. Rule firing strengths are
+    computed with the Ada-softmin operator, whose index :math:`\\hat{q}` is
+    adapted from the current membership values on every forward pass.  This
+    prevents *numeric underflow* and *fake minimum* problems that arise with
+    product or fixed-parameter softmin operators for high-dimensional data.
 
     Reference:
-        Xue, G., Hu, L., Wang, J., & Ablameyko, S. (2025). ADMTSK: A
-        high-dimensional TSK fuzzy system based on adaptive Dombi T-norm.
-        *IEEE Trans. Fuzzy Systems*.
-        https://doi.org/10.1109/TFUZZ.2025.3535640
+        Xue, G., Chang, Q., Wang, J., Zhang, K., & Pal, N. R. (2023). An
+        adaptive neuro-fuzzy system with integrated feature selection and rule
+        extraction for high-dimensional classification problems. *IEEE Trans.
+        Fuzzy Systems*, 31(7), 2167-2181.
+        https://doi.org/10.1109/TFUZZ.2022.3220950
 
     Example:
         ```python
         >>> from highfis import AdaTSKClassifierEstimator
-        >>> clf = AdaTSKClassifierEstimator(n_mfs=30, lambda_init=1.0, random_state=0)
+        >>> clf = AdaTSKClassifierEstimator(n_mfs=30, random_state=0)
         >>> clf.fit(X_train, y_train)
         AdaTSKClassifierEstimator(...)
         >>> clf.score(X_test, y_test)
@@ -1723,7 +1721,6 @@ class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
     def __init__(
         self,
         *,
-        lambda_init: float = 1.0,
         input_configs: list[InputConfig] | None = None,
         n_mfs: int = 30,
         mf_init: str = "kmeans",
@@ -1742,19 +1739,15 @@ class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
         validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
-        """Initialise an AdaTSK (ADMTSK) classifier.
+        """Initialise an AdaTSK classifier.
 
         Args:
-            lambda_init: Initial value of the Dombi T-norm index parameter
-                ``λ > 0``. The adaptive strategy will adjust ``λ`` during
-                the forward pass based on current membership values and
-                dimensionality. Xue et al. (2025) used ``lambda_init=1.0``.
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
             n_mfs: Number of k-means clusters / grid MFs (default ``30``).
             mf_init: ``"kmeans"`` (default) or ``"grid"``.
-            sigma_scale: Sigma scale factor. ``1.0`` recommended; the
-                adaptive Dombi T-norm handles high-dimensional stability.
+            sigma_scale: Sigma scale factor. ``1.0`` recommended; Ada-softmin
+                handles high-dimensional stability.
             random_state: Seed for k-means and weight initialisation.
             epochs: Maximum training epochs (default ``200``).
             learning_rate: Adam learning rate (default ``0.01``).
@@ -1768,13 +1761,7 @@ class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
             patience: Early-stopping patience (default ``20``).
             validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
-
-        Raises:
-            ValueError: If ``lambda_init <= 0``.
         """
-        if lambda_init <= 0.0:
-            raise ValueError("lambda_init must be > 0")
-        self.lambda_init = float(lambda_init)
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -1806,21 +1793,20 @@ class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
-            lambda_init=self.lambda_init,
             consequent_batch_norm=bool(self.consequent_batch_norm),
         )
 
 
 class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
-    """Adaptive Dombi T-norm TSK regressor — ADMTSK (Xue et al., TFS 2025).
+    """AdaTSK regressor with adaptive softmin antecedent (Xue et al., TFS 2023).
 
     Wraps :class:`~highfis.models.AdaTSKRegressor`. See
-    :class:`AdaTSKClassifierEstimator` for a description of the ADMTSK model.
+    :class:`AdaTSKClassifierEstimator` for a description of the AdaTSK model.
 
     Example:
         ```python
         >>> from highfis import AdaTSKRegressorEstimator
-        >>> reg = AdaTSKRegressorEstimator(n_mfs=30, lambda_init=1.0, random_state=0)
+        >>> reg = AdaTSKRegressorEstimator(n_mfs=30, random_state=0)
         >>> reg.fit(X_train, y_train)
         AdaTSKRegressorEstimator(...)
         >>> reg.score(X_test, y_test)
@@ -1831,7 +1817,6 @@ class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
     def __init__(
         self,
         *,
-        lambda_init: float = 1.0,
         input_configs: list[InputConfig] | None = None,
         n_mfs: int = 30,
         mf_init: str = "kmeans",
@@ -1850,11 +1835,9 @@ class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
         validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
-        """Initialise an AdaTSK (ADMTSK) regressor.
+        """Initialise an AdaTSK regressor.
 
         Args:
-            lambda_init: Initial Dombi T-norm index ``λ > 0``. Xue et al.
-                (2025) used ``lambda_init=1.0``.
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
             n_mfs: Number of k-means clusters / grid MFs (default ``30``).
@@ -1873,13 +1856,7 @@ class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
             patience: Early-stopping patience (default ``20``).
             validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
-
-        Raises:
-            ValueError: If ``lambda_init <= 0``.
         """
-        if lambda_init <= 0.0:
-            raise ValueError("lambda_init must be > 0")
-        self.lambda_init = float(lambda_init)
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -1909,7 +1886,6 @@ class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
         return AdaTSKRegressor(
             input_mfs,
             rule_base=rule_base,
-            lambda_init=self.lambda_init,
             consequent_batch_norm=bool(self.consequent_batch_norm),
         )
 
@@ -1976,9 +1952,10 @@ class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
         """Initialise an FSRE-AdaTSK classifier.
 
         Args:
-            lambda_init: Initial adaptive softmin index parameter ``λ > 0``.
-                Controls the initial approximation quality to the minimum
-                T-norm. Xue et al. (2023) used ``lambda_init=1.0``.
+            lambda_init: Initial ALE-softmin parameter ``λ > 0`` inherited
+                by :class:`DGALETSKClassifierEstimator`; not used by
+                FSRE-AdaTSK proper (Ada-softmin computes its index from
+                the current membership values). Default ``1.0``.
             use_en_frb: If ``True``, use the Enhanced FRB (En-FRB) whose
                 size grows linearly with the number of features, allowing
                 more candidate rules for the RE phase. Xue et al. (2023)
@@ -2041,7 +2018,6 @@ class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
-            lambda_init=self.lambda_init,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             use_en_frb=self.use_en_frb,
         )
@@ -2093,8 +2069,10 @@ class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
         """Initialise an FSRE-AdaTSK regressor.
 
         Args:
-            lambda_init: Initial adaptive softmin index ``λ > 0``. Xue et al.
-                (2023) used ``lambda_init=1.0``.
+            lambda_init: Initial ALE-softmin parameter ``λ > 0`` inherited
+                by :class:`DGALETSKRegressorEstimator`; not used by
+                FSRE-AdaTSK proper (Ada-softmin computes its index from
+                the current membership values). Default ``1.0``.
             use_en_frb: If ``True``, use the Enhanced FRB (En-FRB) for rule
                 extraction. Default ``False`` keeps CoCo-FRB.
             input_configs: Per-feature :class:`InputConfig` list. Only
@@ -2152,7 +2130,6 @@ class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
         return FSREAdaTSKRegressor(
             input_mfs,
             rule_base=rule_base,
-            lambda_init=self.lambda_init,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             use_en_frb=self.use_en_frb,
         )
