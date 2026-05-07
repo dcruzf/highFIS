@@ -54,6 +54,7 @@ nav = [
     { "FSRE-AdaTSK" = "models/fsre-adatsk.md" },
     { "DG-TSK" = "models/dg-tsk.md" },
     { "DG-ALETSK" = "models/dg-aletsk.md" },
+    { "AYATSK" = "models/ayatsk.md" },
     { "API Reference" = "api/index.md" },
     { "Contributing" = "contributing.md" },
 ]
