@@ -1245,7 +1245,9 @@ class DGALETSKClassifier(BaseTSKClassifier):
         return GatedClassificationZeroOrderConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
 
     def _build_consequent_layer(self) -> GatedClassificationConsequentLayer:
-        return GatedClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
+        layer = GatedClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
+        layer.mode = "re"
+        return layer
 
     def _default_criterion(self) -> nn.Module:
         return nn.CrossEntropyLoss()
@@ -1298,7 +1300,7 @@ class DGALETSKClassifier(BaseTSKClassifier):
         with torch.no_grad():
             norm_w = self.forward_antecedents(x)
             consequent = cast(GatedClassificationConsequentLayer, self.consequent_layer)
-            feature_gates = _gate_activation(consequent.lambda_gates)
+            feature_gates = torch.ones(self.n_rules, self.n_inputs, dtype=x.dtype, device=x.device)
             rule_gates = _gate_activation(consequent.theta_gates)
             design = _build_first_order_design_matrix(norm_w, x, feature_gates, rule_gates)
 
@@ -1505,7 +1507,9 @@ class DGALETSKRegressor(BaseTSKRegressor):
         return GatedRegressionZeroOrderConsequentLayer(self.n_rules, self.n_inputs)
 
     def _build_consequent_layer(self) -> GatedRegressionConsequentLayer:
-        return GatedRegressionConsequentLayer(self.n_rules, self.n_inputs)
+        layer = GatedRegressionConsequentLayer(self.n_rules, self.n_inputs)
+        layer.mode = "re"
+        return layer
 
     def _default_criterion(self) -> nn.Module:
         return nn.MSELoss()
@@ -1558,7 +1562,7 @@ class DGALETSKRegressor(BaseTSKRegressor):
         with torch.no_grad():
             norm_w = self.forward_antecedents(x)
             consequent = cast(GatedRegressionConsequentLayer, self.consequent_layer)
-            feature_gates = _gate_activation(consequent.lambda_gates)
+            feature_gates = torch.ones(self.n_rules, self.n_inputs, dtype=x.dtype, device=x.device)
             rule_gates = _gate_activation(consequent.theta_gates)
             design = _build_first_order_design_matrix(norm_w, x, feature_gates, rule_gates)
 
@@ -1673,8 +1677,8 @@ class DGALETSKRegressor(BaseTSKRegressor):
 class DGTSKClassifier(BaseTSKClassifier):
     """DG-TSK classifier with M-gate antecedent and point-based FRB (P-FRB).
 
-    DG-TSK (Xue et al., Fuzzy Sets and Systems 2023) uses a data-guided
-    M-gate function to automatically select relevant features and rules.
+    DG-TSK uses a data-guided M-gate function to automatically select
+    relevant features and rules.
     It supports two rule-base strategies:
 
     * **CoCo-FRB** — standard one-cluster-per-rule base.
@@ -1685,9 +1689,11 @@ class DGTSKClassifier(BaseTSKClassifier):
     and converts to first-order before fine-tuning.
 
     Reference:
-        Xue, Y., et al. (2023). Data-guided TSK fuzzy systems. *Fuzzy Sets
-        and Systems*.
-        https://doi.org/10.1016/j.fss.2023.108627
+        Guangdong Xue, Jian Wang, Bingjie Zhang, Bin Yuan, Caili Dai,
+        Double groups of gates based Takagi-Sugeno-Kang (DG-TSK)
+        fuzzy system for simultaneous feature selection and rule
+        extraction, Fuzzy Sets and Systems, Volume 469, 2023, 108627,
+        ISSN 0165-0114, https://doi.org/10.1016/j.fss.2023.108627.
     """
 
     rule_layer: DGTSKRuleLayer
@@ -1939,12 +1945,23 @@ class DGTSKClassifier(BaseTSKClassifier):
 class DGTSKRegressor(BaseTSKRegressor):
     """DG-TSK regressor with M-gate antecedent and point-based FRB (P-FRB).
 
-    See :class:`DGTSKClassifier` for a description of the DG-TSK model.
+    DG-TSK uses a data-guided M-gate function to automatically select
+    relevant features and rules.
+    It supports two rule-base strategies:
+
+    * **CoCo-FRB** — standard one-cluster-per-rule base.
+    * **P-FRB** (point-based, via ``use_en_frb=True``) — Enhanced FRB for
+      compact rule extraction.
+
+    Like DG-ALETSK, training uses zero-order consequents in the DG phase
+    and converts to first-order before fine-tuning.
 
     Reference:
-        Xue, Y., et al. (2023). Data-guided TSK fuzzy systems. *Fuzzy Sets
-        and Systems*.
-        https://doi.org/10.1016/j.fss.2023.108627
+        Guangdong Xue, Jian Wang, Bingjie Zhang, Bin Yuan, Caili Dai,
+        Double groups of gates based Takagi-Sugeno-Kang (DG-TSK)
+        fuzzy system for simultaneous feature selection and rule
+        extraction, Fuzzy Sets and Systems, Volume 469, 2023, 108627,
+        ISSN 0165-0114, https://doi.org/10.1016/j.fss.2023.108627.
     """
 
     rule_layer: DGTSKRuleLayer

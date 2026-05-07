@@ -70,7 +70,7 @@ def test_dgaletsk_regressor_architecture() -> None:
 def test_dgaletsk_thresholds_and_pruning() -> None:
     model = DGALETSKClassifier(_build_input_mfs(), n_classes=2)
     model.rule_layer.lambda_gates.data.fill_(0.0)
-    model.rule_layer.lambda_gates.data[0, 0] = 1.0
+    model.rule_layer.lambda_gates.data[0] = 1.0
     model.consequent_layer.theta_gates.data.fill_(0.0)
     model.consequent_layer.theta_gates.data[0] = 1.0
 
@@ -79,7 +79,7 @@ def test_dgaletsk_thresholds_and_pruning() -> None:
     assert torch.isclose(torch.tensor(tau_theta), torch.tensor(0.5))
 
     model.apply_thresholds(tau_lambda, tau_theta)
-    assert model.rule_layer.lambda_gates.data[0, 0] == 1.0
+    assert model.rule_layer.lambda_gates.data[0] == 1.0
     assert model.consequent_layer.theta_gates.data[0] == 1.0
 
 
@@ -173,3 +173,64 @@ def test_dgaletsk_classifier_rejects_invalid_n_classes() -> None:
 def test_dgaletsk_regressor_rejects_nonpositive_lambda() -> None:
     with pytest.raises(ValueError, match="lambda_init must be > 0"):
         DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=0.0)
+
+
+def test_dgaletsk_rule_layer_lambda_gates_shape_is_per_feature() -> None:
+    """lambda_gates must be (n_inputs,) — shared across all rules per the DG-ALETSK paper."""
+    model = DGALETSKClassifier(_build_input_mfs(n_inputs=4, n_mfs=2), n_classes=2)
+    assert model.rule_layer.lambda_gates.shape == (4,)
+
+
+def test_dgaletsk_regressor_lambda_gates_shape_is_per_feature() -> None:
+    """lambda_gates must be (n_inputs,) — shared across all rules per the DG-ALETSK paper."""
+    model = DGALETSKRegressor(_build_input_mfs(n_inputs=5, n_mfs=2))
+    assert model.rule_layer.lambda_gates.shape == (5,)
+
+
+def test_dgaletsk_classifier_first_order_consequent_mode_is_re() -> None:
+    """After convert_to_first_order(), consequent mode must be 're' (rule gates only)."""
+    model = DGALETSKClassifier(_build_input_mfs(), n_classes=2)
+    model.convert_to_first_order()
+    assert model.consequent_layer.mode == "re"
+
+
+def test_dgaletsk_regressor_first_order_consequent_mode_is_re() -> None:
+    """After convert_to_first_order(), consequent mode must be 're' (rule gates only)."""
+    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model.convert_to_first_order()
+    assert model.consequent_layer.mode == "re"
+
+
+def test_dgaletsk_rule_layer_firing_strengths_in_unit_interval() -> None:
+    """ALE softmin with large alpha converges to min(mu_d) per paper eq. (22)."""
+
+    from highfis.layers import DGALETSKRuleLayer
+
+    layer = DGALETSKRuleLayer(
+        input_names=["x1", "x2", "x3"],
+        mf_per_input=[2, 2, 2],
+        rule_base="coco",
+        alpha_init=1.0,
+    )
+    # gate4(1.0) = 1.0 * sqrt(exp(0)) = 1.0 — feature gates exactly 1
+    layer.lambda_gates.data.fill_(1.0)
+    # Set alpha to a very large value so ALE softmin converges to the minimum
+    with torch.no_grad():
+        large_alpha = 1000.0
+        # raw_alpha s.t. softplus(raw_alpha) + eps ≈ 1000
+        layer.raw_alpha.data.fill_(large_alpha)
+
+    # CoCo-FRB with 2 MFs creates 2 rules; 3 inputs
+    # Rule 0 activations: mu = [0.8, 0.5, 0.3]  → min = 0.3
+    # Rule 1 activations: mu = [0.9, 0.7, 0.6]  → min = 0.6
+    mf_outputs = {
+        "x1": torch.tensor([[0.8, 0.9]]),
+        "x2": torch.tensor([[0.5, 0.7]]),
+        "x3": torch.tensor([[0.3, 0.6]]),
+    }
+    with torch.no_grad():
+        f = layer(mf_outputs)
+
+    assert f.shape == (1, 2)
+    assert torch.allclose(f[0, 0], torch.tensor(0.3), atol=0.01), f"expected ≈0.3, got {f[0, 0].item():.4f}"
+    assert torch.allclose(f[0, 1], torch.tensor(0.6), atol=0.01), f"expected ≈0.6, got {f[0, 1].item():.4f}"

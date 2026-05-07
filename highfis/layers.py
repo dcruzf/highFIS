@@ -395,7 +395,7 @@ class DGALETSKRuleLayer(RuleLayer):
         self.eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else float(eps)
         super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod", t_norm_fn=None)
         self.raw_alpha = nn.Parameter(torch.full((1,), _inv_softplus(alpha_init, self.eps)))
-        self.lambda_gates = nn.Parameter(torch.zeros(self.n_rules, self.n_inputs))
+        self.lambda_gates = nn.Parameter(torch.zeros(self.n_inputs))
         nn.init.uniform_(self.lambda_gates, -0.1, 0.1)
 
     @property
@@ -418,16 +418,14 @@ class DGALETSKRuleLayer(RuleLayer):
         terms = mu_flat.gather(1, indices.reshape(batch_size, -1)).reshape(batch_size, self.n_rules, self.n_inputs)
 
         mu = terms.clamp(min=self.eps, max=1.0 - self.eps)
-        feature_gates = _gate_activation(self.lambda_gates).unsqueeze(0)
+        feature_gates = _gate_activation(self.lambda_gates)  # (n_inputs,) — broadcast over batch and rules
         mu = mu * feature_gates
 
         alpha = self.alpha.view(1, 1, 1)
         log_terms = -alpha * mu
         max_log_terms = log_terms.amax(dim=-1, keepdim=True)
         log_sum = max_log_terms + torch.log(torch.exp(log_terms - max_log_terms).sum(dim=-1, keepdim=True))
-        log_avg = log_sum - torch.log(torch.tensor(self.n_inputs, dtype=log_sum.dtype, device=log_sum.device))
-        log_w = -log_avg.squeeze(-1) / alpha.squeeze(-1)
-        return torch.exp(log_w)
+        return (-log_sum / alpha).squeeze(-1)
 
 
 class DGTSKRuleLayer(RuleLayer):
@@ -555,8 +553,7 @@ class GatedClassificationConsequentLayer(nn.Module):
       (Phase 2, rule extraction, eq. 22).
     * ``"finetune"`` — no gates; plain linear TSK consequent (Phase 3,
       eq. 5).
-    * ``"both"`` (default) — both gate families applied simultaneously;
-      used by DG-ALETSK.
+    * ``"both"`` (default) — both gate families applied simultaneously.
 
     When ``shared_lambda=True`` the feature gate vector has shape
     ``(n_inputs,)`` and is shared across all rules (FSRE-AdaTSK, eq. 21).
