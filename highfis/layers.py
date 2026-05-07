@@ -446,7 +446,7 @@ class DGTSKRuleLayer(RuleLayer):
         self.eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else float(eps)
         self.gate_fn = resolve_gate_fn(gate_fea)
         super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod", t_norm_fn=None)
-        self.lambda_gates = nn.Parameter(torch.zeros(self.n_rules, self.n_inputs))
+        self.lambda_gates = nn.Parameter(torch.zeros(self.n_inputs))
         nn.init.uniform_(self.lambda_gates, -0.1, 0.1)
 
     def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:

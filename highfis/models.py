@@ -1768,12 +1768,14 @@ class DGTSKClassifier(BaseTSKClassifier):
         )
 
     def _build_consequent_layer(self) -> GatedClassificationConsequentLayer:
-        return GatedClassificationConsequentLayer(
+        layer = GatedClassificationConsequentLayer(
             self.n_rules,
             self.n_inputs,
             self.n_classes,
             gate_fn=self.gate_rule,
         )
+        layer.mode = "re"
+        return layer
 
     def _default_criterion(self) -> nn.Module:
         return nn.CrossEntropyLoss()
@@ -1821,7 +1823,7 @@ class DGTSKClassifier(BaseTSKClassifier):
         with torch.no_grad():
             norm_w = self.forward_antecedents(x)
             consequent = cast(GatedClassificationConsequentLayer, self.consequent_layer)
-            feature_gates = consequent.gate_fn(consequent.lambda_gates)
+            feature_gates = torch.ones(self.n_rules, self.n_inputs, dtype=x.dtype, device=x.device)
             rule_gates = consequent.gate_fn(consequent.theta_gates)
             design = _build_first_order_design_matrix(norm_w, x, feature_gates, rule_gates)
 
@@ -2008,7 +2010,9 @@ class DGTSKRegressor(BaseTSKRegressor):
         return GatedRegressionZeroOrderConsequentLayer(self.n_rules, self.n_inputs, gate_fn=self.gate_rule)
 
     def _build_consequent_layer(self) -> GatedRegressionConsequentLayer:
-        return GatedRegressionConsequentLayer(self.n_rules, self.n_inputs, gate_fn=self.gate_rule)
+        layer = GatedRegressionConsequentLayer(self.n_rules, self.n_inputs, gate_fn=self.gate_rule)
+        layer.mode = "re"
+        return layer
 
     def _default_criterion(self) -> nn.Module:
         return nn.MSELoss()
@@ -2056,7 +2060,7 @@ class DGTSKRegressor(BaseTSKRegressor):
         with torch.no_grad():
             norm_w = self.forward_antecedents(x)
             consequent = cast(GatedRegressionConsequentLayer, self.consequent_layer)
-            feature_gates = consequent.gate_fn(consequent.lambda_gates)
+            feature_gates = torch.ones(self.n_rules, self.n_inputs, dtype=x.dtype, device=x.device)
             rule_gates = consequent.gate_fn(consequent.theta_gates)
             design = _build_first_order_design_matrix(norm_w, x, feature_gates, rule_gates)
             target = y.unsqueeze(1)
