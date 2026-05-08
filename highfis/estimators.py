@@ -104,6 +104,7 @@ from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 
 from .base import BaseTSK
 from .memberships import GaussianMF
+from .metrics import compute_metrics
 from .models import (
     AdaTSKClassifier,
     AdaTSKRegressor,
@@ -616,6 +617,26 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         y_pred = self.predict(X)
         return float(accuracy_score(y_true, y_pred, sample_weight=sample_weight))
 
+    def evaluate(
+        self,
+        X: Any,
+        y: Any,
+        metrics: list[str] | None = None,
+        sample_weight: Any | None = None,
+    ) -> dict[str, float]:
+        """Compute classification evaluation metrics for the provided dataset."""
+        y_true = np.asarray(y)
+        y_pred = self.predict(X)
+        y_prob = self.predict_proba(X)
+        return compute_metrics(
+            task="classification",
+            y_true=y_true,
+            y_pred=y_pred,
+            y_prob=y_prob,
+            sample_weight=sample_weight,
+            metrics=metrics,
+        )
+
 
 class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[misc]
     """Abstract base class for all highFIS TSK regressor estimators.
@@ -930,6 +951,24 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
             raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
         preds = cast(Any, self.model_).predict(self._as_tensor_x(x_arr))
         return preds.detach().cpu().numpy()
+
+    def evaluate(
+        self,
+        X: Any,
+        y: Any,
+        metrics: list[str] | None = None,
+        sample_weight: Any | None = None,
+    ) -> dict[str, float]:
+        """Compute regression evaluation metrics for the provided dataset."""
+        y_true = np.asarray(y)
+        y_pred = self.predict(X)
+        return compute_metrics(
+            task="regression",
+            y_true=y_true,
+            y_pred=y_pred,
+            sample_weight=sample_weight,
+            metrics=metrics,
+        )
 
 
 # =====================================================================

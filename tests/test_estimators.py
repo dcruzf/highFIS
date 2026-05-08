@@ -86,6 +86,66 @@ def test_estimator_fit_predict_proba_predict_score() -> None:
     assert 0.0 <= score <= 1.0
 
 
+def test_estimator_evaluate_classification_metrics() -> None:
+    x, y = _make_dataset(80)
+    est = HTSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+
+    est.fit(x, y)
+    report = est.evaluate(x, y)
+
+    assert set(report) == {
+        "accuracy",
+        "balanced_accuracy",
+        "precision_macro",
+        "recall_macro",
+        "f1_macro",
+    }
+    assert 0.0 <= report["accuracy"] <= 1.0
+
+
+def test_classifier_estimator_pfrb_kmeans_fit_predict_proba() -> None:
+    x, y = _make_dataset(40)
+    est = HTSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        rule_base="pfrb",
+        epochs=3,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+
+    est.fit(x, y)
+    proba = est.predict_proba(x)
+
+    assert proba.shape == (x.shape[0], 2)
+
+
+def test_classifier_estimator_pfrb_grid_fit_predict_proba() -> None:
+    x, y = _make_dataset(40)
+    est = HTSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="grid",
+        rule_base="pfrb",
+        epochs=3,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+
+    est.fit(x, y)
+    proba = est.predict_proba(x)
+
+    assert proba.shape == (x.shape[0], 2)
+
+
 def test_ayatsk_classifier_estimator_fit_predict_score() -> None:
     x, y = _make_dataset(80)
     est = AYATSKClassifierEstimator(
@@ -949,6 +1009,61 @@ def test_regressor_estimator_fit_predict_score() -> None:
     assert pred.shape == (x.shape[0],)
     # R² score from RegressorMixin
     assert isinstance(score, float)
+
+
+def test_regressor_estimator_evaluate_metrics() -> None:
+    x, y = _make_regression_dataset(80)
+    est = HTSKRegressorEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+
+    est.fit(x, y)
+    report = est.evaluate(x, y)
+
+    assert set(report) == {"mse", "mae", "rmse", "r2"}
+    assert report["mse"] >= 0.0
+    assert np.isclose(report["rmse"], np.sqrt(report["mse"]))
+
+
+def test_regressor_estimator_pfrb_kmeans_fit_predict() -> None:
+    x, y = _make_regression_dataset(40)
+    est = HTSKRegressorEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        rule_base="pfrb",
+        epochs=3,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+
+    est.fit(x, y)
+    pred = est.predict(x)
+
+    assert pred.shape == (x.shape[0],)
+
+
+def test_regressor_estimator_pfrb_grid_fit_predict() -> None:
+    x, y = _make_regression_dataset(40)
+    est = HTSKRegressorEstimator(
+        n_mfs=2,
+        mf_init="grid",
+        rule_base="pfrb",
+        epochs=3,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+
+    est.fit(x, y)
+    pred = est.predict(x)
+
+    assert pred.shape == (x.shape[0],)
 
 
 def test_regressor_estimator_grid_init_fit_predict() -> None:
