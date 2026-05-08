@@ -351,6 +351,8 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
             rule_base: Explicit rule-base construction type. ``"coco"``
                 (compactly combined) pairs rule ``r`` with MF ``r`` on every
                 feature. ``"cartesian"`` enumerates all MF combinations.
+                ``"pfrb"`` builds a point-based FRB from training samples and
+                uses a CoCo rule base over the resulting sample-centered MFs.
                 Defaults to ``"coco"`` for ``mf_init="kmeans"`` and
                 ``"cartesian"`` for ``mf_init="grid"``.
             batch_size: Mini-batch size for gradient descent. Cui et al.
@@ -436,19 +438,39 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
                 effective_sigma_scale = math.sqrt(float(x_arr.shape[1]))
             else:
                 effective_sigma_scale = float(self.sigma_scale)
-            input_mfs = _build_kmeans_input_mfs(
-                x_arr,
-                n_clusters=int(self.n_mfs),
-                sigma_scale=effective_sigma_scale,
-                feature_names=feature_names,
-                random_state=self.random_state,
-            )
-            effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
+            if self.rule_base == "pfrb":
+                input_mfs = _build_pfrb_input_mfs(
+                    x_arr,
+                    feature_names,
+                    max_rules=self.pfrb_max_rules,
+                    sigma_scale=effective_sigma_scale,
+                    random_state=self.random_state,
+                )
+                effective_rule_base = "coco"
+            else:
+                input_mfs = _build_kmeans_input_mfs(
+                    x_arr,
+                    n_clusters=int(self.n_mfs),
+                    sigma_scale=effective_sigma_scale,
+                    feature_names=feature_names,
+                    random_state=self.random_state,
+                )
+                effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
         else:
             input_configs = self._resolve_input_configs(x_arr)
-            input_mfs = _build_gaussian_input_mfs(x_arr, input_configs)
             feature_names = [cfg.name for cfg in input_configs]
-            effective_rule_base = self.rule_base if self.rule_base is not None else "cartesian"
+            if self.rule_base == "pfrb":
+                input_mfs = _build_pfrb_input_mfs(
+                    x_arr,
+                    feature_names,
+                    max_rules=self.pfrb_max_rules,
+                    sigma_scale=float(self.sigma_scale) if not isinstance(self.sigma_scale, str) else 1.0,
+                    random_state=self.random_state,
+                )
+                effective_rule_base = "coco"
+            else:
+                input_mfs = _build_gaussian_input_mfs(x_arr, input_configs)
+                effective_rule_base = self.rule_base if self.rule_base is not None else "cartesian"
 
         return input_mfs, feature_names, effective_rule_base
 
@@ -634,6 +656,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         ur_weight: float = 0.0,
         ur_target: float | None = None,
         consequent_batch_norm: bool = False,
+        pfrb_max_rules: int | None = None,
         patience: int = 20,
         validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
@@ -672,6 +695,8 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
             rule_base: Explicit rule-base construction type. ``"coco"``
                 (compactly combined) pairs rule ``r`` with MF ``r`` on every
                 feature. ``"cartesian"`` enumerates all MF combinations.
+                ``"pfrb"`` builds a point-based FRB from training samples and
+                uses a CoCo rule base over the resulting sample-centered MFs.
                 Defaults to ``"coco"`` for ``mf_init="kmeans"`` and
                 ``"cartesian"`` for ``mf_init="grid"``.
             batch_size: Mini-batch size for gradient descent. Cui et al.
@@ -686,6 +711,8 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
             consequent_batch_norm: Apply batch normalisation to the
                 consequent linear layers. Can improve training stability on
                 large datasets.
+            pfrb_max_rules: Maximum number of point-based FRB rules when
+                ``rule_base='pfrb'``. ``None`` uses all training samples.
             patience: Number of consecutive epochs without improvement on
                 the validation loss before training is stopped early. Only
                 active when ``validation_data`` is provided.
@@ -708,6 +735,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         self.ur_weight = ur_weight
         self.ur_target = ur_target
         self.consequent_batch_norm = consequent_batch_norm
+        self.pfrb_max_rules = pfrb_max_rules
         self.patience = patience
         self.validation_data = validation_data
         self.weight_decay = weight_decay
@@ -751,19 +779,39 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
                 effective_sigma_scale = math.sqrt(float(x_arr.shape[1]))
             else:
                 effective_sigma_scale = float(self.sigma_scale)
-            input_mfs = _build_kmeans_input_mfs(
-                x_arr,
-                n_clusters=int(self.n_mfs),
-                sigma_scale=effective_sigma_scale,
-                feature_names=feature_names,
-                random_state=self.random_state,
-            )
-            effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
+            if self.rule_base == "pfrb":
+                input_mfs = _build_pfrb_input_mfs(
+                    x_arr,
+                    feature_names,
+                    max_rules=self.pfrb_max_rules,
+                    sigma_scale=effective_sigma_scale,
+                    random_state=self.random_state,
+                )
+                effective_rule_base = "coco"
+            else:
+                input_mfs = _build_kmeans_input_mfs(
+                    x_arr,
+                    n_clusters=int(self.n_mfs),
+                    sigma_scale=effective_sigma_scale,
+                    feature_names=feature_names,
+                    random_state=self.random_state,
+                )
+                effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
         else:
             input_configs = self._resolve_input_configs(x_arr)
-            input_mfs = _build_gaussian_input_mfs(x_arr, input_configs)
             feature_names = [cfg.name for cfg in input_configs]
-            effective_rule_base = self.rule_base if self.rule_base is not None else "cartesian"
+            if self.rule_base == "pfrb":
+                input_mfs = _build_pfrb_input_mfs(
+                    x_arr,
+                    feature_names,
+                    max_rules=self.pfrb_max_rules,
+                    sigma_scale=float(self.sigma_scale) if not isinstance(self.sigma_scale, str) else 1.0,
+                    random_state=self.random_state,
+                )
+                effective_rule_base = "coco"
+            else:
+                input_mfs = _build_gaussian_input_mfs(x_arr, input_configs)
+                effective_rule_base = self.rule_base if self.rule_base is not None else "cartesian"
 
         return input_mfs, feature_names, effective_rule_base
 
@@ -1031,6 +1079,7 @@ class HTSKRegressorEstimator(_BaseRegressorEstimator):
         ur_weight: float = 0.0,
         ur_target: float | None = None,
         consequent_batch_norm: bool = False,
+        pfrb_max_rules: int | None = None,
         patience: int = 20,
         validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
@@ -1042,7 +1091,8 @@ class HTSKRegressorEstimator(_BaseRegressorEstimator):
                 ``name`` is used when ``mf_init="kmeans"``.
             n_mfs: Number of k-means clusters / grid MFs.
             mf_init: ``"kmeans"`` (default) or ``"grid"``.
-            sigma_scale: Sigma scale factor. ``1.0`` is recommended for HTSK.
+            sigma_scale: Scale factor for sigma initialisation when
+                ``mf_init="kmeans"``. ``1.0`` is recommended for HTSK.
             random_state: Seed for k-means and weight initialisation.
             epochs: Maximum training epochs (default ``10``).
             learning_rate: Adam learning rate (default ``0.01``).
@@ -1054,6 +1104,7 @@ class HTSKRegressorEstimator(_BaseRegressorEstimator):
             ur_weight: Uncertainty regularisation weight.
             ur_target: Uncertainty regularisation target.
             consequent_batch_norm: Batch normalisation on consequent layers.
+            pfrb_max_rules: Maximum point-based FRB rules (unused by HTSK).
             patience: Early-stopping patience (default ``20``).
             validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
@@ -2294,6 +2345,7 @@ class DGTSKClassifierEstimator(_BaseClassifierEstimator):
         ur_weight: float = 0.0,
         ur_target: float | None = None,
         consequent_batch_norm: bool = False,
+        pfrb_max_rules: int | None = None,
         patience: int = 20,
         validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
@@ -2317,6 +2369,8 @@ class DGTSKClassifierEstimator(_BaseClassifierEstimator):
             ur_weight: Uncertainty regularisation weight.
             ur_target: Uncertainty regularisation target.
             consequent_batch_norm: Batch normalisation on consequent layers.
+            pfrb_max_rules: Maximum number of point-based FRB rules when
+                ``rule_base='pfrb'``. ``None`` uses all training samples.
             patience: Early-stopping patience (default ``20``).
             validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
@@ -2337,6 +2391,7 @@ class DGTSKClassifierEstimator(_BaseClassifierEstimator):
             ur_weight=ur_weight,
             ur_target=ur_target,
             consequent_batch_norm=consequent_batch_norm,
+            pfrb_max_rules=pfrb_max_rules,
             patience=patience,
             validation_data=validation_data,
             weight_decay=weight_decay,
@@ -2393,6 +2448,7 @@ class DGTSKRegressorEstimator(_BaseRegressorEstimator):
         ur_weight: float = 0.0,
         ur_target: float | None = None,
         consequent_batch_norm: bool = False,
+        pfrb_max_rules: int | None = None,
         patience: int = 20,
         validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
@@ -2416,6 +2472,8 @@ class DGTSKRegressorEstimator(_BaseRegressorEstimator):
             ur_weight: Uncertainty regularisation weight.
             ur_target: Uncertainty regularisation target.
             consequent_batch_norm: Batch normalisation on consequent layers.
+            pfrb_max_rules: Maximum number of point-based FRB rules when
+                ``rule_base='pfrb'``. ``None`` uses all training samples.
             patience: Early-stopping patience (default ``20``).
             validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
@@ -2436,6 +2494,7 @@ class DGTSKRegressorEstimator(_BaseRegressorEstimator):
             ur_weight=ur_weight,
             ur_target=ur_target,
             consequent_batch_norm=consequent_batch_norm,
+            pfrb_max_rules=pfrb_max_rules,
             patience=patience,
             validation_data=validation_data,
             weight_decay=weight_decay,

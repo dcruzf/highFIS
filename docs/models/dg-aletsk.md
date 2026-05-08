@@ -2,184 +2,156 @@
 
 ## Reference
 
-> G. Xue, J. Wang, B. Yuan and C. Dai, "DG-ALETSK: A High-Dimensional Fuzzy Approach With Simultaneous Feature Selection and Rule Extraction," in IEEE Transactions on Fuzzy Systems, vol. 31, no. 11, pp. 3866-3880, Nov. 2023, doi: [10.1109/TFUZZ.2023.3270445](https://doi.org/10.1109/TFUZZ.2023.3270445).
-
+> G. Xue, J. Wang, B. Yuan and C. Dai, "DG-ALETSK: A High-Dimensional Fuzzy Approach With Simultaneous Feature Selection and Rule Extraction," in IEEE Transactions on Fuzzy Systems, vol. 31, no. 11, pp. 3866–3880, Nov. 2023, doi: [10.1109/TFUZZ.2023.3270445](https://doi.org/10.1109/TFUZZ.2023.3270445).
 
 ## Overview
 
-DG-ALETSK is a high-dimensional fuzzy TSK architecture that combines:
+DG-ALETSK is a high-dimensional TSK fuzzy model that jointly learns:
 
-- an adaptive Ln-Exp softmin antecedent operator;
-- feature gates embedded in the antecedent;
-- rule gates embedded in the consequent;
-- a DG phase that jointly learns feature selection and rule extraction;
-- conversion to first-order TSK consequents followed by fine tuning.
+- feature selection via antecedent gates;
+- rule extraction via consequent gates;
+- a differentiable adaptive Ln-Exp softmin antecedent;
+- a zero-order DG phase followed by first-order fine tuning.
 
-This design is aimed at high-dimensional classification and regression
-problems where both feature reduction and rule simplification are desirable.
+The highFIS implementation supports both classification and regression via
+`DGALETSKClassifier` and `DGALETSKRegressor`.
 
-## Layer definitions in highFIS
+## Mathematical Formulation
 
-### `DGALETSKRuleLayer`
+### Antecedent membership
 
-This layer implements the paper’s adaptive Ln-Exp softmin antecedent.
-Key behaviors:
+Each antecedent uses Gaussian membership functions:
 
-- receives membership values `μ_{r,d}` from all input features;
-- learns a positive softness parameter `α` via softplus from `raw_alpha`;
-- applies feature gates `λ_d` to antecedent inputs before aggregation;
-- computes rule firing strengths using a stable log-sum-exp formulation.
+$$
+\mu_{r,d}(x_d) = \exp\left(-\frac{(x_d - m_{r,d})^2}{2\sigma_{r,d}^2}\right)
+$$
 
-The layer’s core computation is:
+with learned antecedent centers $m_{r,d}$ and spreads $\sigma_{r,d}>0$.
 
-1. `log_terms = -α * μ_{r,d}`
-2. `log_sum = logsumexp(log_terms, axis=features)`
-3. `log_avg = log_sum - log(D)`
-4. `log_w = -log_avg / α`
-5. `w_r = exp(log_w)`
+### Feature gating
 
-This produces a differentiable approximation of a T-norm with adaptive
-softness, consistent with DG-ALETSK’s antecedent formulation.
+DG-ALETSK embeds one gate per input feature in the antecedent.
+HighFIS implements the paper's gate activation as:
 
-### `GatedClassificationZeroOrderConsequentLayer`
+$$
+M(\lambda) = \lambda \sqrt{e^{1 - \lambda^2}}
+$$
 
-Used in the DG phase for classification:
+The feature gate values are:
 
-- each rule produces a scalar class bias;
-- each rule is gated by a learned rule gate `θ_r`;
-- the gate activation `M(θ_r)` scales the rule contribution;
-- class outputs are aggregated from gated rule biases.
+$$
+\gamma_d = M(\lambda_d)
+$$
 
-This corresponds to the paper’s zero-order DG training, where rule weights are
-learned and pruned directly.
+and the gated membership terms become:
 
-### `GatedRegressionZeroOrderConsequentLayer`
+$$
+\tilde{\mu}_{r,d}(x_d) = \gamma_d \, \mu_{r,d}(x_d)
+$$
 
-The regression analogue to the classification zero-order consequent layer.
+### Adaptive Ln-Exp softmin
 
-- each rule has a scalar bias output;
-- each rule is gated by `M(θ_r)`;
-- the final output is the normalized weighted sum of gated rule outputs.
+DG-ALETSK replaces the standard product T-norm with an adaptive Ln-Exp softmin.
+In highFIS the firing strength of rule $r$ is computed as:
 
-### `GatedClassificationConsequentLayer`
+$$
+w_r(\mathbf{x}) = \frac{1}{\alpha} \log \left( \sum_{d=1}^{D} \exp\left(-\alpha \, \tilde{\mu}_{r,d}(x_d)\right) \right)
+$$
 
-A first-order consequent used after converting from the DG phase.
+where $\alpha > 0$ is a learned softness parameter. In the implementation,
+$\alpha$ is stored as `raw_alpha` and activated with `softplus` to keep it
+strictly positive.
 
-- contains first-order weights and biases per rule and class;
-- includes feature-level gate coefficients and rule gate coefficients;
-- supports fine tuning once antecedents and gates are fixed.
+### Rule gates and consequents
 
-### `GatedRegressionConsequentLayer`
+DG-ALETSK also embeds one gate per rule in the consequent.
+For zero-order classification, each rule $r$ produces gated class logits:
 
-The first-order regression consequent layer.
+$$
+\hat{y}_{r}^{c}(\mathbf{x}) = M(\theta_r) \, p_{r}^{c}
+$$
 
-- supports feature-level gating in weights and rule-level gating in outputs;
-- is used for the fine-tuned first-order DG-ALETSK model.
+For regression, the same gate multiplies a scalar rule output.
 
-## DG-ALETSK mechanisms
+### Output aggregation
 
-### DG phase
+Normalized rule strengths are computed as:
 
-In highFIS, the DG phase is executed by
-`DGALETSKClassifier.fit_dg_phase()` or `DGALETSKRegressor.fit_dg_phase()`.
+$$
+\bar{w}_r(\mathbf{x}) = \frac{w_r(\mathbf{x})}{\sum_{i=1}^{R} w_i(\mathbf{x})}
+$$
 
-- The model is initialized with a `DGALETSKRuleLayer` antecedent and a
-  zero-order gated consequent.
-- Feature gates `λ` and rule gates `θ` are both trained jointly with the
-  antecedent and consequent parameters.
-- This phase implements DG-ALETSK’s simultaneous feature selection and rule
-  extraction.
+The final model output is the weighted sum of gated rule consequents:
 
-### Gate activation and thresholds
-
-The implementation uses the paper’s gate activation function:
-
-```math
-M(u) = u \sqrt{e^{1 - u^{2}}}
-```
-
-Thresholds are computed as:
-
-- Feature threshold:
-
-  ```math
-  \tau_{\lambda} = \max_{d} M(\lambda_{d}) - \zeta_{\lambda} \left[\max_{d} M(\lambda_{d}) - \min_{d} M(\lambda_{d})\right]
-  ```
-
-- Rule threshold:
-
-  ```math
-  \tau_{\theta} = \max_{r} M(\theta_{r}) - \zeta_{\theta} \left[\max_{r} M(\theta_{r}) - \min_{r} M(\theta_{r})\right]
-  ```
-
-These formulas are implemented in
-`DGALETSKClassifier.compute_thresholds()` and
-`DGALETSKRegressor.compute_thresholds()`.
+$$
+\hat{y}^c(\mathbf{x}) = \sum_{r=1}^{R} \bar{w}_r(\mathbf{x}) \, \hat{y}_{r}^{c}(\mathbf{x})
+$$
 
 ### Threshold search and pruning
 
-HighFIS provides `search_thresholds(...)` to grid-search candidate values for
-`ζ_λ` and `ζ_θ`.
+Gate thresholds are computed from the learned gate values and two
+coefficients $\zeta_{\lambda}$ and $\zeta_{\theta}$:
 
-For each candidate pair:
+$$
+\tau_{\lambda} = \max_d M(\lambda_d) - \zeta_{\lambda} \bigl[ \max_d M(\lambda_d) - \min_d M(\lambda_d) \bigr]
+$$
 
-1. clone the current model;
-2. compute `τ_λ` and `τ_θ` from current gate values;
-3. apply thresholds with `apply_thresholds(tau_lambda, tau_theta)`;
-4. optionally convert to first-order and refit consequents by least squares;
-5. evaluate the candidate on training or validation data;
-6. keep the best candidate and optionally apply it to the main model.
+$$
+\tau_{\theta} = \max_r M(\theta_r) - \zeta_{\theta} \bigl[ \max_r M(\theta_r) - \min_r M(\theta_r) \bigr]
+$$
 
-This matches the paper’s description of post-DG threshold search with
-evaluation of thresholded models.
+Features and rules with gate values below these thresholds are pruned.
 
-### Conversion to first-order
+## Code ↔ Paper Correspondence
 
-Once thresholds are selected, DG-ALETSK converts the pruned zero-order model
-into a first-order TSK model via `convert_to_first_order()`.
+| Concept | highFIS class / method | Notes |
+|---|---|---|
+| Adaptive Ln-Exp softmin antecedent | `DGALETSKRuleLayer` | Implements paper's ALE softmin with a stable log-sum-exp form |
+| Feature gates | `DGALETSKRuleLayer.lambda_gates` + `gate4` | Gate values are applied multiplicatively to each membership |
+| Rule gates | `GatedClassificationZeroOrderConsequentLayer.theta_gates`, `GatedRegressionZeroOrderConsequentLayer.theta_gates` | Gated zero-order consequents during DG training |
+| Zero-order DG phase | `fit_dg_phase()` | Jointly optimizes antecedent, feature gates, rule gates, and zero-order consequents |
+| First-order conversion | `convert_to_first_order()` | Preserves learned rule gates and switches consequent form |
+| Threshold computation | `compute_thresholds(zeta_lambda, zeta_theta)` | Computes pruning thresholds from gate values |
+| Threshold pruning | `apply_thresholds(tau_lambda, tau_theta)` | Sets low gate values to zero |
+| Threshold search | `search_thresholds(...)` | Grid-searches `\zeta_\lambda` / `\zeta_\theta` and optionally refits consequents |
 
-- Preserves learned rule gates `θ`.
-- Introduces first-order consequent weights and biases.
-- Prepares the model for final fine tuning.
+## Implementation notes
 
-### Least-squares consequent re-estimation
-
-To stabilize the chosen thresholds, highFIS can optionally refit the first-order
-consequent parameters using least squares while keeping antecedent outputs fixed.
-
-This is implemented during threshold search when `use_lse=True` and helps
-match the paper’s recommendation to estimate consequent coefficients after gate
-pruning.
-
-## Comparison with the paper
-
-The highFIS implementation is aligned with the DG-ALETSK paper in these ways:
-
-- `DGALETSKRuleLayer` realizes the adaptive Ln-Exp softmin antecedent.
-- Feature gates in the antecedent and rule gates in the consequent are both
-  present and jointly learned.
-- The model uses zero-order consequents during DG training and converts to
-  first-order consequents later.
-- Threshold coefficients `ζ_λ` and `ζ_θ` are searched and used to prune gates.
-- Least-squares re-estimation of first-order consequents is available after
-  thresholding.
-
-Implementation notes:
-
-- Threshold search in highFIS is performed via an explicit grid over candidate
-  `ζ_λ` and `ζ_θ` values.
-- The code supports both classification and regression versions of DG-ALETSK.
+- The highFIS DG-ALETSK implementation uses `rule_base='coco'` by default.
+- `use_en_frb=True` starts from an enhanced rule base (`en` FRB), but the
+  paper's point-based FRB (P-FRB) is not constructed by default.
+- The DG-ALETSK paper justifies P-FRB as a way to initialize an abundant
+  candidate rule base from training samples, enabling the gate-based DG phase
+  to perform rule extraction and feature selection in tandem.
+- Estimator wrappers now support `rule_base='pfrb'`, which builds a
+  point-based FRB from training samples and uses a CoCo rule base over the
+  resulting sample-centered Gaussian MFs. Use `pfrb_max_rules` to cap the
+  number of sample-based rules when the training set is large.
+- `DGALETSKClassifier` and `DGALETSKRegressor` train a zero-order model in
+  `fit_dg_phase()` and then rely on `convert_to_first_order()` plus
+  `fit_finetune()` for first-order refinement.
+- The feature gate activation is fixed to the paper's DG-ALETSK gate
+  function `gate4` in the implementation.
+- Although the gate function matches the paper exactly, highFIS applies it
+  multiplicatively to the antecedent membership values (`μ ← μ · M(λ)`) rather
+  than using the paper's more symbolic gate embedding notation (for example,
+  `μ^{M(λ)}`). This preserves the gate shape while remaining a practical
+  implementation choice.
+- Threshold search is implemented by deep-copying the current model,
+  pruning candidate copies, optionally refitting first-order consequents via
+  least squares, and selecting the best validation score.
 
 ## highFIS API summary
 
-- `fit_dg_phase(x, y, **kwargs)` — train the DG phase with zero-order
-  consequents.
-- `convert_to_first_order()` — switch to first-order consequents.
-- `compute_thresholds(zeta_lambda, zeta_theta)` — compute gate thresholds.
-- `apply_thresholds(tau_lambda, tau_theta)` — prune gates below thresholds.
-- `search_thresholds(...)` — search threshold coefficients and optionally refit
-  consequents by least squares.
-- `fit_finetune(x, y, **kwargs)` — fine-tune the resulting first-order model.
+- `fit_dg_phase(x, y, **kwargs)` — train the DG-ALETSK zero-order model.
+- `convert_to_first_order()` — convert the trained zero-order consequent to
+  a gated first-order consequent.
+- `compute_thresholds(zeta_lambda, zeta_theta)` — compute pruning thresholds
+  from current gate activations.
+- `apply_thresholds(tau_lambda, tau_theta)` — prune low-value gates.
+- `search_thresholds(...)` — search best gate thresholds and optionally apply
+  them to the model.
+- `fit_finetune(x, y, **kwargs)` — fine-tune the first-order DG-ALETSK model.
 
 ## Example
 
@@ -190,9 +162,14 @@ input_mfs = {
     "x1": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
     "x2": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
 }
-model = DGALETSKClassifier(input_mfs, n_classes=2)
 
-model.fit_dg_phase(X_train, y_train, epochs=100, learning_rate=1e-3)
+model = DGALETSKClassifier(
+    input_mfs,
+    n_classes=2,
+    use_en_frb=False,
+)
+
+history = model.fit_dg_phase(X_train, y_train, epochs=100, learning_rate=1e-3)
 
 result = model.search_thresholds(
     X_train,
@@ -201,6 +178,8 @@ result = model.search_thresholds(
     zeta_theta=[0.0, 0.25, 0.5, 0.75, 1.0],
     x_val=X_val,
     y_val=y_val,
+    use_lse=True,
+    inplace=True,
 )
 print(result)
 

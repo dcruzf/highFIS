@@ -306,6 +306,26 @@ def test_build_pfrb_input_mfs_max_rules_none_uses_all_samples() -> None:
     assert len(input_mfs["x3"]) == 4
 
 
+def test_dgtsk_classifier_estimator_rule_base_pfrb() -> None:
+    x = np.arange(20, dtype=np.float32).reshape(5, 4)
+    est = DGTSKClassifierEstimator(
+        rule_base="pfrb",
+        pfrb_max_rules=3,
+        n_mfs=5,
+        mf_init="kmeans",
+        random_state=0,
+    )
+
+    input_mfs, feature_names, effective_rule_base = est._build_input_mfs(x)
+
+    assert effective_rule_base == "coco"
+    assert len(feature_names) == 4
+    assert len(input_mfs["x1"]) == 3
+    assert len(input_mfs["x2"]) == 3
+    assert len(input_mfs["x3"]) == 3
+    assert len(input_mfs["x4"]) == 3
+
+
 def test_estimator_grid_init_fit_predict() -> None:
     x, y = _make_dataset(80)
     est = HTSKClassifierEstimator(
