@@ -1,3 +1,0 @@
-::: highfis
-    options:
-        members: false

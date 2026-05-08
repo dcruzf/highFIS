@@ -1,5 +1,7 @@
 # FSRE-AdaTSK
 
+FSRE-AdaTSK extends AdaTSK with embedded feature-selection and rule-extraction phases, using gated consequents and an enhanced rule base for high-dimensional data.
+
 ## Reference
 
 > G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive Neuro-Fuzzy System With Integrated Feature Selection and Rule Extraction for High-Dimensional Classification Problems," in IEEE Transactions on Fuzzy Systems, vol. 31, no. 7, pp. 2167-2181, July 2023, doi: [10.1109/TFUZZ.2022.3220950](https://doi.org/10.1109/TFUZZ.2022.3220950)

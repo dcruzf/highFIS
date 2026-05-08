@@ -1,5 +1,7 @@
 # Vanilla TSK
 
+Vanilla TSK is the standard first-order Takagi-Sugeno-Kang fuzzy model with Gaussian antecedents, product aggregation, and sum-based defuzzification.
+
 ## Reference
 
 > Takagi, T. & Sugeno, M. (1985). "Fuzzy identification of systems and its

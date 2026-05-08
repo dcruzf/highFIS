@@ -1,5 +1,7 @@
 # DG-ALETSK
 
+DG-ALETSK combines adaptive Ln-Exp softmin aggregation with feature and rule gating, enabling simultaneous feature selection and rule extraction in high-dimensional fuzzy models.
+
 ## Reference
 
 > G. Xue, J. Wang, B. Yuan and C. Dai, "DG-ALETSK: A High-Dimensional Fuzzy Approach With Simultaneous Feature Selection and Rule Extraction," in IEEE Transactions on Fuzzy Systems, vol. 31, no. 11, pp. 3866–3880, Nov. 2023, doi: [10.1109/TFUZZ.2023.3270445](https://doi.org/10.1109/TFUZZ.2023.3270445).
