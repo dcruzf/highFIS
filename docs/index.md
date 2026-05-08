@@ -14,9 +14,21 @@ experimentation.
 - Built for high-dimensional data and numerical stability.
 - Supports adaptive and gated fuzzy inference, including feature selection
   and rule extraction.
-- Ships with both model-level and estimator-level APIs.
+- Ships with both model-level classes and sklearn-style estimator wrappers.
 - Works seamlessly with `Pipeline`, `GridSearchCV`, and standard
   scikit-learn workflows.
+
+## High-level overview
+
+highFIS models combine:
+
+- differentiable membership functions for antecedent fuzzification,
+- configurable rule bases and T-norm aggregation,
+- normalized rule weights via defuzzification,
+- task-specific consequent layers for classification or regression.
+
+Use `BaseTSK` for custom pipelines, or choose a concrete model variant when
+you want a ready-to-use TSK architecture.
 
 ## Quick Start
 
@@ -40,28 +52,39 @@ print(f"Test accuracy: {clf.score(X_test, y_test):.4f}")
 
 ## Models Available
 
-highFIS offers a family of TSK fuzzy models optimized for different
-high-dimensional behaviors.
+highFIS includes the following concrete TSK model families:
 
-- [`Vanilla TSK`](models/tsk-vanilla.md) — the original Takagi-Sugeno-Kang model
-  with Gaussian MFs, product antecedent aggregation, and sum-based
-  normalization.
+- [`TSK`](models/tsk-vanilla.md) — vanilla TSK with product antecedent
+  aggregation and sum-based normalization.
 - [`HTSK`](models/htsk.md) — high-dimensional TSK with geometric mean
-  aggregation and log-space normalization to reduce dimensionality bias.
-- [`AYATSK`](models/ayatsk.md) — adaptive Yager aggregation with sum-based
-  consequent normalization.
-- [`LogTSK`](models/logtsk.md) — log-space defuzzification with temperature
-  scaling for numerically stable high-dimensional aggregation.
-- [`DombiTSK`](models/dombitsk.md) — Dombi t-norm aggregation with first-order
-  consequents and a learnable shape parameter.
-- [`AdaTSK`](models/adatsk.md) — adaptive Dombi inference using Composite
-  Gaussian MFs with a positive lower bound.
-- [`FSRE-AdaTSK`](models/fsre-adatsk.md) — adaptive model with gated feature
-  selection and rule extraction in the consequent.
+  aggregation and log-space softmax normalization.
+- [`LogTSK`](models/logtsk.md) — inverse-log normalization of log-domain
+  rule weights for stable high-dimensional inference.
+- [`DombiTSK`](models/dombitsk.md) — Dombi parametric aggregation with a
+  learnable shape parameter.
+- [`AYATSK`](models/ayatsk.md) — Yager-style aggregation for more flexible
+  antecedent behavior.
+- [`AdaTSK`](models/adatsk.md) — adaptive softmin aggregation with dynamic
+  rule weighting.
+- [`FSRE-AdaTSK`](models/fsre-adatsk.md) — gated feature selection and rule
+  extraction inside an adaptive inference pipeline.
 - [`DG-TSK`](models/dg-tsk.md) — double-gated training for simultaneous
-  feature selection and rule extraction, followed by first-order fine tuning.
-- [`DG-ALETSK`](models/dg-aletsk.md) — DG-based adaptive Ln-Exp softmin with
-  embedded feature and rule gates for sparse high-dimensional modeling.
+  feature selection and rule extraction.
+- [`DG-ALETSK`](models/dg-aletsk.md) — adaptive Ln-Exp softmin with embedded
+  feature and rule gates for sparse high-dimensional modeling.
+
+Each model family exposes both classifier and regressor variants.
+
+## Model selection guide
+
+- Choose `TSK` for a baseline vanilla fuzzy model.
+- Choose `HTSK` or `LogTSK` for high-dimensional problems where numerical
+  stability is critical.
+- Choose `DombiTSK` or `AYATSK` when you want more control over antecedent
+  aggregation behavior.
+- Choose `AdaTSK`, `FSRE-AdaTSK`, `DG-TSK`, or `DG-ALETSK` when you need
+  adaptive sparsity, feature gating, or rule extraction.
+
 ## Documentation
 
 | Topic | Description |

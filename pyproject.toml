@@ -64,6 +64,7 @@ all = "pre-commit run --all-files"
 installer = "uv"
 dependencies = [
   "zensical",
+  "mkdocstrings-python",
 ]
 [tool.hatch.envs.docs.scripts]
 build = "zensical build --clean"

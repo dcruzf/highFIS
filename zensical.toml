@@ -45,24 +45,29 @@ Copyright &copy; 2026 highFIS contributors
 #
 # Read more: https://zensical.org/docs/setup/navigation/
 nav = [
-    { "Home" = "index.md" },
-    { "TSK Vanilla" = "models/tsk-vanilla.md" },
-    { "LogTSK" = "models/logtsk.md" },
-    { "HTSK" = "models/htsk.md"},
-    { "Dombitsk" = "models/dombitsk.md" },
-    { "AdaTSK" = "models/adatsk.md" },
-    { "FSRE-AdaTSK" = "models/fsre-adatsk.md" },
-    { "DG-TSK" = "models/dg-tsk.md" },
-    { "DG-ALETSK" = "models/dg-aletsk.md" },
-    { "Protocols" = "api/protocols.md" },
-    { "Membership Functions" = "api/memberships.md" },
-    { "T-Norms" = "api/t_norms.md" },
-    { "Defuzzifiers" = "api/defuzzifiers.md" },
-    { "Layers" = "api/layers.md" },
-    { "Base TSK" = "api/base.md" },
-    { "Models" = "api/models.md" },
-    { "Estimators" = "api/estimators.md" },
-    { "Persistence" = "api/persistence.md" },
+    { "HighFIS" = "index.md" },
+    { "Models" = [
+        "models/tsk-vanilla.md",
+        "models/logtsk.md",
+        "models/htsk.md",
+        "models/dombitsk.md",
+        "models/adatsk.md",
+        "models/fsre-adatsk.md",
+        "models/dg-tsk.md",
+        "models/dg-aletsk.md",
+        "models/ayatsk.md",
+     ] },
+    { "API Reference" = [
+        "api/estimators.md",
+        "api/models.md",
+        "api/layers.md",
+        "api/memberships.md",
+        "api/t_norms.md",
+        "api/defuzzifiers.md",
+        "api/base.md",
+        "api/persistence.md",
+        "api/protocols.md",
+     ] },
     { "Contributing" = "contributing.md" },
 ]
 
@@ -339,3 +344,15 @@ alternate_style = true
 
 [project.extra.version]
 provider = "mike"
+
+[project.plugins.mkdocstrings.handlers.python]
+inventories = ["https://docs.python.org/3/objects.inv"]
+paths = ["highfis"]
+
+[project.plugins.mkdocstrings.handlers.python.options]
+docstring_style = "google"
+inherited_members = true
+show_source = true
+show_signature = false
+group_by_category = true
+annotations_path = "source"

@@ -1,144 +1,118 @@
 # DG-TSK
 
+DG-TSK uses M-shaped feature and rule gates together with a point-based rule base to perform simultaneous feature selection and rule extraction.
+
 ## Reference
 
 > Guangdong Xue, Jian Wang, Bingjie Zhang, Bin Yuan, Caili Dai, Double groups of gates based Takagi-Sugeno-Kang (DG-TSK) fuzzy system for simultaneous feature selection and rule extraction, Fuzzy Sets and Systems, Volume 469, 2023, 108627, ISSN 0165-0114, https://doi.org/10.1016/j.fss.2023.108627.
 
-## Overview
+## Mathematical Formulation
 
-DG-TSK is a TSK fuzzy system designed to perform feature selection and rule extraction simultaneously. The method uses two groups of gates:
+### Antecedent
 
-- feature gates in the antecedent inputs;
-- rule gates in the consequent weights.
+DG-TSK uses standard Gaussian membership functions for each input feature:
 
-The architecture combines:
+$$
+\mu_{r,d}(x_d) = \exp\left(-\frac{(x_d - c_{r,d})^2}{2\sigma_{r,d}^2}\right)
+$$
 
-- a DG training phase with zero-order consequents;
-- feature selection via pruning of input gates;
-- rule extraction via pruning of rule gates;
-- subsequent conversion to first-order consequents;
-- fine tuning after rule extraction.
+where $c_{r,d}$ and $\sigma_{r,d} > 0$ are the center and spread for rule $r$ and feature $d$.
 
-This design is intended for high-dimensional classification and regression problems where feature reduction and model simplification are both desirable.
+### M-gate
 
-## Implementation in highFIS
+The paper introduces a novel M-shaped gate function for both feature selection and rule extraction:
 
-- `DGTSKClassifier` implements the classification variant.
-- `DGTSKRegressor` implements the regression variant.
-- `DGTSKRuleLayer` learns feature gates (`λ`) and applies them to membership outputs before product aggregation.
-- `use_en_frb=True` enables an enhanced fuzzy rule base (`en` FRB) instead of a pre-defined rule set.
+$$
+M(\lambda) = \lambda^2 \exp\left(1 - \lambda^2\right)
+$$
 
-## Layer definitions in highFIS
+This function satisfies:
 
-### `DGTSKRuleLayer`
+- $M(\lambda) \in [0, 1]$ for real $\lambda$;
+- $M(\lambda) = 1$ at $\lambda = \pm 1$;
+- large derivatives near the origin for faster early learning.
 
-This layer represents the DG-TSK antecedent with feature gates.
+### Antecedent gating
 
-- receives membership values `μ_{r,d}` for each rule and each feature;
-- learns feature gate parameters `λ_d`;
-- applies `M(λ_d)` to the membership values before firing strength computation;
-- uses product aggregation (`t_norm='prod'`) over the gated inputs.
+In the paper, DG-TSK embeds feature gates in the antecedents so that feature importance modifies the rule activation. In highFIS, the current implementation uses multiplicative gating over the membership values:
 
-### Zero-order consequents
+$$
+\tilde{\mu}_{r,d}(x_d) = M(\lambda_d) \, \mu_{r,d}(x_d)
+$$
 
-During the DG phase, highFIS uses zero-order consequent layers:
+and computes rule firing strengths with a product T-norm:
 
-- `GatedClassificationZeroOrderConsequentLayer` for classifiers;
-- `GatedRegressionZeroOrderConsequentLayer` for regressors.
+$$
+w_r(\mathbf{x}) = \prod_{d=1}^{D} \tilde{\mu}_{r,d}(x_d)
+$$
 
-These layers:
+### Rule base
 
-- learn one bias parameter per rule (classification) or one scalar output per rule (regression);
-- apply rule gates `θ_r` through `M(θ_r)`;
-- aggregate gated rule contributions in a normalized output.
+The paper defines a point-based fuzzy rule base (P-FRB) where each training example initializes one rule. This strategy is justified because a richer candidate rule base helps the DG-TSK gate mechanism perform both rule extraction and feature selection simultaneously.
 
-### First-order consequents
+In highFIS, the model classes do not construct the exact per-sample P-FRB directly; instead, the closest built-in richer option is `rule_base='en'` via `use_en_frb=True`. At the estimator wrapper level, however, DG-TSK estimators support `rule_base='pfrb'` and `pfrb_max_rules` to build a sample-centered FRB from training data. That option creates Gaussian membership functions at selected training points and then uses a CoCo-style rule base over those sample-centered MFs.
 
-After conversion, the model uses first-order consequent layers:
+The `en` FRB is richer than a CoCo-FRB but is not identical to the paper's per-sample P-FRB.
 
-- `GatedClassificationConsequentLayer` for classifiers;
-- `GatedRegressionConsequentLayer` for regressors.
+### Consequent with rule gates
 
-These layers:
+DG-TSK multiplies each rule's consequent by a rule gate:
 
-- preserve learned rule gates `θ_r`;
-- introduce first-order weights for each rule and input;
-- support fine tuning once the DG structure is stabilized.
+$$
+\hat{y}_r^c(\mathbf{x}) = M(\theta_r) \left(p_{r,0}^c + \sum_{d=1}^{D} p_{r,d}^c \, x_d\right)
+$$
 
-## DG-TSK mechanisms
+For regression, the same gate forms a scalar gated consequent.
 
-### DG phase
+### Output aggregation
 
-In highFIS, the DG phase is executed by `fit_dg_phase(x, y, **kwargs)`.
+The normalized rule weights are:
 
-- It initializes a `DGTSKRuleLayer` with feature gates and a zero-order consequent layer.
-- It trains feature gates `λ`, rule gates `θ`, and consequent parameters together.
-- It preserves the configured gate functions `gate_fea` and `gate_rule`.
+$$
+\bar{w}_r(\mathbf{x}) = \frac{w_r(\mathbf{x})}{\sum_{i=1}^{R} w_i(\mathbf{x})}
+$$
 
-### Gate activation functions
+The final prediction is:
 
-DG-TSK supports several gate functions for `λ` and `θ`:
+$$
+\hat{y}^c(\mathbf{x}) = \sum_{r=1}^{R} \bar{w}_r(\mathbf{x}) \, \hat{y}_r^c(\mathbf{x})
+$$
 
-- `gate1(x) = sigmoid(x)`
-- `gate2(x) = 1 - exp(-x^2)`
-- `gate3(x) = exp(-x^2)`
-- `gate4(x) = x * sqrt(exp(1 - x^2))`
-- `gate_m(x) = x^2 * exp(1 - x^2)`
+For regression, the same weighted sum applies to scalar rule outputs.
 
-These functions are configured through the model constructor parameters `gate_fea` and `gate_rule`.
+### Training protocol
 
-### Threshold computation
+The paper describes DG-TSK as a single training phase in which feature gates, rule gates, and zero-order consequents are optimized together. After that phase, the learned gate structure is used to convert the model to first-order consequents and fine-tune the reduced model.
 
-The model computes pruning thresholds for features and rules with `compute_thresholds(zeta_lambda, zeta_theta)`.
+## Code ↔ Paper Correspondence
 
-- `τ_{λ}` is derived from the feature gate activations `M(λ_d)` and coefficient `ζ_λ`.
-- `τ_{θ}` is derived from the rule gate activations `M(θ_r)` and coefficient `ζ_θ`.
+| Concept | highFIS class / method | Notes |
+|---|---|---|
+| Gaussian membership | `highfis.memberships.GaussianMF` | antecedent MFs |
+| M-gate | `highfis.layers.gate_m` | paper's M-shaped gate |
+| Antecedent gating | `DGTSKRuleLayer.forward()` | multiplies membership by `M(\lambda_d)` |
+| Rule gating | `GatedClassificationZeroOrderConsequentLayer`, `GatedRegressionZeroOrderConsequentLayer` | gated consequents |
+| Rule base | `RuleLayer(rule_base='en')` | `en` FRB; approximates richer candidate set |
+| DG phase | `fit_dg_phase()` | zero-order training of gates and consequents |
+| First-order conversion | `convert_to_first_order()` | switch to first-order consequents |
+| Threshold search | `search_thresholds(...)` | search over `zeta_lambda`, `zeta_theta` |
+| Pruning | `compute_thresholds()`, `apply_thresholds()` | gate-based feature/rule pruning |
 
-These thresholds determine which features and rules are retained or pruned.
+## Implementation notes
 
-### Threshold application
-
-`apply_thresholds(tau_lambda, tau_theta)` performs pruning:
-
-- it zeros feature gates `λ_d` whose gated value is less than or equal to `τ_{λ}`;
-- it zeros rule gates `θ_r` whose gated value is less than or equal to `τ_{θ}`.
-
-This reduces the model by keeping only relevant features and rules.
-
-### Threshold search and pruning
-
-`search_thresholds(...)` performs a grid search over `(ζ_λ, ζ_θ)` pairs:
-
-1. clone the current model;
-2. convert to first-order consequents if needed;
-3. compute `τ_λ` and `τ_θ` with `compute_thresholds`;
-4. apply thresholds with `apply_thresholds`;
-5. optionally refit consequents by least squares (`use_lse=True`);
-6. evaluate the candidate on `x_val, y_val` or the training set;
-7. select the best pair based on score.
-
-### Conversion to first order
-
-`convert_to_first_order()` converts DG-TSK from zero-order to first-order consequents.
-
-- it preserves rule gates `θ` learned during the DG phase;
-- it initializes first-order weights and biases for each rule;
-- it prepares the model for final fine tuning.
-
-### Least-squares consequent re-estimation
-
-During threshold search, highFIS can re-estimate consequent coefficients by LSE to stabilize the final model.
-
-- this happens inside `search_thresholds(...)` when `use_lse=True`;
-- it keeps the gate structure fixed and refines only the consequent coefficients.
+- The paper's P-FRB is not implemented verbatim in highFIS. The `en` FRB is the closest available richer candidate rule base.
+- `gate_m` is the default M-gate in highFIS and matches the paper's M-shaped gate function.
+- In highFIS, DG-TSK feature gating is implemented as multiplicative gating on membership values rather than exponentiation of memberships.
+- The DG phase is implemented as zero-order consequent training, followed by first-order conversion and fine tuning.
+- `DGTSKClassifier` and `DGTSKRegressor` support both classification and regression in the same DG-TSK style.
 
 ## highFIS API summary
 
-- `fit_dg_phase(x, y, **kwargs)` — train the DG phase with zero-order consequents.
-- `convert_to_first_order()` — convert the DG-TSK model to first-order consequents.
-- `compute_thresholds(zeta_lambda, zeta_theta)` — compute `τ_λ` and `τ_θ` from current gate values.
-- `apply_thresholds(tau_lambda, tau_theta)` — prune features and rules based on thresholds.
-- `search_thresholds(...)` — search the best threshold coefficients and optionally update the model.
+- `fit_dg_phase(x, y, **kwargs)` — train DG-TSK with zero-order consequents.
+- `convert_to_first_order()` — convert the model to first-order consequents while preserving rule gates.
+- `compute_thresholds(zeta_lambda, zeta_theta)` — compute pruning thresholds from gate activations.
+- `apply_thresholds(tau_lambda, tau_theta)` — prune features and rules by zeroing gates.
+- `search_thresholds(...)` — evaluate threshold candidates and select the best gate thresholds.
 - `fit_finetune(x, y, **kwargs)` — fine tune the model after first-order conversion.
 
 ## Usage example

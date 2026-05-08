@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import logging
+import sys
+
 import pytest
 import torch
 from torch import nn
@@ -62,6 +65,13 @@ class TestBaseTSK:
     def test_log_verbose_logs_message(self) -> None:
         model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
         model._log("verbose test", verbose=True)
+
+    def test_log_verbose_outputs_to_stdout(self) -> None:
+        model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
+        model._log("verbose test", verbose=True)
+        assert model.logger.handlers
+        assert isinstance(model.logger.handlers[0], logging.StreamHandler)
+        assert model.logger.handlers[0].stream is sys.stdout
 
     def test_log_non_verbose_returns_without_logging(self) -> None:
         model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)

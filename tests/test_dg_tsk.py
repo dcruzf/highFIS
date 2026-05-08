@@ -126,7 +126,7 @@ def test_dgtsk_regressor_convert_to_first_order_preserves_theta() -> None:
 def test_dgtsk_classifier_thresholds_and_pruning() -> None:
     model = DGTSKClassifier(_build_input_mfs(), n_classes=2)
     model.rule_layer.lambda_gates.data.fill_(0.0)
-    model.rule_layer.lambda_gates.data[0, 0] = 1.0
+    model.rule_layer.lambda_gates.data[0] = 1.0
     model.consequent_layer.theta_gates.data.fill_(0.0)
     model.consequent_layer.theta_gates.data[0] = 1.0
 
@@ -135,7 +135,7 @@ def test_dgtsk_classifier_thresholds_and_pruning() -> None:
     assert torch.isclose(torch.tensor(tau_theta), torch.tensor(0.5))
 
     model.apply_thresholds(tau_lambda, tau_theta)
-    assert model.rule_layer.lambda_gates.data[0, 0] == 1.0
+    assert model.rule_layer.lambda_gates.data[0] == 1.0
     assert model.consequent_layer.theta_gates.data[0] == 1.0
 
 
@@ -281,3 +281,29 @@ def test_dgtsk_regressor_fit_dg_phase_and_finetune() -> None:
 
     history_ft = model.fit_finetune(x, y, epochs=2, learning_rate=1e-2, batch_size=8, shuffle=False)
     assert isinstance(history_ft, dict)
+
+
+def test_dgtsk_classifier_lambda_gates_shape_is_per_feature() -> None:
+    """lambda_gates must be (n_inputs,) — shared across all rules per the DG-TSK paper."""
+    model = DGTSKClassifier(_build_input_mfs(n_inputs=4, n_mfs=2), n_classes=2)
+    assert model.rule_layer.lambda_gates.shape == (4,)
+
+
+def test_dgtsk_regressor_lambda_gates_shape_is_per_feature() -> None:
+    """lambda_gates must be (n_inputs,) — shared across all rules per the DG-TSK paper."""
+    model = DGTSKRegressor(_build_input_mfs(n_inputs=5, n_mfs=2))
+    assert model.rule_layer.lambda_gates.shape == (5,)
+
+
+def test_dgtsk_classifier_first_order_consequent_mode_is_re() -> None:
+    """After convert_to_first_order(), consequent mode must be 're' (rule gates only)."""
+    model = DGTSKClassifier(_build_input_mfs(), n_classes=2)
+    model.convert_to_first_order()
+    assert model.consequent_layer.mode == "re"
+
+
+def test_dgtsk_regressor_first_order_consequent_mode_is_re() -> None:
+    """After convert_to_first_order(), consequent mode must be 're' (rule gates only)."""
+    model = DGTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model.convert_to_first_order()
+    assert model.consequent_layer.mode == "re"

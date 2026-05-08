@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-from typing import cast
-
 import pytest
 import torch
 from torch import nn
 
 from highfis.base import _iter_minibatch_indices
 from highfis.layers import (
-    AdaptiveDombiRuleLayer,
     GatedClassificationConsequentLayer,
     GatedClassificationZeroOrderConsequentLayer,
     GatedRegressionConsequentLayer,
@@ -203,12 +200,11 @@ def test_adatsk_classifier_forward_antecedents_row_sum_one() -> None:
     assert torch.allclose(norm_w.sum(dim=1), torch.ones(6), atol=1e-6)
 
 
-def test_adatsk_classifier_adaptive_lambda_positive() -> None:
-    model = AdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=2.0)
-    rule_layer = cast(AdaptiveDombiRuleLayer, model.rule_layer)
-    lambdas = rule_layer.lambdas
-    assert lambdas.shape == (model.n_rules,)
-    assert torch.all(lambdas > 0.0)
+def test_adatsk_classifier_uses_ada_softmin_rule_layer() -> None:
+    from highfis.layers import AdaSoftminRuleLayer
+
+    model = AdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    assert isinstance(model.rule_layer, AdaSoftminRuleLayer)
 
 
 def test_adatsk_regressor_forward_shape() -> None:
@@ -234,23 +230,13 @@ def test_adatsk_regressor_fit_returns_history() -> None:
     assert history["stopped_epoch"] == 3
 
 
-def test_adatsk_classifier_rejects_nonpositive_lambda() -> None:
-    with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        AdaTSKClassifier(_build_input_mfs(), n_classes=2, lambda_init=0.0)
-
-
-def test_adatsk_regressor_rejects_nonpositive_lambda() -> None:
-    with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        AdaTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=0.0)
-
-
 def test_adatsk_classifier_rejects_invalid_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
         AdaTSKClassifier(_build_input_mfs(), n_classes=1)
 
 
 def test_fsre_adatsk_classifier_helpers() -> None:
-    model = FSREAdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = FSREAdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(12, 2)
     y = torch.randint(0, 2, (12,), dtype=torch.long)
 
@@ -270,7 +256,7 @@ def test_fsre_adatsk_classifier_invalid_n_classes() -> None:
 
 
 def test_fsre_adatsk_regressor_helpers() -> None:
-    model = FSREAdaTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = FSREAdaTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(12, 2)
     y = torch.randn(12)
 
@@ -639,7 +625,6 @@ def test_adatsk_classifier_custom_rule_base_and_rules() -> None:
         n_classes=2,
         rule_base="custom",
         rules=custom_rules,
-        lambda_init=1.5,
     )
     assert model.n_rules == 2
     x = torch.randn(4, 2)
@@ -734,16 +719,6 @@ def test_build_first_order_design_matrix_validates_input_shapes() -> None:
 def test_dombitsk_classifier_rejects_invalid_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
         DombiTSKClassifier(_build_input_mfs(), n_classes=1, lambda_=1.0)
-
-
-def test_fsre_adatsk_classifier_rejects_nonpositive_lambda_init() -> None:
-    with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        FSREAdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=0.0)
-
-
-def test_fsre_adatsk_regressor_rejects_nonpositive_lambda_init() -> None:
-    with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        FSREAdaTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=0.0)
 
 
 def test_dg_aletsk_classifier_fit_first_order_consequents_requires_conversion() -> None:

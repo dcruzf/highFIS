@@ -1,4 +1,31 @@
-"""Antecedent and consequent layers for highFIS fuzzy models."""
+"""Antecedent and consequent layers for highFIS fuzzy models.
+
+This module provides ``torch.nn.Module`` building blocks for the TSK
+antecedent and consequent pipeline. The layers here are used by concrete
+TSK model variants in ``highfis.models``.
+
+Layer overview:
+    **Membership**
+        - ``MembershipLayer``
+
+    **Rule aggregation**
+        - ``RuleLayer``
+        - ``AdaSoftminRuleLayer``
+        - ``DGALETSKRuleLayer``
+        - ``DGTSKRuleLayer``
+        - ``AdaptiveDombiRuleLayer``
+
+    **Consequent heads**
+        - ``ClassificationConsequentLayer``
+        - ``RegressionConsequentLayer``
+        - ``GatedClassificationConsequentLayer``
+        - ``GatedClassificationZeroOrderConsequentLayer``
+        - ``GatedRegressionConsequentLayer``
+        - ``GatedRegressionZeroOrderConsequentLayer``
+
+Gate activations:
+    ``gate1``, ``gate2``, ``gate3``, ``gate4``, ``gate_m``
+"""
 
 from __future__ import annotations
 
@@ -53,7 +80,19 @@ def _generate_en_frb(s: int, d: int) -> list[tuple[int, ...]]:
 
 
 class MembershipLayer(nn.Module):
-    """Apply membership functions for each input feature."""
+    """Apply membership functions for each input feature.
+
+    Evaluates each input variable against its sequence of
+    :class:`~highfis.memberships.MembershipFunction` objects and returns
+    a dictionary of per-variable membership tensors.
+
+    Attributes:
+        input_names: Ordered list of input feature names.
+        n_inputs: Number of input features.
+        mf_per_input: Number of membership functions per feature.
+        input_mfs: ``nn.ModuleDict`` mapping feature names to their
+            ``nn.ModuleList`` of membership functions.
+    """
 
     def __init__(self, input_mfs: Mapping[str, Sequence[MembershipFunction]]) -> None:
         """Initialize membership layer with input-to-membership mapping."""
@@ -76,7 +115,19 @@ class MembershipLayer(nn.Module):
         self.input_mfs = nn.ModuleDict(modules)
 
     def forward(self, x: Tensor) -> dict[str, Tensor]:
-        """Compute membership outputs for each input variable."""
+        """Compute membership outputs for each input variable.
+
+        Args:
+            x: Input tensor of shape ``(N, n_inputs)``.
+
+        Returns:
+            Dictionary mapping each input name to a membership tensor of
+            shape ``(N, n_mfs_for_input)``.
+
+        Raises:
+            ValueError: If *x* is not 2-dimensional or has the wrong
+                number of columns.
+        """
         if x.ndim != 2:
             raise ValueError(f"expected x with 2 dims, got shape {tuple(x.shape)}")
         if x.shape[1] != self.n_inputs:
@@ -91,7 +142,25 @@ class MembershipLayer(nn.Module):
 
 
 class RuleLayer(nn.Module):
-    """Compute firing strengths from membership degrees."""
+    """Compute firing strengths from membership degrees.
+
+    Generates a rule base from the specified strategy and aggregates
+    per-input membership degrees into scalar firing strengths using a
+    configurable T-norm.
+
+    Supported rule-base strategies (``rule_base`` parameter):
+
+    - ``"cartesian"`` / ``"fuco"`` — full combinatorial rule base.
+    - ``"coco"`` — same-index rule base; requires identical MF counts
+      across all inputs.
+    - ``"en"`` — enhanced FRB; requires identical MF counts across all
+      inputs.
+    - ``"custom"`` — user-supplied rule index sequences.
+
+    Attributes:
+        rules: List of rule index tuples, one per rule.
+        n_rules: Number of rules in the rule base.
+    """
 
     def __init__(
         self,
@@ -181,7 +250,20 @@ class RuleLayer(nn.Module):
         return self._resolved_t_norm(terms, dim=dim)
 
     def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
-        """Compute rule firing strengths from membership outputs."""
+        """Compute rule firing strengths from membership outputs.
+
+        Args:
+            membership_outputs: Dictionary returned by
+                :class:`MembershipLayer`, mapping each input name to a
+                membership tensor of shape ``(N, n_mfs)``.
+
+        Returns:
+            Firing-strength tensor of shape ``(N, n_rules)``.
+
+        Raises:
+            KeyError: If a required input name is missing from
+                *membership_outputs*.
+        """
         mu_list = []
         for name in self.input_names:
             if name not in membership_outputs:
@@ -309,7 +391,7 @@ class DGALETSKRuleLayer(RuleLayer):
         self.eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else float(eps)
         super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod", t_norm_fn=None)
         self.raw_alpha = nn.Parameter(torch.full((1,), _inv_softplus(alpha_init, self.eps)))
-        self.lambda_gates = nn.Parameter(torch.zeros(self.n_rules, self.n_inputs))
+        self.lambda_gates = nn.Parameter(torch.zeros(self.n_inputs))
         nn.init.uniform_(self.lambda_gates, -0.1, 0.1)
 
     @property
@@ -332,16 +414,14 @@ class DGALETSKRuleLayer(RuleLayer):
         terms = mu_flat.gather(1, indices.reshape(batch_size, -1)).reshape(batch_size, self.n_rules, self.n_inputs)
 
         mu = terms.clamp(min=self.eps, max=1.0 - self.eps)
-        feature_gates = _gate_activation(self.lambda_gates).unsqueeze(0)
+        feature_gates = _gate_activation(self.lambda_gates)  # (n_inputs,) — broadcast over batch and rules
         mu = mu * feature_gates
 
         alpha = self.alpha.view(1, 1, 1)
         log_terms = -alpha * mu
         max_log_terms = log_terms.amax(dim=-1, keepdim=True)
         log_sum = max_log_terms + torch.log(torch.exp(log_terms - max_log_terms).sum(dim=-1, keepdim=True))
-        log_avg = log_sum - torch.log(torch.tensor(self.n_inputs, dtype=log_sum.dtype, device=log_sum.device))
-        log_w = -log_avg.squeeze(-1) / alpha.squeeze(-1)
-        return torch.exp(log_w)
+        return (-log_sum / alpha).squeeze(-1)
 
 
 class DGTSKRuleLayer(RuleLayer):
@@ -360,7 +440,7 @@ class DGTSKRuleLayer(RuleLayer):
         self.eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else float(eps)
         self.gate_fn = resolve_gate_fn(gate_fea)
         super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod", t_norm_fn=None)
-        self.lambda_gates = nn.Parameter(torch.zeros(self.n_rules, self.n_inputs))
+        self.lambda_gates = nn.Parameter(torch.zeros(self.n_inputs))
         nn.init.uniform_(self.lambda_gates, -0.1, 0.1)
 
     def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
@@ -459,7 +539,26 @@ class ClassificationConsequentLayer(nn.Module):
 
 
 class GatedClassificationConsequentLayer(nn.Module):
-    """Gated TSK consequent layer for classification logits."""
+    r"""Gated TSK consequent layer for classification logits.
+
+    Supports three training modes to match the FSRE-AdaTSK paper protocol:
+
+    * ``"fs"``  — only feature gates :math:`M(\\lambda_d)` are active
+      (Phase 1, feature selection, eq. 21).
+    * ``"re"``  — only rule gates :math:`M(\\theta_r)` are active
+      (Phase 2, rule extraction, eq. 22).
+    * ``"finetune"`` — no gates; plain linear TSK consequent (Phase 3,
+      eq. 5).
+    * ``"both"`` (default) — both gate families applied simultaneously.
+
+    When ``shared_lambda=True`` the feature gate vector has shape
+    ``(n_inputs,)`` and is shared across all rules (FSRE-AdaTSK, eq. 21).
+    When ``shared_lambda=False`` (default) each rule has its own
+    ``(n_inputs,)`` gate vector, stored as ``(n_rules, n_inputs)``
+    (DG-ALETSK).
+    """
+
+    mode: str
 
     def __init__(
         self,
@@ -467,6 +566,7 @@ class GatedClassificationConsequentLayer(nn.Module):
         n_inputs: int,
         n_classes: int,
         gate_fn: str | Callable[[Tensor], Tensor] | None = None,
+        shared_lambda: bool = False,
     ) -> None:
         """Initialize gated consequent parameters for classification logits."""
         super().__init__()
@@ -476,9 +576,12 @@ class GatedClassificationConsequentLayer(nn.Module):
         self.n_inputs = n_inputs
         self.n_classes = n_classes
         self.gate_fn = resolve_gate_fn(gate_fn)
+        self.shared_lambda = shared_lambda
+        self.mode = "both"
         self.weight = nn.Parameter(torch.empty(n_rules, n_classes, n_inputs))
         self.bias = nn.Parameter(torch.empty(n_rules, n_classes))
-        self.lambda_gates = nn.Parameter(torch.zeros(n_rules, n_inputs))
+        lambda_shape = (n_inputs,) if shared_lambda else (n_rules, n_inputs)
+        self.lambda_gates = nn.Parameter(torch.zeros(lambda_shape))
         self.theta_gates = nn.Parameter(torch.zeros(n_rules))
         nn.init.kaiming_normal_(self.weight, mode="fan_in", nonlinearity="linear")
         nn.init.zeros_(self.bias)
@@ -492,12 +595,35 @@ class GatedClassificationConsequentLayer(nn.Module):
         if norm_w.ndim != 2 or norm_w.shape[1] != self.n_rules:
             raise ValueError(f"expected norm_w shape (batch, {self.n_rules}), got {tuple(norm_w.shape)}")
 
-        feature_gates = self.gate_fn(self.lambda_gates).unsqueeze(1)
-        rule_gates = self.gate_fn(self.theta_gates).view(1, self.n_rules, 1)
-        gated_weight = self.weight * feature_gates
-        f = torch.einsum("bd,rkd->brk", x, gated_weight) + self.bias.unsqueeze(0)
-        f = f * rule_gates
-        return torch.einsum("br,brk->bk", norm_w, f)
+        if self.mode == "fs":
+            # Phase 1: feature gates only (eq. 21) — M(λ_d) on weights, no rule gate
+            feature_gates = self.gate_fn(self.lambda_gates)  # (n_inputs,) or (n_rules, n_inputs)
+            if not self.shared_lambda:
+                feature_gates = feature_gates.unsqueeze(1)  # (n_rules, 1, n_inputs)
+            gated_weight = self.weight * feature_gates
+            f = torch.einsum("bd,rkd->brk", x, gated_weight) + self.bias.unsqueeze(0)
+            return torch.einsum("br,brk->bk", norm_w, f)
+        elif self.mode == "re":
+            # Phase 2: rule gates only (eq. 22) — M(θ_r) on full consequent, no feature gate
+            rule_gates = self.gate_fn(self.theta_gates).view(1, self.n_rules, 1)
+            f = torch.einsum("bd,rkd->brk", x, self.weight) + self.bias.unsqueeze(0)
+            f = f * rule_gates
+            return torch.einsum("br,brk->bk", norm_w, f)
+        elif self.mode == "finetune":
+            # Phase 3: no gates (eq. 5) — plain linear consequent
+            f = torch.einsum("bd,rkd->brk", x, self.weight) + self.bias.unsqueeze(0)
+            return torch.einsum("br,brk->bk", norm_w, f)
+        else:
+            # "both" (default): both gate families active — DG-ALETSK usage
+            if self.shared_lambda:
+                feature_gates: Tensor = self.gate_fn(self.lambda_gates)  # (n_inputs,)
+            else:
+                feature_gates = self.gate_fn(self.lambda_gates).unsqueeze(1)  # (n_rules, 1, n_inputs)
+            rule_gates = self.gate_fn(self.theta_gates).view(1, self.n_rules, 1)
+            gated_weight = self.weight * feature_gates
+            f = torch.einsum("bd,rkd->brk", x, gated_weight) + self.bias.unsqueeze(0)
+            f = f * rule_gates
+            return torch.einsum("br,brk->bk", norm_w, f)
 
 
 class GatedClassificationZeroOrderConsequentLayer(nn.Module):
@@ -594,9 +720,21 @@ class RegressionConsequentLayer(nn.Module):
 
 
 class GatedRegressionConsequentLayer(nn.Module):
-    """Gated TSK consequent layer for scalar regression output."""
+    """Gated TSK consequent layer for scalar regression output.
 
-    def __init__(self, n_rules: int, n_inputs: int, gate_fn: str | Callable[[Tensor], Tensor] | None = None) -> None:
+    Supports the same ``mode`` / ``shared_lambda`` protocol as
+    :class:`GatedClassificationConsequentLayer`.
+    """
+
+    mode: str
+
+    def __init__(
+        self,
+        n_rules: int,
+        n_inputs: int,
+        gate_fn: str | Callable[[Tensor], Tensor] | None = None,
+        shared_lambda: bool = False,
+    ) -> None:
         """Initialize gated consequent parameters for regression."""
         super().__init__()
         if n_rules <= 0 or n_inputs <= 0:
@@ -604,9 +742,12 @@ class GatedRegressionConsequentLayer(nn.Module):
         self.n_rules = n_rules
         self.n_inputs = n_inputs
         self.gate_fn = resolve_gate_fn(gate_fn)
+        self.shared_lambda = shared_lambda
+        self.mode = "both"
         self.weight = nn.Parameter(torch.empty(n_rules, n_inputs))
         self.bias = nn.Parameter(torch.empty(n_rules))
-        self.lambda_gates = nn.Parameter(torch.zeros(n_rules, n_inputs))
+        lambda_shape = (n_inputs,) if shared_lambda else (n_rules, n_inputs)
+        self.lambda_gates = nn.Parameter(torch.zeros(lambda_shape))
         self.theta_gates = nn.Parameter(torch.zeros(n_rules))
         nn.init.kaiming_normal_(self.weight, mode="fan_in", nonlinearity="linear")
         nn.init.zeros_(self.bias)
@@ -620,12 +761,30 @@ class GatedRegressionConsequentLayer(nn.Module):
         if norm_w.ndim != 2 or norm_w.shape[1] != self.n_rules:
             raise ValueError(f"expected norm_w shape (batch, {self.n_rules}), got {tuple(norm_w.shape)}")
 
-        feature_gates = self.gate_fn(self.lambda_gates)
-        rule_gates = self.gate_fn(self.theta_gates).view(1, self.n_rules)
-        gated_weight = self.weight * feature_gates
-        f = torch.einsum("bd,rd->br", x, gated_weight) + self.bias.unsqueeze(0)
-        f = f * rule_gates
-        return torch.einsum("br,br->b", norm_w, f).unsqueeze(1)
+        if self.mode == "fs":
+            # Phase 1: feature gates only (eq. 21)
+            feature_gates = self.gate_fn(self.lambda_gates)  # (n_inputs,) or (n_rules, n_inputs)
+            gated_weight = self.weight * feature_gates
+            f = torch.einsum("bd,rd->br", x, gated_weight) + self.bias.unsqueeze(0)
+            return torch.einsum("br,br->b", norm_w, f).unsqueeze(1)
+        elif self.mode == "re":
+            # Phase 2: rule gates only (eq. 22)
+            rule_gates = self.gate_fn(self.theta_gates).view(1, self.n_rules)
+            f = torch.einsum("bd,rd->br", x, self.weight) + self.bias.unsqueeze(0)
+            f = f * rule_gates
+            return torch.einsum("br,br->b", norm_w, f).unsqueeze(1)
+        elif self.mode == "finetune":
+            # Phase 3: no gates (eq. 5)
+            f = torch.einsum("bd,rd->br", x, self.weight) + self.bias.unsqueeze(0)
+            return torch.einsum("br,br->b", norm_w, f).unsqueeze(1)
+        else:
+            # "both" (default): both gate families active
+            feature_gates = self.gate_fn(self.lambda_gates)  # (n_inputs,) or (n_rules, n_inputs)
+            rule_gates = self.gate_fn(self.theta_gates).view(1, self.n_rules)
+            gated_weight = self.weight * feature_gates
+            f = torch.einsum("bd,rd->br", x, gated_weight) + self.bias.unsqueeze(0)
+            f = f * rule_gates
+            return torch.einsum("br,br->b", norm_w, f).unsqueeze(1)
 
 
 __all__: list[str] = [

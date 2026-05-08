@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import pytest
 import torch
 
+from highfis.layers import AdaSoftminRuleLayer
 from highfis.memberships import CompositeGaussianMF
 from highfis.models import AdaTSKClassifier, AdaTSKRegressor
 
@@ -71,6 +71,13 @@ def test_adatsk_classifier_fit_returns_history() -> None:
     assert history["stopped_epoch"] == 3
 
 
-def test_adatsk_classifier_rejects_nonpositive_lambda() -> None:
-    with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        AdaTSKClassifier(_build_adatsk_input_mfs(), n_classes=2, lambda_init=0.0)
+def test_adatsk_classifier_uses_ada_softmin_rule_layer() -> None:
+    model = AdaTSKClassifier(_build_adatsk_input_mfs(), n_classes=2)
+
+    assert isinstance(model.rule_layer, AdaSoftminRuleLayer)
+
+
+def test_adatsk_regressor_uses_ada_softmin_rule_layer() -> None:
+    model = AdaTSKRegressor(_build_adatsk_input_mfs(n_inputs=2, n_rules=2))
+
+    assert isinstance(model.rule_layer, AdaSoftminRuleLayer)

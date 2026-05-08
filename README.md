@@ -10,10 +10,18 @@
 highFIS is a PyTorch-based framework for high-dimensional Takagi–Sugeno–Kang
 (TSK) fuzzy systems. It brings differentiable fuzzy inference, numerical
 stability, and sklearn-compatible estimators to both classification and
-regression workflows. It also includes DGTSK dynamic-gating models for
-feature and rule selection in high-dimensional fuzzy systems.
+regression. The library also includes DGTSK dynamic-gating models for feature
+and rule selection in high-dimensional fuzzy systems.
 
-## 🚀 Quick Start
+## 🚀 Overview
+
+- Differentiable TSK fuzzy systems built for high-dimensional data.
+- Supports both concrete model classes and sklearn-style estimator wrappers.
+- Includes adaptive and gated inference variants for feature selection and
+  sparse rule extraction.
+- Designed for numerical stability with log-space and inverse-log defuzzifiers.
+
+## 📦 Installation
 
 Install from PyPI:
 
@@ -21,7 +29,7 @@ Install from PyPI:
 pip install highfis
 ```
 
-Run a classifier:
+## 🧠 Quick Start
 
 ```python
 from highfis import HTSKClassifierEstimator
@@ -37,60 +45,80 @@ clf.fit(X_train, y_train)
 print(f"Test accuracy: {clf.score(X_test, y_test):.4f}")
 ```
 
-highFIS works with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and
+highFIS integrates with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and
 `cross_val_score`.
 
-## Models Available
+## 🧩 Model families
 
-highFIS offers a family of TSK fuzzy models optimized for different
-high-dimensional behaviors.
+highFIS provides a full family of TSK models, each tuned for a specific
+high-dimensional inference strategy.
 
-- `Vanilla TSK` — the original Takagi-Sugeno-Kang model with Gaussian MFs, product antecedent aggregation, and sum-based normalization.
-- `HTSK` — high-dimensional TSK with geometric mean aggregation and log-space normalization to reduce dimensionality bias.
-- `LogTSK` — log-space defuzzification with temperature scaling for numerically stable high-dimensional aggregation.
-- `AYATSK` — adaptive Yager aggregation with sum-based consequent normalization.
-- `DombiTSK` — Dombi t-norm aggregation with first-order consequents and a learnable shape parameter.
-- `AdaTSK` — adaptive Dombi inference using Composite Gaussian MFs with a positive lower bound.
-- `FSRE-AdaTSK` — adaptive model with gated feature selection and rule extraction in the consequent.
-- `DG-TSK` — double-gated training for simultaneous feature selection and rule extraction, followed by first-order fine tuning.
-- `DG-ALETSK` — DG-based adaptive Ln-Exp softmin with embedded feature and rule gates for sparse high-dimensional modeling.
+- `TSK` — vanilla TSK with product antecedent aggregation and sum-based
+  normalization.
+- `HTSK` — high-dimensional TSK with geometric mean aggregation and log-space
+  normalization.
+- `LogTSK` — log-domain inverse-log normalization for stable aggregation.
+- `DombiTSK` — Dombi t-norm aggregation with a learnable shape parameter.
+- `AYATSK` — Yager aggregation for flexible antecedent behavior.
+- `AdaTSK` — adaptive softmin-style inference with dynamic rule weighting.
+- `FSRE-AdaTSK` — adaptive model with gated feature selection and rule extraction.
+- `DG-TSK` — double-gated training for feature selection and rule extraction.
+- `DG-ALETSK` — adaptive Ln-Exp softmin with embedded feature and rule gates.
 
-## 🔧 What’s Included
+Each family exposes classifier and regressor variants.
 
-### Core models
+## 🔧 Core components
+
+### Models
 
 - `HTSKClassifier`, `HTSKRegressor`
 - `TSKClassifier`, `TSKRegressor`
+- `LogTSKClassifier`, `LogTSKRegressor`
 - `DombiTSKClassifier`, `DombiTSKRegressor`
 - `AYATSKClassifier`, `AYATSKRegressor`
 - `AdaTSKClassifier`, `AdaTSKRegressor`
-- `DGALETSKClassifier`, `DGALETSKRegressor`
-- `DGTSKClassifier`, `DGTSKRegressor`
 - `FSREAdaTSKClassifier`, `FSREAdaTSKRegressor`
-- `LogTSKClassifier`, `LogTSKRegressor`
+- `DGTSKClassifier`, `DGTSKRegressor`
+- `DGALETSKClassifier`, `DGALETSKRegressor`
 
 ### Estimator wrappers
 
 - `HTSKClassifierEstimator`, `HTSKRegressorEstimator`
 - `TSKClassifierEstimator`, `TSKRegressorEstimator`
 - `LogTSKClassifierEstimator`, `LogTSKRegressorEstimator`
-- `AdaTSKClassifierEstimator`, `AdaTSKRegressorEstimator`
-- `AYATSKClassifierEstimator`, `AYATSKRegressorEstimator`
 - `DGALETSKClassifierEstimator`, `DGALETSKRegressorEstimator`
 - `DGTSKClassifierEstimator`, `DGTSKRegressorEstimator`
 - `FSREAdaTSKClassifierEstimator`, `FSREAdaTSKRegressorEstimator`
+- `AYATSKClassifierEstimator`, `AYATSKRegressorEstimator`
+- `AdaTSKClassifierEstimator`, `AdaTSKRegressorEstimator`
 
 ### Building blocks
 
-- Memberships: `GaussianMF`, `TriangularMF`, `TrapezoidalMF`, `BellMF`, `SigmoidalMF`, `DiffSigmoidalMF`, `ProdSigmoidalMF`, `SShapedMF`, `LinSShapedMF`, `ZShapedMF`, `LinZShapedMF`, `PiMF`, `CompositeExponentialMF`, `GaussianPIMF`
-- Defuzzifiers: `SoftmaxLogDefuzzifier`, `SumBasedDefuzzifier`, `LogSumDefuzzifier`
-- T-norms: `prod`, `min`, `gmean`, `dombi`, `yager`, `yager_simple`, `ale_softmin_yager`
+- Memberships: `GaussianMF`, `TriangularMF`, `TrapezoidalMF`, `BellMF`,
+  `SigmoidalMF`, `DiffSigmoidalMF`, `ProdSigmoidalMF`, `SShapedMF`,
+  `LinSShapedMF`, `ZShapedMF`, `LinZShapedMF`, `PiMF`,
+  `CompositeExponentialMF`, `GaussianPIMF`
+- Defuzzifiers: `SoftmaxLogDefuzzifier`, `SumBasedDefuzzifier`,
+  `LogSumDefuzzifier`
+- T-norms: `prod`, `min`, `gmean`, `dombi`, `yager`, `yager_simple`,
+  `ale_softmin_yager`
 - Rule base strategies: `cartesian`, `coco`, `en`, `custom`
-- Persistence: estimator `.save(path)` / `.load(path)` and versioned checkpoint validation via `highfis.persistence`
+- Persistence: checkpoint save/load and validation via `highfis.persistence`
+
+## 🛠️ Training options
+
+highFIS uses gradient-based optimization and supports:
+
+- adaptive optimizers like Adam/W and standard SGD
+- early stopping with validation
+- uniform rule regularization for balanced rule activation
+- custom T-norms, custom rule bases, and custom defuzzifiers
 
 ## 📚 Documentation
 
-The published documentation is available at https://dcruzf.github.io/highFIS.
+The published documentation is available at:
+
+https://dcruzf.github.io/highFIS
 
 Key reference pages:
 
@@ -103,11 +131,33 @@ Key reference pages:
 - [DGTSK](https://dcruzf.github.io/highFIS/latest/models/dg-tsk)
 - [DG-ALETSK](https://dcruzf.github.io/highFIS/latest/models/dg-aletsk)
 - [FSRE-AdaTSK](https://dcruzf.github.io/highFIS/latest/models/fsre-adatsk)
-- [Persistence API](https://dcruzf.github.io/highFIS/latest/api/persistence)
 
-## 🤝 Contributing & Development
+## 🧪 Testing & quality
 
-See the published contribution guide at [contributing](https://dcruzf.github.io/highFIS/latest/contributing/).
+Run the test suite with coverage:
+
+```bash
+hatch test -c --a
+```
+
+Format and lint the repository:
+
+```bash
+hatch fmt
+```
+
+Run static type checks:
+
+```bash
+hatch run typing
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please open issues or pull requests, and refer to
+our development guide in the documentation:
+
+https://dcruzf.github.io/highFIS/latest/contributing/
 
 ## 📄 License
 
