@@ -29,7 +29,9 @@ jobs:
           python-version: "3.13"
 
       - name: Install dependencies
-        run: pip install git+https://github.com/squidfunk/mike.git zensical mkdocstrings-python
+        run: |
+          pip install git+https://github.com/squidfunk/mike.git zensical mkdocstrings-python
+          pip install -e .
 
       - name: Configure git
         run: |
@@ -52,7 +54,9 @@ jobs:
           python-version: "3.13"
 
       - name: Install dependencies
-        run: pip install git+https://github.com/squidfunk/mike.git zensical mkdocstrings-python
+        run: |
+          pip install git+https://github.com/squidfunk/mike.git zensical mkdocstrings-python
+          pip install -e .
 
       - name: Configure git
         run: |
