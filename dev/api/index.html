@@ -12,36 +12,32 @@
         <meta name="author" content="Daniel Franca">
       
       
-        <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/models/tsk-vanilla/">
+        <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/api/">
       
       
-        <link rel="prev" href="../..">
-      
-      
-        <link rel="next" href="../logtsk/">
       
       
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="zensical-0.0.40">
     
     
       
-        <title>Vanilla TSK - highFIS Docs</title>
+        <title>HighFIS API Reference - highFIS Docs</title>
       
     
     
       
         
       
-      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.fba56155.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/modern/main.fba56155.min.css">
       
         
           
         
-        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/modern/palette.dfe2e883.min.css">
       
       
 
@@ -60,7 +56,7 @@
       
     
     
-    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
       
 
@@ -85,7 +81,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#vanilla-tsk" class="md-skip">
+        <a href="#highfis-api-reference" class="md-skip">
           Skip to content
         </a>
       
@@ -105,7 +101,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="highFIS Docs" class="md-header__button md-logo" aria-label="highFIS Docs" data-md-component="logo">
+    <a href="./.." title="highFIS Docs" class="md-header__button md-logo" aria-label="highFIS Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
@@ -125,7 +121,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Vanilla TSK
+              HighFIS API Reference
             
           </span>
         </div>
@@ -204,7 +200,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="highFIS Docs" class="md-nav__button md-logo" aria-label="highFIS Docs" data-md-component="logo">
+    <a href="./.." title="highFIS Docs" class="md-nav__button md-logo" aria-label="highFIS Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
@@ -222,7 +218,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="./.." class="md-nav__link">
         
   
   
@@ -247,10 +243,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -281,11 +275,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
         
           
           <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
@@ -305,7 +299,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -319,36 +313,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Vanilla TSK
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="././" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../models/tsk-vanilla/" class="md-nav__link">
         
   
   
@@ -363,110 +331,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Reference
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mathematical-formulation" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Mathematical Formulation
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Mathematical Formulation">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#antecedent" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Antecedent
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#defuzzification-sum-based" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Defuzzification (sum-based)
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#consequent-first-order" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Consequent (first-order)
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#code-paper-correspondence" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Code ↔ Paper Correspondence
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#implementation-notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Implementation notes
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -479,7 +343,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../logtsk/" class="md-nav__link">
+      <a href="../models/logtsk/" class="md-nav__link">
         
   
   
@@ -506,7 +370,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../htsk/" class="md-nav__link">
+      <a href="../models/htsk/" class="md-nav__link">
         
   
   
@@ -533,7 +397,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dombitsk/" class="md-nav__link">
+      <a href="../models/dombitsk/" class="md-nav__link">
         
   
   
@@ -560,7 +424,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../adatsk/" class="md-nav__link">
+      <a href="../models/adatsk/" class="md-nav__link">
         
   
   
@@ -587,7 +451,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fsre-adatsk/" class="md-nav__link">
+      <a href="../models/fsre-adatsk/" class="md-nav__link">
         
   
   
@@ -614,7 +478,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dg-tsk/" class="md-nav__link">
+      <a href="../models/dg-tsk/" class="md-nav__link">
         
   
   
@@ -641,7 +505,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../dg-aletsk/" class="md-nav__link">
+      <a href="../models/dg-aletsk/" class="md-nav__link">
         
   
   
@@ -668,7 +532,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ayatsk/" class="md-nav__link">
+      <a href="../models/ayatsk/" class="md-nav__link">
         
   
   
@@ -772,7 +636,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/estimators/" class="md-nav__link">
+      <a href="./estimators/" class="md-nav__link">
         
   
   
@@ -799,7 +663,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/models/" class="md-nav__link">
+      <a href="./models/" class="md-nav__link">
         
   
   
@@ -826,7 +690,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/layers/" class="md-nav__link">
+      <a href="./layers/" class="md-nav__link">
         
   
   
@@ -853,7 +717,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/memberships/" class="md-nav__link">
+      <a href="./memberships/" class="md-nav__link">
         
   
   
@@ -880,7 +744,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/t_norms/" class="md-nav__link">
+      <a href="./t_norms/" class="md-nav__link">
         
   
   
@@ -907,7 +771,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/defuzzifiers/" class="md-nav__link">
+      <a href="./defuzzifiers/" class="md-nav__link">
         
   
   
@@ -934,7 +798,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/base/" class="md-nav__link">
+      <a href="./base/" class="md-nav__link">
         
   
   
@@ -961,7 +825,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/persistence/" class="md-nav__link">
+      <a href="./persistence/" class="md-nav__link">
         
   
   
@@ -988,7 +852,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/protocols/" class="md-nav__link">
+      <a href="./protocols/" class="md-nav__link">
         
   
   
@@ -1022,7 +886,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../contributing/" class="md-nav__link">
+      <a href="../contributing/" class="md-nav__link">
         
   
   
@@ -1082,82 +946,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#reference" class="md-nav__link">
+  <a href="#highfis" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Reference
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mathematical-formulation" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Mathematical Formulation
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Mathematical Formulation">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#antecedent" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Antecedent
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#defuzzification-sum-based" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Defuzzification (sum-based)
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#consequent-first-order" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Consequent (first-order)
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#code-paper-correspondence" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Code ↔ Paper Correspondence
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#implementation-notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Implementation notes
+        highfis
       </span>
     </span>
   </a>
@@ -1182,147 +974,59 @@
   
 
 
-  <nav class="md-path" aria-label="Navigation" >
-    <ol class="md-path__list">
-      
-        
-  
-  
-    <li class="md-path__item">
-      <a href="../.." class="md-path__link">
-        
-  <span class="md-ellipsis">
-    HighFIS
-  </span>
-
-      </a>
-    </li>
-  
-
-      
-      
-        
-  
-  
-    
-    
-      <li class="md-path__item">
-        <a href="././" class="md-path__link">
-          
-  <span class="md-ellipsis">
-    Models
-  </span>
-
-        </a>
-      </li>
-    
-  
-
-      
-    </ol>
-  </nav>
-
               
               <article class="md-content__inner md-typeset">
                 
                   
 
-<h1 id="vanilla-tsk">Vanilla TSK</h1>
-<p>Vanilla TSK is the standard first-order Takagi-Sugeno-Kang fuzzy model with Gaussian antecedents, product aggregation, and sum-based defuzzification.</p>
-<h2 id="reference">Reference</h2>
-<blockquote>
-<p>Takagi, T. &amp; Sugeno, M. (1985). "Fuzzy identification of systems and its
-applications to modeling and control." <em>IEEE Trans. Syst., Man, Cybern.</em>
-SMC-15(1):116–132.
-DOI: <a href="https://doi.org/10.1109/TSMC.1985.6313399">10.1109/TSMC.1985.6313399</a></p>
-</blockquote>
-<h2 id="mathematical-formulation">Mathematical Formulation</h2>
-<h3 id="antecedent">Antecedent</h3>
-<p>Each rule evaluates <span class="arithmatex">\(D\)</span> Gaussian membership functions and aggregates them with
-the <strong>product t-norm</strong>:</p>
-<div class="arithmatex">\[
-\mu_{r,d}(x_d) = \exp\!\left(-\frac{(x_d - m_{r,d})^2}{2\sigma_{r,d}^2}\right)
-\tag{1}
-\]</div>
-<div class="arithmatex">\[
-w_r = \prod_{d=1}^{D} \mu_{r,d}(x_d)
-\tag{2}
-\]</div>
-<h3 id="defuzzification-sum-based">Defuzzification (sum-based)</h3>
-<p>Vanilla TSK normalizes rule firing strengths by their sum:</p>
-<div class="arithmatex">\[
-\bar{f}_r = \frac{w_r}{\sum_{i=1}^{R} w_i}
-\tag{3}
-\]</div>
-<p>In highFIS this is implemented by
-<code>highfis.defuzzifiers.SumBasedDefuzzifier</code>.</p>
-<p>When the antecedent is rewritten in log-space,
-Equation (3) is mathematically equivalent to a softmax over log firing
-strengths:</p>
-<div class="arithmatex">\[
-\bar{f}_r = \frac{\exp(\log w_r)}{\sum_{i=1}^{R} \exp(\log w_i)}.
-\tag{4}
-\]</div>
-<p>This exposes the saturation issue identified in
-<code>HTSK_2021.md</code>: as <span class="arithmatex">\(D\)</span> grows, the log-domain activations become more extreme,
-making the normalized weights dominated by a single rule.</p>
-<h3 id="consequent-first-order">Consequent (first-order)</h3>
-<p>The final TSK output is a weighted sum of first-order consequents:</p>
-<div class="arithmatex">\[
-\hat{y} = \sum_{r=1}^{R} \bar{f}_r \left( b_{r,0} + \sum_{d=1}^{D} b_{r,d}\, x_d \right)
-\tag{5}
-\]</div>
-<h2 id="code-paper-correspondence">Code ↔ Paper Correspondence</h2>
-<table>
-<thead>
-<tr>
-<th>Equation</th>
-<th>Class / Method</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>(1)</td>
-<td><code>GaussianMF.forward()</code></td>
-<td>Gaussian membership evaluation</td>
-</tr>
-<tr>
-<td>(2)</td>
-<td><code>RuleLayer</code> with <code>t_norm="prod"</code></td>
-<td>Product t-norm antecedent</td>
-</tr>
-<tr>
-<td>(3)</td>
-<td><code>SumBasedDefuzzifier.forward()</code></td>
-<td>Sum-based rule normalization</td>
-</tr>
-<tr>
-<td>(4)</td>
-<td><code>SoftmaxLogDefuzzifier</code></td>
-<td>Equivalent log-space softmax form</td>
-</tr>
-<tr>
-<td>(5)</td>
-<td><code>ClassificationConsequentLayer.forward()</code> / <code>RegressionConsequentLayer.forward()</code></td>
-<td>Weighted first-order consequent</td>
-</tr>
-</tbody>
-</table>
-<h2 id="implementation-notes">Implementation notes</h2>
-<ul>
-<li><code>TSKClassifier</code> and <code>TSKRegressor</code> default to <code>SumBasedDefuzzifier</code>.</li>
-<li>The highFIS estimator wrappers <code>TSKClassifierEstimator</code> and
-  <code>TSKRegressorEstimator</code> construct the Gaussian antecedent MFs from
-  <code>input_configs</code>, <code>n_mfs</code>, <code>mf_init</code>, and <code>sigma_scale</code>.</li>
-<li><code>GaussianMF</code> stores a raw parameter that is transformed with <code>softplus</code>
-  to guarantee <span class="arithmatex">\(\sigma &gt; 0\)</span>.</li>
-<li><code>SumBasedDefuzzifier</code> clamps rule weights to a small floor before
-  normalization, improving numeric stability without changing the semantic
-  sum-based normalization.</li>
-<li>In high dimensions, vanilla TSK is prone to softmax saturation because the
-  normalized weights in Equation (4) are equivalent to a softmax over
-  log-domain firing strengths.</li>
+<h1 id="highfis-api-reference">HighFIS API Reference</h1>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<a id="highfis"></a>
+    <div class="doc doc-contents first">
+
+        <p>highFIS public API.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div><ul>
+<li><a href="base/">Base</a></li>
+<li><a href="defuzzifiers/">Defuzzifiers</a></li>
+<li><a href="estimators/">Estimators</a></li>
+<li><a href="layers/">Layers</a></li>
+<li><a href="memberships/">Memberships</a></li>
+<li><a href="models/">Models</a></li>
+<li><a href="persistence/">Persistence</a></li>
+<li><a href="protocols/">Protocols</a></li>
+<li><a href="t_norms/">T-Norms</a></li>
 </ul>
 
 
@@ -1358,44 +1062,6 @@ making the normalized weights dominated by a single rule.</p>
       
         <footer class="md-footer">
   
-    
-      
-      <nav class="md-footer__inner md-grid" aria-label="Footer" >
-        
-          
-          <a href="../.." class="md-footer__link md-footer__link--prev" aria-label="Previous: HighFIS">
-            <div class="md-footer__button md-icon">
-              
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
-            </div>
-            <div class="md-footer__title">
-              <span class="md-footer__direction">
-                Previous
-              </span>
-              <div class="md-ellipsis">
-                HighFIS
-              </div>
-            </div>
-          </a>
-        
-        
-          
-          <a href="../logtsk/" class="md-footer__link md-footer__link--next" aria-label="Next: LogTSK">
-            <div class="md-footer__title">
-              <span class="md-footer__direction">
-                Next
-              </span>
-              <div class="md-ellipsis">
-                LogTSK
-              </div>
-            </div>
-            <div class="md-footer__button md-icon">
-              
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            </div>
-          </a>
-        
-      </nav>
     
   
   <div class="md-footer-meta md-typeset">
@@ -1444,12 +1110,12 @@ making the normalized weights dominated by a single rule.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["announce.dismiss","content.code.annotate","content.code.copy","content.code.select","content.footnote.tooltips","content.tabs.link","content.tooltips","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.path","navigation.sections","navigation.top","navigation.tracking","search.highlight"],"search":"../../assets/javascripts/workers/search.e2d2d235.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"provider":"mike"}}</script>
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["announce.dismiss","content.code.annotate","content.code.copy","content.code.select","content.footnote.tooltips","content.tabs.link","content.tooltips","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.path","navigation.sections","navigation.top","navigation.tracking","search.highlight"],"search":"../assets/javascripts/workers/search.e2d2d235.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"provider":"mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.dbc0afdc.min.js"></script>
+      <script src="../assets/javascripts/bundle.dbc0afdc.min.js"></script>
       
-        <script src="../../javascripts/mathjax.js"></script>
+        <script src="../javascripts/mathjax.js"></script>
       
         <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
       

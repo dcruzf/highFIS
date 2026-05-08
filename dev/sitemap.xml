@@ -28,7 +28,16 @@
         <loc>https://dcruzf.github.io/highFIS/dev/models/dg-aletsk/</loc>
       </url>
       <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/api/protocols/</loc>
+        <loc>https://dcruzf.github.io/highFIS/dev/models/ayatsk/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/api/estimators/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/api/models/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/api/layers/</loc>
       </url>
       <url>
         <loc>https://dcruzf.github.io/highFIS/dev/api/memberships/</loc>
@@ -40,19 +49,13 @@
         <loc>https://dcruzf.github.io/highFIS/dev/api/defuzzifiers/</loc>
       </url>
       <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/api/layers/</loc>
-      </url>
-      <url>
         <loc>https://dcruzf.github.io/highFIS/dev/api/base/</loc>
       </url>
       <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/api/models/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/api/estimators/</loc>
-      </url>
-      <url>
         <loc>https://dcruzf.github.io/highFIS/dev/api/persistence/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/api/protocols/</loc>
       </url>
       <url>
         <loc>https://dcruzf.github.io/highFIS/dev/contributing/</loc>
