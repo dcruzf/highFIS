@@ -1,4 +1,24 @@
-"""Definitions and utilities for fuzzy T-norm aggregation strategies."""
+"""Fuzzy T-norm aggregation strategies for TSK antecedent computation.
+
+This module defines learnable T-norm strategies used by ``highfis.layers``
+to aggregate per-input membership degrees into rule firing strengths.
+Each strategy is implemented as a subclass of ``BaseTNorm``.
+
+Built-in T-norm classes:
+    - ``ProductTNorm`` — standard product conjunction.
+    - ``MinimumTNorm`` — Gödel / minimum conjunction.
+    - ``GMeanTNorm`` — geometric mean, the default for HTSK.
+    - ``DombiTNorm`` — Dombi parametric T-norm (``lambda_ > 0``).
+    - ``YagerTNorm`` — Yager parametric T-norm (``lambda_ > 0``).
+    - ``YagerSimpleTNorm`` — simplified Yager without the outer minimum.
+    - ``ALESoftminYagerTNorm`` — ALE-softmin Yager variant.
+
+Helper functions:
+    - ``resolve_t_norm(name)`` — map string names to T-norm instances.
+      Supported names include ``"prod"``, ``"min"``, ``"gmean"``,
+      ``"dombi"``, ``"yager"``, ``"yager_simple"``, and
+      ``"ale_softmin_yager"``.
+"""
 
 from __future__ import annotations
 
@@ -16,7 +36,18 @@ class BaseTNorm(nn.Module, ABC):
 
     @abstractmethod
     def forward(self, terms: Tensor, dim: int = -1) -> Tensor:
-        """Apply the T-norm aggregation over the specified dimension."""
+        """Apply the T-norm aggregation over the specified dimension.
+
+        Args:
+            terms: Tensor of shape ``(batch, n_rules, n_inputs)``
+                containing per-rule, per-input membership degrees.
+            dim: Dimension over which to aggregate.  Defaults to
+                ``-1`` (the input dimension).
+
+        Returns:
+            Tensor of shape ``(batch, n_rules)`` with aggregated
+            firing strengths.
+        """
         ...
 
 
@@ -40,7 +71,13 @@ class GMeanTNorm(BaseTNorm):
     """Geometric mean T-norm."""
 
     def __init__(self, eps: float | None = None) -> None:
-        """Initialize the geometric mean t-norm with an optional epsilon."""
+        """Initialize the geometric mean T-norm.
+
+        Args:
+            eps: Small positive constant for clamping inputs before
+                computing the log.  ``None`` infers it from
+                :func:`torch.finfo` for the input dtype.
+        """
         super().__init__()
         self.eps = eps
 
@@ -55,7 +92,19 @@ class DombiTNorm(BaseTNorm):
     """Dombi T-norm strategy."""
 
     def __init__(self, lambda_: float = 1.0, eps: float | None = None) -> None:
-        """Initialize the Dombi t-norm with a lambda parameter and optional epsilon."""
+        r"""Initialize the Dombi T-norm.
+
+        Args:
+            lambda_: Positive shape parameter $\lambda > 0$.  Higher
+                values make the T-norm approach the minimum; lower
+                values make it approach the product.
+            eps: Small positive constant for clamping inputs.
+                ``None`` infers it from :func:`torch.finfo` for the
+                input dtype.
+
+        Raises:
+            ValueError: If *lambda_* is not positive.
+        """
         super().__init__()
         if lambda_ <= 0.0:
             raise ValueError("lambda_ must be > 0")
@@ -76,7 +125,19 @@ class YagerTNorm(BaseTNorm):
     """Yager T-norm strategy."""
 
     def __init__(self, lambda_: float = 1.0, eps: float | None = None) -> None:
-        """Initialize the Yager t-norm with a lambda parameter and optional epsilon."""
+        r"""Initialize the Yager T-norm.
+
+        Args:
+            lambda_: Positive shape parameter $\lambda > 0$.  Higher
+                values make the T-norm approach the minimum; lower
+                values make it approach the product.
+            eps: Small positive constant for clamping inputs.
+                ``None`` infers it from :func:`torch.finfo` for the
+                input dtype.
+
+        Raises:
+            ValueError: If *lambda_* is not positive.
+        """
         super().__init__()
         if lambda_ <= 0.0:
             raise ValueError("lambda_ must be > 0")

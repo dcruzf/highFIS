@@ -22,21 +22,6 @@ To set up pre-commit hooks:
 ```bash
 hatch run install
 ```
-
-### Virtual Environment for VS Code
-
-The default Hatch environment is configured to use `.venv` at the project
-root. Running `hatch env create` creates it with all dev dependencies
-(ruff, ty, bandit, pre-commit, etc.):
-
-```bash
-hatch env create
-```
-
-VS Code detects `.venv` automatically. If needed, select the interpreter
-manually via **Ctrl+Shift+P** → *Python: Select Interpreter* →
-`./.venv/bin/python`.
-
 ## Local Checks
 
 Run the following before opening a pull request:

@@ -1,4 +1,37 @@
-"""Membership functions and shared membership utility routines."""
+"""Differentiable membership functions for fuzzy TSK models.
+
+This module defines learnable membership function classes for highFIS.
+All membership functions inherit from ``MembershipFunction``, which itself
+inherits from ``torch.nn.Module``.
+
+Membership functions:
+    **Gaussian-based**
+        - ``GaussianMF`` — standard Gaussian with ``mean`` and ``sigma``.
+        - ``CompositeGaussianMF`` — Gaussian with a positive lower bound
+          to avoid zero membership.
+        - ``GaussianPIMF`` — Gaussian with a positive infimum, useful for
+          softmin-stable models.
+
+    **Exponential**
+        - ``CompositeExponentialMF`` — CEMF with lower bound ``1/k``, used
+          by AYATSK.
+
+    **Piecewise polynomial**
+        - ``TriangularMF`` — triangular membership with left/center/right.
+        - ``TrapezoidalMF`` — trapezoidal membership with four vertices.
+        - ``PiMF`` — pi-shaped membership with smooth S/Z transitions.
+        - ``SShapedMF`` / ``ZShapedMF`` — smooth S/Z membership curves.
+        - ``LinSShapedMF`` / ``LinZShapedMF`` — linear S/Z membership curves.
+
+    **Sigmoidal**
+        - ``SigmoidalMF`` — standard sigmoid.
+        - ``DiffSigmoidalMF`` — difference of two sigmoids.
+        - ``ProdSigmoidalMF`` — product of two sigmoids.
+
+Notes:
+    - Membership parameters are trainable and differentiable.
+    - This module is intended for use with TSK models in ``highfis.models``.
+"""
 
 from __future__ import annotations
 
@@ -25,7 +58,13 @@ class MembershipFunction(nn.Module):
     """Base class for differentiable membership functions in PyTorch."""
 
     def __init__(self, eps: float | None = None) -> None:
-        """Initialize base membership function with numeric stability epsilon."""
+        """Initialize base membership function.
+
+        Args:
+            eps: Numeric stability constant.  ``None`` uses
+                :func:`torch.finfo` machine epsilon for the current
+                default dtype.
+        """
         super().__init__()
         self.eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else float(eps)
 
@@ -39,7 +78,18 @@ class GaussianMF(MembershipFunction):
     """Gaussian membership: exp(-((x-c)^2)/(2*sigma^2))."""
 
     def __init__(self, mean: float = 0.0, sigma: float = 1.0, eps: float | None = None) -> None:
-        """Initialize Gaussian membership parameters."""
+        r"""Initialize Gaussian membership function.
+
+        Args:
+            mean: Center of the Gaussian $c$.
+            sigma: Width $\sigma > 0$.  Softplus-reparameterized to
+                remain positive during training.
+            eps: Numeric stability constant.  ``None`` uses
+                :func:`torch.finfo` machine epsilon.
+
+        Raises:
+            ValueError: If *sigma* is not positive.
+        """
         super().__init__(eps=eps)
         if sigma <= 0:
             raise ValueError("sigma must be positive")
@@ -62,7 +112,19 @@ class CompositeGaussianMF(MembershipFunction):
     """Composite Gaussian membership with a nonzero lower bound."""
 
     def __init__(self, mean: float = 0.0, sigma: float = 1.0, eps: float | None = None) -> None:
-        """Initialize composite Gaussian membership parameters."""
+        r"""Initialize composite Gaussian membership function.
+
+        Args:
+            mean: Center of the Gaussian $c$.
+            sigma: Width $\sigma > 0$.  Softplus-reparameterized to
+                remain positive during training.
+            eps: Numeric stability constant and lower bound of the
+                membership value.  ``None`` uses :func:`torch.finfo`
+                machine epsilon.
+
+        Raises:
+            ValueError: If *sigma* is not positive.
+        """
         super().__init__(eps=eps)
         if sigma <= 0:
             raise ValueError("sigma must be positive")
@@ -168,7 +230,20 @@ class CompositeExponentialMF(MembershipFunction):
         k: float = 10.0,
         eps: float | None = None,
     ) -> None:
-        """Initialize CompositeExponentialMF with center, scale, and lower-bound control."""
+        r"""Initialize composite exponential membership function.
+
+        Args:
+            center: Center of the membership function $c$.
+            sigma: Width $\sigma > 0$.  Softplus-reparameterized to
+                remain positive during training.
+            k: Lower-bound control parameter $k > 1$.  The membership
+                lower bound equals ``1 / k``.
+            eps: Numeric stability constant.  ``None`` uses
+                :func:`torch.finfo` machine epsilon.
+
+        Raises:
+            ValueError: If *sigma* is not positive or *k* is not > 1.
+        """
         super().__init__(eps=eps)
         if sigma <= 0:
             raise ValueError("sigma must be positive")

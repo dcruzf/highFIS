@@ -306,6 +306,26 @@ def test_build_pfrb_input_mfs_max_rules_none_uses_all_samples() -> None:
     assert len(input_mfs["x3"]) == 4
 
 
+def test_dgtsk_classifier_estimator_rule_base_pfrb() -> None:
+    x = np.arange(20, dtype=np.float32).reshape(5, 4)
+    est = DGTSKClassifierEstimator(
+        rule_base="pfrb",
+        pfrb_max_rules=3,
+        n_mfs=5,
+        mf_init="kmeans",
+        random_state=0,
+    )
+
+    input_mfs, feature_names, effective_rule_base = est._build_input_mfs(x)
+
+    assert effective_rule_base == "coco"
+    assert len(feature_names) == 4
+    assert len(input_mfs["x1"]) == 3
+    assert len(input_mfs["x2"]) == 3
+    assert len(input_mfs["x3"]) == 3
+    assert len(input_mfs["x4"]) == 3
+
+
 def test_estimator_grid_init_fit_predict() -> None:
     x, y = _make_dataset(80)
     est = HTSKClassifierEstimator(
@@ -331,7 +351,6 @@ def test_adatsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
     est = AdaTSKClassifierEstimator(
         n_mfs=2,
         mf_init="kmeans",
-        lambda_init=1.5,
         epochs=5,
         learning_rate=1e-2,
         random_state=7,
@@ -446,11 +465,6 @@ def test_estimator_invalid_mf_init_raises() -> None:
     est = HTSKClassifierEstimator(n_mfs=2, mf_init="random", epochs=1, batch_size=16)
     with pytest.raises(ValueError, match="mf_init"):
         est.fit(x, y)
-
-
-def test_adatsk_classifier_estimator_rejects_nonpositive_lambda() -> None:
-    with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        AdaTSKClassifierEstimator(n_mfs=2, mf_init="kmeans", lambda_init=0.0, epochs=1, batch_size=16)
 
 
 def test_dombi_tsk_classifier_estimator_fit_predict() -> None:
@@ -959,7 +973,6 @@ def test_adatsk_regressor_estimator_fit_predict() -> None:
     est = AdaTSKRegressorEstimator(
         n_mfs=2,
         mf_init="kmeans",
-        lambda_init=2.0,
         epochs=5,
         learning_rate=1e-2,
         random_state=7,
@@ -1009,11 +1022,6 @@ def test_regressor_estimator_invalid_mf_init_raises() -> None:
     est = HTSKRegressorEstimator(n_mfs=2, mf_init="random", epochs=1, batch_size=16)
     with pytest.raises(ValueError, match="mf_init"):
         est.fit(x, y)
-
-
-def test_adatsk_regressor_estimator_rejects_nonpositive_lambda() -> None:
-    with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        AdaTSKRegressorEstimator(n_mfs=2, mf_init="kmeans", lambda_init=0.0, epochs=1, batch_size=16)
 
 
 def test_regressor_estimator_kmeans_default_rule_base_is_coco() -> None:

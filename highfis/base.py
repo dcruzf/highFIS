@@ -1,9 +1,39 @@
-"""Base TSK model that factors the common antecedent-defuzzification pipeline."""
+"""Base TSK model that factors the common antecedent-defuzzification pipeline.
+
+This module defines `BaseTSK`, the abstract foundation for all TSK fuzzy
+models in highFIS. It factors out the shared antecedent pipeline,
+defuzzifier, and training loop so concrete subclasses can focus on
+task-specific consequent layers and loss criteria.
+
+The forward pipeline executes four sequential steps:
+
+1. `highfis.layers.MembershipLayer` — evaluates membership functions for each
+   input feature.
+2. `highfis.layers.RuleLayer` — computes rule firing strengths via a
+   configurable rule base and T-norm.
+3. **Defuzzifier** — normalizes firing strengths to probability-like weights
+   (default: `highfis.defuzzifiers.SoftmaxLogDefuzzifier`).
+4. **ConsequentLayer** — produces the final output from the inputs and the
+   normalized rule weights.
+
+Concrete subclasses must implement:
+
+- `BaseTSK._build_consequent_layer` — return the task-specific consequent
+  module.
+- `BaseTSK._default_criterion` — return the default loss function.
+
+Optional overridable hooks:
+
+- `BaseTSK._compute_loss` — customize target preparation or loss composition.
+- `BaseTSK._evaluate_validation` — customize the validation metric used for
+  early stopping.
+"""
 
 from __future__ import annotations
 
 import copy
 import logging
+import sys
 from abc import abstractmethod
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, cast
@@ -64,7 +94,34 @@ class BaseTSK(nn.Module):
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
     ) -> None:
-        """Initialize the TSK pipeline layers."""
+        """Initialize the TSK pipeline layers.
+
+        Args:
+            input_mfs: Mapping from feature names to sequences of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+                Must not be empty.
+            rule_base: Rule-base construction strategy.  Supported values:
+                ``"cartesian"`` (all MF combinations), ``"coco"``
+                (same-index compact), ``"en"`` (enhanced FRB), or
+                ``"custom"`` (explicit rules via *rules*).
+            t_norm: Built-in T-norm name.  Ignored when *t_norm_fn* is
+                provided.  Common values: ``"prod"``, ``"gmean"``,
+                ``"min"``, ``"dombi"``, ``"yager"``.
+            t_norm_fn: Optional custom T-norm callable.  When provided,
+                *t_norm* is internally set to ``"prod"`` and the rule
+                layer applies this function instead.
+            rules: Explicit rule index sequences.  Required when
+                *rule_base* is ``"custom"``.
+            defuzzifier: Normalization module applied to raw rule firing
+                strengths.  Defaults to
+                :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`.
+            consequent_batch_norm: If ``True``, insert a
+                :class:`~torch.nn.BatchNorm1d` layer on the inputs before
+                the consequent computation.
+
+        Raises:
+            ValueError: If *input_mfs* is empty.
+        """
         super().__init__()
         if not input_mfs:
             raise ValueError("input_mfs must not be empty")
@@ -89,6 +146,12 @@ class BaseTSK(nn.Module):
         self.consequent_bn = nn.BatchNorm1d(self.n_inputs) if self.consequent_batch_norm else None
         self.consequent_layer = self._build_consequent_layer()
         self.logger = logging.getLogger(f"{self.__class__.__module__}.{self.__class__.__name__}")
+        if not self.logger.handlers:
+            stream_handler = logging.StreamHandler(sys.stdout)
+            stream_handler.setFormatter(logging.Formatter("%(message)s"))
+            self.logger.addHandler(stream_handler)
+            self.logger.setLevel(logging.INFO)
+            self.logger.propagate = False
 
     # ------------------------------------------------------------------
     # Abstract hooks
@@ -195,7 +258,45 @@ class BaseTSK(nn.Module):
         When *x_val* and *y_val* are provided the model evaluates a
         task-specific metric (via :meth:`_evaluate_validation`) after every
         epoch and applies early stopping when the metric has not improved for
-        *patience* consecutive epochs.
+        *patience* consecutive epochs.  The best model weights are restored
+        automatically.
+
+        Args:
+            x: Training features of shape ``(N, n_inputs)``.
+            y: Training targets of shape ``(N,)``.
+            epochs: Maximum number of training epochs.
+            learning_rate: Learning rate for the default AdamW optimizer.
+            criterion: Optional loss function.  Defaults to
+                :meth:`_default_criterion`.
+            optimizer: Optional pre-built optimizer.  When ``None``, AdamW
+                is constructed with separate parameter groups for antecedent
+                (no weight decay) and consequent (*weight_decay*) layers.
+            batch_size: Mini-batch size.  ``None`` uses the full dataset.
+            shuffle: If ``True``, reshuffle sample indices each epoch.
+            ur_weight: Non-negative weight for the uniform rule
+                regularization term.  ``0.0`` disables it.
+            ur_target: Target uniform activation for UR.  Must be in
+                ``(0, 1]`` when provided.  ``None`` defaults to
+                ``1 / n_rules``.
+            verbose: If ``True``, log per-epoch progress via the module
+                logger.
+            x_val: Optional validation features of shape
+                ``(M, n_inputs)``.
+            y_val: Optional validation targets of shape ``(M,)``.
+            patience: Number of consecutive epochs without improvement
+                before early stopping.  Only active when *x_val* and
+                *y_val* are given.
+            weight_decay: L2 weight decay applied to consequent parameters
+                by the default AdamW optimizer.
+
+        Returns:
+            A dictionary with keys ``"train"``, ``"ur"``, and ``"val"``
+            containing per-epoch loss lists.
+
+        Raises:
+            ValueError: If shapes of *x*, *y*, *x_val*, or *y_val* are
+                incompatible, or if *ur_weight* < 0 or *ur_target* is
+                outside ``(0, 1]``.
         """
         if x.ndim != 2 or x.shape[1] != self.n_inputs:
             raise ValueError(f"expected x shape (batch, {self.n_inputs}), got {tuple(x.shape)}")

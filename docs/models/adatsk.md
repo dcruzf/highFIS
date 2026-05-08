@@ -1,36 +1,47 @@
 # AdaTSK
 
+AdaTSK extends TSK with an adaptive softmin antecedent that stabilizes high-dimensional fuzzy inference while preserving first-order TSK consequents.
+
 ## Reference
 
 > G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive Neuro-Fuzzy System With Integrated Feature Selection and Rule Extraction for High-Dimensional Classification Problems," in IEEE Transactions on Fuzzy Systems, vol. 31, no. 7, pp. 2167-2181, July 2023, doi: [10.1109/TFUZZ.2022.3220950](https://doi.org/10.1109/TFUZZ.2022.3220950)
 
 ## Mathematical Formulation
 
-AdaTSK extends TSK fuzzy inference by using an adaptive Dombi-based
-aggregation in the antecedent and a Composite Gaussian membership function
-with a nonzero lower bound.
+AdaTSK extends TSK fuzzy inference by using an adaptive softmin antecedent
+(Ada-softmin) together with first-order linear consequents.
 
 ### Antecedent
 
-Each rule-term membership is computed with a Composite Gaussian MF:
+Each rule-term membership is typically computed with a Gaussian function:
 
 $$
-\mu_{r,d}(x_d) = \epsilon + (1 - \epsilon)\exp\left(-\frac{(x_d - c_{r,d})^2}{2\sigma_{r,d}^2}\right)
+\mu_{r,d}(x_d)=\exp\left(-\frac{(x_d-c_{r,d})^2}{2\sigma_{r,d}^2}\right)
 $$
 
-where $\epsilon$ is a small constant (e.g. $10^{-6}$) and
-$\sigma_{r,d} > 0$ is enforced via a softplus reparameterization.
+where $c_{r,d}$ is the center and $\sigma_{r,d}>0$ is the spread.
 
-### Adaptive Dombi aggregation
+In highFIS, the default estimator wrappers build standard Gaussian MFs.
+The paper's proposed positive lower-bound variant can be instantiated with
+`highfis.memberships.CompositeGaussianMF` when desired.
 
-The rule firing strength uses a per-rule adaptive Dombi t-norm:
+### Adaptive Ada-softmin aggregation
+
+AdaTSK computes rule firing strengths with an adaptive softmin based on the
+minimum antecedent membership for each rule:
 
 $$
-\phi_r = \left(1 + \sum_{d=1}^{D} \left[\left(\frac{1 - \mu_{r,d}}{\mu_{r,d}}\right)^{\lambda_r}\right]\right)^{-1/\lambda_r}
+\hat{q}_r = \left\lceil \frac{690}{\ln (\min_{d}\mu_{r,d}(x_d))} \right\rceil,
+\quad \hat{q}_r \in [-1000, -1]
 $$
 
-Each $\lambda_r > 0$ is learned via softplus, which allows the model to
-adapt the softmin behavior of each rule individually.
+$$
+\phi_r = \left( \frac{1}{D} \sum_{d=1}^{D}\mu_{r,d}(x_d)^{\hat{q}_r} \right)^{1/\hat{q}_r}
+$$
+
+The exponent $\hat{q}_r$ is recomputed on every forward pass and is clamped
+for numerical stability, which avoids the fixed-parameter softmin problems
+of underflow and fake minimum.
 
 ### Normalization
 
@@ -73,58 +84,63 @@ $$
 \hat{y} = \sum_{r=1}^{R} \bar{\phi}_r \hat{y}_r
 $$
 
-## Practical Notes
+## Code ↔ Paper Correspondence
 
-- `AdaTSKClassifier` and `AdaTSKRegressor` both use `SumBasedDefuzzifier`
-  after the antecedent aggregation.
-- `lambda_init` controls the initial Dombi shape parameter. It must be
-  positive and is learned using softplus.
-- The Composite Gaussian MF ensures membership values never fall to zero,
-  improving numerical stability in high dimensions.
-- `consequent_batch_norm=True` can be enabled to normalize inputs before
-  consequent computation.
+| Equation | Class / Method | Description |
+|----------|----------------|-------------|
+| Adaptive softmin | `highfis.layers.AdaSoftminRuleLayer` | Computes per-rule softmin exponents from the minimum membership value |
+| Normalization | `highfis.defuzzifiers.SumBasedDefuzzifier` | Standard sum-based rule strength normalization |
+| Consequent | `ClassificationConsequentLayer` / `RegressionConsequentLayer` | First-order linear consequents |
+| Membership functions | `highfis.memberships.GaussianMF` | Default Gaussian antecedent MFs |
+| Optional membership | `highfis.memberships.CompositeGaussianMF` | Optional positive lower-bound MF matching the paper variant |
 
-## Relation to the FSRE-AdaTSK paper
+## Implementation notes
 
-This implementation follows the same AdaTSK core described in the paper
-"An Adaptive Neuro-Fuzzy System With Integrated Feature Selection and Rule
-Extraction for High-Dimensional Classification Problems." In that work,
-AdaTSK is the base adaptive TSK system with smooth, numerically stable
-aggregation.
+In highFIS, `AdaTSKClassifier` and `AdaTSKRegressor` implement the core
+AdaTSK model by replacing the standard product antecedent with the
+adaptive softmin operator.
 
-The paper shows that FSRE-AdaTSK is built on top of AdaTSK by adding gate-
-based consequents and an Enhanced Fuzzy Rule Base (En-FRB) for feature
-selection and rule extraction. In highFIS, `AdaTSKClassifier` and
-`AdaTSKRegressor` implement the core adaptive aggregation and first-order
-TSK consequents, while `FSREAdaTSKClassifier` and `FSREAdaTSKRegressor`
-provide the extended FSRE-AdaTSK behavior.
+### Model classes
 
-## Example
+- `AdaTSKClassifier` and `AdaTSKRegressor` use
+  `highfis.layers.AdaSoftminRuleLayer` to compute rule strengths.
+- The TSK consequent remains first-order linear and is normalized with
+  `highfis.defuzzifiers.SumBasedDefuzzifier`.
+- `AdaTSKClassifier` and `AdaTSKRegressor` do not expose the feature-
+  selection / rule-extraction gates of FSRE-AdaTSK.
 
-```python
-from highfis import AdaTSKClassifierEstimator
+### Estimator wrappers
 
-clf = AdaTSKClassifierEstimator(
-    n_mfs=3,
-    mf_init="kmeans",
-    lambda_init=1.0,
-    epochs=200,
-    learning_rate=1e-3,
-    random_state=0,
-)
-clf.fit(X_train, y_train)
-print(f"Accuracy: {clf.score(X_test, y_test):.4f}")
-```
+- `AdaTSKClassifierEstimator` and `AdaTSKRegressorEstimator` are
+  sklearn-compatible wrappers around the low-level AdaTSK model classes.
+- They build Gaussian membership functions from `input_configs`, `n_mfs`,
+  `mf_init`, and `sigma_scale`.
+- The default `sigma_scale=1.0` is appropriate because the adaptive softmin
+  operator handles high-dimensional stability.
 
-For low-level use:
+### Membership functions
 
-```python
-from highfis import AdaTSKClassifier, GaussianMF
+- The primary antecedent MFs are standard `highfis.memberships.GaussianMF`
+  objects.
+- An optional nonzero lower-bound membership function is available via
+  `highfis.memberships.CompositeGaussianMF` for paper-style stability.
 
-input_mfs = {
-    "x1": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
-    "x2": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
-}
-model = AdaTSKClassifier(input_mfs, n_classes=2, lambda_init=1.0)
-history = model.fit(x_train, y_train, epochs=100, learning_rate=1e-3)
-```
+### Training in the paper vs. highFIS
+
+- The paper trains AdaTSK end-to-end by optimizing the task loss through
+  the adaptive softmin operator.
+- highFIS follows the same gradient-based training paradigm in `BaseTSK.fit()`.
+- `eps` is used to clamp membership values and stabilize log-space
+  computations in `AdaSoftminRuleLayer`.
+
+- FSRE-AdaTSK is documented separately in `docs/models/fsre-adatsk.md`.
+
+## Alignment with the paper
+
+- The paper's key AdaTSK contribution is the adaptive softmin antecedent
+  operator to avoid numeric underflow and fake minimum effects.
+- highFIS implements this via `AdaSoftminRuleLayer` with a per-rule exponent
+  derived from the rule's minimum antecedent membership.
+- The TSK consequent remains first-order, matching the paper's model.
+- The default estimator wrappers use `GaussianMF`, while the paper's positive
+  lower-bound MF can be supplied via `CompositeGaussianMF`.

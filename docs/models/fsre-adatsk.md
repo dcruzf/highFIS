@@ -1,12 +1,10 @@
 # FSRE-AdaTSK
 
+FSRE-AdaTSK extends AdaTSK with embedded feature-selection and rule-extraction phases, using gated consequents and an enhanced rule base for high-dimensional data.
+
 ## Reference
 
-> Xue, Guangdong; Chang, Qin; Wang, Jian; Zhang, Kai; Pal, Nikhil R. (2023).
-> "An Adaptive Neuro-Fuzzy System With Integrated Feature Selection and
-> Rule Extraction for High-Dimensional Classification Problems." *IEEE
-> Transactions on Fuzzy Systems* 31(7):2167–2181.
-> DOI: [10.1109/TFUZZ.2022.3220950](https://doi.org/10.1109/TFUZZ.2022.3220950)
+> G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive Neuro-Fuzzy System With Integrated Feature Selection and Rule Extraction for High-Dimensional Classification Problems," in IEEE Transactions on Fuzzy Systems, vol. 31, no. 7, pp. 2167-2181, July 2023, doi: [10.1109/TFUZZ.2022.3220950](https://doi.org/10.1109/TFUZZ.2022.3220950)
 
 ## Overview
 
@@ -59,8 +57,9 @@ The normalized weights are then used to aggregate rule consequents.
 
 ### Gated Consequents
 
-FSRE-AdaTSK uses gates only in the consequent layer. For each feature or rule
-parameter, a gate value $u$ modulates output strength with:
+FSRE-AdaTSK uses gates only in the consequent layer, not in the antecedent.
+Each gate value $u$ modulates consequent strength with the paper's default
+activation:
 
 $$
 M(u) = u \sqrt{e^{1 - u^2}}
@@ -75,8 +74,8 @@ $$
 \hat{y}_r^c(\mathbf{x}) = M(u_r) \left(p_{r,0}^c + \sum_{d=1}^{D} p_{r,d}^c \, x_d\right)
 $$
 
-where $M(u_r)$ can represent a rule-level gate and additional gates can be
-applied at the feature/consequent coefficient level.
+In highFIS, feature-level gates are shared across rules in the FS phase, while
+rule-level gates are applied in the RE phase.
 
 ### Output Aggregation
 
@@ -100,19 +99,44 @@ explicit phase transitions for FS, RE, and fine tuning.
 
 ## Learning Phases
 
-FSRE-AdaTSK is trained in three sequential phases:
+FSRE-AdaTSK is trained in three sequential phases, each with a clear role in
+making the model both compact and accurate.
 
 - **Feature Selection (`fit_fs`)**
-  - Train on the current compact rule base.
-  - Learn gate parameters that identify important features.
-- **Rule Extraction (`fit_re`)**
-  - Expand the rule layer to En-FRB.
-  - Learn rule gates that prune irrelevant rules.
-- **Fine Tuning (`fit_finetune`)**
-  - Re-train the reduced model after extraction.
+  - Purpose: identify the smallest set of input features that are useful for
+    classification.
+  - Implementation: the model keeps the current rule base and activates only
+    the shared feature gates `M(λ_d)` in the consequent layer.
+  - Effect: feature gates shrink the contribution of unimportant input
+    dimensions by attenuating consequent weights; important features remain
+    active while noisy or redundant features are suppressed.
 
-These phases may be executed from the low-level model API or orchestrated by
-higher-level estimator wrappers.
+- **Rule Extraction (`fit_re`)**
+  - Purpose: remove redundant or irrelevant rules after the important input
+    features have been identified.
+  - Implementation: the model expands its antecedent layer to the Enhanced FRB
+    (En-FRB) and then activates only the rule gates `M(θ_r)` in the consequent
+    layer.
+  - Effect: rule gates suppress weak rules in the larger candidate rule set,
+    allowing the model to prune rules without fully enumerating an exponential
+    rule base.
+
+- **Fine Tuning (`fit_finetune`)**
+  - Purpose: recover predictive performance after feature selection and rule
+    extraction.
+  - Implementation: all gates are disabled, so the consequent layer behaves as
+    a plain first-order TSK consequent.
+  - Effect: the reduced model is re-trained end-to-end to adjust remaining
+    weights and bias terms for the final task.
+
+In the low-level API, these phases are explicit methods on
+`FSREAdaTSKClassifier`/`FSREAdaTSKRegressor`. The current implementation is
+correct: `fit_fs()` sets the consequent layer to feature-gate mode without
+changing the rule layer, `fit_re()` rebuilds the rule layer as En-FRB and
+switches to rule-gate mode, and `fit_finetune()` turns off gating entirely.
+
+Higher-level estimator wrappers can orchestrate the same sequence for
+automatic end-to-end training.
 
 For the related DG-ALETSK implementation, see `docs/models/dg-aletsk.md`.
 
@@ -156,12 +180,17 @@ feature selection, rule extraction, and En-FRB support.
 
 ## Practical Notes
 
-- Use `lambda_init` to control the initial adaptive aggregation parameter.
-- Set `use_en_frb=True` to start training with the enhanced fuzzy rule base.
-- `rule_base` can still be set to common bases like `"coco"` or a custom rule
-  list, but En-FRB is triggered when `use_en_frb=True`.
-- `consequent_batch_norm=True` can improve stability when input features vary in
-  scale.
+- `AdaSoftminRuleLayer` implements adaptive softmin antecedent aggregation;
+  no per-rule exponent parameter is explicitly learned outside this layer.
+- `lambda_init` is accepted by the estimator API for compatibility, but the
+  core FSRE-AdaTSK model computes its adaptive softmin index from current
+  membership values rather than using a fixed learnable `lambda`.
+- Set `use_en_frb=True` to start from the enhanced fuzzy rule base; otherwise,
+  training begins on a compact CoCo-FRB and expands to En-FRB during RE.
+- `rule_base` can still be set to `"coco"` or another supported rule base;
+  the `use_en_frb` flag controls whether the enhanced rule base is used.
+- `consequent_batch_norm=True` can improve training stability for regression
+  and classification when features are poorly scaled.
 
 ## Example
 
