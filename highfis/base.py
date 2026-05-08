@@ -1,33 +1,32 @@
 """Base TSK model that factors the common antecedent-defuzzification pipeline.
 
-This module defines :class:`BaseTSK`, the abstract foundation for all TSK
-fuzzy models in highFIS.  It factors out the shared antecedent pipeline,
+This module defines `BaseTSK`, the abstract foundation for all TSK fuzzy
+models in highFIS. It factors out the shared antecedent pipeline,
 defuzzifier, and training loop so concrete subclasses can focus on
 task-specific consequent layers and loss criteria.
 
 The forward pipeline executes four sequential steps:
 
-1. :class:`~highfis.layers.MembershipLayer` — evaluates membership functions
-   for each input feature.
-2. :class:`~highfis.layers.RuleLayer` — computes rule firing strengths via a
+1. `highfis.layers.MembershipLayer` — evaluates membership functions for each
+   input feature.
+2. `highfis.layers.RuleLayer` — computes rule firing strengths via a
    configurable rule base and T-norm.
 3. **Defuzzifier** — normalizes firing strengths to probability-like weights
-   (default: :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`).
+   (default: `highfis.defuzzifiers.SoftmaxLogDefuzzifier`).
 4. **ConsequentLayer** — produces the final output from the inputs and the
    normalized rule weights.
 
 Concrete subclasses must implement:
 
-- :meth:`BaseTSK._build_consequent_layer` — return the task-specific
-  consequent module.
-- :meth:`BaseTSK._default_criterion` — return the default loss function.
+- `BaseTSK._build_consequent_layer` — return the task-specific consequent
+  module.
+- `BaseTSK._default_criterion` — return the default loss function.
 
 Optional overridable hooks:
 
-- :meth:`BaseTSK._compute_loss` — customize target preparation or loss
-  composition.
-- :meth:`BaseTSK._evaluate_validation` — customize the validation metric
-  used for early stopping.
+- `BaseTSK._compute_loss` — customize target preparation or loss composition.
+- `BaseTSK._evaluate_validation` — customize the validation metric used for
+  early stopping.
 """
 
 from __future__ import annotations

@@ -1,19 +1,19 @@
 """Versioned checkpoint helpers for estimator persistence.
 
 This module provides functions to save and load highFIS estimator checkpoints
-using PyTorch serialization.  Checkpoints store the estimator constructor
+using PyTorch serialization. Checkpoints store estimator constructor
 parameters, the fitted model state dict, and sklearn-compatible fit metadata
 (``n_features_in_``, ``feature_names_in_``, ``classes_``, etc.).
 
-The checkpoint schema is versioned: :data:`CHECKPOINT_FORMAT` identifies
-the payload type and :data:`CHECKPOINT_VERSION` is tied to the current
-package version.  :func:`validate_checkpoint_payload` enforces both so that
-incompatible checkpoints are rejected before any state is restored.
+The checkpoint schema is versioned. ``CHECKPOINT_FORMAT`` identifies the
+payload type and ``CHECKPOINT_VERSION`` is tied to the current package
+version. ``validate_checkpoint_payload`` enforces both so that incompatible
+checkpoints are rejected before any state is restored.
 
 Checkpoint schema keys:
 
-- ``format`` — must equal :data:`CHECKPOINT_FORMAT`.
-- ``format_version`` — must equal :data:`CHECKPOINT_VERSION`.
+- ``format`` — must equal ``CHECKPOINT_FORMAT``.
+- ``format_version`` — must equal ``CHECKPOINT_VERSION``.
 - ``estimator_class`` — class name of the estimator that created the
   checkpoint.
 - ``estimator_params`` — constructor kwargs used to recreate the estimator.

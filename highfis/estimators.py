@@ -156,11 +156,12 @@ class InputConfig:
 
     Example:
         ```python
-        >>> from highfis.estimators import InputConfig
-        >>> configs = [
-        ...     InputConfig(name="sepal_length", n_mfs=3),
-        ...     InputConfig(name="sepal_width", n_mfs=5, overlap=0.3),
-        ... ]
+        from highfis.estimators import InputConfig
+
+        configs = [
+            InputConfig(name="sepal_length", n_mfs=3),
+            InputConfig(name="sepal_width", n_mfs=5, overlap=0.3),
+        ]
         ```
     """
 
@@ -937,11 +938,10 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
 
 
 class HTSKClassifierEstimator(_BaseClassifierEstimator):
-    r"""High-dimensional TSK classifier.
+    r"""HTSK classifier for high-dimensional TSK inference.
 
-    This estimator wraps `HTSKClassifier` using `SoftmaxLogDefuzzifier`.
-    HTSK computes rule firing strengths as the geometric mean of antecedent
-    memberships and normalizes them using a softmax over log-domain activations.
+    HTSK replaces the standard product t-norm with a geometric mean over
+    membership values and performs rule normalization in log-space.
 
     References:
         Y. Cui, D. Wu and Y. Xu, "Curse of Dimensionality for TSK Fuzzy
@@ -1041,11 +1041,10 @@ class HTSKClassifierEstimator(_BaseClassifierEstimator):
 
 
 class HTSKRegressorEstimator(_BaseRegressorEstimator):
-    r"""High-dimensional TSK regressor.
+    r"""HTSK regressor for high-dimensional TSK inference.
 
-    This estimator wraps `HTSKRegressor` using `SoftmaxLogDefuzzifier`.
-    HTSK computes rule firing strengths as the geometric mean of antecedent
-    memberships and normalizes them using a softmax over log-domain activations.
+    HTSK replaces the standard product t-norm with a geometric mean over
+    membership values and performs rule normalization in log-space.
 
     References:
         Y. Cui, D. Wu and Y. Xu, "Curse of Dimensionality for TSK Fuzzy
@@ -1148,18 +1147,17 @@ class HTSKRegressorEstimator(_BaseRegressorEstimator):
 
 
 class TSKClassifierEstimator(_BaseClassifierEstimator):
-    """Vanilla TSK classifier with sum-based rule normalization.
+    r"""Vanilla TSK classifier with sum-based rule normalization.
 
-    Implements the original Takagi-Sugeno-Kang inference with
-    product T-norm and sum-based normalization. On
-    high-dimensional data the normalization saturates, causing
-    most inputs to fire only one rule.
+    The vanilla Takagi-Sugeno-Kang inference computes rule firing strengths
+    with the product t-norm and normalizes them by their total sum.
 
-    Reference:
-        Takagi, T. & Sugeno, M. (1985). "Fuzzy identification of
-        systems and its applications to modeling and control."
-        IEEE Trans. Syst., Man, Cybern. SMC-15(1):116-132.
-        DOI: 10.1109/TSMC.1985.6313399
+    References:
+        T. Takagi and M. Sugeno, "Fuzzy identification of systems and
+        its applications to modeling and control," in IEEE
+        Transactions on Systems, Man, and Cybernetics, vol. SMC-15,
+        no. 1, pp. 116-132, Jan.-Feb. 1985,
+        doi: 10.1109/TSMC.1985.6313399.
 
     Example:
         ```python
@@ -1256,18 +1254,17 @@ class TSKClassifierEstimator(_BaseClassifierEstimator):
 
 
 class TSKRegressorEstimator(_BaseRegressorEstimator):
-    """Vanilla TSK regressor with sum-based rule normalization.
+    r"""Vanilla TSK regressor with sum-based rule normalization.
 
-    Implements the original Takagi-Sugeno-Kang inference with
-    product T-norm and sum-based normalization. On
-    high-dimensional data the normalization saturates, causing
-    most inputs to fire only one rule.
+    The vanilla Takagi-Sugeno-Kang inference computes rule firing strengths
+    with the product t-norm and normalizes them by their total sum.
 
-    Reference:
-        Takagi, T. & Sugeno, M. (1985). "Fuzzy identification of
-        systems and its applications to modeling and control."
-        IEEE Trans. Syst., Man, Cybern. SMC-15(1):116-132.
-        DOI: 10.1109/TSMC.1985.6313399
+    References:
+        T. Takagi and M. Sugeno, "Fuzzy identification of systems and
+        its applications to modeling and control," in IEEE
+        Transactions on Systems, Man, and Cybernetics, vol. SMC-15,
+        no. 1, pp. 116-132, Jan.-Feb. 1985,
+        doi: 10.1109/TSMC.1985.6313399.
 
     Example:
         ```python
@@ -1358,32 +1355,24 @@ class TSKRegressorEstimator(_BaseRegressorEstimator):
 
 
 class AYATSKClassifierEstimator(_BaseClassifierEstimator):
-    """Adaptive Yager T-norm TSK classifier (Xue et al., TSMC 2025).
+    """TSK classifier with an adaptive Yager T-norm in the antecedent.
 
-    Wraps :class:`~highfis.models.AYATSKClassifier`. AYATSK uses the Yager
-    T-norm with an adaptive index parameter ``λ`` derived from the input
-    dimensionality ``D`` and the lower bound ``ε`` of the Composite
-    Exponential Membership Function (CEMF)::
+    AYATSK extends TSK by using an adaptive Yager T-norm aggregation and
+    optional positive lower-bound membership functions to improve
+    stability and performance in high-dimensional settings.
 
-        λ = -ln(D) / ln(1 - ε)
-
-    This guarantees that the Yager T-norm remains numerically stable on
-    high-dimensional data (no underflow) while being a proper T-norm,
-    unlike softmin-based approaches. CEMF has a positive lower bound
-    ``1/K > 0``, required for the adaptive strategy to be well-defined.
-
-    Experiments in Xue et al. (2025) cover datasets with dimensionality
-    from 8 to 120 432, making AYATSK one of the most broadly validated
-    high-dimensional fuzzy classifiers available.
+    Reference:
+        G. Xue, Y. Yang and J. Wang, "Adaptive Yager T-Norm-Based
+        Takagi-Sugeno-Kang Fuzzy Systems," in IEEE Transactions on
+        Systems, Man, and Cybernetics: Systems, vol. 55, no. 12,
+        pp. 9802-9815, Dec. 2025, doi: 10.1109/TSMC.2025.3621346.
 
     Example:
         ```python
-        >>> from highfis import AYATSKClassifierEstimator
-        >>> clf = AYATSKClassifierEstimator(n_mfs=30, random_state=0)
-        >>> clf.fit(X_train, y_train)
-        AYATSKClassifierEstimator(...)
-        >>> clf.score(X_test, y_test)
-        0.94...
+        from highfis import AYATSKClassifierEstimator
+
+        clf = AYATSKClassifierEstimator(n_mfs=30, random_state=0)
+        clf.fit(X_train, y_train)
         ```
     """
 
@@ -1473,20 +1462,24 @@ class AYATSKClassifierEstimator(_BaseClassifierEstimator):
 
 
 class AYATSKRegressorEstimator(_BaseRegressorEstimator):
-    """Adaptive Yager T-norm TSK regressor (Xue et al., TSMC 2025).
+    """TSK regressor with an adaptive Yager T-norm in the antecedent.
 
-    Wraps :class:`~highfis.models.AYATSKRegressor`. See
-    :class:`AYATSKClassifierEstimator` for a description of the AYATSK
-    model.
+    AYATSK extends TSK by using an adaptive Yager T-norm aggregation and
+    optional positive lower-bound membership functions to improve
+    stability and performance in high-dimensional settings.
+
+    Reference:
+        G. Xue, Y. Yang and J. Wang, "Adaptive Yager T-Norm-Based
+        Takagi-Sugeno-Kang Fuzzy Systems," in IEEE Transactions on
+        Systems, Man, and Cybernetics: Systems, vol. 55, no. 12,
+        pp. 9802-9815, Dec. 2025, doi: 10.1109/TSMC.2025.3621346.
 
     Example:
         ```python
-        >>> from highfis import AYATSKRegressorEstimator
-        >>> reg = AYATSKRegressorEstimator(n_mfs=30, random_state=0)
-        >>> reg.fit(X_train, y_train)
-        AYATSKRegressorEstimator(...)
-        >>> reg.score(X_test, y_test)
-        0.88...
+        from highfis import AYATSKRegressorEstimator
+
+        reg = AYATSKRegressorEstimator(n_mfs=30, random_state=0)
+        reg.fit(X_train, y_train)
         ```
     """
 
@@ -1567,34 +1560,25 @@ class AYATSKRegressorEstimator(_BaseRegressorEstimator):
 
 
 class DombiTSKClassifierEstimator(_BaseClassifierEstimator):
-    """Dombi T-norm based TSK classifier (Xue et al., TFS 2025).
+    r"""TSK classifier with a fixed Dombi T-norm in the antecedent.
 
-    Wraps :class:`~highfis.models.DombiTSKClassifier`. DombiTSK replaces the
-    product T-norm with the Dombi T-norm::
-
-        φ_r(x) = 1 / (1 + [Σ_d (1/μ_{r,d}(x) - 1)^λ]^{1/λ})
-
-    Dombi T-norm is differentiable and does not trigger numeric underflow even
-    for very high-dimensional inputs (Xue et al., TFS 2025, Table I shows no
-    underflow up to ``D=120432``). The static ``DombiTSK`` variant uses a
-    fixed ``λ``; see :class:`AdaTSKClassifierEstimator` for the adaptive
-    version (**ADMTSK**) in which ``λ`` is set automatically from ``D`` and
-    the membership lower bound.
+    DombiTSK extends TSK fuzzy inference by using a Dombi t-norm
+    aggregation in antecedent evaluation while keeping first-order
+    linear consequents.
 
     Reference:
-        Xue, G., Hu, L., Wang, J., & Ablameyko, S. (2025). ADMTSK: A
-        high-dimensional TSK fuzzy system based on adaptive Dombi T-norm.
-        *IEEE Trans. Fuzzy Systems*.
-        https://doi.org/10.1109/TFUZZ.2025.3535640
+        G. Xue, L. Hu, J. Wang and S. Ablameyko, "ADMTSK: A
+        High-Dimensional Takagi-Sugeno-Kang Fuzzy System Based on
+        Adaptive Dombi T-Norm," in IEEE Transactions on Fuzzy
+        Systems, vol. 33, no. 6, pp. 1767-1780, June 2025,
+        doi: 10.1109/TFUZZ.2025.3535640.
 
     Example:
         ```python
-        >>> from highfis import DombiTSKClassifierEstimator
-        >>> clf = DombiTSKClassifierEstimator(n_mfs=30, random_state=0)
-        >>> clf.fit(X_train, y_train)
-        DombiTSKClassifierEstimator(...)
-        >>> clf.score(X_test, y_test)
-        0.93...
+        from highfis import DombiTSKClassifierEstimator
+
+        clf = DombiTSKClassifierEstimator(n_mfs=30, random_state=0)
+        clf.fit(X_train, y_train)
         ```
     """
 
@@ -1683,20 +1667,25 @@ class DombiTSKClassifierEstimator(_BaseClassifierEstimator):
 
 
 class DombiTSKRegressorEstimator(_BaseRegressorEstimator):
-    """Dombi T-norm based TSK regressor (Xue et al., TFS 2025).
+    r"""TSK regressor with a fixed Dombi T-norm in the antecedent.
 
-    Wraps :class:`~highfis.models.DombiTSKRegressor`. See
-    :class:`DombiTSKClassifierEstimator` for a description of the DombiTSK
-    model.
+    DombiTSK extends TSK fuzzy inference by using a Dombi t-norm
+    aggregation in antecedent evaluation while keeping first-order
+    linear consequents.
+
+    Reference:
+        G. Xue, L. Hu, J. Wang and S. Ablameyko, "ADMTSK: A
+        High-Dimensional Takagi-Sugeno-Kang Fuzzy System Based on
+        Adaptive Dombi T-Norm," in IEEE Transactions on Fuzzy
+        Systems, vol. 33, no. 6, pp. 1767-1780, June 2025,
+        doi: 10.1109/TFUZZ.2025.3535640.
 
     Example:
         ```python
-        >>> from highfis import DombiTSKRegressorEstimator
-        >>> reg = DombiTSKRegressorEstimator(n_mfs=30, random_state=0)
-        >>> reg.fit(X_train, y_train)
-        DombiTSKRegressorEstimator(...)
-        >>> reg.score(X_test, y_test)
-        0.87...
+        from highfis import DombiTSKRegressorEstimator
+
+        reg = DombiTSKRegressorEstimator(n_mfs=30, random_state=0)
+        reg.fit(X_train, y_train)
         ```
     """
 
@@ -1777,29 +1766,23 @@ class DombiTSKRegressorEstimator(_BaseRegressorEstimator):
 
 
 class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
-    r"""AdaTSK classifier with adaptive softmin antecedent (Xue et al., TFS 2023).
+    r"""TSK classifier with adaptive softmin antecedent (AdaTSK).
 
-    Wraps :class:`~highfis.models.AdaTSKClassifier`. Rule firing strengths are
-    computed with the Ada-softmin operator, whose index :math:`\\hat{q}` is
-    adapted from the current membership values on every forward pass.  This
-    prevents *numeric underflow* and *fake minimum* problems that arise with
-    product or fixed-parameter softmin operators for high-dimensional data.
+    The firing strength of each rule is computed with the Ada-softmin operator.
 
     Reference:
-        Xue, G., Chang, Q., Wang, J., Zhang, K., & Pal, N. R. (2023). An
-        adaptive neuro-fuzzy system with integrated feature selection and rule
-        extraction for high-dimensional classification problems. *IEEE Trans.
-        Fuzzy Systems*, 31(7), 2167-2181.
-        https://doi.org/10.1109/TFUZZ.2022.3220950
+        G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive
+        Neuro-Fuzzy System With Integrated Feature Selection and Rule
+        Extraction for High-Dimensional Classification Problems," in
+        IEEE Transactions on Fuzzy Systems, vol. 31, no. 7, pp. 2167-2181,
+        July 2023, doi: 10.1109/TFUZZ.2022.3220950.
 
     Example:
         ```python
-        >>> from highfis import AdaTSKClassifierEstimator
-        >>> clf = AdaTSKClassifierEstimator(n_mfs=30, random_state=0)
-        >>> clf.fit(X_train, y_train)
-        AdaTSKClassifierEstimator(...)
-        >>> clf.score(X_test, y_test)
-        0.95...
+        from highfis import AdaTSKClassifierEstimator
+
+        clf = AdaTSKClassifierEstimator(n_mfs=30, random_state=0)
+        clf.fit(X_train, y_train)
         ```
     """
 
@@ -1883,19 +1866,23 @@ class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
 
 
 class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
-    """AdaTSK regressor with adaptive softmin antecedent (Xue et al., TFS 2023).
+    r"""TSK regressor with adaptive softmin antecedent (AdaTSK).
 
-    Wraps :class:`~highfis.models.AdaTSKRegressor`. See
-    :class:`AdaTSKClassifierEstimator` for a description of the AdaTSK model.
+    The firing strength of each rule is computed with the Ada-softmin operator.
+
+    Reference:
+        G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive
+        Neuro-Fuzzy System With Integrated Feature Selection and Rule
+        Extraction for High-Dimensional Classification Problems," in
+        IEEE Transactions on Fuzzy Systems, vol. 31, no. 7, pp. 2167-2181,
+        July 2023, doi: 10.1109/TFUZZ.2022.3220950.
 
     Example:
         ```python
-        >>> from highfis import AdaTSKRegressorEstimator
-        >>> reg = AdaTSKRegressorEstimator(n_mfs=30, random_state=0)
-        >>> reg.fit(X_train, y_train)
-        AdaTSKRegressorEstimator(...)
-        >>> reg.score(X_test, y_test)
-        0.89...
+        from highfis import AdaTSKRegressorEstimator
+
+        reg = AdaTSKRegressorEstimator(n_mfs=30, random_state=0)
+        reg.fit(X_train, y_train)
         ```
     """
 
@@ -1976,28 +1963,16 @@ class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
 
 
 class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
-    """FSRE-AdaTSK classifier with feature selection and rule extraction.
+    r"""FSRE-AdaTSK classifier with adaptive softmin antecedent and gated consequents.
 
-    FSRE-AdaTSK extends AdaTSK by embedding **gate functions** in the
-    consequent layer only. Feature selection and rule extraction are
-    performed in two sequential phases:
-
-    1. FS phase — feature gates are trained alongside all system parameters;
-       low-gate features are pruned.
-    2. RE phase — rule gates are trained after building an Enhanced FRB
-       (En-FRB) from the remaining features; low-gate rules are pruned.
-
-    A final fine-tuning phase is also supported by the low-level model API.
-
-    When ``use_en_frb=True`` the Enhanced FRB (En-FRB), whose size grows
-    linearly with the number of features, is used; the default ``False``
-    keeps the standard CoCo-FRB.
+    FSRE-AdaTSK (Feature Selection and Rule Extraction) extends AdaTSK.
 
     Reference:
-        Xue, G., Wang, J., Yuan, B., & Dai, C. (2023). DG-ALETSK: A
-        high-dimensional fuzzy approach with simultaneous feature selection
-        and rule extraction. *IEEE Trans. Fuzzy Systems*, 31(11).
-        https://doi.org/10.1109/TFUZZ.2023.3270445
+        G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive
+        Neuro-Fuzzy System With Integrated Feature Selection and Rule
+        Extraction for High-Dimensional Classification Problems," in
+        IEEE Transactions on Fuzzy Systems, vol. 31, no. 7, pp. 2167-2181,
+        July 2023, doi: 10.1109/TFUZZ.2022.3220950.
 
     Example:
         ```python
@@ -2106,28 +2081,16 @@ class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
 
 
 class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
-    """FSRE-AdaTSK regressor with feature selection and rule extraction.
+    r"""FSRE-AdaTSK regressor with adaptive softmin antecedent and gated consequents.
 
-    FSRE-AdaTSK extends AdaTSK by embedding **gate functions** in the
-    consequent layer only. Feature selection and rule extraction are
-    performed in two sequential phases:
-
-    1. FS phase — feature gates are trained alongside all system parameters;
-       low-gate features are pruned.
-    2. RE phase — rule gates are trained after building an Enhanced FRB
-       (En-FRB) from the remaining features; low-gate rules are pruned.
-
-    A final fine-tuning phase is also supported by the low-level model API.
-
-    When ``use_en_frb=True`` the Enhanced FRB (En-FRB), whose size grows
-    linearly with the number of features, is used; the default ``False``
-    keeps the standard CoCo-FRB.
+    FSRE-AdaTSK (Feature Selection and Rule Extraction) extends AdaTSK.
 
     Reference:
-        Xue, G., Wang, J., Yuan, B., & Dai, C. (2023). DG-ALETSK: A
-        high-dimensional fuzzy approach with simultaneous feature selection
-        and rule extraction. *IEEE Trans. Fuzzy Systems*, 31(11).
-        https://doi.org/10.1109/TFUZZ.2023.3270445
+        G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive
+        Neuro-Fuzzy System With Integrated Feature Selection and Rule
+        Extraction for High-Dimensional Classification Problems," in
+        IEEE Transactions on Fuzzy Systems, vol. 31, no. 7, pp. 2167-2181,
+        July 2023, doi: 10.1109/TFUZZ.2022.3220950.
 
     Example:
         ```python
@@ -2231,26 +2194,28 @@ class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
 
 
 class DGALETSKClassifierEstimator(FSREAdaTSKClassifierEstimator):
-    """DG-ALETSK classifier with ALE-softmin firing strength.
+    """DG-ALETSK classifier with ALE-softmin antecedent and double-group gates.
 
-    Wraps :class:`~highfis.models.DGALETSKClassifier`. DG-ALETSK (Xue et al.,
-    IEEE TFUZZ 2023, https://doi.org/10.1109/TFUZZ.2023.3270445) extends
-    FSRE-AdaTSK by replacing the adaptive softmin with the *Adaptive
-    Ln-Exp (ALE)* softmin, a smoother and more numerically stable variant.
+    DG-ALETSK extends FSRE-AdaTSK by replacing the adaptive softmin with the
+    *Adaptive Ln-Exp (ALE)* softmin — a smoother variant with improved
+    numerical stability.  It also uses a zero-order consequent in the DG
+    (data-guided) training phase and optionally converts to first-order
+    after gate-based pruning.
 
-    All constructor parameters are identical to
-    :class:`FSREAdaTSKClassifierEstimator`.
+    Reference:
+        G. Xue, J. Wang, B. Yuan and C. Dai, "DG-ALETSK: A High-Dimensional
+        Fuzzy Approach With Simultaneous Feature Selection and Rule
+        Extraction," in IEEE Transactions on Fuzzy Systems, vol. 31, no.
+        11, pp. 3866-3880, Nov. 2023, doi: 10.1109/TFUZZ.2023.3270445.
 
     Example:
         ```python
-        >>> from highfis import DGALETSKClassifierEstimator
-        >>> clf = DGALETSKClassifierEstimator(
-        ...     n_mfs=30, lambda_init=1.0, use_en_frb=False, random_state=0
-        ... )
-        >>> clf.fit(X_train, y_train)
-        DGALETSKClassifierEstimator(...)
-        >>> clf.score(X_test, y_test)
-        0.91...
+        from highfis import DGALETSKClassifierEstimator
+
+        clf = DGALETSKClassifierEstimator(
+            n_mfs=30, lambda_init=1.0, use_en_frb=False, random_state=0
+        )
+        clf.fit(X_train, y_train)
         ```
     """
 
@@ -2272,24 +2237,28 @@ class DGALETSKClassifierEstimator(FSREAdaTSKClassifierEstimator):
 
 
 class DGALETSKRegressorEstimator(FSREAdaTSKRegressorEstimator):
-    """DG-ALETSK regressor with ALE-softmin firing strength.
+    """DG-ALETSK regressor with ALE-softmin antecedent and double-group gates.
 
-    Wraps :class:`~highfis.models.DGALETSKRegressor`. See
-    :class:`DGALETSKClassifierEstimator` for a description of the model.
+    DG-ALETSK extends FSRE-AdaTSK by replacing the adaptive softmin with the
+    *Adaptive Ln-Exp (ALE)* softmin — a smoother variant with improved
+    numerical stability.  It also uses a zero-order consequent in the DG
+    (data-guided) training phase and optionally converts to first-order
+    after gate-based pruning.
 
-    All constructor parameters are identical to
-    :class:`FSREAdaTSKRegressorEstimator`.
+    Reference:
+        G. Xue, J. Wang, B. Yuan and C. Dai, "DG-ALETSK: A High-Dimensional
+        Fuzzy Approach With Simultaneous Feature Selection and Rule
+        Extraction," in IEEE Transactions on Fuzzy Systems, vol. 31, no.
+        11, pp. 3866-3880, Nov. 2023, doi: 10.1109/TFUZZ.2023.3270445.
 
     Example:
         ```python
-        >>> from highfis import DGALETSKRegressorEstimator
-        >>> reg = DGALETSKRegressorEstimator(
-        ...     n_mfs=30, lambda_init=1.0, use_en_frb=False, random_state=0
-        ... )
-        >>> reg.fit(X_train, y_train)
-        DGALETSKRegressorEstimator(...)
-        >>> reg.score(X_test, y_test)
-        0.88...
+        from highfis import DGALETSKRegressorEstimator
+
+        reg = DGALETSKRegressorEstimator(
+            n_mfs=30, lambda_init=1.0, use_en_frb=False, random_state=0
+        )
+        reg.fit(X_train, y_train)
         ```
     """
 
@@ -2309,21 +2278,24 @@ class DGALETSKRegressorEstimator(FSREAdaTSKRegressorEstimator):
 
 
 class DGTSKClassifierEstimator(_BaseClassifierEstimator):
-    """DG-TSK classifier with M-gate and point-based FRB (P-FRB).
+    """DG-TSK classifier with M-gate antecedent and point-based FRB (P-FRB).
 
-    Wraps :class:`~highfis.models.DGTSKClassifier`. DG-TSK (Xue et al.,
-    Fuzzy Sets and Systems 2023, https://doi.org/10.1016/j.fss.2023.108627)
-    introduces a *data-driven gate* (M-gate) to automatically select relevant
-    rules and supports a *point-based FRB* (P-FRB) for compact rule sets.
+    DG-TSK uses a data-guided M-gate function to automatically select
+    relevant features and rules.
+
+    Reference:
+        Guangdong Xue, Jian Wang, Bingjie Zhang, Bin Yuan, Caili Dai,
+        Double groups of gates based Takagi-Sugeno-Kang (DG-TSK)
+        fuzzy system for simultaneous feature selection and rule
+        extraction, Fuzzy Sets and Systems, Volume 469, 2023, 108627,
+        ISSN 0165-0114, https://doi.org/10.1016/j.fss.2023.108627.
 
     Example:
         ```python
-        >>> from highfis import DGTSKClassifierEstimator
-        >>> clf = DGTSKClassifierEstimator(n_mfs=30, use_en_frb=False, random_state=0)
-        >>> clf.fit(X_train, y_train)
-        DGTSKClassifierEstimator(...)
-        >>> clf.score(X_test, y_test)
-        0.92...
+        from highfis import DGTSKClassifierEstimator
+
+        clf = DGTSKClassifierEstimator(n_mfs=30, use_en_frb=False, random_state=0)
+        clf.fit(X_train, y_train)
         ```
     """
 
@@ -2414,19 +2386,24 @@ class DGTSKClassifierEstimator(_BaseClassifierEstimator):
 
 
 class DGTSKRegressorEstimator(_BaseRegressorEstimator):
-    """DG-TSK regressor with M-gate and point-based FRB (P-FRB).
+    """DG-TSK regressor with M-gate antecedent and point-based FRB (P-FRB).
 
-    Wraps :class:`~highfis.models.DGTSKRegressor`. See
-    :class:`DGTSKClassifierEstimator` for a description of the model.
+    DG-TSK uses a data-guided M-gate function to automatically select
+    relevant features and rules.
+
+    Reference:
+        Guangdong Xue, Jian Wang, Bingjie Zhang, Bin Yuan, Caili Dai,
+        Double groups of gates based Takagi-Sugeno-Kang (DG-TSK)
+        fuzzy system for simultaneous feature selection and rule
+        extraction, Fuzzy Sets and Systems, Volume 469, 2023, 108627,
+        ISSN 0165-0114, https://doi.org/10.1016/j.fss.2023.108627.
 
     Example:
         ```python
-        >>> from highfis import DGTSKRegressorEstimator
-        >>> reg = DGTSKRegressorEstimator(n_mfs=30, use_en_frb=False, random_state=0)
-        >>> reg.fit(X_train, y_train)
-        DGTSKRegressorEstimator(...)
-        >>> reg.score(X_test, y_test)
-        0.88...
+        from highfis import DGTSKRegressorEstimator
+
+        reg = DGTSKRegressorEstimator(n_mfs=30, use_en_frb=False, random_state=0)
+        reg.fit(X_train, y_train)
         ```
     """
 

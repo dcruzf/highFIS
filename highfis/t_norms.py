@@ -1,21 +1,23 @@
 """Fuzzy T-norm aggregation strategies for TSK antecedent computation.
 
-This module provides T-norm classes and a convenience resolver used by
-:class:`~highfis.layers.RuleLayer` to aggregate per-input membership
-degrees into rule firing strengths.
+This module defines learnable T-norm strategies used by ``highfis.layers``
+to aggregate per-input membership degrees into rule firing strengths.
+Each strategy is implemented as a subclass of ``BaseTNorm``.
 
-Built-in T-norm classes (all inherit from :class:`BaseTNorm`):
+Built-in T-norm classes:
+    - ``ProductTNorm`` — standard product conjunction.
+    - ``MinimumTNorm`` — Gödel / minimum conjunction.
+    - ``GMeanTNorm`` — geometric mean, the default for HTSK.
+    - ``DombiTNorm`` — Dombi parametric T-norm (``lambda_ > 0``).
+    - ``YagerTNorm`` — Yager parametric T-norm (``lambda_ > 0``).
+    - ``YagerSimpleTNorm`` — simplified Yager without the outer minimum.
+    - ``ALESoftminYagerTNorm`` — ALE-softmin Yager variant.
 
-- :class:`ProductTNorm` — standard product conjunction.
-- :class:`MinimumTNorm` — Gödel / minimum conjunction.
-- :class:`GMeanTNorm` — geometric mean; the default for HTSK.
-- :class:`DombiTNorm` — Dombi parametric T-norm (``lambda_ > 0``).
-- :class:`YagerTNorm` — Yager parametric T-norm (``lambda_ > 0``).
-- :class:`YagerSimpleTNorm` — simplified Yager without the outer minimum.
-- :class:`ALESoftminYagerTNorm` — ALE-softmin Yager variant.
-
-The :func:`resolve_t_norm` helper maps string names to T-norm instances:
-``"prod"``, ``"min"``, ``"gmean"``, ``"dombi"``, ``"yager"``.
+Helper functions:
+    - ``resolve_t_norm(name)`` — map string names to T-norm instances.
+      Supported names include ``"prod"``, ``"min"``, ``"gmean"``,
+      ``"dombi"``, ``"yager"``, ``"yager_simple"``, and
+      ``"ale_softmin_yager"``.
 """
 
 from __future__ import annotations

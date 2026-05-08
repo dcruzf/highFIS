@@ -1,33 +1,25 @@
 """Defuzzification strategies for normalized rule firing strengths.
 
-Defuzzifiers convert raw rule firing strengths produced by the antecedent
-pipeline into a valid probability-like distribution over rules, which is
-then used for consequent aggregation.  All built-in defuzzifiers accept a
-tensor of shape ``(N, R)`` and return a normalized tensor of the same shape.
+This module defines defuzzifier classes used by TSK models to convert raw
+antecedent firing strengths into normalized rule weights for consequent
+aggregation. Each defuzzifier accepts an ``(N, R)`` tensor and returns a
+normalized tensor of the same shape.
 
 Built-in strategies:
+    - ``SoftmaxLogDefuzzifier`` — ``softmax(log(w))``, numerically stable
+      equivalent of ``w / sum(w)`` (default for HTSK and DG variants).
+    - ``SumBasedDefuzzifier`` — classic ``w / sum(w)`` normalization
+      (used by TSK, AYATSK, DombiTSK, AdaTSK).
+    - ``LogSumDefuzzifier`` — temperature-scaled ``softmax(log(w) / T)``
+      (used by LogTSK).
+    - ``InvLogDefuzzifier`` — inverse-log normalization for log-domain
+      firing strengths.
 
-- :class:`SoftmaxLogDefuzzifier` — ``softmax(log(w))``, numerically stable
-  equivalent of ``w / sum(w)`` (default for HTSK and DG variants).
-- :class:`SumBasedDefuzzifier` — classic ``w / sum(w)`` normalization
-  (used by TSK, AYATSK, DombiTSK, AdaTSK).
-- :class:`LogSumDefuzzifier` — temperature-scaled ``softmax(log(w) / T)``
-  (used by LogTSK).
-- :class:`InvLogDefuzzifier` — scale-invariant inverse-log normalization
-  (Du et al. 2020 / Cui et al. 2021).
-
-A custom defuzzifier can be supplied to any model via the ``defuzzifier``
-constructor parameter; it only needs to accept a 2-D firing-strength tensor
-and return a normalized tensor of the same shape.
-
-Examples:
-    >>> from highfis import HTSKClassifier
-    >>> from highfis.defuzzifiers import SumBasedDefuzzifier
-    >>> from highfis.memberships import GaussianMF
-    >>> input_mfs = {"x1": [GaussianMF(0.0, 1.0), GaussianMF(1.0, 1.0)]}
-    >>> model = HTSKClassifier(
-    ...     input_mfs, n_classes=3, defuzzifier=SumBasedDefuzzifier()
-    ... )
+Notes:
+    - A custom defuzzifier may be supplied via the ``defuzzifier`` constructor
+      parameter of any model.
+    - Custom defuzzifiers must accept a 2-D firing-strength tensor and return
+      a normalized tensor of the same shape.
 """
 
 from __future__ import annotations
@@ -39,8 +31,8 @@ from torch import Tensor, nn
 class SoftmaxLogDefuzzifier(nn.Module):
     """Normalize firing strengths via ``softmax(log(w))``.
 
-    Mathematically equivalent to ``w / sum(w)`` but numerically more stable
-    in high dimensions thanks to the internal max-subtraction trick of
+    Equivalent to ``w / sum(w)`` but numerically more stable in high
+    dimensions thanks to the internal max-subtraction trick of
     :func:`torch.softmax`.
     """
 
@@ -116,11 +108,6 @@ class LogSumDefuzzifier(nn.Module):
 
     The *temperature* parameter controls the sharpness of the distribution.
     ``temperature=1`` recovers :class:`SoftmaxLogDefuzzifier`.
-
-    Note:
-        This is a temperature-scaled softmax in log-space.  For the
-        scale-invariant LogTSK defuzzifier from Du et al. (2020) /
-        Cui et al. (2021), use :class:`InvLogDefuzzifier` instead.
     """
 
     def __init__(self, temperature: float = 1.0, eps: float | None = None) -> None:
@@ -166,24 +153,10 @@ class LogSumDefuzzifier(nn.Module):
 
 
 class InvLogDefuzzifier(nn.Module):
-    r"""Scale-invariant inverse-log defuzzifier for LogTSK (Du et al. 2020).
+    r"""Scale-invariant inverse-log defuzzifier for LogTSK.
 
-    Implements the L1-normalised inverse-log firing-strength formula:
-
-    .. math::
-        \bar{f}_r = \frac{1/|Z_r|}{\sum_{i=1}^{R} 1/|Z_i|}
-
-    where :math:`Z_r = \log f_r = \sum_{d=1}^{D} \log \mu_{r,d} \leq 0` is
-    the log-domain firing strength.  Because the weights depend on :math:`Z_r`
-    only through its magnitude (not its scale), the output is **immune to
-    softmax saturation** as the input dimension :math:`D` grows.
-
-    References:
-        Du, X. & Zeng, X.-J. (2020). "Fuzzy Rule-Based Classification System."
-        Cui, Y., Wu, D. & Xu, Y. (2021). "Optimize TSK Fuzzy Systems for
-        Regression Problems: Mini-Batch Gradient Descent with Regularization,
-        DropRule, and AdaBound (MBGD-RDA)." *IEEE Trans. Fuzzy Syst.*
-        29(5):1003-1015. §III-A.
+    This defuzzifier normalizes log-domain firing strengths using an
+    inverse-log transformation and L1 normalization.
     """
 
     def __init__(self, eps: float | None = None) -> None:

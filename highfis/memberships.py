@@ -1,27 +1,36 @@
 """Differentiable membership functions for fuzzy TSK models.
 
-All classes inherit from :class:`MembershipFunction`, which itself inherits
-from :class:`torch.nn.Module`, so membership parameters are learnable via
-gradient descent.
+This module defines learnable membership function classes for highFIS.
+All membership functions inherit from ``MembershipFunction``, which itself
+inherits from ``torch.nn.Module``.
 
-Available membership functions:
+Membership functions:
+    **Gaussian-based**
+        - ``GaussianMF`` — standard Gaussian with ``mean`` and ``sigma``.
+        - ``CompositeGaussianMF`` — Gaussian with a positive lower bound
+          to avoid zero membership.
+        - ``GaussianPIMF`` — Gaussian with a positive infimum, useful for
+          softmin-stable models.
 
-- :class:`GaussianMF` — standard Gaussian parameterized by ``mean`` and
-  ``sigma`` (softplus-reparameterized to stay positive).
-- :class:`CompositeGaussianMF` — Gaussian with a positive lower bound
-  ``eps``; ensures membership never reaches zero.
-- :class:`CompositeExponentialMF` — composite exponential (CEMF) with
-  lower bound ``1/k``; used by AYATSK (Xue et al., TSMC 2025).
-- :class:`TriangularMF` — triangular defined by left, center, right
-  vertices.
-- :class:`TrapezoidalMF` — trapezoidal defined by four vertices a, b,
-  c, d.
-- :class:`BellMF` — generalized bell function.
-- :class:`SigmoidalMF`, :class:`DiffSigmoidalMF`,
-  :class:`ProdSigmoidalMF` — sigmoidal variants.
-- :class:`GaussianPIMF` — Gaussian-based pi-shaped membership.
-- :class:`PiMF`, :class:`SShapedMF`, :class:`ZShapedMF`,
-  :class:`LinZShapedMF` — pi/s/z shaped functions.
+    **Exponential**
+        - ``CompositeExponentialMF`` — CEMF with lower bound ``1/k``, used
+          by AYATSK.
+
+    **Piecewise polynomial**
+        - ``TriangularMF`` — triangular membership with left/center/right.
+        - ``TrapezoidalMF`` — trapezoidal membership with four vertices.
+        - ``PiMF`` — pi-shaped membership with smooth S/Z transitions.
+        - ``SShapedMF`` / ``ZShapedMF`` — smooth S/Z membership curves.
+        - ``LinSShapedMF`` / ``LinZShapedMF`` — linear S/Z membership curves.
+
+    **Sigmoidal**
+        - ``SigmoidalMF`` — standard sigmoid.
+        - ``DiffSigmoidalMF`` — difference of two sigmoids.
+        - ``ProdSigmoidalMF`` — product of two sigmoids.
+
+Notes:
+    - Membership parameters are trainable and differentiable.
+    - This module is intended for use with TSK models in ``highfis.models``.
 """
 
 from __future__ import annotations

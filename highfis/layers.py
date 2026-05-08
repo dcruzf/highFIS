@@ -1,34 +1,30 @@
 """Antecedent and consequent layers for highFIS fuzzy models.
 
-This module provides all :class:`~torch.nn.Module` building blocks for the
-TSK fuzzy antecedent pipeline and consequent computation.
+This module provides ``torch.nn.Module`` building blocks for the TSK
+antecedent and consequent pipeline. The layers here are used by concrete
+TSK model variants in ``highfis.models``.
 
-Antecedent layers:
+Layer overview:
+    **Membership**
+        - ``MembershipLayer``
 
-- :class:`MembershipLayer` — evaluates each input feature against its
-  membership functions; returns a dict of ``(N, n_mfs)`` tensors.
-- :class:`RuleLayer` — aggregates membership degrees into rule firing
-  strengths using a configurable rule base and T-norm.  Supported
-  rule-base strategies: ``"cartesian"``, ``"coco"``, ``"en"``,
-  or ``"custom"``.
-- :class:`AdaSoftminRuleLayer` — adaptive softmin aggregation used by
-  FSRE-AdaTSK and AdaTSK.
-- :class:`DGALETSKRuleLayer` — DG-ALETSK antecedent with per-rule feature
-  gates and ALE-softmin aggregation.
-- :class:`DGTSKRuleLayer` — DG-TSK antecedent with per-rule feature gates
-  and product aggregation.
-- :class:`AdaptiveDombiRuleLayer` — per-rule adaptive Dombi aggregation
-  (ADMTSK).
+    **Rule aggregation**
+        - ``RuleLayer``
+        - ``AdaSoftminRuleLayer``
+        - ``DGALETSKRuleLayer``
+        - ``DGTSKRuleLayer``
+        - ``AdaptiveDombiRuleLayer``
 
-Consequent layers:
+    **Consequent heads**
+        - ``ClassificationConsequentLayer``
+        - ``RegressionConsequentLayer``
+        - ``GatedClassificationConsequentLayer``
+        - ``GatedClassificationZeroOrderConsequentLayer``
+        - ``GatedRegressionConsequentLayer``
+        - ``GatedRegressionZeroOrderConsequentLayer``
 
-- :class:`ClassificationConsequentLayer` — linear consequent for
-  multi-class TSK classification.
-- :class:`RegressionConsequentLayer` — linear consequent for scalar TSK
-  regression.
-
-Gate activations (used by DG-ALETSK, DG-TSK):
-:func:`gate1`, :func:`gate2`, :func:`gate3`, :func:`gate4`, :func:`gate_m`.
+Gate activations:
+    ``gate1``, ``gate2``, ``gate3``, ``gate4``, ``gate_m``
 """
 
 from __future__ import annotations
