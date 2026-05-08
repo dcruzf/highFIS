@@ -45,16 +45,18 @@ Copyright &copy; 2026 highFIS contributors
 #
 # Read more: https://zensical.org/docs/setup/navigation/
 nav = [
-    { "Home" = "index.md" },
-    { "TSK Vanilla" = "models/tsk-vanilla.md" },
-    { "LogTSK" = "models/logtsk.md" },
-    { "HTSK" = "models/htsk.md"},
-    { "DombiTSK" = "models/dombitsk.md" },
-    { "AdaTSK" = "models/adatsk.md" },
-    { "FSRE-AdaTSK" = "models/fsre-adatsk.md" },
-    { "DG-TSK" = "models/dg-tsk.md" },
-    { "DG-ALETSK" = "models/dg-aletsk.md" },
-    { "AYATSK" = "models/ayatsk.md" },
+    { "HighFIS" = "index.md" },
+    { "Models" = [
+        "models/tsk-vanilla.md",
+        "models/logtsk.md",
+        "models/htsk.md",
+        "models/dombitsk.md",
+        "models/adatsk.md",
+        "models/fsre-adatsk.md",
+        "models/dg-tsk.md",
+        "models/dg-aletsk.md",
+        "models/ayatsk.md",
+     ] },
     { "API Reference" = [
         "api/estimators.md",
         "api/models.md",
