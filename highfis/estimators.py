@@ -299,11 +299,11 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 30,
+        n_mfs: int = 5,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 200,
+        epochs: int = 10,
         learning_rate: float = 1e-2,
         verbose: bool = False,
         rule_base: str | None = None,
@@ -621,11 +621,11 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 30,
+        n_mfs: int = 5,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 200,
+        epochs: int = 10,
         learning_rate: float = 1e-2,
         verbose: bool = False,
         rule_base: str | None = None,
@@ -1146,14 +1146,14 @@ class TSKClassifierEstimator(_BaseClassifierEstimator):
         Args:
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
-            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default) or ``"grid"``.
             sigma_scale: Sigma scale factor. Use ``"auto"`` (= ``sqrt(D)``)
                 for high-dimensional data to mitigate softmax saturation
                 (Cui et al., IJCNN 2021). ``1.0`` is appropriate for low-
                 to medium-dimensional problems.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``200``).
+            epochs: Maximum training epochs (default ``10``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``. Defaults to
@@ -1340,11 +1340,11 @@ class AYATSKClassifierEstimator(_BaseClassifierEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 30,
+        n_mfs: int = 5,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 200,
+        epochs: int = 10,
         learning_rate: float = 1e-2,
         verbose: bool = False,
         rule_base: str | None = None,
@@ -1363,13 +1363,13 @@ class AYATSKClassifierEstimator(_BaseClassifierEstimator):
         Args:
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
-            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default) or ``"grid"``.
             sigma_scale: Sigma scale factor for k-means initialisation.
                 ``1.0`` is recommended; the adaptive Yager T-norm handles
                 high-dimensional stability internally.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``200``).
+            epochs: Maximum training epochs (default ``10``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``. Defaults to
@@ -1443,11 +1443,11 @@ class AYATSKRegressorEstimator(_BaseRegressorEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 30,
+        n_mfs: int = 5,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 200,
+        epochs: int = 10,
         learning_rate: float = 1e-2,
         verbose: bool = False,
         rule_base: str | None = None,
@@ -1465,11 +1465,11 @@ class AYATSKRegressorEstimator(_BaseRegressorEstimator):
         Args:
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
-            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default) or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``200``).
+            epochs: Maximum training epochs (default ``10``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
@@ -1551,11 +1551,11 @@ class DombiTSKClassifierEstimator(_BaseClassifierEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 30,
+        n_mfs: int = 5,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 200,
+        epochs: int = 10,
         learning_rate: float = 1e-2,
         verbose: bool = False,
         rule_base: str | None = None,
@@ -1574,13 +1574,13 @@ class DombiTSKClassifierEstimator(_BaseClassifierEstimator):
         Args:
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
-            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default) or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended; the Dombi
                 T-norm handles high-dimensional stability without inflating
                 sigma.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``200``).
+            epochs: Maximum training epochs (default ``10``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
@@ -1653,11 +1653,11 @@ class DombiTSKRegressorEstimator(_BaseRegressorEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 30,
+        n_mfs: int = 5,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 200,
+        epochs: int = 10,
         learning_rate: float = 1e-2,
         verbose: bool = False,
         rule_base: str | None = None,
@@ -1675,11 +1675,11 @@ class DombiTSKRegressorEstimator(_BaseRegressorEstimator):
         Args:
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
-            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default) or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``200``).
+            epochs: Maximum training epochs (default ``10``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
@@ -1756,11 +1756,11 @@ class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 30,
+        n_mfs: int = 5,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 200,
+        epochs: int = 10,
         learning_rate: float = 1e-2,
         verbose: bool = False,
         rule_base: str | None = None,
@@ -1778,12 +1778,12 @@ class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
         Args:
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
-            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default) or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended; Ada-softmin
                 handles high-dimensional stability.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``200``).
+            epochs: Maximum training epochs (default ``10``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
@@ -1852,11 +1852,11 @@ class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 30,
+        n_mfs: int = 5,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 200,
+        epochs: int = 10,
         learning_rate: float = 1e-2,
         verbose: bool = False,
         rule_base: str | None = None,
@@ -1874,11 +1874,11 @@ class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
         Args:
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
-            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default) or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``200``).
+            epochs: Maximum training epochs (default ``10``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
@@ -1927,15 +1927,16 @@ class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
 class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
     """FSRE-AdaTSK classifier with feature selection and rule extraction.
 
-    Wraps :class:`~highfis.models.FSREAdaTSKClassifier`. FSRE-AdaTSK extends
-    AdaTSK by embedding **gate functions** in both the antecedents (for
-    feature selection, FS) and the consequents (for rule extraction, RE).
-    Training is performed in two sequential phases:
+    FSRE-AdaTSK extends AdaTSK by embedding **gate functions** in the
+    consequent layer only. Feature selection and rule extraction are
+    performed in two sequential phases:
 
     1. FS phase — feature gates are trained alongside all system parameters;
        low-gate features are pruned.
     2. RE phase — rule gates are trained after building an Enhanced FRB
        (En-FRB) from the remaining features; low-gate rules are pruned.
+
+    A final fine-tuning phase is also supported by the low-level model API.
 
     When ``use_en_frb=True`` the Enhanced FRB (En-FRB), whose size grows
     linearly with the number of features, is used; the default ``False``
@@ -1949,14 +1950,10 @@ class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
 
     Example:
         ```python
-        >>> from highfis import FSREAdaTSKClassifierEstimator
-        >>> clf = FSREAdaTSKClassifierEstimator(
-        ...     n_mfs=30, lambda_init=1.0, use_en_frb=False, random_state=0
-        ... )
-        >>> clf.fit(X_train, y_train)
-        FSREAdaTSKClassifierEstimator(...)
-        >>> clf.score(X_test, y_test)
-        0.94...
+        from highfis import FSREAdaTSKClassifierEstimator
+
+        clf = FSREAdaTSKClassifierEstimator()
+        clf.fit(X_train, y_train)
         ```
     """
 
@@ -1966,11 +1963,11 @@ class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
         lambda_init: float = 1.0,
         use_en_frb: bool = False,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 30,
+        n_mfs: int = 5,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 200,
+        epochs: int = 10,
         learning_rate: float = 1e-2,
         verbose: bool = False,
         rule_base: str | None = None,
@@ -1997,11 +1994,11 @@ class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
                 to keep the compact CoCo-FRB.
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
-            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default) or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``200``).
+            epochs: Maximum training epochs (default ``10``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
@@ -2060,20 +2057,33 @@ class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
 class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
     """FSRE-AdaTSK regressor with feature selection and rule extraction.
 
-    Wraps :class:`~highfis.models.FSREAdaTSKRegressor`. See
-    :class:`FSREAdaTSKClassifierEstimator` for a description of the
-    FSRE-AdaTSK model.
+    FSRE-AdaTSK extends AdaTSK by embedding **gate functions** in the
+    consequent layer only. Feature selection and rule extraction are
+    performed in two sequential phases:
+
+    1. FS phase — feature gates are trained alongside all system parameters;
+       low-gate features are pruned.
+    2. RE phase — rule gates are trained after building an Enhanced FRB
+       (En-FRB) from the remaining features; low-gate rules are pruned.
+
+    A final fine-tuning phase is also supported by the low-level model API.
+
+    When ``use_en_frb=True`` the Enhanced FRB (En-FRB), whose size grows
+    linearly with the number of features, is used; the default ``False``
+    keeps the standard CoCo-FRB.
+
+    Reference:
+        Xue, G., Wang, J., Yuan, B., & Dai, C. (2023). DG-ALETSK: A
+        high-dimensional fuzzy approach with simultaneous feature selection
+        and rule extraction. *IEEE Trans. Fuzzy Systems*, 31(11).
+        https://doi.org/10.1109/TFUZZ.2023.3270445
 
     Example:
         ```python
-        >>> from highfis import FSREAdaTSKRegressorEstimator
-        >>> reg = FSREAdaTSKRegressorEstimator(
-        ...     n_mfs=30, lambda_init=1.0, use_en_frb=False, random_state=0
-        ... )
-        >>> reg.fit(X_train, y_train)
-        FSREAdaTSKRegressorEstimator(...)
-        >>> reg.score(X_test, y_test)
-        0.88...
+        from highfis import FSREAdaTSKRegressorEstimator
+
+        reg = FSREAdaTSKRegressorEstimator()
+        reg.fit(X_train, y_train)
         ```
     """
 
@@ -2083,11 +2093,11 @@ class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
         lambda_init: float = 1.0,
         use_en_frb: bool = False,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 30,
+        n_mfs: int = 5,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 200,
+        epochs: int = 10,
         learning_rate: float = 1e-2,
         verbose: bool = False,
         rule_base: str | None = None,
@@ -2111,11 +2121,11 @@ class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
                 extraction. Default ``False`` keeps CoCo-FRB.
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
-            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default) or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``200``).
+            epochs: Maximum training epochs (default ``10``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
@@ -2271,11 +2281,11 @@ class DGTSKClassifierEstimator(_BaseClassifierEstimator):
         *,
         use_en_frb: bool = False,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 30,
+        n_mfs: int = 5,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 200,
+        epochs: int = 10,
         learning_rate: float = 1e-2,
         verbose: bool = False,
         rule_base: str | None = None,
@@ -2294,11 +2304,11 @@ class DGTSKClassifierEstimator(_BaseClassifierEstimator):
             use_en_frb: If ``True``, use the Enhanced FRB (En-FRB) for rule
                 extraction (P-FRB). Default ``False`` keeps CoCo-FRB.
             input_configs: Per-feature :class:`InputConfig` list.
-            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default) or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for reproducibility.
-            epochs: Maximum training epochs (default ``200``).
+            epochs: Maximum training epochs (default ``10``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
@@ -2370,11 +2380,11 @@ class DGTSKRegressorEstimator(_BaseRegressorEstimator):
         *,
         use_en_frb: bool = False,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 30,
+        n_mfs: int = 5,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 200,
+        epochs: int = 10,
         learning_rate: float = 1e-2,
         verbose: bool = False,
         rule_base: str | None = None,
@@ -2393,11 +2403,11 @@ class DGTSKRegressorEstimator(_BaseRegressorEstimator):
             use_en_frb: If ``True``, use the Enhanced FRB (En-FRB) for rule
                 extraction (P-FRB). Default ``False`` keeps CoCo-FRB.
             input_configs: Per-feature :class:`InputConfig` list.
-            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default) or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for reproducibility.
-            epochs: Maximum training epochs (default ``200``).
+            epochs: Maximum training epochs (default ``10``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
@@ -2500,12 +2510,12 @@ class LogTSKClassifierEstimator(_BaseClassifierEstimator):
 
         Args:
             input_configs: Per-feature :class:`InputConfig` list.
-            n_mfs: Number of k-means clusters / grid MFs (default ``30``).
+            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default) or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` is recommended (the
                 log-space defuzzifier is scale-invariant).
             random_state: Seed for reproducibility.
-            epochs: Maximum training epochs (default ``200``).
+            epochs: Maximum training epochs (default ``10``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.

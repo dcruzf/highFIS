@@ -4,8 +4,6 @@
 
 > G. Xue, L. Hu, J. Wang and S. Ablameyko, "ADMTSK: A High-Dimensional Takagi–Sugeno–Kang Fuzzy System Based on Adaptive Dombi T-Norm," in IEEE Transactions on Fuzzy Systems, vol. 33, no. 6, pp. 1767-1780, June 2025, doi: 10.1109/TFUZZ.2025.3535640.
 
-> J. Dombi, "A general class of fuzzy operators, the demorgan class of fuzzy operators and fuzziness measures induced by fuzzy operators," Fuzzy Sets and Systems, vol. 8, no. 2, 1982, pp. 149-163, doi: 10.1016/0165-0114(82)90005-7.
-
 ## Mathematical Formulation
 
 ### Antecedent
@@ -111,36 +109,3 @@ $$
 - A full ADMTSK-style model would require combining these components with an
   adaptive λ selection mechanism, which is not currently wrapped by a single
   model class.
-
-## Example
-
-```python
-from highfis import DombiTSKClassifierEstimator
-
-clf = DombiTSKClassifierEstimator(
-    n_mfs=4,
-    mf_init="kmeans",
-    epochs=200,
-    learning_rate=1e-3,
-    random_state=42,
-)
-clf.fit(X_train, y_train)
-print(f"Accuracy: {clf.score(X_test, y_test):.4f}")
-```
-
-Low-level use:
-
-```python
-from highfis import DombiTSKClassifier, GaussianMF
-
-input_mfs = {
-    "x1": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
-    "x2": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
-}
-model = DombiTSKClassifier(
-    input_mfs,
-    n_classes=3,
-    lambda_=2.0,
-)
-history = model.fit(x_train, y_train, epochs=100, learning_rate=1e-3)
-```
