@@ -39,6 +39,7 @@ from .memberships import (
     TriangularMF,
     ZShapedMF,
 )
+from .metrics import ClassificationMetrics, RegressionMetrics, compute_metrics
 from .models import (
     AdaTSKClassifier,
     AdaTSKRegressor,
@@ -72,6 +73,7 @@ __all__: list[str] = [
     "AdaTSKRegressorEstimator",
     "BaseTSK",
     "BellMF",
+    "ClassificationMetrics",
     "CompositeExponentialMF",
     "CompositeGaussianMF",
     "DGALETSKClassifier",
@@ -109,6 +111,7 @@ __all__: list[str] = [
     "MembershipFunction",
     "PiMF",
     "ProdSigmoidalMF",
+    "RegressionMetrics",
     "SShapedMF",
     "SigmoidalMF",
     "SoftmaxLogDefuzzifier",
@@ -121,4 +124,5 @@ __all__: list[str] = [
     "TriangularMF",
     "ZShapedMF",
     "__version__",
+    "compute_metrics",
 ]
