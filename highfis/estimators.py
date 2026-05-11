@@ -307,7 +307,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
-        verbose: bool = False,
+        verbose: bool | int = False,
         rule_base: str | None = None,
         batch_size: int | None = 512,
         shuffle: bool = True,
@@ -349,8 +349,9 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
             learning_rate: Initial learning rate for the Adam optimiser.
                 Cui et al. (IJCNN 2021) selected ``0.01`` via cross-
                 validation across most datasets.
-            verbose: If ``True``, prints per-epoch loss and accuracy to
-                stdout during :meth:`fit`.
+            verbose: Verbosity level. ``0`` = quiet, ``1`` = progress bar,
+                ``2`` = per-epoch summary, ``3`` = full per-epoch logging.
+                ``True`` is accepted as an alias for ``2``.
             rule_base: Explicit rule-base construction type. ``"coco"``
                 (compactly combined) pairs rule ``r`` with MF ``r`` on every
                 feature. ``"cartesian"`` enumerates all MF combinations.
@@ -531,7 +532,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
             shuffle=bool(self.shuffle),
             ur_weight=float(self.ur_weight),
             ur_target=self.ur_target,
-            verbose=bool(self.verbose),
+            verbose=self.verbose,
             x_val=x_val_t,
             y_val=y_val_t,
             patience=self.patience,
@@ -674,7 +675,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
-        verbose: bool = False,
+        verbose: bool | int = False,
         rule_base: str | None = None,
         batch_size: int | None = 512,
         shuffle: bool = True,
@@ -716,8 +717,9 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
             learning_rate: Initial learning rate for the Adam optimiser.
                 Cui et al. (IJCNN 2021) selected ``0.01`` via cross-
                 validation across most datasets.
-            verbose: If ``True``, prints per-epoch loss and metrics to
-                stdout during :meth:`fit`.
+            verbose: Verbosity level. ``0`` = quiet, ``1`` = progress bar,
+                ``2`` = per-epoch summary, ``3`` = full per-epoch logging.
+                ``True`` is accepted as an alias for ``2``.
             rule_base: Explicit rule-base construction type. ``"coco"``
                 (compactly combined) pairs rule ``r`` with MF ``r`` on every
                 feature. ``"cartesian"`` enumerates all MF combinations.
@@ -888,7 +890,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
             shuffle=bool(self.shuffle),
             ur_weight=float(self.ur_weight),
             ur_target=self.ur_target,
-            verbose=bool(self.verbose),
+            verbose=self.verbose,
             x_val=x_val_t,
             y_val=y_val_t,
             patience=self.patience,
@@ -1015,7 +1017,7 @@ class HTSKClassifierEstimator(_BaseClassifierEstimator):
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
-        verbose: bool = False,
+        verbose: bool | int = False,
         rule_base: str | None = None,
         batch_size: int | None = 512,
         shuffle: bool = True,
@@ -1122,7 +1124,7 @@ class HTSKRegressorEstimator(_BaseRegressorEstimator):
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
-        verbose: bool = False,
+        verbose: bool | int = False,
         rule_base: str | None = None,
         batch_size: int | None = 512,
         shuffle: bool = True,
@@ -1233,7 +1235,7 @@ class TSKClassifierEstimator(_BaseClassifierEstimator):
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
-        verbose: bool = False,
+        verbose: bool | int = False,
         rule_base: str | None = None,
         batch_size: int | None = 512,
         shuffle: bool = True,
@@ -1344,7 +1346,7 @@ class TSKRegressorEstimator(_BaseRegressorEstimator):
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
-        verbose: bool = False,
+        verbose: bool | int = False,
         rule_base: str | None = None,
         batch_size: int | None = 512,
         shuffle: bool = True,
@@ -1449,7 +1451,7 @@ class AYATSKClassifierEstimator(_BaseClassifierEstimator):
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
-        verbose: bool = False,
+        verbose: bool | int = False,
         rule_base: str | None = None,
         batch_size: int | None = 512,
         shuffle: bool = True,
@@ -1560,7 +1562,7 @@ class AYATSKRegressorEstimator(_BaseRegressorEstimator):
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
-        verbose: bool = False,
+        verbose: bool | int = False,
         rule_base: str | None = None,
         batch_size: int | None = 512,
         shuffle: bool = True,
@@ -1663,7 +1665,7 @@ class DombiTSKClassifierEstimator(_BaseClassifierEstimator):
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
-        verbose: bool = False,
+        verbose: bool | int = False,
         rule_base: str | None = None,
         batch_size: int | None = 512,
         shuffle: bool = True,
@@ -1774,7 +1776,7 @@ class DombiTSKRegressorEstimator(_BaseRegressorEstimator):
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
-        verbose: bool = False,
+        verbose: bool | int = False,
         rule_base: str | None = None,
         batch_size: int | None = 512,
         shuffle: bool = True,
@@ -1875,7 +1877,7 @@ class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
-        verbose: bool = False,
+        verbose: bool | int = False,
         rule_base: str | None = None,
         batch_size: int | None = 512,
         shuffle: bool = True,
@@ -1979,7 +1981,7 @@ class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
-        verbose: bool = False,
+        verbose: bool | int = False,
         rule_base: str | None = None,
         batch_size: int | None = 512,
         shuffle: bool = True,
@@ -2082,7 +2084,7 @@ class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
-        verbose: bool = False,
+        verbose: bool | int = False,
         rule_base: str | None = None,
         batch_size: int | None = 512,
         shuffle: bool = True,
@@ -2204,7 +2206,7 @@ class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
-        verbose: bool = False,
+        verbose: bool | int = False,
         rule_base: str | None = None,
         batch_size: int | None = 512,
         shuffle: bool = True,
@@ -2405,7 +2407,7 @@ class DGTSKClassifierEstimator(_BaseClassifierEstimator):
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
-        verbose: bool = False,
+        verbose: bool | int = False,
         rule_base: str | None = None,
         batch_size: int | None = 512,
         shuffle: bool = True,
@@ -2517,7 +2519,7 @@ class DGTSKRegressorEstimator(_BaseRegressorEstimator):
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
-        verbose: bool = False,
+        verbose: bool | int = False,
         rule_base: str | None = None,
         batch_size: int | None = 512,
         shuffle: bool = True,
@@ -2634,7 +2636,7 @@ class LogTSKClassifierEstimator(_BaseClassifierEstimator):
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
-        verbose: bool = False,
+        verbose: bool | int = False,
         rule_base: str | None = None,
         batch_size: int | None = 512,
         shuffle: bool = True,
@@ -2741,7 +2743,7 @@ class LogTSKRegressorEstimator(_BaseRegressorEstimator):
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
-        verbose: bool = False,
+        verbose: bool | int = False,
         rule_base: str | None = None,
         batch_size: int | None = 512,
         shuffle: bool = True,

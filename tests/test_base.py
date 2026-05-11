@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import sys
+from typing import Any, cast
 
 import pytest
 import torch
@@ -79,6 +80,41 @@ class TestBaseTSK:
         assert len(history["train"]) == 5
         assert len(history["val"]) == 5
         assert history["stopped_epoch"] == 5
+
+    def test_fit_verbose_level_one_uses_progress_bar(self) -> None:
+        model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
+        x = torch.randn(20, 2)
+        y = torch.randint(0, 2, (20,))
+        history = model.fit(x, y, epochs=3, verbose=1)
+        assert len(history["train"]) == 3
+
+    def test_fit_verbose_level_three_logs_every_epoch(self) -> None:
+        model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
+        x = torch.randn(20, 2)
+        y = torch.randint(0, 2, (20,))
+        history = model.fit(x, y, epochs=3, verbose=3)
+        assert len(history["train"]) == 3
+
+    def test_fit_verbose_level_one_with_validation_uses_progress_bar(self, capfd) -> None:
+        model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
+        x = torch.randn(20, 2)
+        y = torch.randint(0, 2, (20,))
+        history = model.fit(x, y, epochs=3, verbose=1, x_val=x, y_val=y)
+        capfd.readouterr()
+        assert len(history["train"]) == 3
+
+    def test_resolve_verbose_rejects_invalid_type(self) -> None:
+        model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
+        with pytest.raises(
+            TypeError,
+            match=r"verbose must be an int in 0\.\.3 or a bool",
+        ):
+            model._resolve_verbose(cast(Any, "yes"))
+
+    def test_resolve_verbose_rejects_invalid_range(self) -> None:
+        model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
+        with pytest.raises(ValueError, match="verbose must be between 0 and 3"):
+            model._resolve_verbose(4)
 
     def test_log_verbose_logs_message(self) -> None:
         model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
