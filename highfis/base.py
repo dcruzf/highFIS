@@ -250,7 +250,8 @@ class BaseTSK(nn.Module):
         verbose: bool = False,
         x_val: Tensor | None = None,
         y_val: Tensor | None = None,
-        patience: int = 20,
+        patience: int | None = 20,
+        restore_best: bool = True,
         weight_decay: float = 1e-8,
     ) -> dict[str, Any]:
         """Train the model with optional early stopping.
@@ -258,8 +259,9 @@ class BaseTSK(nn.Module):
         When *x_val* and *y_val* are provided the model evaluates a
         task-specific metric (via :meth:`_evaluate_validation`) after every
         epoch and applies early stopping when the metric has not improved for
-        *patience* consecutive epochs.  The best model weights are restored
-        automatically.
+        *patience* consecutive epochs.
+        By default the best model weights from validation are restored when
+        ``restore_best=True``.
 
         Args:
             x: Training features of shape ``(N, n_inputs)``.
@@ -284,8 +286,10 @@ class BaseTSK(nn.Module):
                 ``(M, n_inputs)``.
             y_val: Optional validation targets of shape ``(M,)``.
             patience: Number of consecutive epochs without improvement
-                before early stopping.  Only active when *x_val* and
-                *y_val* are given.
+                before early stopping.  Set to ``None`` to disable early
+                stopping.  Only active when *x_val* and *y_val* are given.
+            restore_best: If ``True`` (default), restore the model weights
+                from the best validation epoch when early stopping is used.
             weight_decay: L2 weight decay applied to consequent parameters
                 by the default AdamW optimizer.
 
@@ -389,7 +393,7 @@ class BaseTSK(nn.Module):
                             log_parts.append(f"{k}={v:.6f}" if isinstance(v, float) else f"{k}={v}")
                     self._log(" ".join(log_parts), verbose=True)
 
-                if epochs_no_improve >= patience:
+                if patience is not None and epochs_no_improve >= patience:
                     if verbose:
                         self._log("early stopping at epoch %s (patience=%s)", epoch + 1, patience, verbose=True)
                     break
@@ -397,7 +401,7 @@ class BaseTSK(nn.Module):
                 if verbose and ((epoch + 1) % max(epochs // 10, 1) == 0 or epoch == 0):
                     self._log("epoch=%s/%s loss=%.6f", epoch + 1, epochs, epoch_train_loss, verbose=True)
 
-        if best_state is not None:
+        if restore_best and best_state is not None:
             self.load_state_dict(best_state)
 
         history["stopped_epoch"] = epoch + 1  # type: ignore[possibly-undefined]

@@ -62,6 +62,24 @@ class TestBaseTSK:
         history = model.fit(x, y, epochs=5, x_val=x, y_val=y, patience=3)
         assert "val" in history
 
+    def test_fit_with_validation_patience_none(self) -> None:
+        model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
+        x = torch.randn(20, 2)
+        y = torch.randint(0, 2, (20,))
+        history = model.fit(x, y, epochs=5, x_val=x, y_val=y, patience=None)
+        assert len(history["train"]) == 5
+        assert len(history["val"]) == 5
+        assert history["stopped_epoch"] == 5
+
+    def test_fit_with_validation_restore_best_false(self) -> None:
+        model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
+        x = torch.randn(20, 2)
+        y = torch.randint(0, 2, (20,))
+        history = model.fit(x, y, epochs=5, x_val=x, y_val=y, patience=1, restore_best=False)
+        assert len(history["train"]) == 5
+        assert len(history["val"]) == 5
+        assert history["stopped_epoch"] == 5
+
     def test_log_verbose_logs_message(self) -> None:
         model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
         model._log("verbose test", verbose=True)
