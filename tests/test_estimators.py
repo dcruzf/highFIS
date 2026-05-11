@@ -7,7 +7,9 @@ import numpy as np
 import pytest
 from sklearn.exceptions import NotFittedError
 from sklearn.pipeline import Pipeline
+from torch import nn
 
+from highfis.base import BaseTSK
 from highfis.estimators import (
     AdaTSKClassifierEstimator,
     AdaTSKRegressorEstimator,
@@ -858,7 +860,95 @@ def test_estimator_no_val_runs_full_epochs() -> None:
     est.fit(x, y)
 
     assert est.history_["stopped_epoch"] == 10
-    assert len(est.history_["val"]) == 0
+
+
+def test_estimator_patience_none_disables_early_stopping() -> None:
+    """Setting patience=None should disable early stopping even with validation data."""
+    x, y = _make_dataset(80)
+    x_train, x_val = x[:60], x[60:]
+    y_train, y_val = y[:60], y[60:]
+
+    est = HTSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=10,
+        learning_rate=5e-2,
+        random_state=7,
+        patience=None,
+        validation_data=(x_val, y_val),
+    )
+    est.fit(x_train, y_train)
+
+    assert est.history_["stopped_epoch"] == 10
+    assert len(est.history_["val"]) == 10
+
+
+def test_estimator_restore_best_false_does_not_restore_best_model() -> None:
+    """With restore_best=False, estimator should keep final weights."""
+    x, y = _make_dataset(80)
+    x_train, x_val = x[:60], x[60:]
+    y_train, y_val = y[:60], y[60:]
+
+    est = HTSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=5e-2,
+        random_state=7,
+        patience=1,
+        restore_best=False,
+        validation_data=(x_val, y_val),
+    )
+    est.fit(x_train, y_train)
+
+    assert est.history_["stopped_epoch"] == 5
+    assert len(est.history_["val"]) == 5
+
+
+def test_estimator_passes_restore_best_to_model_fit() -> None:
+    class SpyModel(BaseTSK):
+        def __init__(self, input_mfs: dict[str, list[GaussianMF]], rule_base: str) -> None:
+            super().__init__(input_mfs, rule_base=rule_base)
+            self.fit_kwargs: dict[str, object] | None = None
+
+        def _build_consequent_layer(self) -> nn.Module:
+            from torch import nn
+
+            return nn.Linear(self.n_inputs, 1, bias=False)
+
+        def _default_criterion(self) -> nn.Module:
+            from torch import nn
+
+            return nn.MSELoss()
+
+        def fit(self, *args: object, **kwargs: object) -> dict[str, list[float]]:
+            self.fit_kwargs = kwargs
+            return {"train": [], "ur": [], "val": []}
+
+    class SpyEstimator(HTSKClassifierEstimator):
+        def _build_model(
+            self,
+            input_mfs: dict[str, list[GaussianMF]],
+            n_classes: int,
+            rule_base: str,
+        ) -> SpyModel:
+            return SpyModel(input_mfs, rule_base)
+
+    x, y = _make_dataset(60)
+    est = SpyEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=1,
+        learning_rate=1e-2,
+        random_state=7,
+        patience=1,
+        restore_best=False,
+    )
+    est.fit(x, y)
+
+    assert isinstance(est.model_, SpyModel)
+    assert est.model_.fit_kwargs is not None
+    assert est.model_.fit_kwargs["restore_best"] is False
 
 
 def test_estimator_sigma_scale_auto() -> None:

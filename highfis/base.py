@@ -40,6 +40,7 @@ from typing import Any, cast
 
 import torch
 from torch import Tensor, nn
+from tqdm.auto import trange
 
 from .defuzzifiers import SoftmaxLogDefuzzifier
 from .layers import MembershipLayer, RuleLayer
@@ -207,13 +208,24 @@ class BaseTSK(nn.Module):
         message: str,
         *args: Any,
         level: int = logging.INFO,
-        verbose: bool = False,
+        verbose: bool | int = False,
+        min_level: int = 2,
         **kwargs: Any,
     ) -> None:
         """Log a message when verbose mode is enabled."""
-        if not verbose:
+        if self._resolve_verbose(verbose) < min_level:
             return
         self.logger.log(level, message, *args, **kwargs)
+
+    def _resolve_verbose(self, verbose: bool | int = False) -> int:
+        """Normalize verbose settings to a numeric verbosity level."""
+        if isinstance(verbose, bool):
+            return 2 if verbose else 0
+        if not isinstance(verbose, int):
+            raise TypeError("verbose must be an int in 0..3 or a bool")
+        if verbose < 0 or verbose > 3:
+            raise ValueError("verbose must be between 0 and 3")
+        return verbose
 
     def _evaluate_validation(
         self,
@@ -247,10 +259,11 @@ class BaseTSK(nn.Module):
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
-        verbose: bool = False,
+        verbose: bool | int = False,
         x_val: Tensor | None = None,
         y_val: Tensor | None = None,
-        patience: int = 20,
+        patience: int | None = 20,
+        restore_best: bool = True,
         weight_decay: float = 1e-8,
     ) -> dict[str, Any]:
         """Train the model with optional early stopping.
@@ -258,8 +271,9 @@ class BaseTSK(nn.Module):
         When *x_val* and *y_val* are provided the model evaluates a
         task-specific metric (via :meth:`_evaluate_validation`) after every
         epoch and applies early stopping when the metric has not improved for
-        *patience* consecutive epochs.  The best model weights are restored
-        automatically.
+        *patience* consecutive epochs.
+        By default the best model weights from validation are restored when
+        ``restore_best=True``.
 
         Args:
             x: Training features of shape ``(N, n_inputs)``.
@@ -278,14 +292,17 @@ class BaseTSK(nn.Module):
             ur_target: Target uniform activation for UR.  Must be in
                 ``(0, 1]`` when provided.  ``None`` defaults to
                 ``1 / n_rules``.
-            verbose: If ``True``, log per-epoch progress via the module
-                logger.
+            verbose: Verbosity level. ``0`` = quiet, ``1`` = progress bar,
+                ``2`` = per-epoch summary logging, ``3`` = per-epoch detailed
+                logging. ``True`` is accepted as an alias for ``2``.
             x_val: Optional validation features of shape
                 ``(M, n_inputs)``.
             y_val: Optional validation targets of shape ``(M,)``.
             patience: Number of consecutive epochs without improvement
-                before early stopping.  Only active when *x_val* and
-                *y_val* are given.
+                before early stopping.  Set to ``None`` to disable early
+                stopping.  Only active when *x_val* and *y_val* are given.
+            restore_best: If ``True`` (default), restore the model weights
+                from the best validation epoch when early stopping is used.
             weight_decay: L2 weight decay applied to consequent parameters
                 by the default AdamW optimizer.
 
@@ -338,9 +355,17 @@ class BaseTSK(nn.Module):
         best_metric = float("-inf")
         epochs_no_improve = 0
         best_state: dict[str, Any] | None = None
+        verbose_level = self._resolve_verbose(verbose)
 
         self.train()
-        for epoch in range(epochs):
+        pbar = None
+        if verbose_level == 1:
+            pbar = trange(epochs, desc="Training", leave=False)
+            epoch_iterator = pbar
+        else:
+            epoch_iterator = range(epochs)
+
+        for epoch in epoch_iterator:
             batch_losses: list[float] = []
             batch_ur_losses: list[float] = []
             for batch_idx in _iter_minibatch_indices(x.shape[0], batch_size=batch_size, shuffle=shuffle):
@@ -382,22 +407,55 @@ class BaseTSK(nn.Module):
                 else:
                     epochs_no_improve += 1
 
-                if verbose and ((epoch + 1) % max(epochs // 10, 1) == 0 or epoch == 0):
-                    log_parts = [f"epoch={epoch + 1}/{epochs}", f"train_loss={epoch_train_loss:.6f}"]
+                if verbose_level == 1:
+                    if pbar is None:
+                        raise RuntimeError("progress bar unavailable for verbose level 1")
+                    postfix = [
+                        f"train={epoch_train_loss:.4f}",
+                        f"val={val_info.get('val_loss', 0.0):.4f}",
+                    ]
+                    pbar.set_postfix_str(" ".join(postfix))
+                if verbose_level >= 2 and (
+                    verbose_level == 3 or ((epoch + 1) % max(epochs // 10, 1) == 0 or epoch == 0)
+                ):
+                    log_parts = [
+                        f"epoch={epoch + 1}/{epochs}",
+                        f"train_loss={epoch_train_loss:.6f}",
+                    ]
                     for k, v in val_info.items():
                         if k != "metric":
                             log_parts.append(f"{k}={v:.6f}" if isinstance(v, float) else f"{k}={v}")
-                    self._log(" ".join(log_parts), verbose=True)
+                    self._log(" ".join(log_parts), verbose=verbose_level)
 
-                if epochs_no_improve >= patience:
-                    if verbose:
-                        self._log("early stopping at epoch %s (patience=%s)", epoch + 1, patience, verbose=True)
+                if patience is not None and epochs_no_improve >= patience:
+                    if verbose_level >= 2:
+                        self._log(
+                            "early stopping at epoch %s (patience=%s)",
+                            epoch + 1,
+                            patience,
+                            verbose=verbose_level,
+                        )
                     break
             else:
-                if verbose and ((epoch + 1) % max(epochs // 10, 1) == 0 or epoch == 0):
-                    self._log("epoch=%s/%s loss=%.6f", epoch + 1, epochs, epoch_train_loss, verbose=True)
+                if verbose_level == 1:
+                    if pbar is None:
+                        raise RuntimeError("progress bar unavailable for verbose level 1")
+                    pbar.set_postfix_str(f"loss={epoch_train_loss:.4f}")
+                if verbose_level >= 2 and (
+                    verbose_level == 3 or ((epoch + 1) % max(epochs // 10, 1) == 0 or epoch == 0)
+                ):
+                    self._log(
+                        "epoch=%s/%s loss=%.6f",
+                        epoch + 1,
+                        epochs,
+                        epoch_train_loss,
+                        verbose=verbose_level,
+                    )
 
-        if best_state is not None:
+        if pbar is not None:
+            pbar.close()
+
+        if restore_best and best_state is not None:
             self.load_state_dict(best_state)
 
         history["stopped_epoch"] = epoch + 1  # type: ignore[possibly-undefined]
