@@ -627,12 +627,10 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         """Compute classification evaluation metrics for the provided dataset."""
         y_true = np.asarray(y)
         y_pred = self.predict(X)
-        y_prob = self.predict_proba(X)
         return compute_metrics(
             task="classification",
             y_true=y_true,
             y_pred=y_pred,
-            y_prob=y_prob,
             sample_weight=sample_weight,
             metrics=metrics,
         )

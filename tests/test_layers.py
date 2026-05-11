@@ -114,6 +114,40 @@ def test_classification_consequent_layer_forward_shape() -> None:
     assert logits.shape == (5, 3)
 
 
+def test_gated_classification_consequent_layer_fs_shared_lambda_false() -> None:
+    layer = GatedClassificationConsequentLayer(
+        n_rules=3,
+        n_inputs=2,
+        n_classes=2,
+        gate_fn=gate1,
+        shared_lambda=False,
+    )
+    layer.mode = "fs"
+    x = torch.randn(4, 2)
+    norm_w = torch.softmax(torch.randn(4, 3), dim=1)
+
+    logits = layer(x, norm_w)
+
+    assert logits.shape == (4, 2)
+
+
+def test_gated_classification_consequent_layer_both_shared_lambda_true() -> None:
+    layer = GatedClassificationConsequentLayer(
+        n_rules=3,
+        n_inputs=2,
+        n_classes=2,
+        gate_fn=gate1,
+        shared_lambda=True,
+    )
+    layer.mode = "both"
+    x = torch.randn(4, 2)
+    norm_w = torch.softmax(torch.randn(4, 3), dim=1)
+
+    logits = layer(x, norm_w)
+
+    assert logits.shape == (4, 2)
+
+
 def test_classification_consequent_layer_he_init() -> None:
     """Verify He (Kaiming) initialization on weight and zero bias."""
     layer = ClassificationConsequentLayer(n_rules=4, n_inputs=10, n_classes=3)
