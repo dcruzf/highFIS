@@ -2,6 +2,40 @@
 
 This module provides a small, sklearn-style evaluation API for both
 regression and classification tasks.
+
+Classification Metrics:
+    - ``accuracy``: standard accuracy score
+    - ``balanced_accuracy``: average recall over classes
+    - ``precision_macro``: macro-averaged precision
+    - ``recall_macro``: macro-averaged recall
+    - ``f1_macro``: macro-averaged F1 score
+    - ``precision_micro``: micro-averaged precision
+    - ``recall_micro``: micro-averaged recall
+    - ``f1_micro``: micro-averaged F1 score
+    - ``confusion_matrix``: confusion matrix by class
+    - ``classes``: sorted union of true and predicted labels
+
+Regression Metrics:
+    - ``mse``: mean squared error
+    - ``mae``: mean absolute error
+    - ``rmse``: root mean squared error
+    - ``r2``: coefficient of determination
+    - ``median_absolute_error``: median absolute error
+    - ``mean_bias_error``: average prediction bias
+    - ``max_error``: maximum absolute error
+    - ``std_error``: standard deviation of residuals
+    - ``explained_variance``: explained variance score
+    - ``mape``: mean absolute percentage error
+    - ``smape``: symmetric mean absolute percentage error
+    - ``msle``: mean squared logarithmic error
+    - ``pearson``: Pearson correlation coefficient
+
+Notes:
+    - The module exports ``compute_metrics`` and the helper classes
+      ``ClassificationMetrics`` and ``RegressionMetrics``.
+    - ``compute_metrics`` validates metric names and returns only the
+      requested subset.
+    - All metrics accept raw array-like inputs and flatten non-1D arrays.
 """
 
 from __future__ import annotations
