@@ -12,6 +12,7 @@ import numpy as np
 from sklearn.metrics import (
     accuracy_score,
     balanced_accuracy_score,
+    confusion_matrix,
     f1_score,
     log_loss,
     mean_absolute_error,
@@ -27,6 +28,11 @@ ClassificationMetric = Literal[
     "precision_macro",
     "recall_macro",
     "f1_macro",
+    "precision_micro",
+    "recall_micro",
+    "f1_micro",
+    "confusion_matrix",
+    "classes",
     "log_loss",
 ]
 RegressionMetric = Literal["mse", "mae", "rmse", "r2"]
@@ -41,7 +47,14 @@ DEFAULT_CLASSIFICATION_METRICS: list[ClassificationMetric] = [
 ]
 DEFAULT_REGRESSION_METRICS: list[RegressionMetric] = ["mse", "mae", "rmse", "r2"]
 
-_CLASSIFICATION_METRIC_NAMES = set(DEFAULT_CLASSIFICATION_METRICS) | {"log_loss"}
+_CLASSIFICATION_METRIC_NAMES = set(DEFAULT_CLASSIFICATION_METRICS) | {
+    "precision_micro",
+    "recall_micro",
+    "f1_micro",
+    "confusion_matrix",
+    "classes",
+    "log_loss",
+}
 _REGRESSION_METRIC_NAMES = set(DEFAULT_REGRESSION_METRICS)
 
 
@@ -79,6 +92,35 @@ class ClassificationMetrics:
     def f1_macro(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
         """Return macro-averaged F1 score."""
         return float(f1_score(y_true, y_pred, average="macro", zero_division=0, sample_weight=sample_weight))
+
+    @staticmethod
+    def precision_micro(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
+        """Return micro-averaged precision."""
+        return float(precision_score(y_true, y_pred, average="micro", zero_division=0, sample_weight=sample_weight))
+
+    @staticmethod
+    def recall_micro(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
+        """Return micro-averaged recall."""
+        return float(recall_score(y_true, y_pred, average="micro", zero_division=0, sample_weight=sample_weight))
+
+    @staticmethod
+    def f1_micro(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
+        """Return micro-averaged F1 score."""
+        return float(f1_score(y_true, y_pred, average="micro", zero_division=0, sample_weight=sample_weight))
+
+    @staticmethod
+    def confusion_matrix(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> np.ndarray:
+        """Return the confusion matrix for the predictions."""
+        y_true_arr = _flatten_array(y_true)
+        y_pred_arr = _flatten_array(y_pred)
+        return confusion_matrix(y_true_arr, y_pred_arr, sample_weight=sample_weight)
+
+    @staticmethod
+    def classes(y_true: Any, y_pred: Any) -> np.ndarray:
+        """Return the sorted set of predicted and true classes."""
+        y_true_arr = _flatten_array(y_true)
+        y_pred_arr = _flatten_array(y_pred)
+        return np.unique(np.concatenate([y_true_arr, y_pred_arr]))
 
     @staticmethod
     def log_loss(y_true: Any, y_prob: Any, sample_weight: Any | None = None) -> float:
@@ -157,7 +199,7 @@ def compute_metrics(
     y_prob: Any | None = None,
     sample_weight: Any | None = None,
     metrics: list[str] | None = None,
-) -> dict[str, float]:
+) -> dict[str, Any]:
     """Compute a set of named evaluation metrics.
 
     Args:
@@ -181,7 +223,7 @@ def compute_metrics(
             y_prob,
             metric_names,
         )
-        results: dict[str, float] = {}
+        results: dict[str, Any] = {}
         for metric in metric_names:
             if metric == "accuracy":
                 results[metric] = ClassificationMetrics.accuracy(
@@ -212,6 +254,35 @@ def compute_metrics(
                     y_true_arr,
                     y_pred_arr,
                     sample_weight=sample_weight,
+                )
+            elif metric == "precision_micro":
+                results[metric] = ClassificationMetrics.precision_micro(
+                    y_true_arr,
+                    y_pred_arr,
+                    sample_weight=sample_weight,
+                )
+            elif metric == "recall_micro":
+                results[metric] = ClassificationMetrics.recall_micro(
+                    y_true_arr,
+                    y_pred_arr,
+                    sample_weight=sample_weight,
+                )
+            elif metric == "f1_micro":
+                results[metric] = ClassificationMetrics.f1_micro(
+                    y_true_arr,
+                    y_pred_arr,
+                    sample_weight=sample_weight,
+                )
+            elif metric == "confusion_matrix":
+                results[metric] = ClassificationMetrics.confusion_matrix(
+                    y_true_arr,
+                    y_pred_arr,
+                    sample_weight=sample_weight,
+                )
+            elif metric == "classes":
+                results[metric] = ClassificationMetrics.classes(
+                    y_true_arr,
+                    y_pred_arr,
                 )
             elif metric == "log_loss":
                 results[metric] = ClassificationMetrics.log_loss(

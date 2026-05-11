@@ -114,6 +114,38 @@ def test_compute_metrics_classification_log_loss_and_custom_list() -> None:
     assert result["log_loss"] >= 0.0
 
 
+def test_compute_metrics_classification_extra_metrics() -> None:
+    y_true = np.array([0, 1, 0, 1])
+    y_pred = np.array([0, 1, 1, 1])
+
+    result = compute_metrics(
+        task="classification",
+        y_true=y_true,
+        y_pred=y_pred,
+        metrics=[
+            "precision_micro",
+            "recall_micro",
+            "f1_micro",
+            "confusion_matrix",
+            "classes",
+        ],
+    )
+
+    assert set(result) == {
+        "precision_micro",
+        "recall_micro",
+        "f1_micro",
+        "confusion_matrix",
+        "classes",
+    }
+    assert np.isclose(result["precision_micro"], 0.75)
+    assert np.isclose(result["recall_micro"], 0.75)
+    assert np.isclose(result["f1_micro"], 0.75)
+    assert isinstance(result["confusion_matrix"], np.ndarray)
+    assert result["confusion_matrix"].shape == (2, 2)
+    assert np.array_equal(result["classes"], np.array([0, 1]))
+
+
 def test_compute_metrics_classification_log_loss_requires_y_prob() -> None:
     with pytest.raises(ValueError, match="y_prob is required for log_loss evaluation"):
         compute_metrics(task="classification", y_true=[0, 1], y_pred=[0, 1], metrics=["log_loss"])
