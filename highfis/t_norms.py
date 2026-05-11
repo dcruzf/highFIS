@@ -158,7 +158,7 @@ class AdaptiveDombiTNorm(BaseTNorm):
         self.eps = eps
 
         denom = math.log(self.K - self.lower_bound) - math.log(1.0 - self.lower_bound)
-        if denom <= 0.0:
+        if denom <= 0.0:  # pragma: no cover
             raise ValueError("invalid lambda computation for given lower_bound and K")
         lambda_ = math.log(float(self.dimension)) / denom
         self.dombi = DombiTNorm(lambda_=lambda_, eps=eps)

@@ -795,7 +795,7 @@ class ADMTSKClassifier(BaseTSKClassifier):
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
-        rule_base: str = "cartesian",
+        rule_base: str = "coco",
         t_norm: str = "dombi",
         adaptive: bool = True,
         lambda_: float = 1.0,
@@ -871,7 +871,7 @@ class ADMTSKRegressor(BaseTSKRegressor):
     def __init__(
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
-        rule_base: str = "cartesian",
+        rule_base: str = "coco",
         t_norm: str = "dombi",
         adaptive: bool = True,
         lambda_: float = 1.0,
