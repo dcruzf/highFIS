@@ -111,11 +111,13 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 
 from .base import BaseTSK
-from .memberships import DimensionDependentGaussianMF, GaussianMF
+from .memberships import CompositeGMF, DimensionDependentGaussianMF, GaussianMF
 from .metrics import compute_metrics
 from .models import (
     AdaTSKClassifier,
     AdaTSKRegressor,
+    ADMTSKClassifier,
+    ADMTSKRegressor,
     AYATSKClassifier,
     AYATSKRegressor,
     DGALETSKClassifier,
@@ -301,6 +303,26 @@ def _wrap_dimension_dependent_gaussian_input_mfs(
                     dimension=dimension,
                     xi=xi,
                     rho=rho,
+                )
+                for mf in mfs
+            ],
+        )
+        for name, mfs in input_mfs.items()
+    }
+
+
+def _wrap_composite_gaussian_input_mfs(
+    input_mfs: dict[str, list[GaussianMF]],
+    eps: float | None = None,
+) -> dict[str, list[GaussianMF]]:
+    return {
+        name: cast(
+            list[GaussianMF],
+            [
+                CompositeGMF(
+                    mean=mf.mean.detach().item(),
+                    sigma=mf.sigma.detach().item(),
+                    eps=eps if eps is not None else mf.eps,
                 )
                 for mf in mfs
             ],
@@ -2243,6 +2265,169 @@ class DombiTSKRegressorEstimator(_BaseRegressorEstimator):
         return DombiTSKRegressor(
             input_mfs,
             rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+
+class ADMTSKClassifierEstimator(_BaseClassifierEstimator):
+    r"""ADMTSK classifier estimator with Composite GMF and adaptive Dombi lambda."""
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 5,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 10,
+        learning_rate: float = 1e-2,
+        verbose: bool | int = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        pfrb_max_rules: int | None = None,
+        patience: int | None = 20,
+        restore_best: bool = True,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+        adaptive: bool = True,
+        lambda_: float = 1.0,
+        lower_bound: float = 1.0 / math.e,
+        K: float = 10.0,
+    ) -> None:
+        """Initialise an ADMTSK classifier estimator."""
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            pfrb_max_rules=pfrb_max_rules,
+            patience=patience,
+            restore_best=restore_best,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
+        self.adaptive = bool(adaptive)
+        self.lambda_ = float(lambda_)
+        self.lower_bound = float(lower_bound)
+        self.K = float(K)
+
+    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[dict[str, list[GaussianMF]], list[str], str]:
+        input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
+        return (
+            _wrap_composite_gaussian_input_mfs(input_mfs),
+            feature_names,
+            effective_rule_base,
+        )
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        n_classes: int,
+        rule_base: str,
+    ) -> BaseTSK:
+        return ADMTSKClassifier(
+            input_mfs,
+            n_classes=n_classes,
+            rule_base=rule_base,
+            adaptive=self.adaptive,
+            lambda_=self.lambda_,
+            lower_bound=self.lower_bound,
+            K=self.K,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+
+class ADMTSKRegressorEstimator(_BaseRegressorEstimator):
+    r"""ADMTSK regressor estimator with Composite GMF and adaptive Dombi lambda."""
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 5,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 10,
+        learning_rate: float = 1e-2,
+        verbose: bool | int = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        patience: int | None = 20,
+        restore_best: bool = True,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+        adaptive: bool = True,
+        lambda_: float = 1.0,
+        lower_bound: float = 1.0 / math.e,
+        K: float = 10.0,
+    ) -> None:
+        """Initialise an ADMTSK regressor estimator."""
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            patience=patience,
+            restore_best=restore_best,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
+        self.adaptive = bool(adaptive)
+        self.lambda_ = float(lambda_)
+        self.lower_bound = float(lower_bound)
+        self.K = float(K)
+
+    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[dict[str, list[GaussianMF]], list[str], str]:
+        input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
+        return (
+            _wrap_composite_gaussian_input_mfs(input_mfs),
+            feature_names,
+            effective_rule_base,
+        )
+
+    def _build_regressor_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        rule_base: str,
+        n_classes: int | None = None,
+    ) -> BaseTSK:
+        return ADMTSKRegressor(
+            input_mfs,
+            rule_base=rule_base,
+            adaptive=self.adaptive,
+            lambda_=self.lambda_,
+            lower_bound=self.lower_bound,
+            K=self.K,
             consequent_batch_norm=bool(self.consequent_batch_norm),
         )
 
