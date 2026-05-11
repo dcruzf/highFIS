@@ -15,7 +15,6 @@ from sklearn.metrics import (
     confusion_matrix,
     explained_variance_score,
     f1_score,
-    log_loss,
     max_error,
     mean_absolute_error,
     mean_absolute_percentage_error,
@@ -38,7 +37,6 @@ ClassificationMetric = Literal[
     "f1_micro",
     "confusion_matrix",
     "classes",
-    "log_loss",
 ]
 RegressionMetric = Literal[
     "mse",
@@ -72,7 +70,6 @@ _CLASSIFICATION_METRIC_NAMES = set(DEFAULT_CLASSIFICATION_METRICS) | {
     "f1_micro",
     "confusion_matrix",
     "classes",
-    "log_loss",
 }
 _REGRESSION_METRIC_NAMES = set(DEFAULT_REGRESSION_METRICS) | {
     "median_absolute_error",
@@ -138,23 +135,26 @@ class ClassificationMetrics:
         return float(f1_score(y_true, y_pred, average="micro", zero_division=0, sample_weight=sample_weight))
 
     @staticmethod
-    def confusion_matrix(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> np.ndarray:
+    def confusion_matrix(
+        y_true: Any,
+        y_pred: Any,
+        sample_weight: Any | None = None,
+    ) -> np.ndarray:
         """Return the confusion matrix for the predictions."""
         y_true_arr = _flatten_array(y_true)
         y_pred_arr = _flatten_array(y_pred)
         return confusion_matrix(y_true_arr, y_pred_arr, sample_weight=sample_weight)
 
     @staticmethod
-    def classes(y_true: Any, y_pred: Any) -> np.ndarray:
+    def classes(
+        y_true: Any,
+        y_pred: Any,
+        sample_weight: Any | None = None,
+    ) -> np.ndarray:
         """Return the sorted set of predicted and true classes."""
         y_true_arr = _flatten_array(y_true)
         y_pred_arr = _flatten_array(y_pred)
         return np.unique(np.concatenate([y_true_arr, y_pred_arr]))
-
-    @staticmethod
-    def log_loss(y_true: Any, y_prob: Any, sample_weight: Any | None = None) -> float:
-        """Return log loss from predicted probabilities."""
-        return float(log_loss(y_true, y_prob, sample_weight=sample_weight))
 
 
 class RegressionMetrics:
@@ -265,18 +265,11 @@ def _validate_regression_metrics(metrics: list[str]) -> list[RegressionMetric]:
 def _ensure_classification_inputs(
     y_true: Any,
     y_pred: Any,
-    y_prob: Any | None,
     metric_names: list[ClassificationMetric],
-) -> tuple[np.ndarray, np.ndarray, np.ndarray | None]:
+) -> tuple[np.ndarray, np.ndarray]:
     y_true_arr = _flatten_array(y_true)
     y_pred_arr = _flatten_array(y_pred)
-    if "log_loss" in metric_names:
-        if y_prob is None:
-            raise ValueError("y_prob is required for log_loss evaluation")
-        y_prob_arr = np.asarray(y_prob)
-    else:
-        y_prob_arr = None
-    return y_true_arr, y_pred_arr, y_prob_arr
+    return y_true_arr, y_pred_arr
 
 
 def _ensure_regression_inputs(y_true: Any, y_pred: Any) -> tuple[np.ndarray, np.ndarray]:
@@ -287,7 +280,6 @@ def compute_metrics(
     task: Task,
     y_true: Any,
     y_pred: Any,
-    y_prob: Any | None = None,
     sample_weight: Any | None = None,
     metrics: list[str] | None = None,
 ) -> dict[str, Any]:
@@ -297,7 +289,6 @@ def compute_metrics(
         task: ``"classification"`` or ``"regression"``.
         y_true: Ground-truth labels or targets.
         y_pred: Predicted labels or values.
-        y_prob: Predicted class probabilities for classification tasks.
         sample_weight: Optional sample weights.
         metrics: Optional list of metric names to compute.
 
@@ -308,79 +299,15 @@ def compute_metrics(
         metric_names = (
             _validate_classification_metrics(metrics) if metrics is not None else DEFAULT_CLASSIFICATION_METRICS
         )
-        y_true_arr, y_pred_arr, y_prob_arr = _ensure_classification_inputs(
+        y_true_arr, y_pred_arr = _ensure_classification_inputs(
             y_true,
             y_pred,
-            y_prob,
             metric_names,
         )
         results: dict[str, Any] = {}
         for metric in metric_names:
-            if metric == "accuracy":
-                results[metric] = ClassificationMetrics.accuracy(
-                    y_true_arr,
-                    y_pred_arr,
-                    sample_weight=sample_weight,
-                )
-            elif metric == "balanced_accuracy":
-                results[metric] = ClassificationMetrics.balanced_accuracy(
-                    y_true_arr,
-                    y_pred_arr,
-                    sample_weight=sample_weight,
-                )
-            elif metric == "precision_macro":
-                results[metric] = ClassificationMetrics.precision_macro(
-                    y_true_arr,
-                    y_pred_arr,
-                    sample_weight=sample_weight,
-                )
-            elif metric == "recall_macro":
-                results[metric] = ClassificationMetrics.recall_macro(
-                    y_true_arr,
-                    y_pred_arr,
-                    sample_weight=sample_weight,
-                )
-            elif metric == "f1_macro":
-                results[metric] = ClassificationMetrics.f1_macro(
-                    y_true_arr,
-                    y_pred_arr,
-                    sample_weight=sample_weight,
-                )
-            elif metric == "precision_micro":
-                results[metric] = ClassificationMetrics.precision_micro(
-                    y_true_arr,
-                    y_pred_arr,
-                    sample_weight=sample_weight,
-                )
-            elif metric == "recall_micro":
-                results[metric] = ClassificationMetrics.recall_micro(
-                    y_true_arr,
-                    y_pred_arr,
-                    sample_weight=sample_weight,
-                )
-            elif metric == "f1_micro":
-                results[metric] = ClassificationMetrics.f1_micro(
-                    y_true_arr,
-                    y_pred_arr,
-                    sample_weight=sample_weight,
-                )
-            elif metric == "confusion_matrix":
-                results[metric] = ClassificationMetrics.confusion_matrix(
-                    y_true_arr,
-                    y_pred_arr,
-                    sample_weight=sample_weight,
-                )
-            elif metric == "classes":
-                results[metric] = ClassificationMetrics.classes(
-                    y_true_arr,
-                    y_pred_arr,
-                )
-            elif metric == "log_loss":
-                results[metric] = ClassificationMetrics.log_loss(
-                    y_true_arr,
-                    y_prob_arr,
-                    sample_weight=sample_weight,
-                )
+            metric_fn = getattr(ClassificationMetrics, metric)
+            results[metric] = metric_fn(y_true_arr, y_pred_arr, sample_weight)
         return results
 
     if task == "regression":
