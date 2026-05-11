@@ -141,3 +141,8 @@ def test_adaptive_dombi_tnorm_rejects_invalid_arguments() -> None:
         AdaptiveDombiTNorm(dimension=1000, lower_bound=1.0)
     with pytest.raises(ValueError, match="K must be > 1"):
         AdaptiveDombiTNorm(dimension=1000, lower_bound=0.1, K=1.0)
+
+
+def test_resolve_adaptive_dombi_t_norm_rejects_name() -> None:
+    with pytest.raises(ValueError, match="adaptive_dombi requires a dimension"):
+        resolve_t_norm("adaptive_dombi")

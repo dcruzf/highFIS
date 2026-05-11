@@ -37,6 +37,7 @@ from highfis.models import (
     _build_first_order_design_matrix,
     _threshold_from_zeta,
 )
+from highfis.t_norms import DombiTNorm
 
 
 def _build_input_mfs(n_inputs: int = 3, n_mfs: int = 2) -> dict[str, list[GaussianMF]]:
@@ -217,6 +218,56 @@ def test_admtsk_regressor_forward_shape() -> None:
 
     assert output.shape == (5, 1)
     assert pred.shape == (5,)
+
+
+def test_admtsk_classifier_fixed_lambda_branch() -> None:
+    model = ADMTSKClassifier(_build_input_mfs(), n_classes=2, adaptive=False, lambda_=2.0)
+    x = torch.randn(6, 3)
+    out = model.forward(x)
+    assert out.shape == (6, 2)
+
+
+def test_admtsk_regressor_fixed_lambda_branch() -> None:
+    model = ADMTSKRegressor(_build_input_mfs(), adaptive=False, lambda_=2.0)
+    x = torch.randn(5, 3)
+    out = model.forward(x)
+    assert out.shape == (5, 1)
+
+
+def test_admtsk_classifier_invalid_n_classes() -> None:
+    with pytest.raises(ValueError, match="n_classes must be >= 2"):
+        ADMTSKClassifier(_build_input_mfs(), n_classes=1)
+
+
+def test_admtsk_classifier_invalid_lambda() -> None:
+    with pytest.raises(ValueError, match="lambda_ must be > 0"):
+        ADMTSKClassifier(_build_input_mfs(), n_classes=2, adaptive=False, lambda_=0.0)
+
+
+def test_admtsk_regressor_invalid_lambda() -> None:
+    with pytest.raises(ValueError, match="lambda_ must be > 0"):
+        ADMTSKRegressor(_build_input_mfs(), adaptive=False, lambda_=0.0)
+
+
+def test_admtsk_classifier_accepts_custom_t_norm_fn() -> None:
+    model = ADMTSKClassifier(
+        _build_input_mfs(),
+        n_classes=2,
+        t_norm_fn=DombiTNorm(lambda_=1.5),
+    )
+    x = torch.randn(4, 3)
+    out = model.forward(x)
+    assert out.shape == (4, 2)
+
+
+def test_admtsk_regressor_accepts_custom_t_norm_fn() -> None:
+    model = ADMTSKRegressor(
+        _build_input_mfs(),
+        t_norm_fn=DombiTNorm(lambda_=1.5),
+    )
+    x = torch.randn(4, 3)
+    out = model.forward(x)
+    assert out.shape == (4, 1)
 
 
 def test_dombitsk_classifier_default_t_norm_fn_branch() -> None:

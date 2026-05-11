@@ -92,6 +92,11 @@ def test_composite_gmf_forward_lower_bound() -> None:
     assert float(torch.min(y).item()) == pytest.approx(math.exp(-1.0), rel=1e-6)
 
 
+def test_composite_gmf_rejects_non_positive_sigma() -> None:
+    with pytest.raises(ValueError, match="sigma must be positive"):
+        CompositeGMF(mean=0.0, sigma=0.0)
+
+
 def test_composite_exponential_mf_rejects_invalid_k() -> None:
     with pytest.raises(ValueError, match="k must be greater than 1"):
         CompositeExponentialMF(center=0.0, sigma=1.0, k=1.0)
