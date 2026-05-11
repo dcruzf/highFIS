@@ -78,6 +78,17 @@ Model Family Overview:
             - `DGTSKClassifier`
             - `DGTSKRegressor`
 
+    **HDFIS**
+        Configuration: `t_norm="prod"` with `DimensionDependentGaussianMF` +
+        `SumBasedDefuzzifier` for HDFIS-prod; `t_norm="min"` with frozen
+        antecedents + `SumBasedDefuzzifier` for HDFIS-min.
+
+        Classes:
+            - `HDFISProdClassifier`
+            - `HDFISProdRegressor`
+            - `HDFISMinClassifier`
+            - `HDFISMinRegressor`
+
 Notes:
     - All variants normalize rule firing strengths across rules.
     - `SoftmaxLogDefuzzifier` improves numerical stability via log-space normalization.
@@ -502,10 +513,10 @@ class HDFISProdClassifier(BaseTSKClassifier):
 class HDFISProdRegressor(BaseTSKRegressor):
     r"""HDFIS-prod regressor with dimension-dependent Gaussian MFs.
 
-        HDFIS-prod combines the standard product T-norm with a dimension-dependent
-        Gaussian membership function (DMF) to avoid numeric underflow in very
-        high-dimensional feature spaces while preserving first-order TSK
-        consequents.
+    HDFIS-prod combines the standard product T-norm with a dimension-dependent
+    Gaussian membership function (DMF) to avoid numeric underflow in very
+    high-dimensional feature spaces while preserving first-order TSK
+    consequents.
 
     References:
         G. Xue, J. Wang, K. Zhang and N. R. Pal, "High-Dimensional Fuzzy

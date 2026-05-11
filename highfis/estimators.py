@@ -69,6 +69,14 @@ Model Family Overview:
         Implemented by:
             `DGTSKClassifierEstimator`, `DGTSKRegressorEstimator`
 
+    **HDFIS**
+        High-dimensional inference with both product DMF and minimum
+        frozen-antecedent variants.
+
+        Implemented by:
+            `HDFISProdClassifierEstimator`, `HDFISProdRegressorEstimator`,
+            `HDFISMinClassifierEstimator`, `HDFISMinRegressorEstimator`
+
 Membership Function Initialization:
     The following strategies are available for initializing membership functions:
 
