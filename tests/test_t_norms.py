@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import math
+
 import pytest
 import torch
 
 from highfis.t_norms import (
+    AdaptiveDombiTNorm,
     ALESoftminYagerTNorm,
     DombiTNorm,
     GMeanTNorm,
@@ -120,3 +123,21 @@ def test_ale_softmin_yager_tnorm_rejects_nonpositive_lambda() -> None:
 def test_dombi_tnorm_rejects_nonpositive_lambda() -> None:
     with pytest.raises(ValueError, match="lambda_ must be > 0"):
         DombiTNorm(lambda_=0.0)
+
+
+def test_adaptive_dombi_tnorm_values() -> None:
+    norm = AdaptiveDombiTNorm(dimension=1000, lower_bound=1.0 / math.e, K=10.0)
+    terms = torch.tensor([[0.25, 0.5], [0.4, 0.9]], dtype=torch.float32)
+    out = norm(terms, dim=1)
+    assert out.shape == torch.Size([2])
+    assert bool(torch.all(out >= 0.0))
+    assert bool(torch.all(out <= 1.0))
+
+
+def test_adaptive_dombi_tnorm_rejects_invalid_arguments() -> None:
+    with pytest.raises(ValueError, match="dimension must be > 1"):
+        AdaptiveDombiTNorm(dimension=1, lower_bound=0.1)
+    with pytest.raises(ValueError, match=r"lower_bound must be in \[0, 1\)"):
+        AdaptiveDombiTNorm(dimension=1000, lower_bound=1.0)
+    with pytest.raises(ValueError, match="K must be > 1"):
+        AdaptiveDombiTNorm(dimension=1000, lower_bound=0.1, K=1.0)
