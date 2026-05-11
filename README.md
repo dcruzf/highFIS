@@ -64,6 +64,7 @@ high-dimensional inference strategy.
 - `FSRE-AdaTSK` — adaptive model with gated feature selection and rule extraction.
 - `DG-TSK` — double-gated training for feature selection and rule extraction.
 - `DG-ALETSK` — adaptive Ln-Exp softmin with embedded feature and rule gates.
+- `HDFIS` — high-dimensional inference with product DMF (`HDFIS-prod`) and minimum T-norm frozen antecedents (`HDFIS-min`).
 
 Each family exposes classifier and regressor variants.
 
@@ -80,6 +81,8 @@ Each family exposes classifier and regressor variants.
 - `FSREAdaTSKClassifier`, `FSREAdaTSKRegressor`
 - `DGTSKClassifier`, `DGTSKRegressor`
 - `DGALETSKClassifier`, `DGALETSKRegressor`
+- `HDFISProdClassifier`, `HDFISProdRegressor`
+- `HDFISMinClassifier`, `HDFISMinRegressor`
 
 ### Estimator wrappers
 
@@ -91,6 +94,8 @@ Each family exposes classifier and regressor variants.
 - `FSREAdaTSKClassifierEstimator`, `FSREAdaTSKRegressorEstimator`
 - `AYATSKClassifierEstimator`, `AYATSKRegressorEstimator`
 - `AdaTSKClassifierEstimator`, `AdaTSKRegressorEstimator`
+- `HDFISProdClassifierEstimator`, `HDFISProdRegressorEstimator`
+- `HDFISMinClassifierEstimator`, `HDFISMinRegressorEstimator`
 
 ### Building blocks
 
@@ -131,6 +136,7 @@ Key reference pages:
 - [DGTSK](https://dcruzf.github.io/highFIS/latest/models/dg-tsk)
 - [DG-ALETSK](https://dcruzf.github.io/highFIS/latest/models/dg-aletsk)
 - [FSRE-AdaTSK](https://dcruzf.github.io/highFIS/latest/models/fsre-adatsk)
+- [HDFIS](https://dcruzf.github.io/highFIS/latest/models/hdfis)
 
 ## 🧪 Testing & quality
 
