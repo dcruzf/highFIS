@@ -4,6 +4,7 @@ from typing import cast
 
 import numpy as np
 import pytest
+from sklearn.metrics import explained_variance_score
 
 from highfis.metrics import ClassificationMetrics, RegressionMetrics, Task, compute_metrics
 
@@ -11,21 +12,10 @@ from highfis.metrics import ClassificationMetrics, RegressionMetrics, Task, comp
 def test_compute_metrics_classification_default() -> None:
     y_true = np.array([0, 1, 1, 0])
     y_pred = np.array([0, 1, 0, 0])
-    y_prob = np.array(
-        [
-            [0.8, 0.2],
-            [0.1, 0.9],
-            [0.7, 0.3],
-            [0.9, 0.1],
-        ],
-        dtype=np.float32,
-    )
-
     result = compute_metrics(
         task="classification",
         y_true=y_true,
         y_pred=y_pred,
-        y_prob=y_prob,
     )
 
     assert set(result) == {
@@ -56,18 +46,8 @@ def test_compute_metrics_regression_default() -> None:
 def test_classification_metrics_helpers() -> None:
     y_true = np.array([0, 1, 1, 0])
     y_pred = np.array([0, 1, 0, 0])
-    y_prob = np.array(
-        [
-            [0.8, 0.2],
-            [0.1, 0.9],
-            [0.7, 0.3],
-            [0.9, 0.1],
-        ],
-        dtype=np.float32,
-    )
 
     assert ClassificationMetrics.accuracy(y_true, y_pred) == 0.75
-    assert ClassificationMetrics.log_loss(y_true, y_prob) >= 0.0
 
 
 def test_regression_metrics_helpers() -> None:
@@ -88,35 +68,36 @@ def test_flatten_array_ravel() -> None:
     assert np.array_equal(flat, np.array([1, 2, 3, 4]))
 
 
-def test_compute_metrics_classification_log_loss_and_custom_list() -> None:
+def test_compute_metrics_classification_extra_metrics() -> None:
     y_true = np.array([0, 1, 0, 1])
     y_pred = np.array([0, 1, 1, 1])
-    y_prob = np.array(
-        [
-            [0.7, 0.3],
-            [0.1, 0.9],
-            [0.6, 0.4],
-            [0.2, 0.8],
-        ],
-        dtype=np.float32,
-    )
 
     result = compute_metrics(
         task="classification",
         y_true=y_true,
         y_pred=y_pred,
-        y_prob=y_prob,
-        metrics=["accuracy", "log_loss"],
+        metrics=[
+            "precision_micro",
+            "recall_micro",
+            "f1_micro",
+            "confusion_matrix",
+            "classes",
+        ],
     )
 
-    assert set(result) == {"accuracy", "log_loss"}
-    assert 0.0 <= result["accuracy"] <= 1.0
-    assert result["log_loss"] >= 0.0
-
-
-def test_compute_metrics_classification_log_loss_requires_y_prob() -> None:
-    with pytest.raises(ValueError, match="y_prob is required for log_loss evaluation"):
-        compute_metrics(task="classification", y_true=[0, 1], y_pred=[0, 1], metrics=["log_loss"])
+    assert set(result) == {
+        "precision_micro",
+        "recall_micro",
+        "f1_micro",
+        "confusion_matrix",
+        "classes",
+    }
+    assert np.isclose(result["precision_micro"], 0.75)
+    assert np.isclose(result["recall_micro"], 0.75)
+    assert np.isclose(result["f1_micro"], 0.75)
+    assert isinstance(result["confusion_matrix"], np.ndarray)
+    assert result["confusion_matrix"].shape == (2, 2)
+    assert np.array_equal(result["classes"], np.array([0, 1]))
 
 
 def test_compute_metrics_validation_rejects_unknown_metrics() -> None:
@@ -125,7 +106,6 @@ def test_compute_metrics_validation_rejects_unknown_metrics() -> None:
             task="classification",
             y_true=[0, 1],
             y_pred=[0, 1],
-            y_prob=[[0.5, 0.5], [0.5, 0.5]],
             metrics=["accuracy", "bad_metric"],
         )
 
@@ -141,6 +121,70 @@ def test_compute_metrics_regression_custom_subset() -> None:
 
     assert set(result) == {"mae", "r2"}
     assert np.isclose(result["mae"], np.mean(np.abs(y_true - y_pred)))
+
+
+def test_compute_metrics_regression_extra_metrics() -> None:
+    y_true = np.array([1.0, 2.0, 3.0, 4.0])
+    y_pred = np.array([1.1, 1.9, 2.9, 4.1])
+
+    result = compute_metrics(
+        task="regression",
+        y_true=y_true,
+        y_pred=y_pred,
+        metrics=[
+            "median_absolute_error",
+            "mean_bias_error",
+            "max_error",
+            "std_error",
+            "explained_variance",
+            "mape",
+            "smape",
+            "msle",
+            "pearson",
+        ],
+    )
+
+    assert set(result) == {
+        "median_absolute_error",
+        "mean_bias_error",
+        "max_error",
+        "std_error",
+        "explained_variance",
+        "mape",
+        "smape",
+        "msle",
+        "pearson",
+    }
+    assert np.isclose(result["median_absolute_error"], np.median(np.abs(y_true - y_pred)))
+    assert np.isclose(result["mean_bias_error"], np.mean(y_pred - y_true))
+    assert np.isclose(result["max_error"], np.max(np.abs(y_true - y_pred)))
+    assert np.isclose(result["std_error"], np.std(y_pred - y_true))
+    assert np.isclose(result["explained_variance"], explained_variance_score(y_true, y_pred))
+    assert np.isclose(result["mape"], np.mean(np.abs((y_pred - y_true) / y_true)))
+    assert np.isclose(
+        result["smape"],
+        np.mean(2.0 * np.abs(y_pred - y_true) / (np.abs(y_true) + np.abs(y_pred))),
+    )
+    assert np.isclose(result["msle"], np.mean(np.square(np.log1p(y_pred) - np.log1p(y_true))))
+    assert np.isclose(result["pearson"], np.corrcoef(y_true, y_pred)[0, 1])
+
+
+def test_compute_metrics_msle_returns_nan_for_negative_targets() -> None:
+    y_true = np.array([-1.0, -2.0, -3.0])
+    y_pred = np.array([0.0, 1.0, 2.0])
+
+    result = compute_metrics(task="regression", y_true=y_true, y_pred=y_pred, metrics=["msle"])
+
+    assert np.isnan(result["msle"])
+
+
+def test_compute_metrics_pearson_returns_nan_when_constant() -> None:
+    y_true = np.array([1.0, 1.0, 1.0])
+    y_pred = np.array([2.0, 2.0, 2.0])
+
+    result = compute_metrics(task="regression", y_true=y_true, y_pred=y_pred, metrics=["pearson"])
+
+    assert np.isnan(result["pearson"])
 
 
 def test_compute_metrics_rejects_invalid_task() -> None:

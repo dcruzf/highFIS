@@ -14,6 +14,8 @@ experimentation.
 - Built for high-dimensional data and numerical stability.
 - Supports adaptive and gated fuzzy inference, including feature selection
   and rule extraction.
+- Includes HDFIS variants for product-DMF and minimum frozen-antecedent
+  high-dimensional inference.
 - Ships with both model-level classes and sklearn-style estimator wrappers.
 - Works seamlessly with `Pipeline`, `GridSearchCV`, and standard
   scikit-learn workflows.
@@ -25,6 +27,7 @@ highFIS models combine:
 - differentiable membership functions for antecedent fuzzification,
 - configurable rule bases and T-norm aggregation,
 - normalized rule weights via defuzzification,
+- built-in metrics and evaluation utilities for regression and classification,
 - task-specific consequent layers for classification or regression.
 
 Use `BaseTSK` for custom pipelines, or choose a concrete model variant when
@@ -60,6 +63,9 @@ highFIS includes the following concrete TSK model families:
   aggregation and log-space softmax normalization.
 - [`LogTSK`](models/logtsk.md) — inverse-log normalization of log-domain
   rule weights for stable high-dimensional inference.
+- [`HDFIS`](models/hdfis.md) — high-dimensional inference with both
+  product-DMF aggregation (HDFIS-prod) and minimum frozen-antecedent
+  inference (HDFIS-min).
 - [`DombiTSK`](models/dombitsk.md) — Dombi parametric aggregation with a
   learnable shape parameter.
 - [`AYATSK`](models/ayatsk.md) — Yager-style aggregation for more flexible
@@ -82,6 +88,8 @@ Each model family exposes both classifier and regressor variants.
   stability is critical.
 - Choose `DombiTSK` or `AYATSK` when you want more control over antecedent
   aggregation behavior.
+- Choose `HDFIS` when you need high-dimensional inference with either a
+  dimension-dependent product antecedent or a frozen minimum antecedent.
 - Choose `AdaTSK`, `FSRE-AdaTSK`, `DG-TSK`, or `DG-ALETSK` when you need
   adaptive sparsity, feature gating, or rule extraction.
 
@@ -96,6 +104,7 @@ Each model family exposes both classifier and regressor variants.
 | [Defuzzifiers](api/defuzzifiers.md) | Normalization strategies. |
 | [T-Norms](api/t_norms.md) | Built-in and custom aggregation functions. |
 | [Memberships](api/memberships.md) | Membership functions for antecedents. |
+| [Metrics](api/metrics.md) | Regression and classification evaluation utilities. |
 | [Base TSK](api/base.md) | Unified training loop and shared logic. |
 | [Protocols](api/protocols.md) | Structural typing interfaces. |
 | [Persistence](api/persistence.md) | Estimator checkpoint serialization and load validation. |
