@@ -394,6 +394,8 @@
       
         
       
+        
+      
     
     
     
@@ -668,6 +670,33 @@
     
   
   AYATSK
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./models/hdfis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  HDFIS
 
     
   </span>
@@ -1212,6 +1241,8 @@ experimentation.</p>
 <li>Built for high-dimensional data and numerical stability.</li>
 <li>Supports adaptive and gated fuzzy inference, including feature selection
   and rule extraction.</li>
+<li>Includes HDFIS variants for product-DMF and minimum frozen-antecedent
+  high-dimensional inference.</li>
 <li>Ships with both model-level classes and sklearn-style estimator wrappers.</li>
 <li>Works seamlessly with <code>Pipeline</code>, <code>GridSearchCV</code>, and standard
   scikit-learn workflows.</li>
@@ -1222,6 +1253,7 @@ experimentation.</p>
 <li>differentiable membership functions for antecedent fuzzification,</li>
 <li>configurable rule bases and T-norm aggregation,</li>
 <li>normalized rule weights via defuzzification,</li>
+<li>built-in metrics and evaluation utilities for regression and classification,</li>
 <li>task-specific consequent layers for classification or regression.</li>
 </ul>
 <p>Use <code>BaseTSK</code> for custom pipelines, or choose a concrete model variant when
@@ -1250,6 +1282,9 @@ you want a ready-to-use TSK architecture.</p>
   aggregation and log-space softmax normalization.</li>
 <li><a href="models/logtsk/"><code>LogTSK</code></a> — inverse-log normalization of log-domain
   rule weights for stable high-dimensional inference.</li>
+<li><a href="models/hdfis/"><code>HDFIS</code></a> — high-dimensional inference with both
+  product-DMF aggregation (HDFIS-prod) and minimum frozen-antecedent
+  inference (HDFIS-min).</li>
 <li><a href="models/dombitsk/"><code>DombiTSK</code></a> — Dombi parametric aggregation with a
   learnable shape parameter.</li>
 <li><a href="models/ayatsk/"><code>AYATSK</code></a> — Yager-style aggregation for more flexible
@@ -1271,6 +1306,8 @@ you want a ready-to-use TSK architecture.</p>
   stability is critical.</li>
 <li>Choose <code>DombiTSK</code> or <code>AYATSK</code> when you want more control over antecedent
   aggregation behavior.</li>
+<li>Choose <code>HDFIS</code> when you need high-dimensional inference with either a
+  dimension-dependent product antecedent or a frozen minimum antecedent.</li>
 <li>Choose <code>AdaTSK</code>, <code>FSRE-AdaTSK</code>, <code>DG-TSK</code>, or <code>DG-ALETSK</code> when you need
   adaptive sparsity, feature gating, or rule extraction.</li>
 </ul>
@@ -1310,6 +1347,10 @@ you want a ready-to-use TSK architecture.</p>
 <tr>
 <td><a href="api/memberships/">Memberships</a></td>
 <td>Membership functions for antecedents.</td>
+</tr>
+<tr>
+<td><a href="api/metrics/">Metrics</a></td>
+<td>Regression and classification evaluation utilities.</td>
 </tr>
 <tr>
 <td><a href="api/base/">Base TSK</a></td>
