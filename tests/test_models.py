@@ -25,6 +25,7 @@ from highfis.models import (
     FSREAdaTSKRegressor,
     HDFISMinClassifier,
     HDFISMinRegressor,
+    HDFISProdClassifier,
     HTSKClassifier,
     HTSKRegressor,
     LogTSKClassifier,
@@ -154,6 +155,16 @@ def test_htsk_classifier_fit_validates_inputs() -> None:
 def test_hdfismin_classifier_freezes_membership_parameters() -> None:
     model = HDFISMinClassifier(_build_input_mfs(), n_classes=2)
     assert all(not p.requires_grad for p in model.membership_layer.parameters())
+
+
+def test_hdfisprod_classifier_rejects_invalid_n_classes() -> None:
+    with pytest.raises(ValueError, match="n_classes must be >= 2"):
+        HDFISProdClassifier(_build_input_mfs(), n_classes=1)
+
+
+def test_hdfismin_classifier_rejects_invalid_n_classes() -> None:
+    with pytest.raises(ValueError, match="n_classes must be >= 2"):
+        HDFISMinClassifier(_build_input_mfs(), n_classes=1)
 
 
 def test_hdfismin_regressor_freezes_membership_parameters() -> None:

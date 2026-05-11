@@ -47,6 +47,11 @@ def test_dimension_dependent_gaussian_mf_rejects_invalid_dimension() -> None:
         DimensionDependentGaussianMF(mean=0.0, sigma=1.0, dimension=1)
 
 
+def test_dimension_dependent_gaussian_mf_rejects_non_positive_sigma() -> None:
+    with pytest.raises(ValueError, match="sigma must be positive"):
+        DimensionDependentGaussianMF(mean=0.0, sigma=0.0, dimension=1000, xi=745.0)
+
+
 def test_dimension_dependent_gaussian_mf_rejects_invalid_xi() -> None:
     with pytest.raises(ValueError, match="xi must be greater than 1"):
         DimensionDependentGaussianMF(mean=0.0, sigma=1.0, dimension=1000, xi=1.0)

@@ -408,7 +408,7 @@ class BaseTSK(nn.Module):
                     epochs_no_improve += 1
 
                 if verbose_level == 1:
-                    if pbar is None:
+                    if pbar is None:  # pragma: no cover
                         raise RuntimeError("progress bar unavailable for verbose level 1")
                     postfix = [
                         f"train={epoch_train_loss:.4f}",
@@ -438,7 +438,7 @@ class BaseTSK(nn.Module):
                     break
             else:
                 if verbose_level == 1:
-                    if pbar is None:
+                    if pbar is None:  # pragma: no cover
                         raise RuntimeError("progress bar unavailable for verbose level 1")
                     pbar.set_postfix_str(f"loss={epoch_train_loss:.4f}")
                 if verbose_level >= 2 and (
