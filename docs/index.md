@@ -60,6 +60,8 @@ highFIS includes the following concrete TSK model families:
   aggregation and log-space softmax normalization.
 - [`LogTSK`](models/logtsk.md) — inverse-log normalization of log-domain
   rule weights for stable high-dimensional inference.
+- [`HDFIS`](models/hdfis.md) — dimension-dependent Gaussian MFs for
+  product-based high-dimensional inference.
 - [`DombiTSK`](models/dombitsk.md) — Dombi parametric aggregation with a
   learnable shape parameter.
 - [`AYATSK`](models/ayatsk.md) — Yager-style aggregation for more flexible
