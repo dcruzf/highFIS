@@ -118,6 +118,8 @@ from .models import (
     DombiTSKRegressor,
     FSREAdaTSKClassifier,
     FSREAdaTSKRegressor,
+    HDFISMinClassifier,
+    HDFISMinRegressor,
     HDFISProdClassifier,
     HDFISProdRegressor,
     HTSKClassifier,
@@ -1636,6 +1638,172 @@ class HDFISProdRegressorEstimator(_BaseRegressorEstimator):
         n_classes: int | None = None,
     ) -> BaseTSK:
         return HDFISProdRegressor(
+            input_mfs,
+            rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+
+class HDFISMinClassifierEstimator(_BaseClassifierEstimator):
+    r"""HDFIS-min classifier estimator with minimum T-norm antecedents.
+
+    HDFIS-min freezes antecedent membership parameters and uses a minimum
+    T-norm aggregation in the antecedent, so that only consequent parameters
+    are optimized during training. This matches the paper's observation that
+    minimum-based high-dimensional inference is best handled by fixing the
+    antecedent structure and training the rule consequents.
+
+    References:
+        G. Xue, J. Wang, K. Zhang and N. R. Pal, "High-Dimensional Fuzzy
+        Inference Systems," in IEEE Transactions on Systems, Man, and
+        Cybernetics: Systems, vol. 54, no. 1, pp. 507-519, Jan. 2024,
+        doi: 10.1109/TSMC.2023.3311475.
+
+    Example:
+        ```python
+        from highfis import HDFISMinClassifierEstimator
+
+        clf = HDFISMinClassifierEstimator()
+        clf.fit(X_train, y_train)
+        preds = clf.predict(X_test)
+        ```
+    """
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 5,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 10,
+        learning_rate: float = 1e-2,
+        verbose: bool | int = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        pfrb_max_rules: int | None = None,
+        patience: int | None = 20,
+        restore_best: bool = True,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+    ) -> None:
+        """Initialise an HDFIS-min classifier estimator."""
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            pfrb_max_rules=pfrb_max_rules,
+            patience=patience,
+            restore_best=restore_best,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        n_classes: int,
+        rule_base: str,
+    ) -> BaseTSK:
+        return HDFISMinClassifier(
+            input_mfs,
+            n_classes=n_classes,
+            rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+
+class HDFISMinRegressorEstimator(_BaseRegressorEstimator):
+    r"""HDFIS-min regressor estimator with minimum T-norm antecedents.
+
+    HDFIS-min freezes antecedent membership parameters and uses a minimum
+    T-norm aggregation in the antecedent, so that only consequent parameters
+    are optimized during training. This design avoids the nondifferentiability
+    of the minimum operator while preserving first-order TSK consequents.
+
+    References:
+        G. Xue, J. Wang, K. Zhang and N. R. Pal, "High-Dimensional Fuzzy
+        Inference Systems," in IEEE Transactions on Systems, Man, and
+        Cybernetics: Systems, vol. 54, no. 1, pp. 507-519, Jan. 2024,
+        doi: 10.1109/TSMC.2023.3311475.
+
+    Example:
+        ```python
+        from highfis import HDFISMinRegressorEstimator
+
+        reg = HDFISMinRegressorEstimator()
+        reg.fit(X_train, y_train)
+        preds = reg.predict(X_test)
+        ```
+    """
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 5,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 10,
+        learning_rate: float = 1e-2,
+        verbose: bool | int = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        patience: int | None = 20,
+        restore_best: bool = True,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+    ) -> None:
+        """Initialise an HDFIS-min regressor estimator."""
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            patience=patience,
+            restore_best=restore_best,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
+
+    def _build_regressor_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        rule_base: str,
+        n_classes: int | None = None,
+    ) -> BaseTSK:
+        return HDFISMinRegressor(
             input_mfs,
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),
