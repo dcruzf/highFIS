@@ -4,6 +4,8 @@ from .base import BaseTSK
 from .estimators import (
     AdaTSKClassifierEstimator,
     AdaTSKRegressorEstimator,
+    ADMTSKClassifierEstimator,
+    ADMTSKRegressorEstimator,
     AYATSKClassifierEstimator,
     AYATSKRegressorEstimator,
     DGALETSKClassifierEstimator,
@@ -30,6 +32,7 @@ from .memberships import (
     BellMF,
     CompositeExponentialMF,
     CompositeGaussianMF,
+    CompositeGMF,
     DiffSigmoidalMF,
     GaussianMF,
     GaussianPIMF,
@@ -47,6 +50,8 @@ from .metrics import ClassificationMetrics, RegressionMetrics, compute_metrics
 from .models import (
     AdaTSKClassifier,
     AdaTSKRegressor,
+    ADMTSKClassifier,
+    ADMTSKRegressor,
     AYATSKClassifier,
     AYATSKRegressor,
     DGALETSKClassifier,
@@ -71,6 +76,10 @@ from .models import (
 from .version import __version__
 
 __all__: list[str] = [
+    "ADMTSKClassifier",
+    "ADMTSKClassifierEstimator",
+    "ADMTSKRegressor",
+    "ADMTSKRegressorEstimator",
     "AYATSKClassifier",
     "AYATSKClassifierEstimator",
     "AYATSKRegressor",
@@ -83,6 +92,7 @@ __all__: list[str] = [
     "BellMF",
     "ClassificationMetrics",
     "CompositeExponentialMF",
+    "CompositeGMF",
     "CompositeGaussianMF",
     "DGALETSKClassifier",
     "DGALETSKClassifierEstimator",

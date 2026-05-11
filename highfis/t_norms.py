@@ -9,6 +9,7 @@ Built-in T-norm classes:
     - ``MinimumTNorm`` — Gödel / minimum conjunction.
     - ``GMeanTNorm`` — geometric mean, the default for HTSK.
     - ``DombiTNorm`` — Dombi parametric T-norm (``lambda_ > 0``).
+    - ``AdaptiveDombiTNorm`` — Dombi T-norm with adaptive lambda selection.
     - ``YagerTNorm`` — Yager parametric T-norm (``lambda_ > 0``).
     - ``YagerSimpleTNorm`` — simplified Yager without the outer minimum.
     - ``ALESoftminYagerTNorm`` — ALE-softmin Yager variant.
@@ -22,6 +23,7 @@ Helper functions:
 
 from __future__ import annotations
 
+import math
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 
@@ -121,6 +123,51 @@ class DombiTNorm(BaseTNorm):
         return 1.0 / (1.0 + torch.pow(summed, 1.0 / self.lambda_))
 
 
+class AdaptiveDombiTNorm(BaseTNorm):
+    """Adaptive Dombi T-norm strategy with automatically selected lambda."""
+
+    def __init__(
+        self,
+        dimension: int,
+        lower_bound: float = 1.0 / math.e,
+        K: float = 10.0,
+        eps: float | None = None,
+    ) -> None:
+        r"""Initialize the adaptive Dombi T-norm.
+
+        Args:
+            dimension: Number of input features D.
+            lower_bound: Positive lower bound of the membership function.
+            K: Heuristic scaling constant used to compute lambda.
+            eps: Small positive constant for clamping inputs.
+
+        Raises:
+            ValueError: If arguments are invalid or lambda cannot be computed.
+        """
+        super().__init__()
+        if dimension <= 1:
+            raise ValueError("dimension must be > 1")
+        if not 0.0 <= lower_bound < 1.0:
+            raise ValueError("lower_bound must be in [0, 1)")
+        if K <= 1.0:
+            raise ValueError("K must be > 1")
+
+        self.dimension = int(dimension)
+        self.lower_bound = float(lower_bound)
+        self.K = float(K)
+        self.eps = eps
+
+        denom = math.log(self.K - self.lower_bound) - math.log(1.0 - self.lower_bound)
+        if denom <= 0.0:  # pragma: no cover
+            raise ValueError("invalid lambda computation for given lower_bound and K")
+        lambda_ = math.log(float(self.dimension)) / denom
+        self.dombi = DombiTNorm(lambda_=lambda_, eps=eps)
+
+    def forward(self, terms: Tensor, dim: int = -1) -> Tensor:
+        """Compute the Dombi aggregation with the adaptive lambda parameter."""
+        return self.dombi(terms, dim=dim)
+
+
 class YagerTNorm(BaseTNorm):
     """Yager T-norm strategy."""
 
@@ -208,6 +255,8 @@ def resolve_t_norm(name: str) -> TNormFn:
         return GMeanTNorm()
     if name == "dombi":
         return DombiTNorm()
+    if name == "adaptive_dombi":
+        raise ValueError("adaptive_dombi requires a dimension and lower_bound; instantiate AdaptiveDombiTNorm directly")
     if name == "yager":
         return YagerTNorm()
     if name == "yager_simple":
@@ -219,6 +268,7 @@ def resolve_t_norm(name: str) -> TNormFn:
 
 __all__: list[str] = [
     "ALESoftminYagerTNorm",
+    "AdaptiveDombiTNorm",
     "BaseTNorm",
     "DombiTNorm",
     "GMeanTNorm",

@@ -68,6 +68,8 @@ highFIS includes the following concrete TSK model families:
   inference (HDFIS-min).
 - [`DombiTSK`](models/dombitsk.md) — Dombi parametric aggregation with a
   learnable shape parameter.
+- [`ADMTSK`](models/admtsk.md) — adaptive Dombi TSK with Composite GMF and
+  positive lower-bound membership values.
 - [`AYATSK`](models/ayatsk.md) — Yager-style aggregation for more flexible
   antecedent behavior.
 - [`AdaTSK`](models/adatsk.md) — adaptive softmin aggregation with dynamic

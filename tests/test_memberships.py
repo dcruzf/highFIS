@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import math
+
 import pytest
 import torch
 
 from highfis.memberships import (
     CompositeExponentialMF,
     CompositeGaussianMF,
+    CompositeGMF,
     DiffSigmoidalMF,
     DimensionDependentGaussianMF,
     GaussianMF,
@@ -77,6 +80,21 @@ def test_dimension_dependent_gaussian_mf_outputs_in_unit_interval() -> None:
 def test_composite_exponential_mf_rejects_non_positive_sigma() -> None:
     with pytest.raises(ValueError, match="sigma must be positive"):
         CompositeExponentialMF(center=0.0, sigma=0.0)
+
+
+def test_composite_gmf_forward_lower_bound() -> None:
+    mf = CompositeGMF(mean=0.0, sigma=1.0)
+    x = torch.tensor([-10.0, 0.0, 10.0], dtype=torch.float32)
+    y = mf(x)
+    assert y.shape == x.shape
+    assert bool(torch.all(y > 0.0))
+    assert bool(torch.all(y <= 1.0))
+    assert float(torch.min(y).item()) == pytest.approx(math.exp(-1.0), rel=1e-6)
+
+
+def test_composite_gmf_rejects_non_positive_sigma() -> None:
+    with pytest.raises(ValueError, match="sigma must be positive"):
+        CompositeGMF(mean=0.0, sigma=0.0)
 
 
 def test_composite_exponential_mf_rejects_invalid_k() -> None:
