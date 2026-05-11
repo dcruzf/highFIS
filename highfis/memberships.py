@@ -108,6 +108,61 @@ class GaussianMF(MembershipFunction):
         return torch.exp(-0.5 * z.square())
 
 
+class DimensionDependentGaussianMF(MembershipFunction):
+    """Dimension-dependent Gaussian membership function for HDFIS-prod."""
+
+    def __init__(
+        self,
+        mean: float = 0.0,
+        sigma: float = 1.0,
+        dimension: int = 1000,
+        xi: float = 745.0,
+        rho: float | None = None,
+        eps: float | None = None,
+    ) -> None:
+        """Initialize dimension-dependent Gaussian MF.
+
+        Args:
+            mean: Center of the Gaussian.
+            sigma: Learnable spread parameter.
+            dimension: Input dimension $D$.
+            xi: Precision constant used to compute the scale exponent.
+            rho: Scale exponent. If ``None``, uses
+                ``1 - log(xi) / log(dimension)``.
+            eps: Numeric stability constant.
+
+        Raises:
+            ValueError: If *sigma* is not positive.
+            ValueError: If *dimension* is not greater than 1.
+            ValueError: If *xi* is not greater than 1.
+        """
+        super().__init__(eps=eps)
+        if sigma <= 0:
+            raise ValueError("sigma must be positive")
+        if dimension <= 1:
+            raise ValueError("dimension must be greater than 1")
+        if xi <= 1:
+            raise ValueError("xi must be greater than 1")
+
+        self.mean = nn.Parameter(torch.tensor(float(mean)))
+        self.raw_sigma = nn.Parameter(torch.tensor(_inv_softplus(float(sigma), eps)))
+        self.dimension = float(dimension)
+        self.xi = float(xi)
+        self.rho = float(rho) if rho is not None else 1.0 - math.log(self.xi) / math.log(self.dimension)
+        self.scale = float(self.dimension**self.rho)
+
+    @property
+    def sigma(self) -> Tensor:
+        """Return positive sigma using softplus reparameterization."""
+        return F.softplus(self.raw_sigma) + self.eps
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Compute dimension-dependent Gaussian membership values for input tensor."""
+        x = self._as_tensor(x)
+        denom = self.scale + self.sigma.square() + self.eps
+        return torch.exp(-(x - self.mean).square() / denom)
+
+
 class CompositeGaussianMF(MembershipFunction):
     """Composite Gaussian membership with a nonzero lower bound."""
 

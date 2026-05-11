@@ -7,6 +7,7 @@ from highfis.memberships import (
     CompositeExponentialMF,
     CompositeGaussianMF,
     DiffSigmoidalMF,
+    DimensionDependentGaussianMF,
     GaussianMF,
     GaussianPIMF,
     LinSShapedMF,
@@ -34,6 +35,33 @@ def test_gaussian_mf_forward_peaks_at_mean() -> None:
 
 def test_gaussian_mf_outputs_in_unit_interval() -> None:
     mf = GaussianMF(mean=0.0, sigma=1.0)
+    x = torch.linspace(-3.0, 3.0, 11)
+    y = mf(x)
+    assert y.shape == x.shape
+    assert bool(torch.all(y >= 0.0))
+    assert bool(torch.all(y <= 1.0))
+
+
+def test_dimension_dependent_gaussian_mf_rejects_invalid_dimension() -> None:
+    with pytest.raises(ValueError, match="dimension must be greater than 1"):
+        DimensionDependentGaussianMF(mean=0.0, sigma=1.0, dimension=1)
+
+
+def test_dimension_dependent_gaussian_mf_rejects_invalid_xi() -> None:
+    with pytest.raises(ValueError, match="xi must be greater than 1"):
+        DimensionDependentGaussianMF(mean=0.0, sigma=1.0, dimension=1000, xi=1.0)
+
+
+def test_dimension_dependent_gaussian_mf_forward_peaks_at_mean() -> None:
+    mf = DimensionDependentGaussianMF(mean=0.0, sigma=1.0, dimension=1000, xi=745.0)
+    x = torch.tensor([0.0], dtype=torch.float32)
+    y = mf(x)
+    assert y.shape == (1,)
+    assert torch.allclose(y, torch.tensor([1.0]), atol=1e-5)
+
+
+def test_dimension_dependent_gaussian_mf_outputs_in_unit_interval() -> None:
+    mf = DimensionDependentGaussianMF(mean=0.0, sigma=1.0, dimension=1000, xi=745.0)
     x = torch.linspace(-3.0, 3.0, 11)
     y = mf(x)
     assert y.shape == x.shape
