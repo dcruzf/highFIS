@@ -108,7 +108,7 @@ class GaussianMF(MembershipFunction):
         return torch.exp(-0.5 * z.square())
 
 
-class DimensionDependentGaussianMF(MembershipFunction):
+class DimensionDependentGaussianMF(GaussianMF):
     """Dimension-dependent Gaussian membership function for HDFIS-prod."""
 
     def __init__(
@@ -144,8 +144,7 @@ class DimensionDependentGaussianMF(MembershipFunction):
         if xi <= 1:
             raise ValueError("xi must be greater than 1")
 
-        self.mean = nn.Parameter(torch.tensor(float(mean)))
-        self.raw_sigma = nn.Parameter(torch.tensor(_inv_softplus(float(sigma), eps)))
+        super().__init__(mean=mean, sigma=sigma, eps=eps)
         self.dimension = float(dimension)
         self.xi = float(xi)
         self.rho = float(rho) if rho is not None else 1.0 - math.log(self.xi) / math.log(self.dimension)

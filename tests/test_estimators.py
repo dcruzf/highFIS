@@ -23,6 +23,8 @@ from highfis.estimators import (
     DombiTSKRegressorEstimator,
     FSREAdaTSKClassifierEstimator,
     FSREAdaTSKRegressorEstimator,
+    HDFISProdClassifierEstimator,
+    HDFISProdRegressorEstimator,
     HTSKClassifierEstimator,
     HTSKRegressorEstimator,
     InputConfig,
@@ -34,7 +36,7 @@ from highfis.estimators import (
     _build_kmeans_input_mfs,
     _build_pfrb_input_mfs,
 )
-from highfis.memberships import GaussianMF
+from highfis.memberships import DimensionDependentGaussianMF, GaussianMF
 
 
 def _make_dataset(n_samples: int = 60) -> tuple[np.ndarray, np.ndarray]:
@@ -146,6 +148,37 @@ def test_classifier_estimator_pfrb_grid_fit_predict_proba() -> None:
     proba = est.predict_proba(x)
 
     assert proba.shape == (x.shape[0], 2)
+
+
+def test_hdfis_prod_classifier_estimator_uses_dimension_dependent_mfs() -> None:
+    x, y = _make_dataset(40)
+    est = HDFISProdClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=3,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+
+    est.fit(x, y)
+    assert all(isinstance(mf, DimensionDependentGaussianMF) for mfs in est.model_.input_mfs.values() for mf in mfs)
+
+
+def test_hdfis_prod_regressor_estimator_uses_dimension_dependent_mfs() -> None:
+    x = np.random.RandomState(0).normal(size=(40, 3)).astype(np.float32)
+    y = (x[:, 0] * 0.5 + x[:, 1] * -0.2).astype(np.float32)
+    est = HDFISProdRegressorEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=3,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+
+    est.fit(x, y)
+    assert all(isinstance(mf, DimensionDependentGaussianMF) for mfs in est.model_.input_mfs.values() for mf in mfs)
 
 
 def test_ayatsk_classifier_estimator_fit_predict_score() -> None:
