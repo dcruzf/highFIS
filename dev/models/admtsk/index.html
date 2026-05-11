@@ -12,13 +12,13 @@
         <meta name="author" content="Daniel Franca">
       
       
-        <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/models/hdfis/">
+        <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/models/admtsk/">
       
       
-        <link rel="prev" href="../ayatsk/">
+        <link rel="prev" href="../hdfis/">
       
       
-        <link rel="next" href="../admtsk/">
+        <link rel="next" href="../../api/estimators/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>HDFIS - highFIS Docs</title>
+        <title>ADMTSK - highFIS Docs</title>
       
     
     
@@ -85,7 +85,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#hdfis" class="md-skip">
+        <a href="#admtsk" class="md-skip">
           Skip to content
         </a>
       
@@ -125,7 +125,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              HDFIS
+              ADMTSK
             
           </span>
         </div>
@@ -566,6 +566,33 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../hdfis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  HDFIS
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -585,7 +612,7 @@
   <span class="md-ellipsis">
     
   
-  HDFIS
+  ADMTSK
 
     
   </span>
@@ -602,7 +629,7 @@
   <span class="md-ellipsis">
     
   
-  HDFIS
+  ADMTSK
 
     
   </span>
@@ -642,31 +669,30 @@
   <a href="#mathematical-formulation" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Mathematical formulation
+        Mathematical Formulation
       </span>
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Mathematical formulation">
+    <nav class="md-nav" aria-label="Mathematical Formulation">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#hdfis-prod" class="md-nav__link">
+  <a href="#antecedent" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        HDFIS-prod
+        Antecedent
       </span>
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="HDFIS-prod">
-      <ul class="md-nav__list">
+</li>
         
           <li class="md-nav__item">
-  <a href="#aggregation" class="md-nav__link">
+  <a href="#adaptive-lambda" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Aggregation
+        Adaptive lambda
       </span>
     </span>
   </a>
@@ -685,68 +711,13 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#consequent-first-order" class="md-nav__link">
+  <a href="#consequent" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Consequent (first-order)
+        Consequent
       </span>
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#hdfis-min" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        HDFIS-min
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="HDFIS-min">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#antecedent" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Antecedent
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#defuzzification_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Defuzzification
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#consequent-first-order_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Consequent (first-order)
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -759,7 +730,7 @@
   <a href="#code-paper-correspondence" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Code ↔ paper correspondence
+        Code ↔ Paper Correspondence
       </span>
     </span>
   </a>
@@ -775,10 +746,9 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Implementation notes">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
+</li>
+      
+        <li class="md-nav__item">
   <a href="#model-classes" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -788,8 +758,8 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#estimator-wrappers" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -799,8 +769,8 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#membership-functions" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -810,8 +780,8 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#training-in-the-paper-vs-highfis" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -819,11 +789,6 @@
       </span>
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -838,48 +803,10 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Notes
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../admtsk/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  ADMTSK
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -1322,31 +1249,30 @@
   <a href="#mathematical-formulation" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Mathematical formulation
+        Mathematical Formulation
       </span>
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Mathematical formulation">
+    <nav class="md-nav" aria-label="Mathematical Formulation">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#hdfis-prod" class="md-nav__link">
+  <a href="#antecedent" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        HDFIS-prod
+        Antecedent
       </span>
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="HDFIS-prod">
-      <ul class="md-nav__list">
+</li>
         
           <li class="md-nav__item">
-  <a href="#aggregation" class="md-nav__link">
+  <a href="#adaptive-lambda" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Aggregation
+        Adaptive lambda
       </span>
     </span>
   </a>
@@ -1365,68 +1291,13 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#consequent-first-order" class="md-nav__link">
+  <a href="#consequent" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Consequent (first-order)
+        Consequent
       </span>
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#hdfis-min" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        HDFIS-min
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="HDFIS-min">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#antecedent" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Antecedent
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#defuzzification_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Defuzzification
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#consequent-first-order_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Consequent (first-order)
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -1439,7 +1310,7 @@
   <a href="#code-paper-correspondence" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Code ↔ paper correspondence
+        Code ↔ Paper Correspondence
       </span>
     </span>
   </a>
@@ -1455,10 +1326,9 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Implementation notes">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
+</li>
+      
+        <li class="md-nav__item">
   <a href="#model-classes" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1468,8 +1338,8 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#estimator-wrappers" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1479,8 +1349,8 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#membership-functions" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1490,8 +1360,8 @@
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
+      
+        <li class="md-nav__item">
   <a href="#training-in-the-paper-vs-highfis" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1501,28 +1371,12 @@
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
-  
-</li>
       
         <li class="md-nav__item">
   <a href="#alignment-with-the-paper" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
         Alignment with the paper
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Notes
       </span>
     </span>
   </a>
@@ -1621,203 +1475,153 @@
                 
                   
 
-<h1 id="hdfis">HDFIS</h1>
-<p>HDFIS (High-Dimensional Fuzzy Inference System) is a family of TSK fuzzy
-models designed to solve very high-dimensional problems using two different
-high-dimensional inference strategies: HDFIS-prod and HDFIS-min.</p>
+<h1 id="admtsk">ADMTSK</h1>
+<p>ADMTSK is an adaptive Dombi TSK fuzzy system designed for high-dimensional inference.
+It combines a Dombi T-norm antecedent with a positive lower-bound Composite Gaussian
+membership function (CGMF) and normalized first-order consequents.</p>
 <h2 id="reference">Reference</h2>
 <blockquote>
-<p>G. Xue, J. Wang, K. Zhang and N. R. Pal, "High-Dimensional Fuzzy Inference Systems," in IEEE Transactions on Systems, Man, and Cybernetics: Systems, vol. 54, no. 1, pp. 507-519, Jan. 2024, doi: 10.1109/TSMC.2023.3311475.</p>
+<p>G. Xue, L. Hu, J. Wang and S. Ablameyko, "ADMTSK: A High-Dimensional Takagi–Sugeno–Kang Fuzzy System Based on Adaptive Dombi T-Norm," in IEEE Transactions on Fuzzy Systems, vol. 33, no. 6, pp. 1767-1780, June 2025, doi: 10.1109/TFUZZ.2025.3535640.</p>
 </blockquote>
-<h2 id="mathematical-formulation">Mathematical formulation</h2>
-<h3 id="hdfis-prod">HDFIS-prod</h3>
-<p>HDFIS-prod avoids numeric underflow in high-dimensional product-based
-antecedent aggregation by using a dimension-dependent Gaussian membership
-function (DMF).</p>
-<p>The DMF activation in highFIS is implemented by
-<code>highfis.memberships.DimensionDependentGaussianMF</code>:</p>
+<h2 id="mathematical-formulation">Mathematical Formulation</h2>
+<h3 id="antecedent">Antecedent</h3>
+<p>The ADMTSK antecedent uses Composite GMFs with a positive lower bound:</p>
 <div class="arithmatex">\[
-\mu_{r,d}(x_d) = \exp\left(-\frac{(x_d - m_{r,d})^2}{D^{\rho} + \sigma_{r,d}^2}\right)
+\mu_{r,d}(x_d) = \exp\left(-1 + \exp\left(-\frac{(x_d - m_{r,d})^2}{2\sigma_{r,d}^2}\right)\right)
+\tag{1}
 \]</div>
-<p>where:</p>
-<ul>
-<li><span class="arithmatex">\(D\)</span> is the number of input features.</li>
-<li><span class="arithmatex">\(\rho = 1 - \frac{\ln(\xi)}{\ln(D)}\)</span> by default.</li>
-<li><span class="arithmatex">\(\xi\)</span> is a precision constant, fixed to <code>745.0</code> in the default estimator.</li>
-<li><span class="arithmatex">\(\sigma_{r,d}\)</span> is the learnable spread parameter.</li>
-</ul>
-<p>The membership scale adapts to <span class="arithmatex">\(D\)</span> so that the product of membership values
-remains numerically stable for high-dimensional inputs.</p>
-<h4 id="aggregation">Aggregation</h4>
-<p>HDFIS-prod uses the standard product T-norm:</p>
+<p>This CGMF produces membership values in <span class="arithmatex">\((1/e, 1]\)</span> and avoids zero-valued
+inputs to the Dombi T-norm.</p>
+<p>The rule firing strength is computed by a Dombi T-norm:</p>
 <div class="arithmatex">\[
-w_r(\mathbf{x}) = \prod_{d=1}^{D} \mu_{r,d}(x_d)
+\varphi_r(\mathbf{x}) = \frac{1}{1 + \left[ \sum_{d=1}^{D} \left(\frac{1}{\mu_{r,d}(x_d)} - 1\right)^\lambda \right]^{1/\lambda}}
+\tag{2}
 \]</div>
-<h4 id="defuzzification">Defuzzification</h4>
-<p>Rule weights are normalized using sum-based normalization:</p>
+<h3 id="adaptive-lambda">Adaptive lambda</h3>
+<p>ADMTSK chooses the Dombi parameter <span class="arithmatex">\(\lambda\)</span> adaptively according to the input
+feature dimension <span class="arithmatex">\(D\)</span> and the membership lower bound <span class="arithmatex">\(\varepsilon\)</span>:</p>
 <div class="arithmatex">\[
-\bar{w}_r = \frac{w_r}{\sum_{i=1}^{R} w_i}
+\lambda = \frac{\ln D}{\ln(K - \varepsilon) - \ln(1 - \varepsilon)}
+\tag{3}
 \]</div>
-<h4 id="consequent-first-order">Consequent (first-order)</h4>
-<p>For classification:</p>
+<p>In highFIS, this is implemented with a default <span class="arithmatex">\(K = 10\)</span> and
+<span class="arithmatex">\(\varepsilon = 1/e\)</span>.</p>
+<h3 id="defuzzification">Defuzzification</h3>
+<p>Normalized rule strengths are computed as in standard first-order TSK:</p>
 <div class="arithmatex">\[
-\mathbf{y} = \sum_{r=1}^{R} \bar{w}_r \mathbf{y}_r,
-\qquad
-\mathbf{y}_r = W_r \mathbf{x} + \mathbf{b}_r.
+\bar{\varphi}_r(\mathbf{x}) = \frac{\varphi_r(\mathbf{x})}{\sum_{i=1}^{R} \varphi_i(\mathbf{x})}
+\tag{4}
 \]</div>
-<p>For regression:</p>
+<h3 id="consequent">Consequent</h3>
+<p>The model output is a weighted sum of first-order consequents:</p>
 <div class="arithmatex">\[
-\hat{y} = \sum_{r=1}^{R} \bar{w}_r \hat{y}_r,
-\qquad
-\hat{y}_r = \mathbf{w}_r^\top \mathbf{x} + b_r.
+\hat{y}^c(\mathbf{x}) = \sum_{r=1}^{R} \bar{\varphi}_r(\mathbf{x}) \left(b_{r,0}^c + \sum_{d=1}^{D} b_{r,d}^c x_d\right)
+\tag{5}
 \]</div>
-<h3 id="hdfis-min">HDFIS-min</h3>
-<p>HDFIS-min uses the minimum T-norm for antecedent aggregation and trains
-only consequent parameters. Because the minimum operator is nondifferentiable
-with respect to antecedent membership parameters, highFIS freezes the
-antecedent MFs and optimizes the consequent layers alone.</p>
-<h4 id="antecedent">Antecedent</h4>
-<p>The minimum T-norm firing strength is:</p>
-<div class="arithmatex">\[
-w_r(\mathbf{x}) = \min_{d=1,\ldots,D} \mu_{r,d}(x_d)
-\]</div>
-<p>HighFIS-min can be constructed from standard Gaussian MFs or from
-<code>DimensionDependentGaussianMF</code> objects, but the default estimator uses
-standard Gaussian MFs and then freezes the antecedent parameters.</p>
-<h4 id="defuzzification_1">Defuzzification</h4>
-<p>Normalized rule weights are computed with the standard sum-based defuzzifier:</p>
-<div class="arithmatex">\[
-\bar{w}_r = \frac{w_r}{\sum_{i=1}^{R} w_i}
-\]</div>
-<h4 id="consequent-first-order_1">Consequent (first-order)</h4>
-<p>HDFIS-min uses the same first-order TSK consequent form as HDFIS-prod:</p>
-<div class="arithmatex">\[
-\mathbf{y} = \sum_{r=1}^{R} \bar{w}_r \mathbf{y}_r
-\quad\text{or}\quad
-\hat{y} = \sum_{r=1}^{R} \bar{w}_r \hat{y}_r.
-\]</div>
-<h2 id="code-paper-correspondence">Code ↔ paper correspondence</h2>
+<h2 id="code-paper-correspondence">Code ↔ Paper Correspondence</h2>
 <table>
 <thead>
 <tr>
-<th>Paper concept</th>
-<th>highFIS implementation</th>
+<th>Equation</th>
+<th>Class / Method</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Dimension-dependent Gaussian MF</td>
-<td><code>highfis.memberships.DimensionDependentGaussianMF</code></td>
+<td>(1)</td>
+<td><code>CompositeGMF</code></td>
+<td>Paper's Composite Gaussian membership function with positive lower bound</td>
 </tr>
 <tr>
-<td>HDFIS-prod classifier</td>
-<td><code>highfis.models.HDFISProdClassifier</code></td>
+<td>(2)</td>
+<td><code>AdaptiveDombiTNorm</code></td>
+<td>Adaptive Dombi T-norm aggregation over antecedent degrees</td>
 </tr>
 <tr>
-<td>HDFIS-prod regressor</td>
-<td><code>highfis.models.HDFISProdRegressor</code></td>
+<td>(3)</td>
+<td><code>AdaptiveDombiTNorm.__init__</code></td>
+<td>Computes scalar <span class="arithmatex">\(\lambda\)</span> from <span class="arithmatex">\(D\)</span>, <span class="arithmatex">\(\varepsilon\)</span>, and <span class="arithmatex">\(K\)</span></td>
 </tr>
 <tr>
-<td>HDFIS-min classifier</td>
-<td><code>highfis.models.HDFISMinClassifier</code></td>
+<td>(4)</td>
+<td><code>SumBasedDefuzzifier</code></td>
+<td>Normalizes firing strengths into rule weights</td>
 </tr>
 <tr>
-<td>HDFIS-min regressor</td>
-<td><code>highfis.models.HDFISMinRegressor</code></td>
-</tr>
-<tr>
-<td>Estimator wrapper for HDFIS-prod classifier</td>
-<td><code>highfis.estimators.HDFISProdClassifierEstimator</code></td>
-</tr>
-<tr>
-<td>Estimator wrapper for HDFIS-prod regressor</td>
-<td><code>highfis.estimators.HDFISProdRegressorEstimator</code></td>
-</tr>
-<tr>
-<td>Estimator wrapper for HDFIS-min classifier</td>
-<td><code>highfis.estimators.HDFISMinClassifierEstimator</code></td>
-</tr>
-<tr>
-<td>Estimator wrapper for HDFIS-min regressor</td>
-<td><code>highfis.estimators.HDFISMinRegressorEstimator</code></td>
-</tr>
-<tr>
-<td>Product T-norm antecedent</td>
-<td><code>t_norm="prod"</code> in <code>HDFISProd*</code> models</td>
-</tr>
-<tr>
-<td>Minimum T-norm antecedent</td>
-<td><code>t_norm="min"</code> in <code>HDFISMin*</code> models</td>
-</tr>
-<tr>
-<td>Sum-based normalization</td>
-<td><code>highfis.defuzzifiers.SumBasedDefuzzifier</code></td>
+<td>(5)</td>
+<td><code>ClassificationConsequentLayer</code> / <code>RegressionConsequentLayer</code></td>
+<td>First-order consequent computation</td>
 </tr>
 </tbody>
 </table>
 <h2 id="implementation-notes">Implementation notes</h2>
-<h3 id="model-classes">Model classes</h3>
+<p>In highFIS, ADMTSK is implemented as two model classes:</p>
 <ul>
-<li><code>HDFISProdClassifier</code> and <code>HDFISProdRegressor</code> are concrete model classes
-  that use product aggregation and dimension-dependent Gaussian membership
-  functions for high-dimensional inference.</li>
-<li><code>HDFISMinClassifier</code> and <code>HDFISMinRegressor</code> are concrete model classes
-  that use minimum aggregation and freeze antecedent membership parameters.</li>
-<li>All HDFIS classes use first-order TSK consequents and
-  <code>highfis.defuzzifiers.SumBasedDefuzzifier</code>.</li>
+<li><code>ADMTSKClassifier</code></li>
+<li><code>ADMTSKRegressor</code></li>
 </ul>
-<h3 id="estimator-wrappers">Estimator wrappers</h3>
+<p>These classes accept an <code>input_mfs</code> mapping of feature names to membership
+functions. When used through the estimator wrappers, input Gaussian MFs are
+converted to <code>CompositeGMF</code> automatically.</p>
+<p>The adaptive lambda strategy is enabled by default through the <code>adaptive</code>
+parameter. When <code>adaptive=False</code>, ADMTSK falls back to a fixed Dombi parameter
+<code>lambda_</code>.</p>
+<p>ADMTSK also follows the paper's CoCo-FRB design by default; the model's
+rule base is set to <code>rule_base='coco'</code> unless explicitly overridden.</p>
+<p>The default settings are:</p>
 <ul>
-<li><code>HDFISProdClassifierEstimator</code> and <code>HDFISProdRegressorEstimator</code> are
-  sklearn-like wrappers around <code>HDFISProd*</code> models.</li>
-<li><code>HDFISMinClassifierEstimator</code> and <code>HDFISMinRegressorEstimator</code> are
-  sklearn-like wrappers around <code>HDFISMin*</code> models.</li>
-<li>The estimators expose standard training hyperparameters such as <code>epochs</code>,
-  <code>learning_rate</code>, <code>batch_size</code>, <code>shuffle</code>, <code>patience</code>, <code>restore_best</code>,
-  <code>validation_data</code>, <code>ur_weight</code>, and <code>weight_decay</code>.</li>
-<li>HDFIS-prod estimators build dimension-dependent Gaussian MFs from the
-  training input dimension.</li>
-<li>HDFIS-min estimators build antecedent MFs with the chosen initialization
-  strategy, then freeze them before training consequents.</li>
+<li><code>adaptive=True</code></li>
+<li><code>lambda_=1.0</code></li>
+<li><code>lower_bound=1/e</code></li>
+<li><code>K=10.0</code></li>
 </ul>
-<h3 id="membership-functions">Membership functions</h3>
+<h2 id="model-classes">Model classes</h2>
 <ul>
-<li>The HDFIS-prod paper uses a dimension-dependent Gaussian MF to avoid
-  numeric underflow when the product T-norm is applied to high-dimensional
-  inputs.</li>
-<li>highFIS implements this concept as <code>DimensionDependentGaussianMF</code>.</li>
-<li>HDFIS-min preserves the minimum T-norm behavior by freezing antecedent
-  membership parameters and optimizing only the consequent layers.</li>
+<li><code>ADMTSKClassifier</code> — classifier variant of ADMTSK.</li>
+<li><code>ADMTSKRegressor</code> — regressor variant of ADMTSK.</li>
 </ul>
-<h3 id="training-in-the-paper-vs-highfis">Training in the paper vs. highFIS</h3>
+<p>Both use the same antecedent and consequent structure as standard TSK, while
+replacing the product antecedent with adaptive Dombi aggregation and using
+Composite GMF antecedents.</p>
+<h2 id="estimator-wrappers">Estimator wrappers</h2>
 <ul>
-<li>HDFIS-prod is described in the paper as a product-based high-dimensional
-  TSK model with adaptive membership spread scaling; highFIS follows this
-  design using dimension-dependent Gaussian MFs and end-to-end gradient
-  optimization.</li>
-<li>HDFIS-min is described in the paper as a minimum T-norm model where only
-  consequents are optimized; highFIS implements this by freezing antecedent
-  parameters in <code>HDFISMin*</code> classes.</li>
-<li><code>BaseTSK.fit()</code> supports mini-batch optimization, optional early stopping,
-  uniform rule regularization, and weight decay across HDFIS estimators.</li>
+<li><code>ADMTSKClassifierEstimator</code></li>
+<li><code>ADMTSKRegressorEstimator</code></li>
+</ul>
+<p>These wrappers provide sklearn-compatible <code>fit</code>/<code>predict</code> APIs and build the
+inferential pipeline from high-level settings such as <code>n_mfs</code>, <code>mf_init</code>,
+<code>sigma_scale</code>, and adaptive lambda parameters.</p>
+<p>When the estimator constructs input membership functions it converts the
+initial Gaussian MFs into <code>CompositeGMF</code>, matching the paper's positive lower
+bound membership design.</p>
+<h2 id="membership-functions">Membership functions</h2>
+<p>ADMTSK is designed around the Composite Gaussian MF (CGMF):</p>
+<ul>
+<li>positive lower bound avoids zero membership values,</li>
+<li>enables stable Dombi computation in high dimensions,</li>
+<li>improves robustness in adaptive lambda selection.</li>
+</ul>
+<p>The estimator wrappers default to <code>CompositeGMF</code> for the ADMTSK pipeline.</p>
+<h2 id="training-in-the-paper-vs-highfis">Training in the paper vs. highFIS</h2>
+<p>The ADMTSK paper describes end-to-end gradient-based training with adaptive
+Dombi lambda and CGMF antecedents. In highFIS, the model is trained through
+<code>BaseTSK.fit()</code> using AdamW, optional early stopping, and standard PyTorch
+backpropagation.</p>
+<p>The highFIS implementation preserves the paper's main design:</p>
+<ul>
+<li>adaptive Dombi T-norm antecedent,</li>
+<li>CGMF antecedent membership functions,</li>
+<li>first-order TSK consequents,</li>
+<li>normalized rule strengths via sum-based defuzzification.</li>
 </ul>
 <h2 id="alignment-with-the-paper">Alignment with the paper</h2>
+<p>This implementation mirrors the paper by:</p>
 <ul>
-<li>highFIS implements the HDFIS-prod architecture with product antecedent
-  aggregation, dimension-dependent Gaussian membership functions, and
-  sum-based normalization.</li>
-<li>highFIS implements the HDFIS-min architecture with minimum antecedent
-  aggregation and frozen antecedent membership parameters, optimizing only
-  first-order consequents.</li>
-<li>Both HDFIS variants preserve the paper's first-order TSK consequent
-  structure and sum-based rule normalization.</li>
-</ul>
-<h2 id="notes">Notes</h2>
-<ul>
-<li>highFIS currently provides complete implementations of <strong>HDFIS-prod</strong> and
-  <strong>HDFIS-min</strong>.</li>
-<li>HDFIS-min in highFIS uses frozen antecedents to avoid nondifferentiability
-  and keep training focused on consequent parameters.</li>
+<li>using <code>CompositeGMF</code> as the positive lower bound membership function,</li>
+<li>computing a scalar adaptive <code>lambda</code> from feature dimension and lower bound,</li>
+<li>using a Dombi T-norm aggregation for antecedent rule firing strengths,</li>
+<li>keeping first-order consequents and standard sum normalization.</li>
 </ul>
 
 
@@ -1858,7 +1662,7 @@ standard Gaussian MFs and then freezes the antecedent parameters.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../ayatsk/" class="md-footer__link md-footer__link--prev" aria-label="Previous: AYATSK">
+          <a href="../hdfis/" class="md-footer__link md-footer__link--prev" aria-label="Previous: HDFIS">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1868,20 +1672,20 @@ standard Gaussian MFs and then freezes the antecedent parameters.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                AYATSK
+                HDFIS
               </div>
             </div>
           </a>
         
         
           
-          <a href="../admtsk/" class="md-footer__link md-footer__link--next" aria-label="Next: ADMTSK">
+          <a href="../../api/estimators/" class="md-footer__link md-footer__link--next" aria-label="Next: Estimators">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                ADMTSK
+                Estimators
               </div>
             </div>
             <div class="md-footer__button md-icon">
