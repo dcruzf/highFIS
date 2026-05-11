@@ -1448,7 +1448,27 @@ class TSKRegressorEstimator(_BaseRegressorEstimator):
 
 
 class HDFISProdClassifierEstimator(_BaseClassifierEstimator):
-    r"""HDFIS-prod classifier estimator with dimension-dependent Gaussian MFs."""
+    r"""HDFIS-prod classifier estimator with dimension-dependent Gaussian MFs.
+
+    HDFIS-prod combines the standard product T-norm with a dimension-dependent
+    Gaussian membership function (DMF) to avoid numeric underflow in very
+    high-dimensional feature spaces while preserving first-order TSK
+    consequents.
+
+    References:
+        G. Xue, J. Wang, K. Zhang and N. R. Pal, "High-Dimensional Fuzzy
+        Inference Systems," in IEEE Transactions on Systems, Man, and
+        Cybernetics: Systems, vol. 54, no. 1, pp. 507-519, Jan. 2024,
+        doi: 10.1109/TSMC.2023.3311475.
+
+    Example:
+        ```python
+        from highfis import HDFISProdClassifierEstimator
+
+        clf = HDFISProdClassifierEstimator()
+        clf.fit(X_train, y_train)
+        ```
+    """
 
     def __init__(
         self,
@@ -1527,7 +1547,27 @@ class HDFISProdClassifierEstimator(_BaseClassifierEstimator):
 
 
 class HDFISProdRegressorEstimator(_BaseRegressorEstimator):
-    r"""HDFIS-prod regressor estimator with dimension-dependent Gaussian MFs."""
+    r"""HDFIS-prod regressor estimator with dimension-dependent Gaussian MFs.
+
+    HDFIS-prod combines the standard product T-norm with a dimension-dependent
+    Gaussian membership function (DMF) to avoid numeric underflow in very
+    high-dimensional feature spaces while preserving first-order TSK
+    consequents.
+
+    References:
+        G. Xue, J. Wang, K. Zhang and N. R. Pal, "High-Dimensional Fuzzy
+        Inference Systems," in IEEE Transactions on Systems, Man, and
+        Cybernetics: Systems, vol. 54, no. 1, pp. 507-519, Jan. 2024,
+        doi: 10.1109/TSMC.2023.3311475.
+
+    Example:
+        ```python
+        from highfis import HDFISProdRegressorEstimator
+
+        reg = HDFISProdRegressorEstimator()
+        reg.fit(X_train, y_train)
+        ```
+    """
 
     def __init__(
         self,
