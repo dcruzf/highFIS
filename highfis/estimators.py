@@ -39,6 +39,12 @@ Model Family Overview:
         Implemented by:
             `DombiTSKClassifierEstimator`, `DombiTSKRegressorEstimator`
 
+    **ADMTSK**
+        Adaptive Dombi TSK with Composite Gaussian membership functions.
+
+        Implemented by:
+            `ADMTSKClassifierEstimator`, `ADMTSKRegressorEstimator`
+
     **AYATSK**
         Adaptive Yager T-norm based TSK.
 
@@ -2270,7 +2276,26 @@ class DombiTSKRegressorEstimator(_BaseRegressorEstimator):
 
 
 class ADMTSKClassifierEstimator(_BaseClassifierEstimator):
-    r"""ADMTSK classifier estimator with Composite GMF and adaptive Dombi lambda."""
+    r"""ADMTSK classifier estimator with Composite GMF and adaptive Dombi lambda.
+
+    ADMTSK is an adaptive Dombi TSK fuzzy system designed for high-dimensional inference.
+    It combines a Dombi T-norm antecedent with a positive lower-bound Composite Gaussian
+    membership function (CGMF) and normalized first-order consequents.
+
+    Reference:
+        G. Xue, L. Hu, J. Wang and S. Ablameyko, "ADMTSK: A High-Dimensional
+        Takagi-Sugeno-Kang Fuzzy System Based on Adaptive Dombi T-Norm," in IEEE
+        Transactions on Fuzzy Systems, vol. 33, no. 6, pp. 1767-1780, June 2025,
+        doi: 10.1109/TFUZZ.2025.3535640.
+
+    Example:
+        ```python
+        from highfis import ADMTSKClassifierEstimator
+
+        clf = ADMTSKClassifierEstimator()
+        clf.fit(X_train, y_train)
+        ```
+    """
 
     def __init__(
         self,
@@ -2299,7 +2324,41 @@ class ADMTSKClassifierEstimator(_BaseClassifierEstimator):
         lower_bound: float = 1.0 / math.e,
         K: float = 10.0,
     ) -> None:
-        """Initialise an ADMTSK classifier estimator."""
+        """Initialize an ADMTSK classifier estimator.
+
+        Args:
+            input_configs: Optional list of per-feature input configurations.
+            n_mfs: Number of membership functions per input when using
+                ``mf_init="kmeans"`` or ``mf_init="grid"``.
+            mf_init: Initialisation strategy for MFs, either ``"kmeans"``
+                or ``"grid"``.
+            sigma_scale: Scale factor used to initialise Gaussian MF sigma
+                values.
+            random_state: Random seed for MF initialisation and weights.
+            epochs: Maximum number of training epochs.
+            learning_rate: Learning rate for the optimizer.
+            verbose: Verbosity level for training output.
+            rule_base: Rule base strategy override, typically ``"coco"`` or
+                ``"cartesian"``.
+            batch_size: Mini-batch size for training.
+            shuffle: Whether to shuffle training data each epoch.
+            ur_weight: Uniform-rule regularisation weight.
+            ur_target: Target average rule activation for uniform regularisation.
+            consequent_batch_norm: If True, apply batch normalization to
+                consequent inputs.
+            pfrb_max_rules: Maximum number of rules for point-based FRB.
+            patience: Early stopping patience. Use ``None`` to disable.
+            restore_best: If True, restore the best validation weights.
+            validation_data: Validation dataset used for early stopping.
+            weight_decay: Weight decay applied during training.
+            adaptive: If True, use adaptive lambda selection for Dombi T-norm.
+            lambda_: Fixed Dombi parameter when adaptive is False.
+            lower_bound: Lower bound used by Composite GMF.
+            K: Heuristic constant used to compute adaptive lambda.
+
+        Raises:
+            ValueError: If estimator hyperparameters are invalid.
+        """
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -2353,7 +2412,26 @@ class ADMTSKClassifierEstimator(_BaseClassifierEstimator):
 
 
 class ADMTSKRegressorEstimator(_BaseRegressorEstimator):
-    r"""ADMTSK regressor estimator with Composite GMF and adaptive Dombi lambda."""
+    r"""ADMTSK regressor estimator with Composite GMF and adaptive Dombi lambda.
+
+    ADMTSK is an adaptive Dombi TSK fuzzy system designed for high-dimensional inference.
+    It combines a Dombi T-norm antecedent with a positive lower-bound Composite Gaussian
+    membership function (CGMF) and normalized first-order consequents.
+
+    Reference:
+        G. Xue, L. Hu, J. Wang and S. Ablameyko, "ADMTSK: A High-Dimensional
+        Takagi-Sugeno-Kang Fuzzy System Based on Adaptive Dombi T-Norm," in IEEE
+        Transactions on Fuzzy Systems, vol. 33, no. 6, pp. 1767-1780, June 2025,
+        doi: 10.1109/TFUZZ.2025.3535640.
+
+    Example:
+        ```python
+        from highfis import ADMTSKRegressorEstimator
+
+        reg = ADMTSKRegressorEstimator()
+        reg.fit(X_train, y_train)
+        ```
+    """
 
     def __init__(
         self,
@@ -2381,7 +2459,40 @@ class ADMTSKRegressorEstimator(_BaseRegressorEstimator):
         lower_bound: float = 1.0 / math.e,
         K: float = 10.0,
     ) -> None:
-        """Initialise an ADMTSK regressor estimator."""
+        """Initialize an ADMTSK regressor estimator.
+
+        Args:
+            input_configs: Optional list of per-feature input configurations.
+            n_mfs: Number of membership functions per input when using
+                ``mf_init="kmeans"`` or ``mf_init="grid"``.
+            mf_init: Initialisation strategy for MFs, either ``"kmeans"``
+                or ``"grid"``.
+            sigma_scale: Scale factor used to initialise Gaussian MF sigma
+                values.
+            random_state: Random seed for MF initialisation and weights.
+            epochs: Maximum number of training epochs.
+            learning_rate: Learning rate for the optimizer.
+            verbose: Verbosity level for training output.
+            rule_base: Rule base strategy override, typically ``"coco"`` or
+                ``"cartesian"``.
+            batch_size: Mini-batch size for training.
+            shuffle: Whether to shuffle training data each epoch.
+            ur_weight: Uniform-rule regularisation weight.
+            ur_target: Target average rule activation for uniform regularisation.
+            consequent_batch_norm: If True, apply batch normalization to
+                consequent inputs.
+            patience: Early stopping patience. Use ``None`` to disable.
+            restore_best: If True, restore the best validation weights.
+            validation_data: Validation dataset used for early stopping.
+            weight_decay: Weight decay applied during training.
+            adaptive: If True, use adaptive lambda selection for Dombi T-norm.
+            lambda_: Fixed Dombi parameter when adaptive is False.
+            lower_bound: Lower bound used by Composite GMF.
+            K: Heuristic constant used to compute adaptive lambda.
+
+        Raises:
+            ValueError: If estimator hyperparameters are invalid.
+        """
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,

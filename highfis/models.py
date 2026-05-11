@@ -43,6 +43,13 @@ Model Family Overview:
             - `DombiTSKClassifier`
             - `DombiTSKRegressor`
 
+    **ADMTSK**
+        Configuration: adaptive Dombi T-norm + `CompositeGMF` + `SumBasedDefuzzifier`
+
+        Classes:
+            - `ADMTSKClassifier`
+            - `ADMTSKRegressor`
+
     **AYATSK**
         Configuration: `t_norm="yager"` + `SumBasedDefuzzifier`
 
@@ -789,7 +796,18 @@ class DombiTSKRegressor(BaseTSKRegressor):
 
 
 class ADMTSKClassifier(BaseTSKClassifier):
-    r"""Adaptive Dombi TSK classifier with Composite Gaussian membership functions."""
+    r"""Adaptive Dombi TSK classifier with Composite Gaussian membership functions.
+
+    ADMTSK is an adaptive Dombi TSK fuzzy system designed for high-dimensional inference.
+    It combines a Dombi T-norm antecedent with a positive lower-bound Composite Gaussian
+    membership function (CGMF) and normalized first-order consequents.
+
+    Reference:
+        G. Xue, L. Hu, J. Wang and S. Ablameyko, "ADMTSK: A High-Dimensional
+        Takagi-Sugeno-Kang Fuzzy System Based on Adaptive Dombi T-Norm," in IEEE
+        Transactions on Fuzzy Systems, vol. 33, no. 6, pp. 1767-1780, June 2025,
+        doi: 10.1109/TFUZZ.2025.3535640.
+    """
 
     def __init__(
         self,
@@ -806,26 +824,30 @@ class ADMTSKClassifier(BaseTSKClassifier):
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
     ) -> None:
-        """Initialise the ADMTSK classifier.
+        """Initialize the ADMTSK classifier.
 
         Args:
             input_mfs: Mapping from feature name to a sequence of
-                :class:`~highfis.memberships.MembershipFunction` objects.
-            n_classes: Number of output classes (must be ≥ 2).
-            rule_base: ``"cartesian"`` or ``"coco"`` rule-base strategy.
-            t_norm: T-norm identifier (default ``"dombi"``).
-            adaptive: Whether to use adaptive lambda selection.
-            lambda_: Fixed Dombi parameter ``λ > 0`` when not adaptive.
-            lower_bound: Lower bound of Composite GMF membership values.
-            K: Heuristic scaling constant for adaptive lambda.
-            t_norm_fn: Optional custom t-norm callable; overrides other settings.
-            rules: Explicit rule antecedent indices.
-            defuzzifier: Custom defuzzifier. Defaults to
-                :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
-            consequent_batch_norm: Batch normalisation on consequent inputs.
+                membership functions.
+            n_classes: Number of output classes. Must be >= 2.
+            rule_base: Rule base strategy, either ``"coco"`` or
+                ``"cartesian"``.
+            t_norm: T-norm identifier. Defaults to ``"dombi"``.
+            adaptive: If True, compute adaptive lambda using the feature
+                dimension and membership lower bound.
+            lambda_: Fixed Dombi parameter ``λ > 0`` when adaptive is False.
+            lower_bound: The lower bound for Composite GMF values.
+            K: Heuristic constant used to compute adaptive lambda.
+            t_norm_fn: Optional custom T-norm implementation. Overrides
+                ``adaptive`` and ``lambda_`` when provided.
+            rules: Explicit rule antecedent indices for custom rule bases.
+            defuzzifier: Optional defuzzifier module.
+            consequent_batch_norm: If True, apply batch normalization to
+                consequent inputs.
 
         Raises:
-            ValueError: If ``n_classes < 2`` or invalid parameters are provided.
+            ValueError: If ``n_classes < 2`` or if ``lambda_`` is invalid
+                when adaptive is False.
         """
         if n_classes < 2:
             raise ValueError("n_classes must be >= 2")
@@ -866,7 +888,18 @@ class ADMTSKClassifier(BaseTSKClassifier):
 
 
 class ADMTSKRegressor(BaseTSKRegressor):
-    r"""Adaptive Dombi TSK regressor with Composite Gaussian membership functions."""
+    r"""Adaptive Dombi TSK regressor with Composite Gaussian membership functions.
+
+    ADMTSK is an adaptive Dombi TSK fuzzy system designed for high-dimensional inference.
+    It combines a Dombi T-norm antecedent with a positive lower-bound Composite Gaussian
+    membership function (CGMF) and normalized first-order consequents.
+
+    Reference:
+        G. Xue, L. Hu, J. Wang and S. Ablameyko, "ADMTSK: A High-Dimensional
+        Takagi-Sugeno-Kang Fuzzy System Based on Adaptive Dombi T-Norm," in IEEE
+        Transactions on Fuzzy Systems, vol. 33, no. 6, pp. 1767-1780, June 2025,
+        doi: 10.1109/TFUZZ.2025.3535640.
+    """
 
     def __init__(
         self,
@@ -882,25 +915,28 @@ class ADMTSKRegressor(BaseTSKRegressor):
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
     ) -> None:
-        """Initialise the ADMTSK regressor.
+        """Initialize the ADMTSK regressor.
 
         Args:
             input_mfs: Mapping from feature name to a sequence of
-                :class:`~highfis.memberships.MembershipFunction` objects.
-            rule_base: ``"cartesian"`` or ``"coco"`` rule-base strategy.
-            t_norm: T-norm identifier (default ``"dombi"``).
-            adaptive: Whether to use adaptive lambda selection.
-            lambda_: Fixed Dombi parameter ``λ > 0`` when not adaptive.
-            lower_bound: Lower bound of Composite GMF membership values.
-            K: Heuristic scaling constant for adaptive lambda.
-            t_norm_fn: Optional custom t-norm callable.
-            rules: Explicit rule antecedent indices.
-            defuzzifier: Custom defuzzifier. Defaults to
-                :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
-            consequent_batch_norm: Batch normalisation on consequent inputs.
+                membership functions.
+            rule_base: Rule base strategy, either ``"coco"`` or
+                ``"cartesian"``.
+            t_norm: T-norm identifier. Defaults to ``"dombi"``.
+            adaptive: If True, compute adaptive lambda using the feature
+                dimension and membership lower bound.
+            lambda_: Fixed Dombi parameter ``λ > 0`` when adaptive is False.
+            lower_bound: The lower bound for Composite GMF values.
+            K: Heuristic constant used to compute adaptive lambda.
+            t_norm_fn: Optional custom T-norm implementation. Overrides
+                ``adaptive`` and ``lambda_`` when provided.
+            rules: Explicit rule antecedent indices for custom rule bases.
+            defuzzifier: Optional defuzzifier module.
+            consequent_batch_norm: If True, apply batch normalization to
+                consequent inputs.
 
         Raises:
-            ValueError: If invalid parameters are provided.
+            ValueError: If ``lambda_`` is invalid when adaptive is False.
         """
         if not adaptive and lambda_ <= 0.0:
             raise ValueError("lambda_ must be > 0")
