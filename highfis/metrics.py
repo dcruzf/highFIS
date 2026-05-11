@@ -13,10 +13,15 @@ from sklearn.metrics import (
     accuracy_score,
     balanced_accuracy_score,
     confusion_matrix,
+    explained_variance_score,
     f1_score,
     log_loss,
+    max_error,
     mean_absolute_error,
+    mean_absolute_percentage_error,
     mean_squared_error,
+    mean_squared_log_error,
+    median_absolute_error,
     precision_score,
     r2_score,
     recall_score,
@@ -35,7 +40,21 @@ ClassificationMetric = Literal[
     "classes",
     "log_loss",
 ]
-RegressionMetric = Literal["mse", "mae", "rmse", "r2"]
+RegressionMetric = Literal[
+    "mse",
+    "mae",
+    "rmse",
+    "r2",
+    "median_absolute_error",
+    "mean_bias_error",
+    "max_error",
+    "std_error",
+    "explained_variance",
+    "mape",
+    "smape",
+    "msle",
+    "pearson",
+]
 Task = Literal["classification", "regression"]
 
 DEFAULT_CLASSIFICATION_METRICS: list[ClassificationMetric] = [
@@ -55,7 +74,17 @@ _CLASSIFICATION_METRIC_NAMES = set(DEFAULT_CLASSIFICATION_METRICS) | {
     "classes",
     "log_loss",
 }
-_REGRESSION_METRIC_NAMES = set(DEFAULT_REGRESSION_METRICS)
+_REGRESSION_METRIC_NAMES = set(DEFAULT_REGRESSION_METRICS) | {
+    "median_absolute_error",
+    "mean_bias_error",
+    "max_error",
+    "std_error",
+    "explained_variance",
+    "mape",
+    "smape",
+    "msle",
+    "pearson",
+}
 
 
 def _flatten_array(values: Any) -> np.ndarray:
@@ -145,6 +174,68 @@ class RegressionMetrics:
     def rmse(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
         """Return root mean squared error."""
         return float(np.sqrt(mean_squared_error(y_true, y_pred, sample_weight=sample_weight)))
+
+    @staticmethod
+    def median_absolute_error(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
+        """Return median absolute error."""
+        return float(median_absolute_error(y_true, y_pred, sample_weight=sample_weight))
+
+    @staticmethod
+    def mean_bias_error(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
+        """Return mean bias error (prediction minus truth)."""
+        y_true_arr = _flatten_array(y_true)
+        y_pred_arr = _flatten_array(y_pred)
+        return float(np.mean(y_pred_arr - y_true_arr))
+
+    @staticmethod
+    def max_error(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
+        """Return maximum absolute error."""
+        return float(max_error(y_true, y_pred))
+
+    @staticmethod
+    def std_error(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
+        """Return the standard deviation of the errors."""
+        y_true_arr = _flatten_array(y_true)
+        y_pred_arr = _flatten_array(y_pred)
+        return float(np.std(y_pred_arr - y_true_arr))
+
+    @staticmethod
+    def explained_variance(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
+        """Return explained variance."""
+        return float(explained_variance_score(y_true, y_pred, sample_weight=sample_weight))
+
+    @staticmethod
+    def mape(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
+        """Return mean absolute percentage error."""
+        return float(mean_absolute_percentage_error(y_true, y_pred))
+
+    @staticmethod
+    def smape(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
+        """Return symmetric mean absolute percentage error."""
+        y_true_arr = _flatten_array(y_true)
+        y_pred_arr = _flatten_array(y_pred)
+        numerator = np.abs(y_pred_arr - y_true_arr) * 2.0
+        denominator = np.abs(y_true_arr) + np.abs(y_pred_arr)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            ratio = np.where(denominator == 0.0, 0.0, numerator / denominator)
+        return float(np.mean(ratio))
+
+    @staticmethod
+    def msle(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
+        """Return mean squared logarithmic error."""
+        try:
+            return float(mean_squared_log_error(y_true, y_pred))
+        except ValueError:
+            return float(np.nan)
+
+    @staticmethod
+    def pearson(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
+        """Return Pearson correlation coefficient."""
+        y_true_arr = _flatten_array(y_true)
+        y_pred_arr = _flatten_array(y_pred)
+        if y_true_arr.size < 2 or np.std(y_true_arr) == 0 or np.std(y_pred_arr) == 0:
+            return float(np.nan)
+        return float(np.corrcoef(y_true_arr, y_pred_arr)[0, 1])
 
     @staticmethod
     def r2(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
@@ -299,6 +390,19 @@ def compute_metrics(
             "mse": RegressionMetrics.mse(y_true_arr, y_pred_arr, sample_weight=sample_weight),
             "mae": RegressionMetrics.mae(y_true_arr, y_pred_arr, sample_weight=sample_weight),
             "rmse": RegressionMetrics.rmse(y_true_arr, y_pred_arr, sample_weight=sample_weight),
+            "median_absolute_error": RegressionMetrics.median_absolute_error(
+                y_true_arr, y_pred_arr, sample_weight=sample_weight
+            ),
+            "mean_bias_error": RegressionMetrics.mean_bias_error(y_true_arr, y_pred_arr, sample_weight=sample_weight),
+            "max_error": RegressionMetrics.max_error(y_true_arr, y_pred_arr, sample_weight=sample_weight),
+            "std_error": RegressionMetrics.std_error(y_true_arr, y_pred_arr, sample_weight=sample_weight),
+            "explained_variance": RegressionMetrics.explained_variance(
+                y_true_arr, y_pred_arr, sample_weight=sample_weight
+            ),
+            "mape": RegressionMetrics.mape(y_true_arr, y_pred_arr, sample_weight=sample_weight),
+            "smape": RegressionMetrics.smape(y_true_arr, y_pred_arr, sample_weight=sample_weight),
+            "msle": RegressionMetrics.msle(y_true_arr, y_pred_arr, sample_weight=sample_weight),
+            "pearson": RegressionMetrics.pearson(y_true_arr, y_pred_arr, sample_weight=sample_weight),
             "r2": RegressionMetrics.r2(y_true_arr, y_pred_arr, sample_weight=sample_weight),
         }
         return {key: results[key] for key in metric_names}

@@ -4,6 +4,7 @@ from typing import cast
 
 import numpy as np
 import pytest
+from sklearn.metrics import explained_variance_score
 
 from highfis.metrics import ClassificationMetrics, RegressionMetrics, Task, compute_metrics
 
@@ -173,6 +174,52 @@ def test_compute_metrics_regression_custom_subset() -> None:
 
     assert set(result) == {"mae", "r2"}
     assert np.isclose(result["mae"], np.mean(np.abs(y_true - y_pred)))
+
+
+def test_compute_metrics_regression_extra_metrics() -> None:
+    y_true = np.array([1.0, 2.0, 3.0, 4.0])
+    y_pred = np.array([1.1, 1.9, 2.9, 4.1])
+
+    result = compute_metrics(
+        task="regression",
+        y_true=y_true,
+        y_pred=y_pred,
+        metrics=[
+            "median_absolute_error",
+            "mean_bias_error",
+            "max_error",
+            "std_error",
+            "explained_variance",
+            "mape",
+            "smape",
+            "msle",
+            "pearson",
+        ],
+    )
+
+    assert set(result) == {
+        "median_absolute_error",
+        "mean_bias_error",
+        "max_error",
+        "std_error",
+        "explained_variance",
+        "mape",
+        "smape",
+        "msle",
+        "pearson",
+    }
+    assert np.isclose(result["median_absolute_error"], np.median(np.abs(y_true - y_pred)))
+    assert np.isclose(result["mean_bias_error"], np.mean(y_pred - y_true))
+    assert np.isclose(result["max_error"], np.max(np.abs(y_true - y_pred)))
+    assert np.isclose(result["std_error"], np.std(y_pred - y_true))
+    assert np.isclose(result["explained_variance"], explained_variance_score(y_true, y_pred))
+    assert np.isclose(result["mape"], np.mean(np.abs((y_pred - y_true) / y_true)))
+    assert np.isclose(
+        result["smape"],
+        np.mean(2.0 * np.abs(y_pred - y_true) / (np.abs(y_true) + np.abs(y_pred))),
+    )
+    assert np.isclose(result["msle"], np.mean(np.square(np.log1p(y_pred) - np.log1p(y_true))))
+    assert np.isclose(result["pearson"], np.corrcoef(y_true, y_pred)[0, 1])
 
 
 def test_compute_metrics_rejects_invalid_task() -> None:
