@@ -23,6 +23,9 @@ from highfis.models import (
     DombiTSKRegressor,
     FSREAdaTSKClassifier,
     FSREAdaTSKRegressor,
+    HDFISMinClassifier,
+    HDFISMinRegressor,
+    HDFISProdClassifier,
     HTSKClassifier,
     HTSKRegressor,
     LogTSKClassifier,
@@ -147,6 +150,26 @@ def test_htsk_classifier_fit_validates_inputs() -> None:
 
     with pytest.raises(ValueError, match="ur_target must be in"):
         model.fit(x, y, epochs=1, ur_target=0.0)
+
+
+def test_hdfismin_classifier_freezes_membership_parameters() -> None:
+    model = HDFISMinClassifier(_build_input_mfs(), n_classes=2)
+    assert all(not p.requires_grad for p in model.membership_layer.parameters())
+
+
+def test_hdfisprod_classifier_rejects_invalid_n_classes() -> None:
+    with pytest.raises(ValueError, match="n_classes must be >= 2"):
+        HDFISProdClassifier(_build_input_mfs(), n_classes=1)
+
+
+def test_hdfismin_classifier_rejects_invalid_n_classes() -> None:
+    with pytest.raises(ValueError, match="n_classes must be >= 2"):
+        HDFISMinClassifier(_build_input_mfs(), n_classes=1)
+
+
+def test_hdfismin_regressor_freezes_membership_parameters() -> None:
+    model = HDFISMinRegressor(_build_input_mfs(), rule_base="coco")
+    assert all(not p.requires_grad for p in model.membership_layer.parameters())
 
 
 def test_dombitsk_classifier_forward_antecedents_row_sum_one() -> None:

@@ -69,6 +69,14 @@ Model Family Overview:
         Implemented by:
             `DGTSKClassifierEstimator`, `DGTSKRegressorEstimator`
 
+    **HDFIS**
+        High-dimensional inference with both product DMF and minimum
+        frozen-antecedent variants.
+
+        Implemented by:
+            `HDFISProdClassifierEstimator`, `HDFISProdRegressorEstimator`,
+            `HDFISMinClassifierEstimator`, `HDFISMinRegressorEstimator`
+
 Membership Function Initialization:
     The following strategies are available for initializing membership functions:
 
@@ -103,7 +111,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 
 from .base import BaseTSK
-from .memberships import GaussianMF
+from .memberships import DimensionDependentGaussianMF, GaussianMF
 from .metrics import compute_metrics
 from .models import (
     AdaTSKClassifier,
@@ -118,6 +126,10 @@ from .models import (
     DombiTSKRegressor,
     FSREAdaTSKClassifier,
     FSREAdaTSKRegressor,
+    HDFISMinClassifier,
+    HDFISMinRegressor,
+    HDFISProdClassifier,
+    HDFISProdRegressor,
     HTSKClassifier,
     HTSKRegressor,
     LogTSKClassifier,
@@ -271,6 +283,30 @@ def _build_pfrb_input_mfs(
         centers = col[indices]
         input_mfs[name] = [GaussianMF(mean=float(c), sigma=sigma) for c in centers]
     return input_mfs
+
+
+def _wrap_dimension_dependent_gaussian_input_mfs(
+    input_mfs: dict[str, list[GaussianMF]],
+    dimension: int,
+    xi: float = 745.0,
+    rho: float | None = None,
+) -> dict[str, list[GaussianMF]]:
+    return {
+        name: cast(
+            list[GaussianMF],
+            [
+                DimensionDependentGaussianMF(
+                    mean=mf.mean.detach().item(),
+                    sigma=mf.sigma.detach().item(),
+                    dimension=dimension,
+                    xi=xi,
+                    rho=rho,
+                )
+                for mf in mfs
+            ],
+        )
+        for name, mfs in input_mfs.items()
+    }
 
 
 class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[misc]
@@ -847,10 +883,11 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         return input_mfs, feature_names, effective_rule_base
 
     @abstractmethod
-    def _build_model(
+    def _build_regressor_model(
         self,
         input_mfs: dict[str, list[GaussianMF]],
         rule_base: str,
+        n_classes: int | None = None,
     ) -> BaseTSK:
         """Create the concrete TSK regression model."""
 
@@ -868,7 +905,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         self.n_features_in_ = x_arr.shape[1]
         self.feature_names_in_ = np.asarray(feature_names, dtype=object)
 
-        self.model_ = self._build_model(input_mfs, effective_rule_base)
+        self.model_ = self._build_regressor_model(input_mfs, effective_rule_base)
 
         y_t = torch.as_tensor(np.asarray(y_arr, dtype=np.float32), dtype=torch.float32)
 
@@ -941,7 +978,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         estimator = cls(**checkpoint["estimator_params"])
         model_init = checkpoint["model_init"]
         estimator.rule_base_ = model_init["rule_base"]
-        estimator.model_ = estimator._build_model(
+        estimator.model_ = estimator._build_regressor_model(
             model_init["input_mfs"],
             str(model_init["rule_base"]),
         )
@@ -1185,10 +1222,11 @@ class HTSKRegressorEstimator(_BaseRegressorEstimator):
             weight_decay=weight_decay,
         )
 
-    def _build_model(
+    def _build_regressor_model(
         self,
         input_mfs: dict[str, list[GaussianMF]],
         rule_base: str,
+        n_classes: int | None = None,
     ) -> BaseTSK:
         """Create HTSKRegressor."""
         return HTSKRegressor(
@@ -1366,7 +1404,7 @@ class TSKRegressorEstimator(_BaseRegressorEstimator):
             n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default) or ``"grid"``.
             sigma_scale: Sigma scale factor. Use ``"auto"`` (= ``sqrt(D)``)
-                for high-dimensional data to mitigate softmax saturation.
+                to mitigate softmax saturation on high-dimensional data.
                 ``1.0`` is appropriate for low-to-medium-dimensional problems.
             random_state: Seed for k-means and weight initialisation.
             epochs: Maximum training epochs (default ``10``).
@@ -1406,13 +1444,374 @@ class TSKRegressorEstimator(_BaseRegressorEstimator):
             weight_decay=weight_decay,
         )
 
-    def _build_model(
+    def _build_regressor_model(
         self,
         input_mfs: dict[str, list[GaussianMF]],
         rule_base: str,
+        n_classes: int | None = None,
     ) -> BaseTSK:
-        """Create TSKRegressor."""
         return TSKRegressor(
+            input_mfs,
+            rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+
+class HDFISProdClassifierEstimator(_BaseClassifierEstimator):
+    r"""HDFIS-prod classifier estimator with dimension-dependent Gaussian MFs.
+
+    HDFIS-prod combines the standard product T-norm with a dimension-dependent
+    Gaussian membership function (DMF) to avoid numeric underflow in very
+    high-dimensional feature spaces while preserving first-order TSK
+    consequents.
+
+    References:
+        G. Xue, J. Wang, K. Zhang and N. R. Pal, "High-Dimensional Fuzzy
+        Inference Systems," in IEEE Transactions on Systems, Man, and
+        Cybernetics: Systems, vol. 54, no. 1, pp. 507-519, Jan. 2024,
+        doi: 10.1109/TSMC.2023.3311475.
+
+    Example:
+        ```python
+        from highfis import HDFISProdClassifierEstimator
+
+        clf = HDFISProdClassifierEstimator()
+        clf.fit(X_train, y_train)
+        ```
+    """
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 5,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 10,
+        learning_rate: float = 1e-2,
+        verbose: bool | int = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        pfrb_max_rules: int | None = None,
+        patience: int | None = 20,
+        restore_best: bool = True,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+        xi: float = 745.0,
+        rho: float | None = None,
+    ) -> None:
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            pfrb_max_rules=pfrb_max_rules,
+            patience=patience,
+            restore_best=restore_best,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
+        self.xi = float(xi)
+        self.rho = rho
+
+    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[dict[str, list[GaussianMF]], list[str], str]:
+        input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
+        return (
+            _wrap_dimension_dependent_gaussian_input_mfs(
+                input_mfs,
+                dimension=x_arr.shape[1],
+                xi=self.xi,
+                rho=self.rho,
+            ),
+            feature_names,
+            effective_rule_base,
+        )
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        n_classes: int,
+        rule_base: str,
+    ) -> BaseTSK:
+        return HDFISProdClassifier(
+            input_mfs,
+            n_classes=n_classes,
+            rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+
+class HDFISProdRegressorEstimator(_BaseRegressorEstimator):
+    r"""HDFIS-prod regressor estimator with dimension-dependent Gaussian MFs.
+
+    HDFIS-prod combines the standard product T-norm with a dimension-dependent
+    Gaussian membership function (DMF) to avoid numeric underflow in very
+    high-dimensional feature spaces while preserving first-order TSK
+    consequents.
+
+    References:
+        G. Xue, J. Wang, K. Zhang and N. R. Pal, "High-Dimensional Fuzzy
+        Inference Systems," in IEEE Transactions on Systems, Man, and
+        Cybernetics: Systems, vol. 54, no. 1, pp. 507-519, Jan. 2024,
+        doi: 10.1109/TSMC.2023.3311475.
+
+    Example:
+        ```python
+        from highfis import HDFISProdRegressorEstimator
+
+        reg = HDFISProdRegressorEstimator()
+        reg.fit(X_train, y_train)
+        ```
+    """
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 5,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 10,
+        learning_rate: float = 1e-2,
+        verbose: bool | int = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        patience: int | None = 20,
+        restore_best: bool = True,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+        xi: float = 745.0,
+        rho: float | None = None,
+    ) -> None:
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            patience=patience,
+            restore_best=restore_best,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
+        self.xi = float(xi)
+        self.rho = rho
+
+    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[dict[str, list[GaussianMF]], list[str], str]:
+        input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
+        return (
+            _wrap_dimension_dependent_gaussian_input_mfs(
+                input_mfs,
+                dimension=x_arr.shape[1],
+                xi=self.xi,
+                rho=self.rho,
+            ),
+            feature_names,
+            effective_rule_base,
+        )
+
+    def _build_regressor_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        rule_base: str,
+        n_classes: int | None = None,
+    ) -> BaseTSK:
+        return HDFISProdRegressor(
+            input_mfs,
+            rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+
+class HDFISMinClassifierEstimator(_BaseClassifierEstimator):
+    r"""HDFIS-min classifier estimator with minimum T-norm antecedents.
+
+    HDFIS-min freezes antecedent membership parameters and uses a minimum
+    T-norm aggregation in the antecedent, so that only consequent parameters
+    are optimized during training. This matches the paper's observation that
+    minimum-based high-dimensional inference is best handled by fixing the
+    antecedent structure and training the rule consequents.
+
+    References:
+        G. Xue, J. Wang, K. Zhang and N. R. Pal, "High-Dimensional Fuzzy
+        Inference Systems," in IEEE Transactions on Systems, Man, and
+        Cybernetics: Systems, vol. 54, no. 1, pp. 507-519, Jan. 2024,
+        doi: 10.1109/TSMC.2023.3311475.
+
+    Example:
+        ```python
+        from highfis import HDFISMinClassifierEstimator
+
+        clf = HDFISMinClassifierEstimator()
+        clf.fit(X_train, y_train)
+        preds = clf.predict(X_test)
+        ```
+    """
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 5,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 10,
+        learning_rate: float = 1e-2,
+        verbose: bool | int = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        pfrb_max_rules: int | None = None,
+        patience: int | None = 20,
+        restore_best: bool = True,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+    ) -> None:
+        """Initialise an HDFIS-min classifier estimator."""
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            pfrb_max_rules=pfrb_max_rules,
+            patience=patience,
+            restore_best=restore_best,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        n_classes: int,
+        rule_base: str,
+    ) -> BaseTSK:
+        return HDFISMinClassifier(
+            input_mfs,
+            n_classes=n_classes,
+            rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+
+class HDFISMinRegressorEstimator(_BaseRegressorEstimator):
+    r"""HDFIS-min regressor estimator with minimum T-norm antecedents.
+
+    HDFIS-min freezes antecedent membership parameters and uses a minimum
+    T-norm aggregation in the antecedent, so that only consequent parameters
+    are optimized during training. This design avoids the nondifferentiability
+    of the minimum operator while preserving first-order TSK consequents.
+
+    References:
+        G. Xue, J. Wang, K. Zhang and N. R. Pal, "High-Dimensional Fuzzy
+        Inference Systems," in IEEE Transactions on Systems, Man, and
+        Cybernetics: Systems, vol. 54, no. 1, pp. 507-519, Jan. 2024,
+        doi: 10.1109/TSMC.2023.3311475.
+
+    Example:
+        ```python
+        from highfis import HDFISMinRegressorEstimator
+
+        reg = HDFISMinRegressorEstimator()
+        reg.fit(X_train, y_train)
+        preds = reg.predict(X_test)
+        ```
+    """
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 5,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 10,
+        learning_rate: float = 1e-2,
+        verbose: bool | int = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        patience: int | None = 20,
+        restore_best: bool = True,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+    ) -> None:
+        """Initialise an HDFIS-min regressor estimator."""
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            patience=patience,
+            restore_best=restore_best,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
+
+    def _build_regressor_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        rule_base: str,
+        n_classes: int | None = None,
+    ) -> BaseTSK:
+        return HDFISMinRegressor(
             input_mfs,
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),
@@ -1619,10 +2018,11 @@ class AYATSKRegressorEstimator(_BaseRegressorEstimator):
             weight_decay=weight_decay,
         )
 
-    def _build_model(
+    def _build_regressor_model(
         self,
         input_mfs: dict[str, list[GaussianMF]],
         rule_base: str,
+        n_classes: int | None = None,
     ) -> BaseTSK:
         """Create AYATSKRegressor."""
         return AYATSKRegressor(
@@ -1833,10 +2233,11 @@ class DombiTSKRegressorEstimator(_BaseRegressorEstimator):
             weight_decay=weight_decay,
         )
 
-    def _build_model(
+    def _build_regressor_model(
         self,
         input_mfs: dict[str, list[GaussianMF]],
         rule_base: str,
+        n_classes: int | None = None,
     ) -> BaseTSK:
         """Create DombiTSKRegressor."""
         return DombiTSKRegressor(
@@ -2038,10 +2439,11 @@ class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
             weight_decay=weight_decay,
         )
 
-    def _build_model(
+    def _build_regressor_model(
         self,
         input_mfs: dict[str, list[GaussianMF]],
         rule_base: str,
+        n_classes: int | None = None,
     ) -> BaseTSK:
         """Create AdaTSKRegressor."""
         return AdaTSKRegressor(
@@ -2276,10 +2678,11 @@ class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
             weight_decay=weight_decay,
         )
 
-    def _build_model(
+    def _build_regressor_model(
         self,
         input_mfs: dict[str, list[GaussianMF]],
         rule_base: str,
+        n_classes: int | None = None,
     ) -> BaseTSK:
         """Create FSREAdaTSKRegressor."""
         return FSREAdaTSKRegressor(
@@ -2359,10 +2762,11 @@ class DGALETSKRegressorEstimator(FSREAdaTSKRegressorEstimator):
         ```
     """
 
-    def _build_model(
+    def _build_regressor_model(
         self,
         input_mfs: dict[str, list[GaussianMF]],
         rule_base: str,
+        n_classes: int | None = None,
     ) -> BaseTSK:
         """Create DGALETSKRegressor."""
         return DGALETSKRegressor(
@@ -2582,10 +2986,11 @@ class DGTSKRegressorEstimator(_BaseRegressorEstimator):
             weight_decay=weight_decay,
         )
 
-    def _build_model(
+    def _build_regressor_model(
         self,
         input_mfs: dict[str, list[GaussianMF]],
         rule_base: str,
+        n_classes: int | None = None,
     ) -> BaseTSK:
         """Create DGTSKRegressor."""
         return DGTSKRegressor(
@@ -2800,10 +3205,11 @@ class LogTSKRegressorEstimator(_BaseRegressorEstimator):
             weight_decay=weight_decay,
         )
 
-    def _build_model(
+    def _build_regressor_model(
         self,
         input_mfs: dict[str, list[GaussianMF]],
         rule_base: str,
+        n_classes: int | None = None,
     ) -> BaseTSK:
         """Create LogTSKRegressor."""
         return LogTSKRegressor(
