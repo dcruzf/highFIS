@@ -74,6 +74,8 @@ highFIS includes the following concrete TSK model families:
   antecedent behavior.
 - [`AdaTSK`](models/adatsk.md) — adaptive softmin aggregation with dynamic
   rule weighting.
+- [`ADPTSK`](models/adptsk.md) — adaptive double-parameter softmin aggregation
+  with stable normalized rule weights.
 - [`FSRE-AdaTSK`](models/fsre-adatsk.md) — gated feature selection and rule
   extraction inside an adaptive inference pipeline.
 - [`DG-TSK`](models/dg-tsk.md) — double-gated training for simultaneous

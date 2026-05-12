@@ -352,6 +352,29 @@ def test_adasoftmin_rule_layer_missing_membership_output_raises() -> None:
         layer({"x1": torch.rand(2, 2)})
 
 
+def test_adp_softmin_rule_layer_missing_membership_output_raises() -> None:
+    from highfis.layers import ADPSoftminRuleLayer
+
+    layer = ADPSoftminRuleLayer(["x1", "x2"], [2, 2])
+    with pytest.raises(KeyError, match="missing membership output"):
+        layer({"x1": torch.rand(2, 2)})
+
+
+def test_adp_softmin_rule_layer_forward_shape() -> None:
+    from highfis.layers import ADPSoftminRuleLayer
+
+    layer = ADPSoftminRuleLayer(["x1", "x2"], [2, 2])
+    membership_outputs = {
+        "x1": torch.tensor([[0.4, 0.8], [0.2, 0.9]]),
+        "x2": torch.tensor([[0.7, 0.3], [0.5, 0.4]]),
+    }
+    output = layer(membership_outputs)
+
+    assert output.shape == (2, 4)
+    assert torch.all(output > 0.0)
+    assert torch.all(output < 1.0)
+
+
 def test_classification_consequent_layer_invalid_init_args() -> None:
     with pytest.raises(ValueError, match="n_rules, n_inputs and n_classes must be positive"):
         ClassificationConsequentLayer(n_rules=0, n_inputs=2, n_classes=2)
