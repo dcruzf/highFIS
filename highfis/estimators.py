@@ -117,13 +117,15 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 
 from .base import BaseTSK
-from .memberships import CompositeGMF, DimensionDependentGaussianMF, GaussianMF
+from .memberships import CompositeGMF, DimensionDependentGaussianMF, GaussianMF, GaussianPIMF
 from .metrics import compute_metrics
 from .models import (
     AdaTSKClassifier,
     AdaTSKRegressor,
     ADMTSKClassifier,
     ADMTSKRegressor,
+    ADPTSKClassifier,
+    ADPTSKRegressor,
     AYATSKClassifier,
     AYATSKRegressor,
     DGALETSKClassifier,
@@ -328,6 +330,28 @@ def _wrap_composite_gaussian_input_mfs(
                 CompositeGMF(
                     mean=mf.mean.detach().item(),
                     sigma=mf.sigma.detach().item(),
+                    eps=eps if eps is not None else mf.eps,
+                )
+                for mf in mfs
+            ],
+        )
+        for name, mfs in input_mfs.items()
+    }
+
+
+def _wrap_gaussian_pimf_input_mfs(
+    input_mfs: dict[str, list[GaussianMF]],
+    K: float = 1.0,
+    eps: float | None = None,
+) -> dict[str, list[GaussianMF]]:
+    return {
+        name: cast(
+            list[GaussianMF],
+            [
+                GaussianPIMF(
+                    mean=mf.mean.detach().item(),
+                    sigma=mf.sigma.detach().item(),
+                    K=float(K),
                     eps=eps if eps is not None else mf.eps,
                 )
                 for mf in mfs
@@ -2540,6 +2564,165 @@ class ADMTSKRegressorEstimator(_BaseRegressorEstimator):
             lower_bound=self.lower_bound,
             K=self.K,
             consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+
+class ADPTSKClassifierEstimator(_BaseClassifierEstimator):
+    r"""TSK classifier with ADP-softmin antecedent and Gaussian PIMF.
+
+    The firing strengths of each rule are computed with the ADP-softmin
+    operator, and membership functions are wrapped as Gaussian PIMFs to
+    preserve a positive infimum during high-dimensional training.
+
+    Reference:
+        M. Ma, L. Qian, Y. Zhang, Q. Fang and G. Xue, "An adaptive
+        double-parameter softmin based Takagi-Sugeno-Kang fuzzy system for
+        high-dimensional data," Fuzzy Sets and Systems, vol. 521, 2025.
+    """
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 3,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 10,
+        learning_rate: float = 1e-2,
+        verbose: bool | int = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        pfrb_max_rules: int | None = None,
+        patience: int | None = 20,
+        restore_best: bool = True,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+        kappa: float = 690.0,
+        xi: float = 730.0,
+        K: float = 1.0,
+        eps: float | None = None,
+    ) -> None:
+        """Initialise an ADPTSK classifier estimator."""
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            pfrb_max_rules=pfrb_max_rules,
+            patience=patience,
+            restore_best=restore_best,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
+        self.kappa = float(kappa)
+        self.xi = float(xi)
+        self.K = float(K)
+        self.eps = eps
+
+    def _build_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        n_classes: int,
+        rule_base: str,
+    ) -> BaseTSK:
+        input_mfs = _wrap_gaussian_pimf_input_mfs(input_mfs, K=self.K, eps=self.eps)
+        return ADPTSKClassifier(
+            input_mfs,
+            n_classes=n_classes,
+            rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+            kappa=self.kappa,
+            xi=self.xi,
+            eps=self.eps,
+        )
+
+
+class ADPTSKRegressorEstimator(_BaseRegressorEstimator):
+    r"""TSK regressor with ADP-softmin antecedent and Gaussian PIMF."""
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 3,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
+        random_state: int | None = None,
+        epochs: int = 10,
+        learning_rate: float = 1e-2,
+        verbose: bool | int = False,
+        rule_base: str | None = None,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        pfrb_max_rules: int | None = None,
+        patience: int | None = 20,
+        restore_best: bool = True,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+        kappa: float = 690.0,
+        xi: float = 730.0,
+        K: float = 1.0,
+        eps: float | None = None,
+    ) -> None:
+        """Initialise an ADPTSK regressor estimator."""
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base=rule_base,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            pfrb_max_rules=pfrb_max_rules,
+            patience=patience,
+            restore_best=restore_best,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
+        self.kappa = float(kappa)
+        self.xi = float(xi)
+        self.K = float(K)
+        self.eps = eps
+
+    def _build_regressor_model(
+        self,
+        input_mfs: dict[str, list[GaussianMF]],
+        rule_base: str,
+        n_classes: int | None = None,
+    ) -> BaseTSK:
+        input_mfs = _wrap_gaussian_pimf_input_mfs(input_mfs, K=self.K, eps=self.eps)
+        return ADPTSKRegressor(
+            input_mfs,
+            rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+            kappa=self.kappa,
+            xi=self.xi,
+            eps=self.eps,
         )
 
 
