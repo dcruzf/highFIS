@@ -59,6 +59,7 @@ high-dimensional inference strategy.
   normalization.
 - `LogTSK` — log-domain inverse-log normalization for stable aggregation.
 - `DombiTSK` — Dombi t-norm aggregation with a learnable shape parameter.
+- `ADMTSK` — adaptive Dombi TSK with Composite Gaussian membership functions.
 - `AYATSK` — Yager aggregation for flexible antecedent behavior.
 - `AdaTSK` — adaptive softmin-style inference with dynamic rule weighting.
 - `FSRE-AdaTSK` — adaptive model with gated feature selection and rule extraction.
@@ -76,6 +77,7 @@ Each family exposes classifier and regressor variants.
 - `TSKClassifier`, `TSKRegressor`
 - `LogTSKClassifier`, `LogTSKRegressor`
 - `DombiTSKClassifier`, `DombiTSKRegressor`
+- `ADMTSKClassifier`, `ADMTSKRegressor`
 - `AYATSKClassifier`, `AYATSKRegressor`
 - `AdaTSKClassifier`, `AdaTSKRegressor`
 - `FSREAdaTSKClassifier`, `FSREAdaTSKRegressor`
@@ -89,6 +91,8 @@ Each family exposes classifier and regressor variants.
 - `HTSKClassifierEstimator`, `HTSKRegressorEstimator`
 - `TSKClassifierEstimator`, `TSKRegressorEstimator`
 - `LogTSKClassifierEstimator`, `LogTSKRegressorEstimator`
+- `DombiTSKClassifierEstimator`, `DombiTSKRegressorEstimator`
+- `ADMTSKClassifierEstimator`, `ADMTSKRegressorEstimator`
 - `DGALETSKClassifierEstimator`, `DGALETSKRegressorEstimator`
 - `DGTSKClassifierEstimator`, `DGTSKRegressorEstimator`
 - `FSREAdaTSKClassifierEstimator`, `FSREAdaTSKRegressorEstimator`
@@ -132,6 +136,7 @@ Key reference pages:
 - [AYATSK](https://dcruzf.github.io/highFIS/latest/models/ayatsk)
 - [HTSK](https://dcruzf.github.io/highFIS/latest/models/htsk)
 - [DombiTSK](https://dcruzf.github.io/highFIS/latest/models/dombitsk)
+- [ADMTSK](https://dcruzf.github.io/highFIS/latest/models/admtsk)
 - [AdaTSK](https://dcruzf.github.io/highFIS/latest/models/adatsk)
 - [DGTSK](https://dcruzf.github.io/highFIS/latest/models/dg-tsk)
 - [DG-ALETSK](https://dcruzf.github.io/highFIS/latest/models/dg-aletsk)

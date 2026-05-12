@@ -197,6 +197,40 @@ class CompositeGaussianMF(MembershipFunction):
         return self.eps + (1.0 - self.eps) * torch.exp(-0.5 * z.square())
 
 
+class CompositeGMF(MembershipFunction):
+    """Composite Gaussian membership with a positive lower bound based on ADMTSK."""
+
+    def __init__(self, mean: float = 0.0, sigma: float = 1.0, eps: float | None = None) -> None:
+        r"""Initialize the composite GMF.
+
+        Args:
+            mean: Center of the Gaussian `c`.
+            sigma: Width `sigma > 0`.  Softplus-reparameterized to remain
+                positive during training.
+            eps: Numeric stability constant. ``None`` uses
+                :func:`torch.finfo` machine epsilon.
+
+        Raises:
+            ValueError: If *sigma* is not positive.
+        """
+        super().__init__(eps=eps)
+        if sigma <= 0:
+            raise ValueError("sigma must be positive")
+        self.mean = nn.Parameter(torch.tensor(float(mean)))
+        self.raw_sigma = nn.Parameter(torch.tensor(_inv_softplus(float(sigma), eps)))
+
+    @property
+    def sigma(self) -> Tensor:
+        """Return positive sigma using softplus reparameterization."""
+        return F.softplus(self.raw_sigma) + self.eps
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Compute Composite GMF membership values for input tensor."""
+        x = self._as_tensor(x)
+        z = (x - self.mean) / self.sigma
+        return torch.exp(-1.0 + torch.exp(-0.5 * z.square()))
+
+
 class TriangularMF(MembershipFunction):
     """Triangular membership function defined by left, center, right."""
 

@@ -13,6 +13,8 @@ from highfis.base import BaseTSK
 from highfis.estimators import (
     AdaTSKClassifierEstimator,
     AdaTSKRegressorEstimator,
+    ADMTSKClassifierEstimator,
+    ADMTSKRegressorEstimator,
     AYATSKClassifierEstimator,
     AYATSKRegressorEstimator,
     DGALETSKClassifierEstimator,
@@ -38,7 +40,7 @@ from highfis.estimators import (
     _build_kmeans_input_mfs,
     _build_pfrb_input_mfs,
 )
-from highfis.memberships import DimensionDependentGaussianMF, GaussianMF
+from highfis.memberships import CompositeGMF, DimensionDependentGaussianMF, GaussianMF
 from highfis.models import HDFISMinClassifier, HDFISMinRegressor
 
 
@@ -620,6 +622,35 @@ def test_dombi_tsk_regressor_estimator_fit_predict_score() -> None:
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+    est.fit(x, y)
+    pred = est.predict(x)
+    assert pred.shape == (x.shape[0],)
+
+
+def test_admtsk_classifier_estimator_uses_composite_gmf() -> None:
+    x, y = _make_dataset(80)
+    est = ADMTSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=3,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+    est.fit(x, y)
+    assert all(isinstance(mf, CompositeGMF) for mfs in est.model_.input_mfs.values() for mf in mfs)
+
+
+def test_admtsk_regressor_estimator_fit_predict() -> None:
+    x, y = _make_regression_dataset(80)
+    est = ADMTSKRegressorEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=3,
         learning_rate=1e-2,
         random_state=7,
         batch_size=16,
