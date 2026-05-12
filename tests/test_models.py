@@ -111,6 +111,35 @@ def test_ayatsk_regressor_default_criterion() -> None:
     assert isinstance(model._default_criterion(), nn.MSELoss)
 
 
+def test_adptsk_classifier_forward_predict_shapes() -> None:
+    from highfis.models import ADPTSKClassifier
+
+    model = ADPTSKClassifier(_build_input_mfs(), n_classes=3)
+    x = torch.randn(8, 3)
+
+    logits = model.forward(x)
+    proba = model.predict_proba(x)
+    pred = model.predict(x)
+
+    assert logits.shape == (8, 3)
+    assert proba.shape == (8, 3)
+    assert pred.shape == (8,)
+    assert torch.allclose(proba.sum(dim=1), torch.ones(8), atol=1e-6)
+
+
+def test_adptsk_regressor_forward_predict_shape() -> None:
+    from highfis.models import ADPTSKRegressor
+
+    model = ADPTSKRegressor(_build_input_mfs(), rule_base="coco")
+    x = torch.randn(6, 3)
+
+    output = model.forward(x)
+    pred = model.predict(x)
+
+    assert output.shape == (6, 1)
+    assert pred.shape == (6,)
+
+
 def test_htsk_classifier_fit_returns_history() -> None:
     torch.manual_seed(1)
     model = HTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
