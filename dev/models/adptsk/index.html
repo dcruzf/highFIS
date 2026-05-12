@@ -12,13 +12,13 @@
         <meta name="author" content="Daniel Franca">
       
       
-        <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/models/dg-aletsk/">
+        <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/models/adptsk/">
       
       
-        <link rel="prev" href="../dg-tsk/">
+        <link rel="prev" href="../admtsk/">
       
       
-        <link rel="next" href="../ayatsk/">
+        <link rel="next" href="../../api/estimators/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>DG-ALETSK - highFIS Docs</title>
+        <title>ADPTSK - highFIS Docs</title>
       
     
     
@@ -85,7 +85,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#dg-aletsk" class="md-skip">
+        <a href="#adptsk" class="md-skip">
           Skip to content
         </a>
       
@@ -125,7 +125,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              DG-ALETSK
+              ADPTSK
             
           </span>
         </div>
@@ -514,36 +514,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  DG-ALETSK
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="././" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../dg-aletsk/" class="md-nav__link">
         
   
   
@@ -558,176 +532,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Reference
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Overview
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mathematical-formulation" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Mathematical Formulation
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Mathematical Formulation">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#antecedent-membership" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Antecedent membership
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#feature-gating" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Feature gating
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#adaptive-ln-exp-softmin" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Adaptive Ln-Exp softmin
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rule-gates-and-consequents" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Rule gates and consequents
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#output-aggregation" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Output aggregation
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#threshold-search-and-pruning" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Threshold search and pruning
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#code-paper-correspondence" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Code ↔ Paper Correspondence
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#implementation-notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Implementation notes
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#highfis-api-summary" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        highFIS API summary
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Example
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -818,10 +622,36 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../adptsk/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ADPTSK
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
         
   
   
@@ -836,6 +666,227 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Reference
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mathematical-formulation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Mathematical Formulation
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mathematical Formulation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#antecedent" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Antecedent
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#consequent-and-defuzzification" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Consequent and defuzzification
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-paper-correspondence" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Code ↔ Paper Correspondence
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Implementation notes
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#model-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Model classes
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Model classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#highfismodelsadptskclassifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>highfis.models.ADPTSKClassifier</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#highfismodelsadptskregressor" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>highfis.models.ADPTSKRegressor</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#estimator-wrappers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Estimator wrappers
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Estimator wrappers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#highfisestimatorsadptskclassifierestimator" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>highfis.estimators.ADPTSKClassifierEstimator</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#highfisestimatorsadptskregressorestimator" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>highfis.estimators.ADPTSKRegressorEstimator</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#membership-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Membership functions
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Membership functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#highfismembershipsgaussianpimf" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>highfis.memberships.GaussianPIMF</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#training-in-the-paper-vs-highfis" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Training in the paper vs. highFIS
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#alignment-with-the-paper" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Alignment with the paper
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1275,17 +1326,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Overview
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#mathematical-formulation" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1298,10 +1338,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#antecedent-membership" class="md-nav__link">
+  <a href="#antecedent" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Antecedent membership
+        Antecedent
       </span>
     </span>
   </a>
@@ -1309,54 +1349,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#feature-gating" class="md-nav__link">
+  <a href="#consequent-and-defuzzification" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Feature gating
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#adaptive-ln-exp-softmin" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Adaptive Ln-Exp softmin
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rule-gates-and-consequents" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Rule gates and consequents
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#output-aggregation" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Output aggregation
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#threshold-search-and-pruning" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Threshold search and pruning
+        Consequent and defuzzification
       </span>
     </span>
   </a>
@@ -1391,10 +1387,116 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#highfis-api-summary" class="md-nav__link">
+  <a href="#model-classes" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        highFIS API summary
+        Model classes
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Model classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#highfismodelsadptskclassifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>highfis.models.ADPTSKClassifier</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#highfismodelsadptskregressor" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>highfis.models.ADPTSKRegressor</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#estimator-wrappers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Estimator wrappers
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Estimator wrappers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#highfisestimatorsadptskclassifierestimator" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>highfis.estimators.ADPTSKClassifierEstimator</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#highfisestimatorsadptskregressorestimator" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>highfis.estimators.ADPTSKRegressorEstimator</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#membership-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Membership functions
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Membership functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#highfismembershipsgaussianpimf" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>highfis.memberships.GaussianPIMF</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#training-in-the-paper-vs-highfis" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Training in the paper vs. highFIS
       </span>
     </span>
   </a>
@@ -1402,10 +1504,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#example" class="md-nav__link">
+  <a href="#alignment-with-the-paper" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Example
+        Alignment with the paper
       </span>
     </span>
   </a>
@@ -1506,198 +1608,149 @@
                 
                   
 
-<h1 id="dg-aletsk">DG-ALETSK</h1>
-<p>DG-ALETSK combines adaptive Ln-Exp softmin aggregation with feature and rule gating, enabling simultaneous feature selection and rule extraction in high-dimensional fuzzy models.</p>
+<h1 id="adptsk">ADPTSK</h1>
+<p>ADPTSK is a high-dimensional Takagi-Sugeno-Kang fuzzy system built on two key ideas from Ma et al. (2025):
+- adaptive double-parameter softmin (ADP-softmin) for antecedent aggregation,
+- Gaussian PIMF membership functions with a positive infimum to avoid underflow.</p>
 <h2 id="reference">Reference</h2>
 <blockquote>
-<p>G. Xue, J. Wang, B. Yuan and C. Dai, "DG-ALETSK: A High-Dimensional Fuzzy Approach With Simultaneous Feature Selection and Rule Extraction," in IEEE Transactions on Fuzzy Systems, vol. 31, no. 11, pp. 3866–3880, Nov. 2023, doi: <a href="https://doi.org/10.1109/TFUZZ.2023.3270445">10.1109/TFUZZ.2023.3270445</a>.</p>
+<p>Ma, M., Qian, L., Zhang, Y., Fang, Q., &amp; Xue, G. (2025). An adaptive double-parameter softmin based Takagi-Sugeno-Kang fuzzy system for high-dimensional data. Fuzzy Sets and Systems, 521, 109582. https://doi.org/10.1016/j.fss.2025.109582</p>
 </blockquote>
-<h2 id="overview">Overview</h2>
-<p>DG-ALETSK is a high-dimensional TSK fuzzy model that jointly learns:</p>
-<ul>
-<li>feature selection via antecedent gates;</li>
-<li>rule extraction via consequent gates;</li>
-<li>a differentiable adaptive Ln-Exp softmin antecedent;</li>
-<li>a zero-order DG phase followed by first-order fine tuning.</li>
-</ul>
-<p>The highFIS implementation supports both classification and regression via
-<code>DGALETSKClassifier</code> and <code>DGALETSKRegressor</code>.</p>
 <h2 id="mathematical-formulation">Mathematical Formulation</h2>
-<h3 id="antecedent-membership">Antecedent membership</h3>
-<p>Each antecedent uses Gaussian membership functions:</p>
+<h3 id="antecedent">Antecedent</h3>
+<p>ADPTSK replaces the standard product or min T-norm with an adaptive
+softmin operator. For rule <span class="arithmatex">\(r\)</span> and feature <span class="arithmatex">\(d\)</span>, membership values are
+computed using the Gaussian PIMF:</p>
 <div class="arithmatex">\[
-\mu_{r,d}(x_d) = \exp\left(-\frac{(x_d - m_{r,d})^2}{2\sigma_{r,d}^2}\right)
+\mu_{r,d}(x_d) = \exp\left(-K\left[1 - \exp\left(-\frac{(x_d - m_{r,d})^{2}}{2\sigma_{r,d}^{2}}\right)\right]\right)
 \]</div>
-<p>with learned antecedent centers <span class="arithmatex">\(m_{r,d}\)</span> and spreads <span class="arithmatex">\(\sigma_{r,d}&gt;0\)</span>.</p>
-<h3 id="feature-gating">Feature gating</h3>
-<p>DG-ALETSK embeds one gate per input feature in the antecedent.
-HighFIS implements the paper's gate activation as:</p>
+<p>The infimum of this membership is <span class="arithmatex">\(\exp(-K) &gt; 0\)</span>, which prevents the
+antecedent from producing zero values in high-dimensional settings.</p>
+<p>For each rule <span class="arithmatex">\(r\)</span>, ADP-softmin computes a firing coefficient using
+adaptive parameters <span class="arithmatex">\(\eta\)</span> and <span class="arithmatex">\(q\)</span>:</p>
 <div class="arithmatex">\[
-M(\lambda) = \lambda \sqrt{e^{1 - \lambda^2}}
+f_r = \left(\frac{1}{D} \sum_{d=1}^{D} (\eta\,\mu_{r,d})^{q}\right)^{1/q}
 \]</div>
-<p>The feature gate values are:</p>
-<div class="arithmatex">\[
-\gamma_d = M(\lambda_d)
-\]</div>
-<p>and the gated membership terms become:</p>
-<div class="arithmatex">\[
-\tilde{\mu}_{r,d}(x_d) = \gamma_d \, \mu_{r,d}(x_d)
-\]</div>
-<h3 id="adaptive-ln-exp-softmin">Adaptive Ln-Exp softmin</h3>
-<p>DG-ALETSK replaces the standard product T-norm with an adaptive Ln-Exp softmin.
-In highFIS the firing strength of rule <span class="arithmatex">\(r\)</span> is computed as:</p>
-<div class="arithmatex">\[
-w_r(\mathbf{x}) = \frac{1}{\alpha} \log \left( \sum_{d=1}^{D} \exp\left(-\alpha \, \tilde{\mu}_{r,d}(x_d)\right) \right)
-\]</div>
-<p>where <span class="arithmatex">\(\alpha &gt; 0\)</span> is a learned softness parameter. In the implementation,
-<span class="arithmatex">\(\alpha\)</span> is stored as <code>raw_alpha</code> and activated with <code>softplus</code> to keep it
-strictly positive.</p>
-<h3 id="rule-gates-and-consequents">Rule gates and consequents</h3>
-<p>DG-ALETSK also embeds one gate per rule in the consequent.
-For zero-order classification, each rule <span class="arithmatex">\(r\)</span> produces gated class logits:</p>
-<div class="arithmatex">\[
-\hat{y}_{r}^{c}(\mathbf{x}) = M(\theta_r) \, p_{r}^{c}
-\]</div>
-<p>For regression, the same gate multiplies a scalar rule output.</p>
-<h3 id="output-aggregation">Output aggregation</h3>
-<p>Normalized rule strengths are computed as:</p>
-<div class="arithmatex">\[
-\bar{w}_r(\mathbf{x}) = \frac{w_r(\mathbf{x})}{\sum_{i=1}^{R} w_i(\mathbf{x})}
-\]</div>
-<p>The final model output is the weighted sum of gated rule consequents:</p>
-<div class="arithmatex">\[
-\hat{y}^c(\mathbf{x}) = \sum_{r=1}^{R} \bar{w}_r(\mathbf{x}) \, \hat{y}_{r}^{c}(\mathbf{x})
-\]</div>
-<h3 id="threshold-search-and-pruning">Threshold search and pruning</h3>
-<p>Gate thresholds are computed from the learned gate values and two
-coefficients <span class="arithmatex">\(\zeta_{\lambda}\)</span> and <span class="arithmatex">\(\zeta_{\theta}\)</span>:</p>
-<div class="arithmatex">\[
-\tau_{\lambda} = \max_d M(\lambda_d) - \zeta_{\lambda} \bigl[ \max_d M(\lambda_d) - \min_d M(\lambda_d) \bigr]
-\]</div>
-<div class="arithmatex">\[
-\tau_{\theta} = \max_r M(\theta_r) - \zeta_{\theta} \bigl[ \max_r M(\theta_r) - \min_r M(\theta_r) \bigr]
-\]</div>
-<p>Features and rules with gate values below these thresholds are pruned.</p>
+<p>The parameters are chosen to avoid numeric underflow and fake-minimum
+behaviour:</p>
+<ul>
+<li><span class="arithmatex">\(\eta\)</span> adapts to the current rule's minimum and maximum membership values,</li>
+<li><span class="arithmatex">\(q\)</span> is selected as the tightest negative exponent that still remains
+  numerically representable.</li>
+</ul>
+<p>In practice, highFIS implements the ADP-softmin computation in a numerically
+stable log-space fashion, with recommended default values
+<span class="arithmatex">\(\kappa = 690.0\)</span> and <span class="arithmatex">\(\xi = 730.0\)</span>.</p>
+<h3 id="consequent-and-defuzzification">Consequent and defuzzification</h3>
+<p>The consequent structure remains first-order TSK with a weighted linear output.
+The rule strengths are normalized and passed to the standard TSK consequent
+layer.</p>
+<p>For classification, the model uses a classification consequent head and
+cross-entropy loss. For regression, it uses a regression consequent head and
+MSE loss.</p>
 <h2 id="code-paper-correspondence">Code ↔ Paper Correspondence</h2>
 <table>
 <thead>
 <tr>
-<th>Concept</th>
+<th>Paper concept</th>
 <th>highFIS class / method</th>
-<th>Notes</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Adaptive Ln-Exp softmin antecedent</td>
-<td><code>DGALETSKRuleLayer</code></td>
-<td>Implements paper's ALE softmin with a stable log-sum-exp form</td>
+<td>Gaussian PIMF</td>
+<td><code>highfis.memberships.GaussianPIMF</code></td>
+<td>Gaussian membership with positive infimum <code>exp(-K)</code></td>
 </tr>
 <tr>
-<td>Feature gates</td>
-<td><code>DGALETSKRuleLayer.lambda_gates</code> + <code>gate4</code></td>
-<td>Gate values are applied multiplicatively to each membership</td>
+<td>ADP-softmin antecedent</td>
+<td><code>highfis.layers.ADPSoftminRuleLayer</code></td>
+<td>Adaptive double-parameter softmin rule aggregation</td>
 </tr>
 <tr>
-<td>Rule gates</td>
-<td><code>GatedClassificationZeroOrderConsequentLayer.theta_gates</code>, <code>GatedRegressionZeroOrderConsequentLayer.theta_gates</code></td>
-<td>Gated zero-order consequents during DG training</td>
+<td>ADPTSK classifier</td>
+<td><code>highfis.models.ADPTSKClassifier</code></td>
+<td>Classifier model using ADP-softmin antecedents</td>
 </tr>
 <tr>
-<td>Zero-order DG phase</td>
-<td><code>fit_dg_phase()</code></td>
-<td>Jointly optimizes antecedent, feature gates, rule gates, and zero-order consequents</td>
+<td>ADPTSK regressor</td>
+<td><code>highfis.models.ADPTSKRegressor</code></td>
+<td>Regressor model using ADP-softmin antecedents</td>
 </tr>
 <tr>
-<td>First-order conversion</td>
-<td><code>convert_to_first_order()</code></td>
-<td>Preserves learned rule gates and switches consequent form</td>
+<td>Estimator wrapper</td>
+<td><code>highfis.estimators.ADPTSKClassifierEstimator</code></td>
+<td>sklearn-style wrapper using <code>GaussianPIMF</code></td>
 </tr>
 <tr>
-<td>Threshold computation</td>
-<td><code>compute_thresholds(zeta_lambda, zeta_theta)</code></td>
-<td>Computes pruning thresholds from gate values</td>
-</tr>
-<tr>
-<td>Threshold pruning</td>
-<td><code>apply_thresholds(tau_lambda, tau_theta)</code></td>
-<td>Sets low gate values to zero</td>
-</tr>
-<tr>
-<td>Threshold search</td>
-<td><code>search_thresholds(...)</code></td>
-<td>Grid-searches <code>\zeta_\lambda</code> / <code>\zeta_\theta</code> and optionally refits consequents</td>
+<td>Estimator wrapper</td>
+<td><code>highfis.estimators.ADPTSKRegressorEstimator</code></td>
+<td>sklearn-style wrapper using <code>GaussianPIMF</code></td>
 </tr>
 </tbody>
 </table>
 <h2 id="implementation-notes">Implementation notes</h2>
 <ul>
-<li>The highFIS DG-ALETSK implementation uses <code>rule_base='coco'</code> by default.</li>
-<li><code>use_en_frb=True</code> starts from an enhanced rule base (<code>en</code> FRB), but the
-  paper's point-based FRB (P-FRB) is not constructed by default.</li>
-<li>The DG-ALETSK paper justifies P-FRB as a way to initialize an abundant
-  candidate rule base from training samples, enabling the gate-based DG phase
-  to perform rule extraction and feature selection in tandem.</li>
-<li>Estimator wrappers now support <code>rule_base='pfrb'</code>, which builds a
-  point-based FRB from training samples and uses a CoCo rule base over the
-  resulting sample-centered Gaussian MFs. Use <code>pfrb_max_rules</code> to cap the
-  number of sample-based rules when the training set is large.</li>
-<li><code>DGALETSKClassifier</code> and <code>DGALETSKRegressor</code> train a zero-order model in
-  <code>fit_dg_phase()</code> and then rely on <code>convert_to_first_order()</code> plus
-  <code>fit_finetune()</code> for first-order refinement.</li>
-<li>The feature gate activation is fixed to the paper's DG-ALETSK gate
-  function <code>gate4</code> in the implementation.</li>
-<li>Although the gate function matches the paper exactly, highFIS applies it
-  multiplicatively to the antecedent membership values (<code>μ ← μ · M(λ)</code>) rather
-  than using the paper's more symbolic gate embedding notation (for example,
-  <code>μ^{M(λ)}</code>). This preserves the gate shape while remaining a practical
-  implementation choice.</li>
-<li>Threshold search is implemented by deep-copying the current model,
-  pruning candidate copies, optionally refitting first-order consequents via
-  least squares, and selecting the best validation score.</li>
+<li>The model uses <code>GaussianPIMF</code> to ensure antecedent membership values have a
+  nonzero positive lower bound.</li>
+<li>ADPTSK still builds on the BaseTSK pipeline, but replaces the rule layer
+  with <code>ADPSoftminRuleLayer</code> instead of a vanilla product T-norm.</li>
+<li>Default hyperparameters mirror the paper:</li>
+<li><code>n_mfs=3</code> for compact CoCo rule bases,</li>
+<li><code>mf_init="kmeans"</code> with <code>sigma_scale=1.0</code>,</li>
+<li><code>kappa=690.0</code>, <code>xi=730.0</code>,</li>
+<li><code>K=1.0</code> for the Gaussian PIMF lower bound.</li>
+<li>The estimator wrapper converts initialized <code>GaussianMF</code> objects to
+  <code>GaussianPIMF</code> before model construction.</li>
 </ul>
-<h2 id="highfis-api-summary">highFIS API summary</h2>
+<h2 id="model-classes">Model classes</h2>
+<h3 id="highfismodelsadptskclassifier"><code>highfis.models.ADPTSKClassifier</code></h3>
 <ul>
-<li><code>fit_dg_phase(x, y, **kwargs)</code> — train the DG-ALETSK zero-order model.</li>
-<li><code>convert_to_first_order()</code> — convert the trained zero-order consequent to
-  a gated first-order consequent.</li>
-<li><code>compute_thresholds(zeta_lambda, zeta_theta)</code> — compute pruning thresholds
-  from current gate activations.</li>
-<li><code>apply_thresholds(tau_lambda, tau_theta)</code> — prune low-value gates.</li>
-<li><code>search_thresholds(...)</code> — search best gate thresholds and optionally apply
-  them to the model.</li>
-<li><code>fit_finetune(x, y, **kwargs)</code> — fine-tune the first-order DG-ALETSK model.</li>
+<li>Uses <code>ADPSoftminRuleLayer</code> for antecedent aggregation.</li>
+<li>Defaults to <code>rule_base="coco"</code> when <code>mf_init="kmeans"</code>.</li>
+<li>Uses <code>ClassificationConsequentLayer</code> and <code>CrossEntropyLoss</code>.</li>
 </ul>
-<h2 id="example">Example</h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">DGALETSKClassifier</span><span class="p">,</span> <span class="n">GaussianMF</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">input_mfs</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="s2">&quot;x1&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="s2">&quot;x2&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="p">}</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="n">model</span> <span class="o">=</span> <span class="n">DGALETSKClassifier</span><span class="p">(</span>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">input_mfs</span><span class="p">,</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">n_classes</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">use_en_frb</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="p">)</span>
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="n">history</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit_dg_phase</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
-</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
-</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="n">result</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">search_thresholds</span><span class="p">(</span>
-</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="n">X_train</span><span class="p">,</span>
-</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="n">y_train</span><span class="p">,</span>
-</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="n">zeta_lambda</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
-</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    <span class="n">zeta_theta</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
-</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    <span class="n">x_val</span><span class="o">=</span><span class="n">X_val</span><span class="p">,</span>
-</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    <span class="n">y_val</span><span class="o">=</span><span class="n">y_val</span><span class="p">,</span>
-</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    <span class="n">use_lse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="p">)</span>
-</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
-</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>
-</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="n">model</span><span class="o">.</span><span class="n">fit_finetune</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">)</span>
-</span></code></pre></div>
+<h3 id="highfismodelsadptskregressor"><code>highfis.models.ADPTSKRegressor</code></h3>
+<ul>
+<li>Uses the same ADP-softmin antecedent.</li>
+<li>Uses <code>RegressionConsequentLayer</code> and <code>MSELoss</code>.</li>
+</ul>
+<h2 id="estimator-wrappers">Estimator wrappers</h2>
+<h3 id="highfisestimatorsadptskclassifierestimator"><code>highfis.estimators.ADPTSKClassifierEstimator</code></h3>
+<p>This estimator:</p>
+<ul>
+<li>builds Gaussian membership functions via <code>mf_init</code> and <code>input_configs</code>,</li>
+<li>wraps them as <code>GaussianPIMF</code> with the chosen <code>K</code> value,</li>
+<li>constructs <code>ADPTSKClassifier</code> with <code>kappa</code>, <code>xi</code>, and <code>eps</code>.</li>
+</ul>
+<h3 id="highfisestimatorsadptskregressorestimator"><code>highfis.estimators.ADPTSKRegressorEstimator</code></h3>
+<p>This estimator is analogous to the classifier wrapper but builds
+<code>ADPTSKRegressor</code> for regression tasks.</p>
+<h2 id="membership-functions">Membership functions</h2>
+<h3 id="highfismembershipsgaussianpimf"><code>highfis.memberships.GaussianPIMF</code></h3>
+<ul>
+<li>Implements the PIMF version of Gaussian membership.</li>
+<li>Prevents crash caused by zero membership values in large dimensionality.</li>
+<li><code>K</code> controls the lower bound: membership infimum is <code>exp(-K)</code>.</li>
+</ul>
+<h2 id="training-in-the-paper-vs-highfis">Training in the paper vs. highFIS</h2>
+<ul>
+<li>The paper optimizes ADPTSK end-to-end with gradient-based learning.</li>
+<li>highFIS follows the same paradigm: the estimator builds the model and
+  uses Adam-style optimization within <code>BaseTSK.fit()</code>.</li>
+<li><code>ADPTSKClassifierEstimator</code> and <code>ADPTSKRegressorEstimator</code> expose the
+  same training hyperparameters as other highFIS estimators.</li>
+</ul>
+<h2 id="alignment-with-the-paper">Alignment with the paper</h2>
+<ul>
+<li>ADPTSK in highFIS uses adaptive ADP-softmin aggregation, exactly as the
+  paper describes.</li>
+<li>The implementation also uses Gaussian PIMF membership functions to ensure
+  a positive antecedent infimum, matching the paper's stability motivation.</li>
+<li>Recommended default values <code>kappa=690.0</code>, <code>xi=730.0</code>, and <code>K=1.0</code> are
+  derived directly from the paper's suggested settings.</li>
+</ul>
 
 
 
@@ -1737,7 +1790,7 @@ coefficients <span class="arithmatex">\(\zeta_{\lambda}\)</span> and <span class
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../dg-tsk/" class="md-footer__link md-footer__link--prev" aria-label="Previous: DG-TSK">
+          <a href="../admtsk/" class="md-footer__link md-footer__link--prev" aria-label="Previous: ADMTSK">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1747,20 +1800,20 @@ coefficients <span class="arithmatex">\(\zeta_{\lambda}\)</span> and <span class
                 Previous
               </span>
               <div class="md-ellipsis">
-                DG-TSK
+                ADMTSK
               </div>
             </div>
           </a>
         
         
           
-          <a href="../ayatsk/" class="md-footer__link md-footer__link--next" aria-label="Next: AYATSK">
+          <a href="../../api/estimators/" class="md-footer__link md-footer__link--next" aria-label="Next: Estimators">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                AYATSK
+                Estimators
               </div>
             </div>
             <div class="md-footer__button md-icon">
