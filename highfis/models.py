@@ -64,6 +64,13 @@ Model Family Overview:
             - `AdaTSKClassifier`
             - `AdaTSKRegressor`
 
+    **ADPTSK**
+        Configuration: adaptive double-parameter softmin (ADP-softmin) + `SumBasedDefuzzifier`
+
+        Classes:
+            - `ADPTSKClassifier`
+            - `ADPTSKRegressor`
+
     **FSRE-AdaTSK**
         Configuration: adaptive softmin + `SoftmaxLogDefuzzifier`
 
@@ -1225,12 +1232,15 @@ class ADPTSKClassifier(BaseTSKClassifier):
     r"""TSK classifier with adaptive double-parameter softmin antecedent (ADPTSK).
 
     The firing strengths of each rule are computed with the ADP-softmin
-    operator using dynamically adjusted parameters \eta and q.
+    operator, and membership functions are wrapped as Gaussian PIMFs to
+    preserve a positive infimum during high-dimensional training.
 
     Reference:
-        M. Ma, L. Qian, Y. Zhang, Q. Fang, and G. Xue, "An adaptive
-        double-parameter softmin based Takagi-Sugeno-Kang fuzzy system for
-        high-dimensional data," Fuzzy Sets and Systems, vol. 521, 2025.
+        Ma, M., Qian, L., Zhang, Y., Fang, Q., & Xue, G. (2025). An
+        adaptive double-parameter softmin based Takagi-Sugeno-Kang
+        fuzzy system for high-dimensional data. Fuzzy Sets and
+        Systems, 521, 109582.
+        https://doi.org/10.1016/j.fss.2025.109582
     """
 
     def __init__(
@@ -1282,7 +1292,19 @@ class ADPTSKClassifier(BaseTSKClassifier):
 
 
 class ADPTSKRegressor(BaseTSKRegressor):
-    r"""TSK regressor with adaptive double-parameter softmin antecedent (ADPTSK)."""
+    r"""TSK regressor with adaptive double-parameter softmin antecedent (ADPTSK).
+
+    The firing strengths of each rule are computed with the ADP-softmin
+    operator, and membership functions are wrapped as Gaussian PIMFs to
+    preserve a positive infimum during high-dimensional training.
+
+    Reference:
+        Ma, M., Qian, L., Zhang, Y., Fang, Q., & Xue, G. (2025). An
+        adaptive double-parameter softmin based Takagi-Sugeno-Kang
+        fuzzy system for high-dimensional data. Fuzzy Sets and
+        Systems, 521, 109582.
+        https://doi.org/10.1016/j.fss.2025.109582
+    """
 
     def __init__(
         self,

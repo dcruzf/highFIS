@@ -62,6 +62,7 @@ high-dimensional inference strategy.
 - `ADMTSK` — adaptive Dombi TSK with Composite Gaussian membership functions.
 - `AYATSK` — Yager aggregation for flexible antecedent behavior.
 - `AdaTSK` — adaptive softmin-style inference with dynamic rule weighting.
+- `ADPTSK` — adaptive double-parameter softmin inference with stable normalized rule weights.
 - `FSRE-AdaTSK` — adaptive model with gated feature selection and rule extraction.
 - `DG-TSK` — double-gated training for feature selection and rule extraction.
 - `DG-ALETSK` — adaptive Ln-Exp softmin with embedded feature and rule gates.
@@ -80,6 +81,7 @@ Each family exposes classifier and regressor variants.
 - `ADMTSKClassifier`, `ADMTSKRegressor`
 - `AYATSKClassifier`, `AYATSKRegressor`
 - `AdaTSKClassifier`, `AdaTSKRegressor`
+- `ADPTSKClassifier`, `ADPTSKRegressor`
 - `FSREAdaTSKClassifier`, `FSREAdaTSKRegressor`
 - `DGTSKClassifier`, `DGTSKRegressor`
 - `DGALETSKClassifier`, `DGALETSKRegressor`
@@ -98,6 +100,7 @@ Each family exposes classifier and regressor variants.
 - `FSREAdaTSKClassifierEstimator`, `FSREAdaTSKRegressorEstimator`
 - `AYATSKClassifierEstimator`, `AYATSKRegressorEstimator`
 - `AdaTSKClassifierEstimator`, `AdaTSKRegressorEstimator`
+- `ADPTSKClassifierEstimator`, `ADPTSKRegressorEstimator`
 - `HDFISProdClassifierEstimator`, `HDFISProdRegressorEstimator`
 - `HDFISMinClassifierEstimator`, `HDFISMinRegressorEstimator`
 
@@ -136,6 +139,7 @@ Key reference pages:
 - [AYATSK](https://dcruzf.github.io/highFIS/latest/models/ayatsk)
 - [HTSK](https://dcruzf.github.io/highFIS/latest/models/htsk)
 - [DombiTSK](https://dcruzf.github.io/highFIS/latest/models/dombitsk)
+- [ADPTSK](https://dcruzf.github.io/highFIS/latest/models/adptsk)
 - [ADMTSK](https://dcruzf.github.io/highFIS/latest/models/admtsk)
 - [AdaTSK](https://dcruzf.github.io/highFIS/latest/models/adatsk)
 - [DGTSK](https://dcruzf.github.io/highFIS/latest/models/dg-tsk)
