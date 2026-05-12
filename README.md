@@ -148,7 +148,7 @@ Key reference pages:
 Run the test suite with coverage:
 
 ```bash
-hatch test -c --a
+hatch test -c -a
 ```
 
 Format and lint the repository:
