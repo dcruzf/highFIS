@@ -15,6 +15,8 @@ from highfis.estimators import (
     AdaTSKRegressorEstimator,
     ADMTSKClassifierEstimator,
     ADMTSKRegressorEstimator,
+    ADPTSKClassifierEstimator,
+    ADPTSKRegressorEstimator,
     AYATSKClassifierEstimator,
     AYATSKRegressorEstimator,
     DGALETSKClassifierEstimator,
@@ -482,6 +484,28 @@ def test_estimator_grid_init_fit_predict() -> None:
 def test_adatsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
     x, y = _make_dataset(80)
     est = AdaTSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+
+    est.fit(x, y)
+    proba = est.predict_proba(x)
+    pred = est.predict(x)
+    score = est.score(x, y)
+
+    assert proba.shape == (x.shape[0], 2)
+    assert pred.shape == (x.shape[0],)
+    assert np.allclose(proba.sum(axis=1), 1.0, atol=1e-6)
+    assert 0.0 <= score <= 1.0
+
+
+def test_adptsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
+    x, y = _make_dataset(80)
+    est = ADPTSKClassifierEstimator(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -1276,6 +1300,23 @@ def test_regressor_estimator_grid_init_fit_predict() -> None:
 def test_adatsk_regressor_estimator_fit_predict() -> None:
     x, y = _make_regression_dataset(80)
     est = AdaTSKRegressorEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=5,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+
+    est.fit(x, y)
+    pred = est.predict(x)
+
+    assert pred.shape == (x.shape[0],)
+
+
+def test_adptsk_regressor_estimator_fit_predict() -> None:
+    x, y = _make_regression_dataset(80)
+    est = ADPTSKRegressorEstimator(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,

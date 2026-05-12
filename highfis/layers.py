@@ -373,6 +373,65 @@ class AdaSoftminRuleLayer(RuleLayer):
         return torch.exp(log_w)
 
 
+class ADPSoftminRuleLayer(RuleLayer):
+    """Compute adaptive ADP-softmin firing strengths for each rule."""
+
+    def __init__(
+        self,
+        input_names: list[str],
+        mf_per_input: list[int],
+        rules: Sequence[Sequence[int]] | None = None,
+        rule_base: str = "cartesian",
+        kappa: float = 690.0,
+        xi: float = 730.0,
+        eps: float | None = None,
+    ) -> None:
+        """Initialize ADP-softmin rule layer."""
+        self.eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else float(eps)
+        self.kappa = float(kappa)
+        self.xi = float(xi)
+        super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod", t_norm_fn=None)
+
+    def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
+        """Compute ADP-softmin rule strengths from membership outputs."""
+        mu_list = []
+        for name in self.input_names:
+            if name not in membership_outputs:
+                raise KeyError(f"missing membership output for input '{name}'")
+            mu_list.append(membership_outputs[name])
+
+        mu_flat = torch.cat(mu_list, dim=1)
+        batch_size = mu_flat.shape[0]
+        rule_indices = cast(Tensor, self.rule_indices)
+        indices = rule_indices.unsqueeze(0).expand(batch_size, -1, -1)
+        terms = mu_flat.gather(1, indices.reshape(batch_size, -1)).reshape(batch_size, self.n_rules, self.n_inputs)
+
+        mu = terms.clamp(min=self.eps, max=1.0 - self.eps)
+        min_mu = mu.min(dim=-1).values
+        max_mu = mu.max(dim=-1).values
+
+        ln_D = math.log(float(self.n_inputs))
+        neg_ln_under = -torch.log(min_mu)
+        neg_ln_bar = -torch.log(max_mu)
+
+        denom = (self.kappa - ln_D) + self.xi
+        log_eta = (self.xi * neg_ln_under + (self.kappa - ln_D) * neg_ln_bar) / denom
+        eta = torch.exp(log_eta)
+
+        q1 = (self.kappa - ln_D) / torch.log(eta * min_mu)
+        q2 = (-self.xi) / torch.log(eta * max_mu)
+        q = torch.maximum(q1, q2)
+        q = torch.ceil(q).clamp(min=-1000.0, max=-1.0)
+
+        log_mu = torch.log(mu)
+        log_terms = q.unsqueeze(-1) * (torch.log(eta).unsqueeze(-1) + log_mu)
+        max_log_terms = log_terms.amax(dim=-1, keepdim=True)
+        log_sum = max_log_terms + torch.log(torch.exp(log_terms - max_log_terms).sum(dim=-1, keepdim=True))
+        log_avg = log_sum - math.log(self.n_inputs)
+        log_w = log_avg.squeeze(-1) / q
+        return torch.exp(log_w)
+
+
 class DGALETSKRuleLayer(RuleLayer):
     """Compute adaptive Ln-Exp softmin firing strengths with antecedent feature gates."""
 
