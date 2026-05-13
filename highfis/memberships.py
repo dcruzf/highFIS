@@ -12,6 +12,14 @@ Membership functions:
         - ``GaussianPIMF`` — Gaussian with a positive infimum, useful for
           softmin-stable models.
 
+    **Dimension-dependent**
+        - ``DimensionDependentGaussianMF`` — dimension-scaled Gaussian for
+          HDFIS-prod inference.
+
+    **Constant**
+        - ``ConstantMF`` — constant membership used as a "don't care" MF
+          in sparse MHTSK rule bases.
+
     **Exponential**
         - ``CompositeExponentialMF`` — CEMF with lower bound ``1/k``, used
           by AYATSK.
@@ -31,6 +39,8 @@ Membership functions:
 Notes:
     - Membership parameters are trainable and differentiable.
     - This module is intended for use with TSK models in ``highfis.models``.
+    - ``ConstantMF`` is useful for sparse rule bases and partial-rule
+      consequents in MHTSK-style models.
 """
 
 from __future__ import annotations
@@ -72,6 +82,25 @@ class MembershipFunction(nn.Module):
         if isinstance(x, Tensor):
             return x
         return torch.as_tensor(x, dtype=torch.get_default_dtype())
+
+
+class ConstantMF(MembershipFunction):
+    """Membership function that returns a constant degree for all inputs."""
+
+    def __init__(self, value: float = 1.0, eps: float | None = None) -> None:
+        """Initialize a constant membership function.
+
+        Args:
+            value: Constant membership value returned for any input.
+            eps: Numeric stability constant. ``None`` uses the current dtype epsilon.
+        """
+        super().__init__(eps=eps)
+        self.value = float(value)
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Return the constant membership value for each input sample."""
+        x = self._as_tensor(x)
+        return torch.full_like(x, fill_value=self.value)
 
 
 class GaussianMF(MembershipFunction):

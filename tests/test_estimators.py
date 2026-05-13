@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import tempfile
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import numpy as np
@@ -36,6 +37,8 @@ from highfis.estimators import (
     InputConfig,
     LogTSKClassifierEstimator,
     LogTSKRegressorEstimator,
+    MHTSKClassifierEstimator,
+    MHTSKRegressorEstimator,
     TSKClassifierEstimator,
     TSKRegressorEstimator,
     _build_fuzzy_c_means_input_mfs,
@@ -43,7 +46,7 @@ from highfis.estimators import (
     _build_kmeans_input_mfs,
     _build_pfrb_input_mfs,
 )
-from highfis.memberships import CompositeGMF, DimensionDependentGaussianMF, GaussianMF
+from highfis.memberships import CompositeGMF, DimensionDependentGaussianMF, GaussianMF, MembershipFunction
 from highfis.models import HDFISMinClassifier, HDFISMinRegressor
 
 
@@ -716,6 +719,101 @@ def test_build_kmeans_input_mfs_works_with_numpy_cluster_centers(monkeypatch) ->
             assert float(mf.sigma.detach()) > 0.0
 
 
+def test_mhtsk_classifier_estimator_fit_predict() -> None:
+    x, y = _make_dataset(40)
+    est = MHTSKClassifierEstimator(
+        n_mfs=2,
+        n_heads=2,
+        head_size=1,
+        fcm_m=2.0,
+        rule_sigma=1.0,
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+    )
+    est.fit(x, y)
+    pred = est.predict(x)
+
+    assert pred.shape == (x.shape[0],)
+
+
+def test_mhtsk_regressor_estimator_fit_predict() -> None:
+    x, y = _make_dataset(40)
+    y = y.astype(np.float32)
+    est = MHTSKRegressorEstimator(
+        n_mfs=2,
+        n_heads=2,
+        head_size=1,
+        fcm_m=2.0,
+        rule_sigma=1.0,
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+    )
+    est.fit(x, y)
+    pred = est.predict(x)
+
+    assert pred.shape == (x.shape[0],)
+
+
+def test_mhtsk_input_builder_rejects_invalid_head_size() -> None:
+    x, _ = _make_dataset(10)
+    est = MHTSKClassifierEstimator(
+        n_mfs=2,
+        n_heads=1,
+        head_size=0,
+        fcm_m=2.0,
+        rule_sigma=1.0,
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+    )
+    with pytest.raises(ValueError, match="head_size must be between 1 and the number of features"):
+        est._build_input_mfs(x)
+
+
+def test_mhtsk_input_builder_rejects_invalid_n_heads() -> None:
+    x, _ = _make_dataset(10)
+    est = MHTSKClassifierEstimator(
+        n_mfs=2,
+        n_heads=0,
+        head_size=1,
+        fcm_m=2.0,
+        rule_sigma=1.0,
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+    )
+    with pytest.raises(ValueError, match="n_heads must be > 0"):
+        est._build_input_mfs(x)
+
+
+def test_mhtsk_input_builder_raises_when_fcm_fails(monkeypatch) -> None:
+    x, _ = _make_dataset(10)
+
+    class DummyFuzzyCMeans:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
+        def fit(self, x: np.ndarray) -> None:
+            self.cluster_centers_ = None
+
+    monkeypatch.setattr("highfis.estimators.FuzzyCMeans", DummyFuzzyCMeans)
+
+    est = MHTSKClassifierEstimator(
+        n_mfs=2,
+        n_heads=1,
+        head_size=1,
+        fcm_m=2.0,
+        rule_sigma=1.0,
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+    )
+    with pytest.raises(RuntimeError, match="FuzzyCMeans did not converge to a valid solution"):
+        est._build_input_mfs(x)
+
+
 def test_estimator_invalid_mf_init_raises() -> None:
     x, y = _make_dataset(20)
     est = HTSKClassifierEstimator(n_mfs=2, mf_init="random", epochs=1, batch_size=16)
@@ -1130,7 +1228,7 @@ def test_estimator_restore_best_false_does_not_restore_best_model() -> None:
 
 def test_estimator_passes_restore_best_to_model_fit() -> None:
     class SpyModel(BaseTSK):
-        def __init__(self, input_mfs: dict[str, list[GaussianMF]], rule_base: str) -> None:
+        def __init__(self, input_mfs: Mapping[str, Sequence[MembershipFunction]], rule_base: str) -> None:
             super().__init__(input_mfs, rule_base=rule_base)
             self.fit_kwargs: dict[str, object] | None = None
 
@@ -1151,7 +1249,7 @@ def test_estimator_passes_restore_best_to_model_fit() -> None:
     class SpyEstimator(HTSKClassifierEstimator):
         def _build_model(
             self,
-            input_mfs: dict[str, list[GaussianMF]],
+            input_mfs: Mapping[str, Sequence[MembershipFunction]],
             n_classes: int,
             rule_base: str,
         ) -> SpyModel:
