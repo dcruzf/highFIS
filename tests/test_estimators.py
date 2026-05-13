@@ -38,6 +38,7 @@ from highfis.estimators import (
     LogTSKRegressorEstimator,
     TSKClassifierEstimator,
     TSKRegressorEstimator,
+    _build_fuzzy_c_means_input_mfs,
     _build_gaussian_input_mfs,
     _build_kmeans_input_mfs,
     _build_pfrb_input_mfs,
@@ -585,6 +586,27 @@ def test_build_kmeans_input_mfs_shape() -> None:
         assert len(input_mfs[name]) == n_clusters
 
 
+def test_build_kmeans_input_mfs_raises_when_cluster_centers_missing(monkeypatch) -> None:
+    class DummyKMeans:
+        def __init__(self, *args, **kwargs):
+            self.cluster_centers_ = None
+            self.labels_ = np.array([], dtype=int)
+
+        def fit(self, x: np.ndarray):
+            return self
+
+    monkeypatch.setattr("highfis.estimators.TorchKMeans", DummyKMeans)
+
+    with pytest.raises(RuntimeError, match="KMeans did not compute cluster centers"):
+        _build_kmeans_input_mfs(
+            np.zeros((2, 2), dtype=np.float64),
+            n_clusters=2,
+            sigma_scale=1.0,
+            feature_names=["x1", "x2"],
+            random_state=0,
+        )
+
+
 def test_build_kmeans_input_mfs_sigma_positive() -> None:
     x, _ = _make_dataset(60)
     feature_names = ["x1", "x2", "x3"]
@@ -615,6 +637,83 @@ def test_build_kmeans_sigma_scale_applied() -> None:
             assert isinstance(m2, GaussianMF)
             # sigma_scale=5 must produce >= sigma_scale=1
             assert float(m2.sigma.detach()) >= float(m1.sigma.detach()) - 1e-6
+
+
+def test_build_fcm_input_mfs_zero_weight_fallback() -> None:
+    x = np.zeros((3, 2), dtype=np.float64)
+    feature_names = ["x1", "x2"]
+
+    input_mfs = _build_fuzzy_c_means_input_mfs(
+        x,
+        n_clusters=2,
+        m=2.0,
+        sigma_scale=1.0,
+        feature_names=feature_names,
+        random_state=0,
+    )
+
+    from highfis.memberships import GaussianMF
+
+    assert list(input_mfs.keys()) == feature_names
+    for mfs in input_mfs.values():
+        assert len(mfs) == 2
+        for mf in mfs:
+            assert isinstance(mf, GaussianMF)
+            assert float(mf.sigma.detach()) > 0.0
+
+
+def test_build_fcm_input_mfs_raises_when_fcm_does_not_converge(monkeypatch) -> None:
+    class DummyFuzzyCMeans:
+        def __init__(self, *args, **kwargs):
+            self.cluster_centers_ = None
+            self.membership_ = None
+            self.m = 2.0
+
+        def fit(self, x: np.ndarray):
+            return self
+
+    monkeypatch.setattr("highfis.estimators.FuzzyCMeans", DummyFuzzyCMeans)
+
+    with pytest.raises(RuntimeError, match="FuzzyCMeans did not converge"):
+        _build_fuzzy_c_means_input_mfs(
+            np.zeros((2, 2), dtype=np.float64),
+            n_clusters=2,
+            m=2.0,
+            sigma_scale=1.0,
+            feature_names=["x1", "x2"],
+            random_state=0,
+        )
+
+
+def test_build_kmeans_input_mfs_works_with_numpy_cluster_centers(monkeypatch) -> None:
+    class DummyKMeans:
+        def __init__(self, *args, **kwargs):
+            self.cluster_centers_ = np.array([[0.0, 0.0], [1.0, 1.0]], dtype=np.float64)
+            self.labels_ = np.array([0, 1], dtype=int)
+
+        def fit(self, x: np.ndarray):
+            return self
+
+    monkeypatch.setattr("highfis.estimators.TorchKMeans", DummyKMeans)
+
+    x = np.array([[0.0, 0.0], [1.0, 1.0]], dtype=np.float64)
+    feature_names = ["x1", "x2"]
+    input_mfs = _build_kmeans_input_mfs(
+        x,
+        n_clusters=2,
+        sigma_scale=1.0,
+        feature_names=feature_names,
+        random_state=0,
+    )
+
+    from highfis.memberships import GaussianMF
+
+    assert list(input_mfs.keys()) == feature_names
+    for mfs in input_mfs.values():
+        assert len(mfs) == 2
+        for mf in mfs:
+            assert isinstance(mf, GaussianMF)
+            assert float(mf.sigma.detach()) > 0.0
 
 
 def test_estimator_invalid_mf_init_raises() -> None:

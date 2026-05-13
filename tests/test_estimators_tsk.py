@@ -60,6 +60,26 @@ class TestTSKClassifierEstimator:
         assert np.allclose(proba.sum(axis=1), 1.0, atol=1e-6)
         assert 0.0 <= score <= 1.0
 
+    def test_fit_predict_score_fcm(self) -> None:
+        x, y = _make_clf_dataset(80)
+        est = TSKClassifierEstimator(
+            n_mfs=2,
+            mf_init="fcm",
+            epochs=5,
+            learning_rate=1e-2,
+            random_state=7,
+            batch_size=16,
+        )
+        est.fit(x, y)
+        proba = est.predict_proba(x)
+        pred = est.predict(x)
+        score = est.score(x, y)
+
+        assert proba.shape == (x.shape[0], 2)
+        assert pred.shape == (x.shape[0],)
+        assert np.allclose(proba.sum(axis=1), 1.0, atol=1e-6)
+        assert 0.0 <= score <= 1.0
+
     def test_fit_predict_grid(self) -> None:
         x, y = _make_clf_dataset(80)
         est = TSKClassifierEstimator(
@@ -116,6 +136,22 @@ class TestTSKRegressorEstimator:
         pred = est.predict(x)
         assert pred.shape == (x.shape[0],)
         # score() returns R² — should be a float
+        r2 = est.score(x, y)
+        assert isinstance(r2, float)
+
+    def test_fit_predict_score_fcm(self) -> None:
+        x, y = _make_reg_dataset(80)
+        est = TSKRegressorEstimator(
+            n_mfs=2,
+            mf_init="fcm",
+            epochs=5,
+            learning_rate=1e-2,
+            random_state=7,
+            batch_size=16,
+        )
+        est.fit(x, y)
+        pred = est.predict(x)
+        assert pred.shape == (x.shape[0],)
         r2 = est.score(x, y)
         assert isinstance(r2, float)
 
