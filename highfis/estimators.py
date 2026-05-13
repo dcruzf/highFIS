@@ -97,6 +97,11 @@ Membership Function Initialization:
         The sigma values are derived from within-cluster spread and scaled
         by `sigma_scale`. This produces a CoCo rule base by default.
 
+    - `mf_init="fcm"`:
+        Fuzzy C-means cluster centroids are used as MF centers. Sigmas are
+        computed from weighted within-cluster spread and sampled from a
+        normal distribution, analogous to the k-means initialization.
+
     - `mf_init="grid"`:
         Regular grid placement controlled by `InputConfig`. This produces
         a Cartesian rule base by default.
@@ -117,12 +122,13 @@ from typing import Any, Self, cast
 import numpy as np
 import torch
 from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
-from sklearn.cluster import KMeans
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 
 from .base import BaseTSK
+from .clustering import FuzzyCMeans
+from .clustering import KMeans as TorchKMeans
 from .memberships import CompositeGMF, DimensionDependentGaussianMF, GaussianMF, GaussianPIMF
 from .metrics import compute_metrics
 from .models import (
@@ -249,9 +255,16 @@ def _build_kmeans_input_mfs(
     base sigma falls back to half the gap to the nearest neighbouring
     centroid in that feature dimension.
     """
-    km = KMeans(n_clusters=n_clusters, random_state=random_state, n_init="auto")
+    km = TorchKMeans(n_clusters=n_clusters, random_state=random_state)
     km.fit(x)
-    centers: np.ndarray = km.cluster_centers_  # (n_clusters, n_features)
+    if km.cluster_centers_ is None:
+        raise RuntimeError("KMeans did not compute cluster centers")
+
+    if hasattr(km.cluster_centers_, "cpu"):
+        centers = km.cluster_centers_.cpu().numpy()
+    else:
+        centers = np.asarray(km.cluster_centers_)
+
     labels: np.ndarray = np.asarray(km.labels_)
     rng = np.random.default_rng(random_state)
 
@@ -271,6 +284,60 @@ def _build_kmeans_input_mfs(
             h = raw_sigma * sigma_scale
             sigma = max(float(rng.normal(loc=h, scale=0.2)), 1e-3)
             mfs.append(GaussianMF(mean=c, sigma=sigma))
+        input_mfs[name] = mfs
+
+    return input_mfs
+
+
+def _build_fuzzy_c_means_input_mfs(
+    x: np.ndarray,
+    n_clusters: int,
+    m: float,
+    sigma_scale: float,
+    feature_names: list[str],
+    random_state: int | None,
+) -> dict[str, list[GaussianMF]]:
+    r"""Build Gaussian MFs via fuzzy C-means cluster initialization.
+
+    The MF means are placed at the FCM centroids. Each sigma is sampled
+    from ``N(h, 0.2)`` where ``h`` is the cluster-specific, feature-wise
+    spread scaled by ``sigma_scale``.
+    """
+    model = FuzzyCMeans(
+        n_clusters=n_clusters,
+        m=m,
+        random_state=random_state,
+    )
+    model.fit(x)
+    if model.cluster_centers_ is None or model.membership_ is None:
+        raise RuntimeError("FuzzyCMeans did not converge to a valid solution")
+
+    centers: np.ndarray = model.cluster_centers_.cpu().numpy()
+    membership: np.ndarray = model.membership_.cpu().numpy()
+    input_mfs: dict[str, list[GaussianMF]] = {}
+    rng = np.random.default_rng(random_state)
+
+    for d, name in enumerate(feature_names):
+        col = x[:, d]
+        center_col = centers[:, d]
+        mfs: list[GaussianMF] = []
+        for r in range(n_clusters):
+            c = float(center_col[r])
+            weights = membership[:, r] ** float(model.m)
+            total_weight = float(np.sum(weights))
+            if total_weight > 0.0:
+                variance = float(np.sum(weights * (col - c) ** 2) / total_weight)
+                raw_sigma = float(np.sqrt(max(variance, 0.0)))
+            else:
+                raw_sigma = 0.0
+
+            if raw_sigma < 1e-6:
+                other = np.delete(center_col, r)
+                raw_sigma = float(np.min(np.abs(other - c))) / 2.0 if len(other) > 0 else 1.0
+            h = raw_sigma * sigma_scale
+            sigma = max(float(rng.normal(loc=h, scale=0.2)), 1e-3)
+            mfs.append(GaussianMF(mean=c, sigma=sigma))
+
         input_mfs[name] = mfs
 
     return input_mfs
@@ -427,7 +494,9 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
                 et al. (IJCNN 2021) used ``R=30`` for all datasets.
             mf_init: MF initialisation strategy. ``"kmeans"`` (default)
                 derives MF centres from k-means cluster centroids following
-                Cui et al. (IJCNN 2021). ``"grid"`` places centres on a
+                Cui et al. (IJCNN 2021). ``"fcm"`` derives MF centres from
+                fuzzy C-means cluster centroids and computes sigmas from the
+                resulting fuzzy memberships. ``"grid"`` places centres on a
                 regular grid controlled by :class:`InputConfig`.
             sigma_scale: Scale factor for sigma initialisation when
                 ``mf_init="kmeans"``. Each sigma is drawn from
@@ -530,10 +599,10 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[dict[str, list[GaussianMF]], list[str], str]:
         """Build MFs and resolve rule_base from the initialization mode."""
         init = str(self.mf_init).lower()
-        if init not in {"kmeans", "grid"}:
-            raise ValueError(f"mf_init must be 'kmeans' or 'grid', got '{self.mf_init}'")
+        if init not in {"kmeans", "fcm", "grid"}:
+            raise ValueError(f"mf_init must be 'kmeans', 'fcm' or 'grid', got '{self.mf_init}'")
 
-        if init == "kmeans":
+        if init in {"kmeans", "fcm"}:
             feature_names = self._resolve_feature_names(x_arr)
             if isinstance(self.sigma_scale, str) and self.sigma_scale.lower() == "auto":
                 effective_sigma_scale = math.sqrt(float(x_arr.shape[1]))
@@ -549,13 +618,23 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
                 )
                 effective_rule_base = "coco"
             else:
-                input_mfs = _build_kmeans_input_mfs(
-                    x_arr,
-                    n_clusters=int(self.n_mfs),
-                    sigma_scale=effective_sigma_scale,
-                    feature_names=feature_names,
-                    random_state=self.random_state,
-                )
+                if init == "kmeans":
+                    input_mfs = _build_kmeans_input_mfs(
+                        x_arr,
+                        n_clusters=int(self.n_mfs),
+                        sigma_scale=effective_sigma_scale,
+                        feature_names=feature_names,
+                        random_state=self.random_state,
+                    )
+                else:
+                    input_mfs = _build_fuzzy_c_means_input_mfs(
+                        x_arr,
+                        n_clusters=int(self.n_mfs),
+                        m=2.0,
+                        sigma_scale=effective_sigma_scale,
+                        feature_names=feature_names,
+                        random_state=self.random_state,
+                    )
                 effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
         else:
             input_configs = self._resolve_input_configs(x_arr)
@@ -795,7 +874,9 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
                 et al. (IJCNN 2021) used ``R=30`` for all datasets.
             mf_init: MF initialisation strategy. ``"kmeans"`` (default)
                 derives MF centres from k-means cluster centroids following
-                Cui et al. (IJCNN 2021). ``"grid"`` places centres on a
+                Cui et al. (IJCNN 2021). ``"fcm"`` derives MF centres from
+                fuzzy C-means cluster centroids and computes sigmas from the
+                resulting fuzzy memberships. ``"grid"`` places centres on a
                 regular grid controlled by :class:`InputConfig`.
             sigma_scale: Scale factor for sigma initialisation when
                 ``mf_init="kmeans"``. Each sigma is drawn from
@@ -895,10 +976,10 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[dict[str, list[GaussianMF]], list[str], str]:
         """Build MFs and resolve rule_base from the initialization mode."""
         init = str(self.mf_init).lower()
-        if init not in {"kmeans", "grid"}:
-            raise ValueError(f"mf_init must be 'kmeans' or 'grid', got '{self.mf_init}'")
+        if init not in {"kmeans", "fcm", "grid"}:
+            raise ValueError(f"mf_init must be 'kmeans', 'fcm' or 'grid', got '{self.mf_init}'")
 
-        if init == "kmeans":
+        if init in {"kmeans", "fcm"}:
             feature_names = self._resolve_feature_names(x_arr)
             if isinstance(self.sigma_scale, str) and self.sigma_scale.lower() == "auto":
                 effective_sigma_scale = math.sqrt(float(x_arr.shape[1]))
@@ -914,13 +995,23 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
                 )
                 effective_rule_base = "coco"
             else:
-                input_mfs = _build_kmeans_input_mfs(
-                    x_arr,
-                    n_clusters=int(self.n_mfs),
-                    sigma_scale=effective_sigma_scale,
-                    feature_names=feature_names,
-                    random_state=self.random_state,
-                )
+                if init == "kmeans":
+                    input_mfs = _build_kmeans_input_mfs(
+                        x_arr,
+                        n_clusters=int(self.n_mfs),
+                        sigma_scale=effective_sigma_scale,
+                        feature_names=feature_names,
+                        random_state=self.random_state,
+                    )
+                else:
+                    input_mfs = _build_fuzzy_c_means_input_mfs(
+                        x_arr,
+                        n_clusters=int(self.n_mfs),
+                        m=2.0,
+                        sigma_scale=effective_sigma_scale,
+                        feature_names=feature_names,
+                        random_state=self.random_state,
+                    )
                 effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
         else:
             input_configs = self._resolve_input_configs(x_arr)

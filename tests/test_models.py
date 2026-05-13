@@ -127,6 +127,13 @@ def test_adptsk_classifier_forward_predict_shapes() -> None:
     assert torch.allclose(proba.sum(dim=1), torch.ones(8), atol=1e-6)
 
 
+def test_adptsk_classifier_validates_n_classes() -> None:
+    from highfis.models import ADPTSKClassifier
+
+    with pytest.raises(ValueError, match="n_classes must be >= 2"):
+        ADPTSKClassifier(_build_input_mfs(), n_classes=1)
+
+
 def test_adptsk_regressor_forward_predict_shape() -> None:
     from highfis.models import ADPTSKRegressor
 
