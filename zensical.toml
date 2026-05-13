@@ -68,6 +68,7 @@ nav = [
         "api/t_norms.md",
         "api/defuzzifiers.md",
         "api/metrics.md",
+        "api/clustering.md",
         "api/base.md",
         "api/persistence.md",
         "api/protocols.md",

@@ -1,8 +1,12 @@
 """PyTorch-based clustering utilities used by highFIS.
 
 This module provides lightweight, dependency-free implementations of
-K-means and Fuzzy C-Means for use in membership-function initialization
-and fuzzy rule construction.
+K-means and Fuzzy C-Means clustering. These estimators are used internally
+for membership-function initialization and fuzzy rule construction without
+requiring external clustering libraries.
+
+The implementations accept array-like inputs and return PyTorch tensors,
+allowing smooth integration with the rest of the highFIS model pipeline.
 """
 
 from __future__ import annotations
@@ -14,6 +18,17 @@ from torch import Generator, Tensor
 
 
 def _as_tensor(x: Any) -> Tensor:
+    """Convert input data to a 2-D PyTorch tensor.
+
+    Args:
+        x: Array-like or tensor input representing the samples.
+
+    Returns:
+        A 2-D tensor containing the input samples in the current default dtype.
+
+    Raises:
+        ValueError: If the input tensor is not two-dimensional.
+    """
     tensor = torch.as_tensor(x)
     if tensor.ndim != 2:
         raise ValueError(f"expected input array with 2 dims, got {tensor.ndim}")
@@ -21,6 +36,15 @@ def _as_tensor(x: Any) -> Tensor:
 
 
 def _build_generator(device: torch.device, random_state: int | None) -> Generator:
+    """Create a reproducible PyTorch random generator for clustering.
+
+    Args:
+        device: Torch device used to allocate random tensors.
+        random_state: Optional integer seed for deterministic behavior.
+
+    Returns:
+        A configured PyTorch random number generator.
+    """
     generator = torch.Generator(device=device)
     if random_state is not None:
         generator.manual_seed(int(random_state))
@@ -28,6 +52,19 @@ def _build_generator(device: torch.device, random_state: int | None) -> Generato
 
 
 def _initialize_centroids(x: Tensor, n_clusters: int, generator: Generator) -> Tensor:
+    """Initialize cluster centroids by sampling input points without replacement.
+
+    Args:
+        x: Input samples tensor of shape (n_samples, n_features).
+        n_clusters: Number of clusters to initialize.
+        generator: Random generator for sampling indices.
+
+    Returns:
+        Initial centroids tensor of shape (n_clusters, n_features).
+
+    Raises:
+        ValueError: If n_clusters is not in the valid range [1, n_samples].
+    """
     n_samples = x.shape[0]
     if n_clusters <= 0:
         raise ValueError("n_clusters must be > 0")
@@ -38,7 +75,11 @@ def _initialize_centroids(x: Tensor, n_clusters: int, generator: Generator) -> T
 
 
 class KMeans:
-    """Simple PyTorch K-means implementation."""
+    """PyTorch implementation of K-means clustering.
+
+    This estimator runs multiple random restarts and supports empty-cluster
+    handling by reassigning a fallback sample when a cluster becomes empty.
+    """
 
     def __init__(
         self,
@@ -48,7 +89,15 @@ class KMeans:
         tol: float = 1e-4,
         random_state: int | None = None,
     ) -> None:
-        """Initialize the KMeans estimator."""
+        """Initialize the KMeans estimator.
+
+        Args:
+            n_clusters: Number of clusters to find.
+            n_init: Number of random initializations to try.
+            max_iter: Maximum number of iterations per run.
+            tol: Convergence tolerance for centroid movement.
+            random_state: Optional random seed for reproducibility.
+        """
         self.n_clusters = int(n_clusters)
         self.n_init = int(n_init)
         self.max_iter = int(max_iter)
@@ -60,7 +109,14 @@ class KMeans:
         self.inertia_: float | None = None
 
     def fit(self, x: Any) -> KMeans:
-        """Fit the KMeans model to the input data."""
+        """Fit the KMeans model to the input data.
+
+        Args:
+            x: Input samples of shape (n_samples, n_features).
+
+        Returns:
+            The fitted estimator.
+        """
         x_t = _as_tensor(x)
         best_inertia = float("inf")
         best_centers: Tensor | None = None
@@ -104,7 +160,14 @@ class KMeans:
         return self
 
     def predict(self, x: Any) -> Tensor:
-        """Predict cluster labels for new samples."""
+        """Predict cluster labels for new samples.
+
+        Args:
+            x: New samples of shape (n_samples, n_features).
+
+        Returns:
+            Cluster labels for each sample.
+        """
         if self.cluster_centers_ is None:
             raise RuntimeError("KMeans instance is not fitted yet")
         x_t = _as_tensor(x)
@@ -112,7 +175,14 @@ class KMeans:
         return distances.argmin(dim=1)
 
     def fit_predict(self, x: Any) -> Tensor:
-        """Fit the model and return the predicted labels."""
+        """Fit the model and return the predicted labels.
+
+        Args:
+            x: Input samples of shape (n_samples, n_features).
+
+        Returns:
+            Cluster labels for each sample.
+        """
         self.fit(x)
         if self.labels_ is None:
             raise RuntimeError("KMeans did not produce labels")
@@ -120,7 +190,11 @@ class KMeans:
 
 
 class FuzzyCMeans:
-    """PyTorch implementation of Fuzzy C-Means clustering."""
+    """PyTorch implementation of Fuzzy C-Means clustering.
+
+    This estimator produces soft cluster memberships and updates centroids
+    using the weighted membership matrix generated by FCM.
+    """
 
     def __init__(
         self,
@@ -131,7 +205,16 @@ class FuzzyCMeans:
         random_state: int | None = None,
         eps: float = 1e-6,
     ) -> None:
-        """Initialize the FuzzyCMeans estimator."""
+        """Initialize the FuzzyCMeans estimator.
+
+        Args:
+            n_clusters: Number of clusters.
+            m: Fuzziness parameter. Values > 1 produce fuzzier membership.
+            max_iter: Maximum number of iterations.
+            tol: Convergence tolerance on centroid movement.
+            random_state: Optional seed for reproducible initialization.
+            eps: Small constant to avoid division by zero.
+        """
         self.n_clusters = int(n_clusters)
         self.m = float(m)
         self.max_iter = int(max_iter)
@@ -143,7 +226,14 @@ class FuzzyCMeans:
         self.membership_: Tensor | None = None
 
     def fit(self, x: Any) -> FuzzyCMeans:
-        """Fit the Fuzzy C-Means model to the input data."""
+        """Fit the Fuzzy C-Means model to the input data.
+
+        Args:
+            x: Input samples of shape (n_samples, n_features).
+
+        Returns:
+            The fitted estimator.
+        """
         x_t = _as_tensor(x)
         generator = _build_generator(x_t.device, self.random_state)
         n_samples = x_t.shape[0]
@@ -182,7 +272,14 @@ class FuzzyCMeans:
         return self
 
     def predict(self, x: Any) -> Tensor:
-        """Predict cluster labels for new samples."""
+        """Predict cluster labels for new samples.
+
+        Args:
+            x: New samples of shape (n_samples, n_features).
+
+        Returns:
+            Hard cluster labels derived from the current membership matrix.
+        """
         if self.membership_ is None:
             raise RuntimeError("FuzzyCMeans instance is not fitted yet")
         x_t = _as_tensor(x)
@@ -193,7 +290,14 @@ class FuzzyCMeans:
         return u.argmax(dim=1)
 
     def fit_predict(self, x: Any) -> Tensor:
-        """Fit the model and return the predicted labels."""
+        """Fit the model and return the predicted labels.
+
+        Args:
+            x: Input samples of shape (n_samples, n_features).
+
+        Returns:
+            Hard cluster labels for each sample.
+        """
         self.fit(x)
         if self.membership_ is None:
             raise RuntimeError("FuzzyCMeans did not produce membership values")
