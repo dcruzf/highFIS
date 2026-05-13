@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 import torch
 
@@ -19,6 +21,16 @@ def test_kmeans_class_methods_consistent() -> None:
     assert isinstance(model.inertia_, float)
 
 
+def test_kmeans_fit_predict_raises_when_fit_does_not_set_labels() -> None:
+    class BrokenKMeans(KMeans):
+        def fit(self, x: Any) -> KMeans:
+            return self
+
+    model = BrokenKMeans(n_clusters=2)
+    with pytest.raises(RuntimeError, match="KMeans did not produce labels"):
+        model.fit_predict(torch.randn(2, 2))
+
+
 def test_fcm_class_methods_compute_membership() -> None:
     x = torch.tensor([[0.0, 0.0], [0.0, 1.0], [10.0, 10.0], [10.0, 11.0]], dtype=torch.float32)
     model = FuzzyCMeans(n_clusters=2, m=2.0, max_iter=50, random_state=2)
@@ -28,6 +40,16 @@ def test_fcm_class_methods_compute_membership() -> None:
     assert torch.allclose(model.membership_.sum(dim=1), torch.ones(4), atol=1e-5)
     predictions = model.predict(x)
     assert torch.equal(labels, predictions)
+
+
+def test_fcm_fit_predict_raises_when_fit_does_not_set_membership() -> None:
+    class BrokenFuzzyCMeans(FuzzyCMeans):
+        def fit(self, x: Any) -> FuzzyCMeans:
+            return self
+
+    model = BrokenFuzzyCMeans(n_clusters=2)
+    with pytest.raises(RuntimeError, match="FuzzyCMeans did not produce membership values"):
+        model.fit_predict(torch.randn(2, 2))
 
 
 def test_as_tensor_rejects_non_two_dimensional_input() -> None:
