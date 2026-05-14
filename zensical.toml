@@ -59,6 +59,7 @@ nav = [
         "models/hdfis.md",
         "models/admtsk.md",
         "models/adptsk.md",
+        "models/mhtsk.md",
      ] },
     { "API Reference" = [
         "api/estimators.md",

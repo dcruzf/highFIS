@@ -513,7 +513,17 @@ class TSKRegressor(BaseTSKRegressor):
 
 
 class MHTSKClassifier(BaseTSKClassifier):
-    """Multihead TSK classifier with sparse rule consequents."""
+    """Multihead TSK classifier with sparse rule consequents.
+
+    MHTSK builds multiple sparse subantecedents from random feature
+    subsets and jointly optimizes their rule consequents.
+
+    Reference:
+        Z. Bian, Q. Chang, J. Wang and N. R. Pal, "Multihead
+        Takagi-Sugeno-Kang Fuzzy System," in IEEE Transactions
+        on Fuzzy Systems, vol. 33, no. 8, pp. 2561-2573, Aug. 2025,
+        doi: 10.1109/TFUZZ.2025.3569227.
+    """
 
     def __init__(
         self,
@@ -568,7 +578,18 @@ class MHTSKClassifier(BaseTSKClassifier):
 
 
 class MHTSKRegressor(BaseTSKRegressor):
-    """Multihead TSK regressor with sparse rule consequents."""
+    """Multihead TSK regressor with sparse rule consequents.
+
+    MHTSK builds multiple sparse subantecedents from random feature
+    subsets and jointly optimizes their rule consequents.
+
+    Reference:
+        Z. Bian, Q. Chang, J. Wang and N. R. Pal, "Multihead
+        Takagi-Sugeno-Kang Fuzzy System," in IEEE Transactions
+        on Fuzzy Systems, vol. 33, no. 8, pp. 2561-2573, Aug. 2025,
+        doi: 10.1109/TFUZZ.2025.3569227.
+
+    """
 
     def __init__(
         self,

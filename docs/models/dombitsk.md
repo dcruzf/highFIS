@@ -4,7 +4,7 @@ DombiTSK replaces product aggregation with an adaptive Dombi t-norm in the antec
 
 ## Reference
 
-> G. Xue, L. Hu, J. Wang and S. Ablameyko, "ADMTSK: A High-Dimensional Takagi–Sugeno–Kang Fuzzy System Based on Adaptive Dombi T-Norm," in IEEE Transactions on Fuzzy Systems, vol. 33, no. 6, pp. 1767-1780, June 2025, doi: 10.1109/TFUZZ.2025.3535640.
+> G. Xue, L. Hu, J. Wang and S. Ablameyko, "ADMTSK: A High-Dimensional Takagi–Sugeno–Kang Fuzzy System Based on Adaptive Dombi T-Norm," in IEEE Transactions on Fuzzy Systems, vol. 33, no. 6, pp. 1767-1780, June 2025, doi: [10.1109/TFUZZ.2025.3535640](https://doi.org/10.1109/TFUZZ.2025.3535640).
 
 ## Mathematical Formulation
 
