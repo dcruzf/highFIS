@@ -1,0 +1,1608 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Documentation for highFIS: high-dimensional TSK fuzzy systems in PyTorch.">
+      
+      
+        <meta name="author" content="Daniel Franca">
+      
+      
+        <link rel="canonical" href="https://dcruzf.github.io/highFIS/v0.14/api/mhtsk/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.41">
+    
+    
+      
+        <title>MHTSK - highFIS Docs</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.fba56155.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer" aria-label="Navigation"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#mhtsk" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="highFIS Docs" class="md-header__button md-logo" aria-label="highFIS Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            highFIS Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              MHTSK
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-moon" viewBox="0 0 24 24"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="highFIS Docs" class="md-nav__button md-logo" aria-label="highFIS Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+
+    </a>
+    highFIS Docs
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sparkles" viewBox="0 0 24 24"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594zM20 2v4M22 4h-4"/><circle cx="4" cy="20" r="2"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+  HighFIS
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Models
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  Models
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/tsk-vanilla/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Vanilla TSK
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/logtsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  LogTSK
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/htsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  HTSK
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/dombitsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DombiTSK
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/adatsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  AdaTSK
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/fsre-adatsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  FSRE-AdaTSK
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/dg-tsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DG-TSK
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/dg-aletsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  DG-ALETSK
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/ayatsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  AYATSK
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/hdfis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  HDFIS
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/admtsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ADMTSK
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/adptsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ADPTSK
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../models/mhtsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  MHTSK
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  API Reference
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+  API Reference
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../estimators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Estimators
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Models
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../layers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Layers
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../memberships/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Memberships
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../t_norms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  T-Norms
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../defuzzifiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Defuzzifiers
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Metrics
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../clustering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Clustering
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../base/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Base
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Persistence
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../protocols/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Protocols
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Contributing
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  
+                    
+                    
+                    
+                      
+                    
+                    
+                      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+                      <div class="md-sidebar-button__wrapper">
+                        <label class="md-sidebar-button" for="__toc"></label>
+                      </div>
+                    
+                  
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Reference
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mathematical-formulation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Mathematical Formulation
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Mathematical Formulation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#subantecedent-construction" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Subantecedent construction
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rule-generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Rule generation
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#normalization" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Normalization
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sparse-consequent" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Sparse consequent
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#code-paper-correspondence" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Code ↔ Paper Correspondence
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Implementation notes
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#model-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Model classes
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Model classes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mhtskclassifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        MHTSKClassifier
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mhtskregressor" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        MHTSKRegressor
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#estimator-wrappers" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Estimator wrappers
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Estimator wrappers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-estimator-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Key estimator parameters
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#membership-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Membership functions
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#training-in-the-paper-vs-highfis" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Training in the paper vs. highFIS
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rule-extraction-mhtsk_re" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Rule extraction (MHTSK_RE)
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#alignment-with-the-paper" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Alignment with the paper
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="mhtsk">MHTSK</h1>
+<p>Multihead Takagi–Sugeno–Kang (MHTSK) builds multiple sparse subantecedents from random feature subsets and jointly optimizes their rule consequents.</p>
+<h2 id="reference">Reference</h2>
+<blockquote>
+<p>Z. Bian, Q. Chang, J. Wang and N. R. Pal, "Multihead Takagi–Sugeno–Kang Fuzzy System," in IEEE Transactions on Fuzzy Systems, vol. 33, no. 8, pp. 2561–2573, Aug. 2025, doi: 10.1109/TFUZZ.2025.3569227.</p>
+</blockquote>
+<h2 id="mathematical-formulation">Mathematical Formulation</h2>
+<h3 id="subantecedent-construction">Subantecedent construction</h3>
+<p>MHTSK randomly samples <code>S</code> features without replacement to create a subantecedent and repeats this process <code>T</code> times. Each subantecedent is trained by Fuzzy C-Means clustering on the selected feature subset.</p>
+<p>For a dataset with <code>D</code> inputs, the selected feature subset for head <code>t</code> is:</p>
+<div class="arithmatex">\[
+\tilde{\mathbf{x}}^{(t)} \in \mathbb{R}^{S}
+\]</div>
+<p>and a sampled instance subset of size <code>n</code> is used to fit FCM for that head.</p>
+<h3 id="rule-generation">Rule generation</h3>
+<p>Each head generates <code>K</code> fuzzy rules by applying FCM to the selected features. A rule from head <code>t</code> is defined only on the selected features, while all remaining features use a constant "don't care" membership function.</p>
+<p>For rule <code>r</code> from head <code>t</code>, the antecedent is:</p>
+<div class="arithmatex">\[
+\mu^{r}(\mathbf{x}) = \prod_{s \in \mathcal{S}_t} \mu_{A^{r}_{s}}(x_s)
+\]</div>
+<p>where <code>\mathcal{S}_t</code> are the indices of the <code>S</code> features chosen by head <code>t</code>.</p>
+<h3 id="normalization">Normalization</h3>
+<p>All <code>T \times K</code> rules are normalized together using standard TSK normalization:</p>
+<div class="arithmatex">\[
+\bar{\mu}^{r}(\mathbf{x}) = \frac{\mu^{r}(\mathbf{x})}{\sum_{i=1}^{T K} \mu^{i}(\mathbf{x})}
+\]</div>
+<p>This joint normalization is the same as the paper's final rule aggregation, ensuring the sparse rules compete globally.</p>
+<h3 id="sparse-consequent">Sparse consequent</h3>
+<p>Each rule consequent depends only on the features used by that rule, creating a naturally sparse consequent structure:</p>
+<div class="arithmatex">\[
+f^{r}(\mathbf{x}) = p^{r}_0 + \sum_{s \in \mathcal{S}_t} p^{r}_{s} x_s
+\]</div>
+<p>For classification, the output is:</p>
+<div class="arithmatex">\[
+\hat{y}_c(\mathbf{x}) = \sum_{r=1}^{TK} \bar{\mu}^{r}(\mathbf{x}) f^{r}_{c}(\mathbf{x})
+\]</div>
+<p>For regression, the result is the scalar weighted sum of sparse consequents.</p>
+<h2 id="code-paper-correspondence">Code ↔ Paper Correspondence</h2>
+<table>
+<thead>
+<tr>
+<th>Equation / Concept</th>
+<th>Class / Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Subset feature sampling <code>S</code>, <code>T</code></td>
+<td><code>highfis.estimators._build_mhtsk_input_mfs</code></td>
+<td>Random head construction with feature subsets and FCM on each head</td>
+</tr>
+<tr>
+<td>Feature coverage rate</td>
+<td><code>highfis.estimators.feature_coverage_rate</code></td>
+<td>Computes <code>1 - (1 - S/D)^T</code> from the paper</td>
+</tr>
+<tr>
+<td>Scale parameter defaults</td>
+<td><code>highfis.estimators._resolve_mhtsk_scale_parameters</code></td>
+<td>Derives <code>S</code> and <code>T</code> from <code>h_value</code>, <code>fcr_target</code>, <code>xi</code>, and <code>sigma</code></td>
+</tr>
+<tr>
+<td>Sparse antecedents</td>
+<td><code>highfis.models.MHTSKClassifier</code>, <code>highfis.models.MHTSKRegressor</code></td>
+<td>Build rules with constant don't-care MFs on inactive features</td>
+</tr>
+<tr>
+<td>Sparse consequent</td>
+<td><code>highfis.layers.SparseClassificationConsequentLayer</code>, <code>highfis.layers.SparseRegressionConsequentLayer</code></td>
+<td>Applies a mask so each rule only uses active input dimensions</td>
+</tr>
+<tr>
+<td>Rule extraction</td>
+<td><code>highfis.estimators._extract_mhtsk_rule_indices</code></td>
+<td>Combines unsupervised max-firing strength and supervised Mann–Whitney selection</td>
+</tr>
+</tbody>
+</table>
+<h2 id="implementation-notes">Implementation notes</h2>
+<ul>
+<li><code>highfis</code> represents each head with a partial rule base created by <code>FuzzyCMeans</code> on the sampled feature subset.</li>
+<li>Every input feature has a constant <code>ConstantMF(1.0)</code> to support don't-care membership when the feature is not selected by a head.</li>
+<li>The total number of rules is <code>n_heads * n_mfs</code>, because each head produces <code>n_mfs</code> cluster-based rules.</li>
+<li>The sparse consequent is implemented by masking the weight tensor with <code>rule_feature_mask</code> inside <code>SparseClassificationConsequentLayer</code> and <code>SparseRegressionConsequentLayer</code>.</li>
+<li>The rule masks are derived from the selected feature subsets and the per-head cluster indices.</li>
+<li><code>rule_sigma</code> controls the Gaussian spread used for all selected feature MFs; the paper fixes this value to preserve interpretability and avoid numeric underflow.</li>
+</ul>
+<h2 id="model-classes">Model classes</h2>
+<ul>
+<li><code>highfis.models.MHTSKClassifier</code></li>
+<li><code>highfis.models.MHTSKRegressor</code></li>
+</ul>
+<p>These classes extend <code>BaseTSKClassifier</code> and <code>BaseTSKRegressor</code>, respectively, and use <code>rule_base="custom"</code> with explicit rule definitions and a sparse consequent.</p>
+<h3 id="mhtskclassifier">MHTSKClassifier</h3>
+<ul>
+<li>Uses <code>SparseClassificationConsequentLayer</code></li>
+<li>Default antecedent t-norm: <code>prod</code></li>
+<li>Default defuzzifier: <code>SumBasedDefuzzifier</code></li>
+</ul>
+<h3 id="mhtskregressor">MHTSKRegressor</h3>
+<ul>
+<li>Uses <code>SparseRegressionConsequentLayer</code></li>
+<li>Default antecedent t-norm: <code>prod</code></li>
+<li>Default defuzzifier: <code>SumBasedDefuzzifier</code></li>
+</ul>
+<h2 id="estimator-wrappers">Estimator wrappers</h2>
+<ul>
+<li><code>highfis.estimators.MHTSKClassifierEstimator</code></li>
+<li><code>highfis.estimators.MHTSKRegressorEstimator</code></li>
+</ul>
+<p>These sklearn-style wrappers build the MHTSK rule base from raw data and expose the paper's scale parameter defaults.</p>
+<h3 id="key-estimator-parameters">Key estimator parameters</h3>
+<ul>
+<li><code>n_mfs</code>: Number of FCM clusters per head (<code>K</code>). Default: <code>3</code>.</li>
+<li><code>n_heads</code>: Number of heads (<code>T</code>). When <code>None</code>, defaults are resolved from <code>head_size</code>, <code>fcr_target</code>, and <code>h_value</code>.</li>
+<li><code>head_size</code>: Number of features per head (<code>S</code>). When <code>None</code>, defaults to <code>max(1, round(D * 0.02))</code> for <code>D &lt;= 5000</code> or <code>max(1, round(D * 0.01))</code> otherwise.</li>
+<li><code>head_size_ratio</code>: Alternative way to specify <code>head_size</code> as a fraction of <code>D</code>.</li>
+<li><code>fcr_target</code>: Target feature coverage rate. Default: <code>0.85</code>.</li>
+<li><code>h_value</code>: Paper-derived scale constant <code>H</code>. If provided, it overrides <code>fcr_target</code>.</li>
+<li><code>xi</code>: Numeric underflow threshold constant. Default: <code>743.0</code>.</li>
+<li><code>rule_sigma</code>: Gaussian sigma used for FCM-derived MFs. Default: <code>1.0</code>.</li>
+<li><code>fcm_m</code>: Fuzzy C-means fuzziness parameter. Default: <code>2.0</code>.</li>
+<li><code>instance_sample_fraction</code>: Fraction of training samples used per head. Default: <code>0.8</code>.</li>
+<li><code>rule_extraction</code>: Enable MHTSK_RE-style rule extraction. Default: <code>False</code>.</li>
+<li><code>crcr_us</code>: Unsupervised cumulative rule contribution rate target. Default: <code>0.5</code>.</li>
+<li><code>crcr_s</code>: Supervised cumulative rule contribution rate target (classifier only). Default: <code>0.5</code>.</li>
+<li><code>retrain_after_extraction</code>: Retrain after extraction. Default: <code>True</code>.</li>
+</ul>
+<h2 id="membership-functions">Membership functions</h2>
+<p>MHTSK uses standard Gaussian membership functions for active features:</p>
+<div class="arithmatex">\[
+\mu_{r,d}(x_d) = \exp\left(-\frac{(x_d - c_{r,d})^2}{2\sigma^2}\right)
+\]</div>
+<ul>
+<li><code>highfis.memberships.GaussianMF</code> is used for selected features.</li>
+<li><code>highfis.memberships.ConstantMF(1.0)</code> is used for inactive features, enabling don't-care semantics.</li>
+</ul>
+<h2 id="training-in-the-paper-vs-highfis">Training in the paper vs. highFIS</h2>
+<ul>
+<li>The paper trains MHTSK end-to-end with gradient-based optimization over joint rule weights and consequents.</li>
+<li>highFIS preserves this approach via <code>BaseTSK.fit()</code>, with mini-batch Adam training and optional early stopping.</li>
+<li>The main difference is that highFIS builds the sparse model structure explicitly before training, while the paper describes the same structure in algorithmic form.</li>
+<li>highFIS also supports optional uniform-rule regularization (<code>ur_weight</code>, <code>ur_target</code>) to encourage balanced rule activations.</li>
+</ul>
+<h2 id="rule-extraction-mhtsk_re">Rule extraction (MHTSK_RE)</h2>
+<p>The MHTSK variant with extraction uses two complementary selection strategies:</p>
+<ul>
+<li>Unsupervised: select rules with the largest maximum normalized firing strength across training samples.</li>
+<li>Supervised: for classifiers, select rules with the smallest Mann–Whitney pairwise <code>p</code>-value across class groups, using <code>1 - p_{\min}</code> as a score.</li>
+</ul>
+<p>Selected rules are merged and the model is retrained on the reduced rule base.</p>
+<h2 id="alignment-with-the-paper">Alignment with the paper</h2>
+<ul>
+<li>highFIS implements the random head construction and sparse consequent exactly as described in the MHTSK paper.</li>
+<li><code>feature_coverage_rate()</code> matches the paper's FCR equation:</li>
+</ul>
+<div class="arithmatex">\[
+\text{FCR} = 1 - \left(1 - \frac{S}{D}\right)^{T}
+\]</div>
+<ul>
+<li>The default <code>head_size</code> and <code>n_heads</code> resolution reproduces the paper's recommended scale parameter strategy using <code>xi</code>, <code>sigma</code>, <code>fcr_target</code>, and <code>h_value</code>.</li>
+<li>The sparse consequent layers mirror the paper's per-rule subspace-specific linear consequents.</li>
+<li>The <code>MHTSKClassifierEstimator</code> and <code>MHTSKRegressorEstimator</code> provide a user-facing API that reflects the paper's <code>S</code>, <code>T</code>, <code>K</code>, and rule extraction workflow.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 highFIS contributors
+
+    </div>
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/dcruzf/highFIS" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2026 Fonticons, Inc.--><path fill="currentColor" d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["announce.dismiss","content.code.annotate","content.code.copy","content.code.select","content.footnote.tooltips","content.tabs.link","content.tooltips","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.path","navigation.sections","navigation.top","navigation.tracking","search.highlight"],"search":"../../assets/javascripts/workers/search.e2d2d235.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"provider":"mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.dbc0afdc.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
