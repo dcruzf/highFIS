@@ -372,26 +372,38 @@ def _build_mhtsk_input_mfs(
     n_clusters: int,
     fcm_m: float,
     rule_sigma: float,
+    instance_sample_fraction: float,
     random_state: int | None,
 ) -> tuple[dict[str, list[MembershipFunction]], list[tuple[int, ...]], np.ndarray]:
     """Build sparse partial-rule MFs and rule indices for MHTSK.
 
     Each feature receives a constant "don't care" MF plus all cluster MFs
     produced by FCM for any head where the feature is active.
+
+    Each head may also subsample data instances to match the paper's
+    random head construction process.
     """
-    n_features = x.shape[1]
+    n_samples, n_features = x.shape
     if head_size <= 0 or head_size > n_features:
         raise ValueError("head_size must be between 1 and the number of features")
     if n_heads <= 0:
         raise ValueError("n_heads must be > 0")
+    if not 0.0 < instance_sample_fraction <= 1.0:
+        raise ValueError("instance_sample_fraction must be in (0, 1]")
 
     rng = np.random.default_rng(random_state)
     input_mfs: dict[str, list[MembershipFunction]] = {name: [ConstantMF(1.0)] for name in feature_names}
     rules: list[tuple[int, ...]] = []
 
-    for _ in range(int(n_heads)):
-        subset = rng.choice(n_features, size=int(head_size), replace=False)
-        x_sub = x[:, subset]
+    sample_size = max(1, round(n_samples * instance_sample_fraction))
+
+    for _ in range(n_heads):
+        subset = rng.choice(n_features, size=head_size, replace=False)
+        if instance_sample_fraction < 1.0 and sample_size < n_samples:
+            row_indices = rng.choice(n_samples, size=sample_size, replace=False)
+            x_sub = x[row_indices][:, subset]
+        else:
+            x_sub = x[:, subset]
 
         model = FuzzyCMeans(n_clusters=n_clusters, m=fcm_m, random_state=random_state)
         model.fit(x_sub)
@@ -438,6 +450,54 @@ def feature_coverage_rate(n_features: int, head_size: int, n_heads: int) -> floa
         raise ValueError("n_heads must be >= 0")
 
     return 1.0 - (1.0 - float(head_size) / float(n_features)) ** float(n_heads)
+
+
+def _resolve_mhtsk_scale_parameters(
+    n_features: int,
+    head_size: int | None,
+    head_size_ratio: float | None,
+    n_heads: int | None,
+    fcr_target: float | None,
+    h_value: float | None,
+    sigma: float,
+    xi: float,
+) -> tuple[int, int]:
+    """Resolve MHTSK scale parameters using paper-derived defaults.
+
+    This helper reproduces the paper's strategy for selecting rule length and
+    number of heads while allowing user override.
+    """
+    if n_features <= 0:
+        raise ValueError("n_features must be > 0")
+    if head_size is not None and (head_size <= 0 or head_size > n_features):
+        raise ValueError("head_size must be between 1 and the number of features")
+    if n_heads is not None and n_heads <= 0:
+        raise ValueError("n_heads must be > 0")
+    if head_size_ratio is not None and not (0.0 < head_size_ratio <= 1.0):
+        raise ValueError("head_size_ratio must be in (0, 1]")
+    if fcr_target is not None and not (0.0 < fcr_target < 1.0):
+        raise ValueError("fcr_target must be in (0, 1)")
+    if h_value is not None and h_value <= 0.0:
+        raise ValueError("h_value must be > 0")
+    if sigma <= 0.0:
+        raise ValueError("sigma must be > 0")
+    if xi <= 0.0:
+        raise ValueError("xi must be > 0")
+
+    max_head_size = min(n_features, max(1, math.floor(2.0 * xi * sigma * sigma)))
+
+    if head_size is None:
+        if head_size_ratio is not None:
+            head_size = max(1, min(n_features, round(n_features * head_size_ratio)))
+        else:
+            head_size = max(1, round(n_features * 0.02)) if n_features <= 5000 else max(1, round(n_features * 0.01))
+    head_size = min(head_size, max_head_size, n_features)
+
+    if n_heads is None:
+        H = h_value if h_value is not None else -math.log(1.0 - (fcr_target if fcr_target is not None else 0.85))
+        n_heads = math.ceil(H * n_features / head_size)
+
+    return head_size, n_heads
 
 
 def _rankdata(values: np.ndarray) -> np.ndarray:
@@ -1812,17 +1872,27 @@ class TSKRegressorEstimator(_BaseRegressorEstimator):
 
 
 class MHTSKClassifierEstimator(_BaseClassifierEstimator):
-    """Estimator for the multihead Takagi-Sugeno-Kang fuzzy system."""
+    """Estimator for the multihead Takagi-Sugeno-Kang fuzzy system.
+
+    This estimator supports paper-derived automatic scale parameter resolution
+    for head size and number of heads, and it optionally subsamples instances
+    when building each head as described in the MHTSK paper.
+    """
 
     def __init__(
         self,
         *,
         input_configs: list[InputConfig] | None = None,
         n_mfs: int = 3,
-        n_heads: int = 10,
-        head_size: int = 1,
+        n_heads: int | None = None,
+        head_size: int | None = None,
+        head_size_ratio: float | None = None,
         fcm_m: float = 2.0,
         rule_sigma: float = 1.0,
+        fcr_target: float = 0.85,
+        h_value: float | None = None,
+        xi: float = 743.0,
+        instance_sample_fraction: float = 0.8,
         rule_extraction: bool = False,
         crcr_us: float = 0.5,
         crcr_s: float = 0.5,
@@ -1863,10 +1933,15 @@ class MHTSKClassifierEstimator(_BaseClassifierEstimator):
             validation_data=validation_data,
             weight_decay=weight_decay,
         )
-        self.n_heads = int(n_heads)
-        self.head_size = int(head_size)
+        self.n_heads = int(n_heads) if n_heads is not None else None
+        self.head_size = int(head_size) if head_size is not None else None
+        self.head_size_ratio = float(head_size_ratio) if head_size_ratio is not None else None
         self.fcm_m = float(fcm_m)
         self.rule_sigma = float(rule_sigma)
+        self.fcr_target = float(fcr_target)
+        self.h_value = float(h_value) if h_value is not None else None
+        self.xi = float(xi)
+        self.instance_sample_fraction = float(instance_sample_fraction)
         self.rule_extraction = bool(rule_extraction)
         self.crcr_us = float(crcr_us)
         self.crcr_s = float(crcr_s)
@@ -1875,14 +1950,25 @@ class MHTSKClassifierEstimator(_BaseClassifierEstimator):
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:  # type: ignore[override]
         feature_names = self._resolve_feature_names(x_arr)
+        head_size, n_heads = _resolve_mhtsk_scale_parameters(
+            n_features=x_arr.shape[1],
+            head_size=self.head_size,
+            head_size_ratio=self.head_size_ratio,
+            n_heads=self.n_heads,
+            fcr_target=self.fcr_target,
+            h_value=self.h_value,
+            sigma=self.rule_sigma,
+            xi=self.xi,
+        )
         input_mfs, rules, rule_feature_mask = _build_mhtsk_input_mfs(
             x_arr,
             feature_names=feature_names,
-            n_heads=self.n_heads,
-            head_size=self.head_size,
+            n_heads=n_heads,
+            head_size=head_size,
             n_clusters=int(self.n_mfs),
             fcm_m=self.fcm_m,
             rule_sigma=self.rule_sigma,
+            instance_sample_fraction=self.instance_sample_fraction,
             random_state=self.random_state,
         )
         self._mhtsk_rules = rules
@@ -1962,17 +2048,28 @@ class MHTSKClassifierEstimator(_BaseClassifierEstimator):
 
 
 class MHTSKRegressorEstimator(_BaseRegressorEstimator):
-    """Estimator for the multihead Takagi-Sugeno-Kang fuzzy system."""
+    """Estimator for the multihead Takagi-Sugeno-Kang fuzzy system.
+
+    The regressor uses the same MHTSK head construction and scale parameter
+    strategy as the classifier. Rule extraction is currently implemented with
+    an unsupervised scheme only, since regression does not provide class labels
+    for the Mann-Whitney based selection used in classification.
+    """
 
     def __init__(
         self,
         *,
         input_configs: list[InputConfig] | None = None,
         n_mfs: int = 3,
-        n_heads: int = 10,
-        head_size: int = 1,
+        n_heads: int | None = None,
+        head_size: int | None = None,
+        head_size_ratio: float | None = None,
         fcm_m: float = 2.0,
         rule_sigma: float = 1.0,
+        fcr_target: float = 0.85,
+        h_value: float | None = None,
+        xi: float = 743.0,
+        instance_sample_fraction: float = 0.8,
         rule_extraction: bool = False,
         crcr_us: float = 0.5,
         retrain_after_extraction: bool = True,
@@ -2012,10 +2109,15 @@ class MHTSKRegressorEstimator(_BaseRegressorEstimator):
             validation_data=validation_data,
             weight_decay=weight_decay,
         )
-        self.n_heads = int(n_heads)
-        self.head_size = int(head_size)
+        self.n_heads = int(n_heads) if n_heads is not None else None
+        self.head_size = int(head_size) if head_size is not None else None
+        self.head_size_ratio = float(head_size_ratio) if head_size_ratio is not None else None
         self.fcm_m = float(fcm_m)
         self.rule_sigma = float(rule_sigma)
+        self.fcr_target = float(fcr_target)
+        self.h_value = float(h_value) if h_value is not None else None
+        self.xi = float(xi)
+        self.instance_sample_fraction = float(instance_sample_fraction)
         self.rule_extraction = bool(rule_extraction)
         self.crcr_us = float(crcr_us)
         self.retrain_after_extraction = bool(retrain_after_extraction)
@@ -2023,14 +2125,25 @@ class MHTSKRegressorEstimator(_BaseRegressorEstimator):
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:  # type: ignore[override]
         feature_names = self._resolve_feature_names(x_arr)
+        head_size, n_heads = _resolve_mhtsk_scale_parameters(
+            n_features=x_arr.shape[1],
+            head_size=self.head_size,
+            head_size_ratio=self.head_size_ratio,
+            n_heads=self.n_heads,
+            fcr_target=self.fcr_target,
+            h_value=self.h_value,
+            sigma=self.rule_sigma,
+            xi=self.xi,
+        )
         input_mfs, rules, rule_feature_mask = _build_mhtsk_input_mfs(
             x_arr,
             feature_names=feature_names,
-            n_heads=self.n_heads,
-            head_size=self.head_size,
+            n_heads=n_heads,
+            head_size=head_size,
             n_clusters=int(self.n_mfs),
             fcm_m=self.fcm_m,
             rule_sigma=self.rule_sigma,
+            instance_sample_fraction=self.instance_sample_fraction,
             random_state=self.random_state,
         )
         self._mhtsk_rules = rules
