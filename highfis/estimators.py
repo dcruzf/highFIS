@@ -136,6 +136,7 @@ from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
+from torch import Tensor
 
 from .base import BaseTSK
 from .clustering import FuzzyCMeans
@@ -421,6 +422,130 @@ def _build_mhtsk_input_mfs(
             rule_feature_mask[r, j] = mf_idx != 0
 
     return input_mfs, rules, rule_feature_mask
+
+
+def feature_coverage_rate(n_features: int, head_size: int, n_heads: int) -> float:
+    """Compute the feature coverage rate (FCR) for MHTSK heads.
+
+    FCR is the expected proportion of original features that are selected at
+    least once across ``n_heads`` random subsets of size ``head_size``.
+    """
+    if n_features <= 0:
+        raise ValueError("n_features must be > 0")
+    if head_size <= 0 or head_size > n_features:
+        raise ValueError("head_size must be between 1 and n_features")
+    if n_heads < 0:
+        raise ValueError("n_heads must be >= 0")
+
+    return 1.0 - (1.0 - float(head_size) / float(n_features)) ** float(n_heads)
+
+
+def _rankdata(values: np.ndarray) -> np.ndarray:
+    ranks = np.empty(len(values), dtype=np.float64)
+    order = np.argsort(values)
+    sorted_values = values[order]
+    i = 0
+    while i < len(values):
+        j = i + 1
+        while j < len(values) and sorted_values[j] == sorted_values[i]:
+            j += 1
+        avg_rank = (i + 1 + j) / 2.0
+        ranks[order[i:j]] = avg_rank
+        i = j
+    return ranks
+
+
+def _normal_survival(z: float) -> float:
+    return 0.5 * math.erfc(z / math.sqrt(2.0))
+
+
+def _mann_whitney_p_value(left: np.ndarray, right: np.ndarray) -> float:
+    if left.size == 0 or right.size == 0:
+        return 1.0
+
+    combined = np.concatenate([left, right]).astype(np.float64)
+    ranks = _rankdata(combined)
+    n1 = float(left.size)
+    n2 = float(right.size)
+    ra = float(np.sum(ranks[: left.size]))
+    u1 = ra - (n1 * (n1 + 1.0) / 2.0)
+    u2 = n1 * n2 - u1
+    u = min(u1, u2)
+
+    sigma = math.sqrt(n1 * n2 * (n1 + n2 + 1.0) / 12.0)
+    if sigma == 0.0:  # pragma: no cover
+        return 1.0
+
+    z = (u - n1 * n2 / 2.0) / sigma
+    return min(1.0, 2.0 * _normal_survival(abs(z)))
+
+
+def _select_rule_indices(scores: Tensor, crcr: float) -> list[int]:
+    if not 0.0 <= float(crcr) <= 1.0:
+        raise ValueError("crcr must be between 0 and 1")
+
+    n_rules = int(scores.numel())
+    if n_rules == 0:
+        return []
+    if crcr <= 0.0:
+        return []
+    if crcr >= 1.0:
+        return list(range(n_rules))
+
+    sorted_indices = torch.argsort(scores, descending=True)
+    sorted_scores = scores[sorted_indices]
+
+    total = float(torch.sum(sorted_scores).item())
+    if total <= 0.0:
+        count = max(1, math.ceil(float(crcr) * n_rules))
+        return sorted_indices[:count].tolist()
+
+    rcr = sorted_scores / total
+    cumulative = torch.cumsum(rcr, dim=0)
+    threshold = torch.tensor(float(crcr), dtype=cumulative.dtype)
+    count = int(torch.searchsorted(cumulative, threshold, right=False).item() + 1)
+    return sorted_indices[: max(1, count)].tolist()
+
+
+def _extract_mhtsk_rule_indices(
+    norm_w: Tensor,
+    y: Tensor | None,
+    crcr_us: float,
+    crcr_s: float,
+) -> list[int]:
+    n_rules = int(norm_w.shape[1])
+    if n_rules == 0:
+        return []
+
+    unsupervised_scores = torch.max(norm_w, dim=0).values
+    selected_us = _select_rule_indices(unsupervised_scores, float(crcr_us))
+
+    selected_s: list[int] = []
+    if y is not None and y.ndim == 1 and len(torch.unique(y)) > 1 and float(crcr_s) > 0.0:
+        unique_labels = torch.unique(y)
+        groups: list[np.ndarray] = []
+        for label in unique_labels:
+            mask = y == label
+            groups.append(norm_w[mask].cpu().numpy())
+
+        supervised_scores = torch.zeros(n_rules, dtype=torch.float64)
+        for r in range(n_rules):
+            p_min = 1.0
+            for i in range(len(groups)):
+                for j in range(i + 1, len(groups)):
+                    p_val = _mann_whitney_p_value(groups[i][:, r], groups[j][:, r])
+                    p_min = min(p_min, p_val)
+            supervised_scores[r] = 1.0 - p_min
+        selected_s = _select_rule_indices(supervised_scores, float(crcr_s))
+
+    selected_indices = sorted(set(selected_us) | set(selected_s))
+    if len(selected_indices) == 0 and n_rules > 0:
+        selected_indices = [int(torch.argmax(unsupervised_scores).item())]
+    return selected_indices
+
+
+def _extract_mhtsk_rule_indices_unsupervised(norm_w: Tensor, crcr_us: float) -> list[int]:
+    return _select_rule_indices(torch.max(norm_w, dim=0).values, float(crcr_us))
 
 
 def _build_pfrb_input_mfs(
@@ -1698,6 +1823,10 @@ class MHTSKClassifierEstimator(_BaseClassifierEstimator):
         head_size: int = 1,
         fcm_m: float = 2.0,
         rule_sigma: float = 1.0,
+        rule_extraction: bool = False,
+        crcr_us: float = 0.5,
+        crcr_s: float = 0.5,
+        retrain_after_extraction: bool = True,
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
@@ -1738,6 +1867,11 @@ class MHTSKClassifierEstimator(_BaseClassifierEstimator):
         self.head_size = int(head_size)
         self.fcm_m = float(fcm_m)
         self.rule_sigma = float(rule_sigma)
+        self.rule_extraction = bool(rule_extraction)
+        self.crcr_us = float(crcr_us)
+        self.crcr_s = float(crcr_s)
+        self.retrain_after_extraction = bool(retrain_after_extraction)
+        self._extracted_rule_indices_: list[int] | None = None
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:  # type: ignore[override]
         feature_names = self._resolve_feature_names(x_arr)
@@ -1769,6 +1903,63 @@ class MHTSKClassifierEstimator(_BaseClassifierEstimator):
             consequent_batch_norm=bool(self.consequent_batch_norm),
         )
 
+    def _build_extracted_model(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        rule_indices: list[int],
+    ) -> None:
+        if not rule_indices:
+            raise ValueError("At least one rule must be selected for extraction")
+        self._mhtsk_rules = [self._mhtsk_rules[i] for i in rule_indices]
+        self._mhtsk_rule_feature_mask = self._mhtsk_rule_feature_mask[rule_indices]
+        self.model_ = self._build_model(input_mfs, len(self.classes_), self.rule_base_)
+
+    def fit(self, x: Any, y: Any) -> Self:
+        x_arr, y_arr = check_X_y(x, y)
+        super().fit(x, y)
+
+        if not bool(self.rule_extraction):
+            return self
+
+        x_t = self._as_tensor_x(x_arr)
+        self.model_.eval()
+        with torch.no_grad():
+            norm_w = self.model_.forward_antecedents(x_t)
+
+        y_t = torch.as_tensor(self._label_encoder_.transform(np.asarray(y_arr)), dtype=torch.long)
+        selected = _extract_mhtsk_rule_indices(norm_w, y_t, self.crcr_us, self.crcr_s)
+        self._extracted_rule_indices_ = selected
+
+        input_mfs = self.model_.input_mfs
+        self._build_extracted_model(input_mfs, selected)
+
+        if self.retrain_after_extraction:
+            x_val_t: torch.Tensor | None = None
+            y_val_t: torch.Tensor | None = None
+            if self.validation_data is not None:
+                x_v, y_v = self.validation_data
+                x_v_arr = check_array(x_v)
+                y_v_idx = self._label_encoder_.transform(np.asarray(y_v))
+                x_val_t = self._as_tensor_x(x_v_arr)
+                y_val_t = torch.as_tensor(y_v_idx, dtype=torch.long)
+            self.history_ = self.model_.fit(
+                x_t,
+                y_t,
+                epochs=int(self.epochs),
+                learning_rate=float(self.learning_rate),
+                batch_size=self.batch_size,
+                shuffle=bool(self.shuffle),
+                ur_weight=float(self.ur_weight),
+                ur_target=self.ur_target,
+                verbose=self.verbose,
+                x_val=x_val_t,
+                y_val=y_val_t,
+                patience=self.patience,
+                restore_best=self.restore_best,
+                weight_decay=float(self.weight_decay),
+            )
+        return self
+
 
 class MHTSKRegressorEstimator(_BaseRegressorEstimator):
     """Estimator for the multihead Takagi-Sugeno-Kang fuzzy system."""
@@ -1782,6 +1973,9 @@ class MHTSKRegressorEstimator(_BaseRegressorEstimator):
         head_size: int = 1,
         fcm_m: float = 2.0,
         rule_sigma: float = 1.0,
+        rule_extraction: bool = False,
+        crcr_us: float = 0.5,
+        retrain_after_extraction: bool = True,
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
@@ -1822,6 +2016,10 @@ class MHTSKRegressorEstimator(_BaseRegressorEstimator):
         self.head_size = int(head_size)
         self.fcm_m = float(fcm_m)
         self.rule_sigma = float(rule_sigma)
+        self.rule_extraction = bool(rule_extraction)
+        self.crcr_us = float(crcr_us)
+        self.retrain_after_extraction = bool(retrain_after_extraction)
+        self._extracted_rule_indices_: list[int] | None = None
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:  # type: ignore[override]
         feature_names = self._resolve_feature_names(x_arr)
@@ -1838,6 +2036,62 @@ class MHTSKRegressorEstimator(_BaseRegressorEstimator):
         self._mhtsk_rules = rules
         self._mhtsk_rule_feature_mask = torch.as_tensor(rule_feature_mask, dtype=torch.bool)
         return input_mfs, feature_names, "custom"
+
+    def _build_extracted_model(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        rule_indices: list[int],
+    ) -> None:
+        if not rule_indices:
+            raise ValueError("At least one rule must be selected for extraction")
+        self._mhtsk_rules = [self._mhtsk_rules[i] for i in rule_indices]
+        self._mhtsk_rule_feature_mask = self._mhtsk_rule_feature_mask[rule_indices]
+        self.model_ = self._build_regressor_model(input_mfs, self.rule_base_, None)
+
+    def fit(self, x: Any, y: Any) -> Self:
+        x_arr, y_arr = check_X_y(x, y)
+        super().fit(x, y)
+
+        if not bool(self.rule_extraction):
+            return self
+
+        x_t = self._as_tensor_x(x_arr)
+        self.model_.eval()
+        with torch.no_grad():
+            norm_w = self.model_.forward_antecedents(x_t)
+
+        selected = _extract_mhtsk_rule_indices_unsupervised(norm_w, self.crcr_us)
+        self._extracted_rule_indices_ = selected
+
+        input_mfs = self.model_.input_mfs
+        self._build_extracted_model(input_mfs, selected)
+
+        if self.retrain_after_extraction:
+            y_t = torch.as_tensor(np.asarray(y_arr), dtype=torch.float32)
+            x_val_t: torch.Tensor | None = None
+            y_val_t: torch.Tensor | None = None
+            if self.validation_data is not None:
+                x_v, y_v = self.validation_data
+                x_v_arr = check_array(x_v)
+                y_val_t = torch.as_tensor(np.asarray(y_v), dtype=torch.float32)
+                x_val_t = self._as_tensor_x(x_v_arr)
+            self.history_ = self.model_.fit(
+                x_t,
+                y_t,
+                epochs=int(self.epochs),
+                learning_rate=float(self.learning_rate),
+                batch_size=self.batch_size,
+                shuffle=bool(self.shuffle),
+                ur_weight=float(self.ur_weight),
+                ur_target=self.ur_target,
+                verbose=self.verbose,
+                x_val=x_val_t,
+                y_val=y_val_t,
+                patience=self.patience,
+                restore_best=self.restore_best,
+                weight_decay=float(self.weight_decay),
+            )
+        return self
 
     def _build_regressor_model(
         self,

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import torch
 from sklearn.exceptions import NotFittedError
 from sklearn.pipeline import Pipeline
 from torch import nn
@@ -45,6 +46,11 @@ from highfis.estimators import (
     _build_gaussian_input_mfs,
     _build_kmeans_input_mfs,
     _build_pfrb_input_mfs,
+    _extract_mhtsk_rule_indices,
+    _mann_whitney_p_value,
+    _rankdata,
+    _select_rule_indices,
+    feature_coverage_rate,
 )
 from highfis.memberships import CompositeGMF, DimensionDependentGaussianMF, GaussianMF, MembershipFunction
 from highfis.models import HDFISMinClassifier, HDFISMinRegressor
@@ -77,6 +83,60 @@ def test_build_gaussian_input_mfs_validates_n_mfs() -> None:
     x, _ = _make_dataset(20)
     with pytest.raises(ValueError, match="n_mfs"):
         _build_gaussian_input_mfs(x, [InputConfig(name="x1", n_mfs=0)])
+
+
+def test_build_fuzzy_c_means_input_mfs_handles_zero_variance(monkeypatch) -> None:
+    class DummyFuzzyCMeans:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            self.m = 2.0
+            self.cluster_centers_ = torch.tensor([[0.0, 0.0], [1.0, 1.0]], dtype=torch.float32)
+            self.membership_ = torch.tensor([[0.5, 0.5], [0.5, 0.5]], dtype=torch.float32)
+
+        def fit(self, x: np.ndarray) -> DummyFuzzyCMeans:
+            return self
+
+    monkeypatch.setattr("highfis.estimators.FuzzyCMeans", DummyFuzzyCMeans)
+    x = np.array([[0.0, 0.0], [0.0, 0.0]], dtype=np.float64)
+    feature_names = ["x1", "x2"]
+    input_mfs = _build_fuzzy_c_means_input_mfs(
+        x,
+        n_clusters=2,
+        m=2.0,
+        sigma_scale=1.0,
+        feature_names=feature_names,
+        random_state=0,
+    )
+    assert list(input_mfs.keys()) == feature_names
+    assert len(input_mfs["x1"]) == 2
+    assert all(isinstance(mf, GaussianMF) for mf in input_mfs["x1"])
+    assert input_mfs["x1"][0].sigma > 0.0
+
+
+def test_htsk_classifier_estimator_fcm_input_initialization() -> None:
+    x, y = _make_dataset(40)
+    est = HTSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="fcm",
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+    )
+    est.fit(x, y)
+    assert est.model_.n_rules > 0
+
+
+def test_htsk_regressor_estimator_fcm_input_initialization() -> None:
+    x, y = _make_dataset(40)
+    y = y.astype(np.float32)
+    est = HTSKRegressorEstimator(
+        n_mfs=2,
+        mf_init="fcm",
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+    )
+    est.fit(x, y)
+    assert est.model_.n_rules > 0
 
 
 def test_estimator_fit_predict_proba_predict_score() -> None:
@@ -754,6 +814,274 @@ def test_mhtsk_regressor_estimator_fit_predict() -> None:
     pred = est.predict(x)
 
     assert pred.shape == (x.shape[0],)
+
+
+def test_mhtsk_classifier_estimator_rule_extraction_reduces_rules() -> None:
+    x, y = _make_dataset(40)
+    est = MHTSKClassifierEstimator(
+        n_mfs=2,
+        n_heads=2,
+        head_size=1,
+        fcm_m=2.0,
+        rule_sigma=1.0,
+        rule_extraction=True,
+        crcr_us=0.5,
+        crcr_s=0.5,
+        retrain_after_extraction=True,
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+    )
+    est.fit(x, y)
+
+    assert est._extracted_rule_indices_ is not None
+    assert len(est._extracted_rule_indices_) > 0
+    assert est.model_.n_rules == len(est._extracted_rule_indices_)
+
+
+def test_mhtsk_regressor_estimator_rule_extraction_reduces_rules() -> None:
+    x, y = _make_dataset(40)
+    y = y.astype(np.float32)
+    est = MHTSKRegressorEstimator(
+        n_mfs=2,
+        n_heads=2,
+        head_size=1,
+        fcm_m=2.0,
+        rule_sigma=1.0,
+        rule_extraction=True,
+        crcr_us=0.5,
+        retrain_after_extraction=True,
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+    )
+    est.fit(x, y)
+
+    assert est._extracted_rule_indices_ is not None
+    assert len(est._extracted_rule_indices_) > 0
+    assert est.model_.n_rules == len(est._extracted_rule_indices_)
+
+
+def test_feature_coverage_rate() -> None:
+    assert feature_coverage_rate(10, 2, 3) == pytest.approx(1.0 - (8.0 / 10.0) ** 3)
+
+
+def test_feature_coverage_rate_validates_inputs() -> None:
+    with pytest.raises(ValueError, match="n_features must be > 0"):
+        feature_coverage_rate(0, 1, 1)
+    with pytest.raises(ValueError, match="head_size must be between 1 and n_features"):
+        feature_coverage_rate(3, 0, 1)
+    with pytest.raises(ValueError, match="head_size must be between 1 and n_features"):
+        feature_coverage_rate(3, 4, 1)
+    with pytest.raises(ValueError, match="n_heads must be >= 0"):
+        feature_coverage_rate(3, 1, -1)
+
+
+def test_rankdata_handles_ties() -> None:
+    values = np.array([1.0, 2.0, 2.0, 4.0], dtype=np.float64)
+    ranks = _rankdata(values)
+    assert ranks.tolist() == [1.0, 2.5, 2.5, 4.0]
+
+
+def test_mann_whitney_p_value_with_empty_group() -> None:
+    assert _mann_whitney_p_value(np.array([], dtype=np.float64), np.array([1.0])) == 1.0
+
+
+def test_select_rule_indices_edge_cases() -> None:
+    assert _select_rule_indices(torch.tensor([], dtype=torch.float32), 0.5) == []
+    assert _select_rule_indices(torch.tensor([1.0, 2.0]), 0.0) == []
+    assert _select_rule_indices(torch.tensor([1.0, 2.0]), 1.0) == [0, 1]
+    zero_sum = torch.tensor([0.0, 0.0], dtype=torch.float32)
+    assert _select_rule_indices(zero_sum, 0.5) == [0]
+    with pytest.raises(ValueError, match="crcr must be between 0 and 1"):
+        _select_rule_indices(torch.tensor([1.0, 2.0]), -0.1)
+
+
+def test_extract_mhtsk_rule_indices_supervised() -> None:
+    norm_w = torch.tensor([[0.9, 0.1], [0.1, 0.9]], dtype=torch.float32)
+    y = torch.tensor([0, 1], dtype=torch.long)
+    selected = _extract_mhtsk_rule_indices(norm_w, y, 0.5, 0.5)
+    assert len(selected) > 0
+
+
+def test_extract_mhtsk_rule_indices_empty_rules() -> None:
+    norm_w = torch.empty((0, 0), dtype=torch.float32)
+    selected = _extract_mhtsk_rule_indices(norm_w, None, 0.5, 0.5)
+    assert selected == []
+
+
+def test_extract_mhtsk_rule_indices_fallback_when_empty() -> None:
+    norm_w = torch.tensor([[0.1, 0.2], [0.1, 0.2]], dtype=torch.float32)
+    y = torch.tensor([0, 0], dtype=torch.long)
+    selected = _extract_mhtsk_rule_indices(norm_w, y, 0.0, 0.0)
+    assert len(selected) == 1
+    assert selected[0] in {0, 1}
+
+
+def test_mhtsk_classifier_estimator_rule_extraction_with_validation_data() -> None:
+    x, y = _make_dataset(40)
+    x_val, y_val = _make_dataset(10)
+    est = MHTSKClassifierEstimator(
+        n_mfs=2,
+        n_heads=2,
+        head_size=1,
+        fcm_m=2.0,
+        rule_sigma=1.0,
+        rule_extraction=True,
+        crcr_us=0.5,
+        crcr_s=0.5,
+        retrain_after_extraction=True,
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+        validation_data=(x_val, y_val),
+    )
+    est.fit(x, y)
+    assert est._extracted_rule_indices_ is not None
+    assert len(est._extracted_rule_indices_) > 0
+
+
+def test_mhtsk_regressor_estimator_rule_extraction_with_validation_data() -> None:
+    x, y = _make_dataset(40)
+    y = y.astype(np.float32)
+    x_val, y_val = _make_dataset(10)
+    y_val = y_val.astype(np.float32)
+    est = MHTSKRegressorEstimator(
+        n_mfs=2,
+        n_heads=2,
+        head_size=1,
+        fcm_m=2.0,
+        rule_sigma=1.0,
+        rule_extraction=True,
+        crcr_us=0.5,
+        retrain_after_extraction=True,
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+        validation_data=(x_val, y_val),
+    )
+    est.fit(x, y)
+    assert est._extracted_rule_indices_ is not None
+    assert len(est._extracted_rule_indices_) > 0
+
+
+def test_mhtsk_classifier_estimator_rule_extraction_without_validation_data() -> None:
+    x, y = _make_dataset(40)
+    est = MHTSKClassifierEstimator(
+        n_mfs=2,
+        n_heads=2,
+        head_size=1,
+        fcm_m=2.0,
+        rule_sigma=1.0,
+        rule_extraction=True,
+        crcr_us=0.5,
+        crcr_s=0.5,
+        retrain_after_extraction=True,
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+    )
+    est.fit(x, y)
+    assert est._extracted_rule_indices_ is not None
+    assert len(est._extracted_rule_indices_) > 0
+
+
+def test_mhtsk_regressor_estimator_rule_extraction_without_validation_data() -> None:
+    x, y = _make_dataset(40)
+    y = y.astype(np.float32)
+    est = MHTSKRegressorEstimator(
+        n_mfs=2,
+        n_heads=2,
+        head_size=1,
+        fcm_m=2.0,
+        rule_sigma=1.0,
+        rule_extraction=True,
+        crcr_us=0.5,
+        retrain_after_extraction=True,
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+    )
+    est.fit(x, y)
+    assert est._extracted_rule_indices_ is not None
+    assert len(est._extracted_rule_indices_) > 0
+
+
+def test_mhtsk_classifier_estimator_rule_extraction_without_retraining() -> None:
+    x, y = _make_dataset(40)
+    est = MHTSKClassifierEstimator(
+        n_mfs=2,
+        n_heads=2,
+        head_size=1,
+        fcm_m=2.0,
+        rule_sigma=1.0,
+        rule_extraction=True,
+        crcr_us=0.5,
+        crcr_s=0.5,
+        retrain_after_extraction=False,
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+    )
+    est.fit(x, y)
+    assert est._extracted_rule_indices_ is not None
+    assert len(est._extracted_rule_indices_) > 0
+
+
+def test_mhtsk_regressor_estimator_rule_extraction_without_retraining() -> None:
+    x, y = _make_dataset(40)
+    y = y.astype(np.float32)
+    est = MHTSKRegressorEstimator(
+        n_mfs=2,
+        n_heads=2,
+        head_size=1,
+        fcm_m=2.0,
+        rule_sigma=1.0,
+        rule_extraction=True,
+        crcr_us=0.5,
+        retrain_after_extraction=False,
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+    )
+    est.fit(x, y)
+    assert est._extracted_rule_indices_ is not None
+    assert len(est._extracted_rule_indices_) > 0
+
+
+def test_mhtsk_classifier_extracted_model_rejects_empty_rule_list() -> None:
+    x, y = _make_dataset(20)
+    est = MHTSKClassifierEstimator(
+        n_mfs=2,
+        n_heads=2,
+        head_size=1,
+        fcm_m=2.0,
+        rule_sigma=1.0,
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+    )
+    est.fit(x, y)
+    with pytest.raises(ValueError, match="At least one rule must be selected"):
+        est._build_extracted_model(est.model_.input_mfs, [])
+
+
+def test_mhtsk_regressor_extracted_model_rejects_empty_rule_list() -> None:
+    x, y = _make_dataset(20)
+    y = y.astype(np.float32)
+    est = MHTSKRegressorEstimator(
+        n_mfs=2,
+        n_heads=2,
+        head_size=1,
+        fcm_m=2.0,
+        rule_sigma=1.0,
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+    )
+    est.fit(x, y)
+    with pytest.raises(ValueError, match="At least one rule must be selected"):
+        est._build_extracted_model(est.model_.input_mfs, [])
 
 
 def test_mhtsk_input_builder_rejects_invalid_head_size() -> None:
