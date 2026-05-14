@@ -81,6 +81,13 @@ Model Family Overview:
         Implemented by:
             `DGTSKClassifierEstimator`, `DGTSKRegressorEstimator`
 
+    **MHTSK**
+        Multihead sparse TSK with FCM-based sub-antecedents and partial-rule
+        consequents.
+
+        Implemented by:
+            `MHTSKClassifierEstimator`, `MHTSKRegressorEstimator`
+
     **HDFIS**
         High-dimensional inference with both product DMF and minimum
         frozen-antecedent variants.
@@ -102,6 +109,9 @@ Membership Function Initialization:
         computed from weighted within-cluster spread and sampled from a
         normal distribution, analogous to the k-means initialization.
 
+        When used with MHTSK estimators, multiple FCM heads are built across
+        random feature subsets to construct sparse partial-rule antecedents.
+
     - `mf_init="grid"`:
         Regular grid placement controlled by `InputConfig`. This produces
         a Cartesian rule base by default.
@@ -116,6 +126,7 @@ from __future__ import annotations
 
 import math
 from abc import abstractmethod
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Self, cast
 
@@ -125,11 +136,19 @@ from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
+from torch import Tensor
 
 from .base import BaseTSK
 from .clustering import FuzzyCMeans
 from .clustering import KMeans as TorchKMeans
-from .memberships import CompositeGMF, DimensionDependentGaussianMF, GaussianMF, GaussianPIMF
+from .memberships import (
+    CompositeGMF,
+    ConstantMF,
+    DimensionDependentGaussianMF,
+    GaussianMF,
+    GaussianPIMF,
+    MembershipFunction,
+)
 from .metrics import compute_metrics
 from .models import (
     AdaTSKClassifier,
@@ -156,6 +175,8 @@ from .models import (
     HTSKRegressor,
     LogTSKClassifier,
     LogTSKRegressor,
+    MHTSKClassifier,
+    MHTSKRegressor,
     TSKClassifier,
     TSKRegressor,
 )
@@ -343,6 +364,250 @@ def _build_fuzzy_c_means_input_mfs(
     return input_mfs
 
 
+def _build_mhtsk_input_mfs(
+    x: np.ndarray,
+    feature_names: list[str],
+    n_heads: int,
+    head_size: int,
+    n_clusters: int,
+    fcm_m: float,
+    rule_sigma: float,
+    instance_sample_fraction: float,
+    random_state: int | None,
+) -> tuple[dict[str, list[MembershipFunction]], list[tuple[int, ...]], np.ndarray]:
+    """Build sparse partial-rule MFs and rule indices for MHTSK.
+
+    Each feature receives a constant "don't care" MF plus all cluster MFs
+    produced by FCM for any head where the feature is active.
+
+    Each head may also subsample data instances to match the paper's
+    random head construction process.
+    """
+    n_samples, n_features = x.shape
+    if head_size <= 0 or head_size > n_features:
+        raise ValueError("head_size must be between 1 and the number of features")
+    if n_heads <= 0:
+        raise ValueError("n_heads must be > 0")
+    if not 0.0 < instance_sample_fraction <= 1.0:
+        raise ValueError("instance_sample_fraction must be in (0, 1]")
+
+    rng = np.random.default_rng(random_state)
+    input_mfs: dict[str, list[MembershipFunction]] = {name: [ConstantMF(1.0)] for name in feature_names}
+    rules: list[tuple[int, ...]] = []
+
+    sample_size = max(1, round(n_samples * instance_sample_fraction))
+
+    for _ in range(n_heads):
+        subset = rng.choice(n_features, size=head_size, replace=False)
+        if instance_sample_fraction < 1.0 and sample_size < n_samples:
+            row_indices = rng.choice(n_samples, size=sample_size, replace=False)
+            x_sub = x[row_indices][:, subset]
+        else:
+            x_sub = x[:, subset]
+
+        model = FuzzyCMeans(n_clusters=n_clusters, m=fcm_m, random_state=random_state)
+        model.fit(x_sub)
+        if model.cluster_centers_ is None:
+            raise RuntimeError("FuzzyCMeans did not converge to a valid solution")
+        centers = model.cluster_centers_.cpu().numpy()
+
+        feature_indices: dict[int, list[int]] = {}
+        for j, feature_idx in enumerate(subset):
+            mf_list = input_mfs[feature_names[feature_idx]]
+            start_index = len(mf_list)
+            for k in range(n_clusters):
+                mf_list.append(GaussianMF(mean=float(centers[k, j]), sigma=float(rule_sigma)))
+            feature_indices[feature_idx] = list(range(start_index, start_index + n_clusters))
+
+        for k in range(n_clusters):
+            rule_indices: list[int] = []
+            for feature_idx in range(n_features):
+                if feature_idx in feature_indices:
+                    rule_indices.append(feature_indices[feature_idx][k])
+                else:
+                    rule_indices.append(0)
+            rules.append(tuple(rule_indices))
+
+    rule_feature_mask = np.zeros((len(rules), n_features), dtype=bool)
+    for r, rule in enumerate(rules):
+        for j, mf_idx in enumerate(rule):
+            rule_feature_mask[r, j] = mf_idx != 0
+
+    return input_mfs, rules, rule_feature_mask
+
+
+def feature_coverage_rate(n_features: int, head_size: int, n_heads: int) -> float:
+    """Compute the feature coverage rate (FCR) for MHTSK heads.
+
+    FCR is the expected proportion of original features that are selected at
+    least once across ``n_heads`` random subsets of size ``head_size``.
+    """
+    if n_features <= 0:
+        raise ValueError("n_features must be > 0")
+    if head_size <= 0 or head_size > n_features:
+        raise ValueError("head_size must be between 1 and n_features")
+    if n_heads < 0:
+        raise ValueError("n_heads must be >= 0")
+
+    return 1.0 - (1.0 - float(head_size) / float(n_features)) ** float(n_heads)
+
+
+def _resolve_mhtsk_scale_parameters(
+    n_features: int,
+    head_size: int | None,
+    head_size_ratio: float | None,
+    n_heads: int | None,
+    fcr_target: float | None,
+    h_value: float | None,
+    sigma: float,
+    xi: float,
+) -> tuple[int, int]:
+    """Resolve MHTSK scale parameters using paper-derived defaults.
+
+    This helper reproduces the paper's strategy for selecting rule length and
+    number of heads while allowing user override.
+    """
+    if n_features <= 0:
+        raise ValueError("n_features must be > 0")
+    if head_size is not None and (head_size <= 0 or head_size > n_features):
+        raise ValueError("head_size must be between 1 and the number of features")
+    if n_heads is not None and n_heads <= 0:
+        raise ValueError("n_heads must be > 0")
+    if head_size_ratio is not None and not (0.0 < head_size_ratio <= 1.0):
+        raise ValueError("head_size_ratio must be in (0, 1]")
+    if fcr_target is not None and not (0.0 < fcr_target < 1.0):
+        raise ValueError("fcr_target must be in (0, 1)")
+    if h_value is not None and h_value <= 0.0:
+        raise ValueError("h_value must be > 0")
+    if sigma <= 0.0:
+        raise ValueError("sigma must be > 0")
+    if xi <= 0.0:
+        raise ValueError("xi must be > 0")
+
+    max_head_size = min(n_features, max(1, math.floor(2.0 * xi * sigma * sigma)))
+
+    if head_size is None:
+        if head_size_ratio is not None:
+            head_size = max(1, min(n_features, round(n_features * head_size_ratio)))
+        else:
+            head_size = max(1, round(n_features * 0.02)) if n_features <= 5000 else max(1, round(n_features * 0.01))
+    head_size = min(head_size, max_head_size, n_features)
+
+    if n_heads is None:
+        H = h_value if h_value is not None else -math.log(1.0 - (fcr_target if fcr_target is not None else 0.85))
+        n_heads = math.ceil(H * n_features / head_size)
+
+    return head_size, n_heads
+
+
+def _rankdata(values: np.ndarray) -> np.ndarray:
+    ranks = np.empty(len(values), dtype=np.float64)
+    order = np.argsort(values)
+    sorted_values = values[order]
+    i = 0
+    while i < len(values):
+        j = i + 1
+        while j < len(values) and sorted_values[j] == sorted_values[i]:
+            j += 1
+        avg_rank = (i + 1 + j) / 2.0
+        ranks[order[i:j]] = avg_rank
+        i = j
+    return ranks
+
+
+def _normal_survival(z: float) -> float:
+    return 0.5 * math.erfc(z / math.sqrt(2.0))
+
+
+def _mann_whitney_p_value(left: np.ndarray, right: np.ndarray) -> float:
+    if left.size == 0 or right.size == 0:
+        return 1.0
+
+    combined = np.concatenate([left, right]).astype(np.float64)
+    ranks = _rankdata(combined)
+    n1 = float(left.size)
+    n2 = float(right.size)
+    ra = float(np.sum(ranks[: left.size]))
+    u1 = ra - (n1 * (n1 + 1.0) / 2.0)
+    u2 = n1 * n2 - u1
+    u = min(u1, u2)
+
+    sigma = math.sqrt(n1 * n2 * (n1 + n2 + 1.0) / 12.0)
+    if sigma == 0.0:  # pragma: no cover
+        return 1.0
+
+    z = (u - n1 * n2 / 2.0) / sigma
+    return min(1.0, 2.0 * _normal_survival(abs(z)))
+
+
+def _select_rule_indices(scores: Tensor, crcr: float) -> list[int]:
+    if not 0.0 <= float(crcr) <= 1.0:
+        raise ValueError("crcr must be between 0 and 1")
+
+    n_rules = int(scores.numel())
+    if n_rules == 0:
+        return []
+    if crcr <= 0.0:
+        return []
+    if crcr >= 1.0:
+        return list(range(n_rules))
+
+    sorted_indices = torch.argsort(scores, descending=True)
+    sorted_scores = scores[sorted_indices]
+
+    total = float(torch.sum(sorted_scores).item())
+    if total <= 0.0:
+        count = max(1, math.ceil(float(crcr) * n_rules))
+        return sorted_indices[:count].tolist()
+
+    rcr = sorted_scores / total
+    cumulative = torch.cumsum(rcr, dim=0)
+    threshold = torch.tensor(float(crcr), dtype=cumulative.dtype)
+    count = int(torch.searchsorted(cumulative, threshold, right=False).item() + 1)
+    return sorted_indices[: max(1, count)].tolist()
+
+
+def _extract_mhtsk_rule_indices(
+    norm_w: Tensor,
+    y: Tensor | None,
+    crcr_us: float,
+    crcr_s: float,
+) -> list[int]:
+    n_rules = int(norm_w.shape[1])
+    if n_rules == 0:
+        return []
+
+    unsupervised_scores = torch.max(norm_w, dim=0).values
+    selected_us = _select_rule_indices(unsupervised_scores, float(crcr_us))
+
+    selected_s: list[int] = []
+    if y is not None and y.ndim == 1 and len(torch.unique(y)) > 1 and float(crcr_s) > 0.0:
+        unique_labels = torch.unique(y)
+        groups: list[np.ndarray] = []
+        for label in unique_labels:
+            mask = y == label
+            groups.append(norm_w[mask].cpu().numpy())
+
+        supervised_scores = torch.zeros(n_rules, dtype=torch.float64)
+        for r in range(n_rules):
+            p_min = 1.0
+            for i in range(len(groups)):
+                for j in range(i + 1, len(groups)):
+                    p_val = _mann_whitney_p_value(groups[i][:, r], groups[j][:, r])
+                    p_min = min(p_min, p_val)
+            supervised_scores[r] = 1.0 - p_min
+        selected_s = _select_rule_indices(supervised_scores, float(crcr_s))
+
+    selected_indices = sorted(set(selected_us) | set(selected_s))
+    if len(selected_indices) == 0 and n_rules > 0:
+        selected_indices = [int(torch.argmax(unsupervised_scores).item())]
+    return selected_indices
+
+
+def _extract_mhtsk_rule_indices_unsupervised(norm_w: Tensor, crcr_us: float) -> list[int]:
+    return _select_rule_indices(torch.max(norm_w, dim=0).values, float(crcr_us))
+
+
 def _build_pfrb_input_mfs(
     x: np.ndarray,
     feature_names: list[str],
@@ -369,7 +634,7 @@ def _build_pfrb_input_mfs(
 
 
 def _wrap_dimension_dependent_gaussian_input_mfs(
-    input_mfs: dict[str, list[GaussianMF]],
+    input_mfs: Mapping[str, Sequence[MembershipFunction]],
     dimension: int,
     xi: float = 745.0,
     rho: float | None = None,
@@ -379,8 +644,8 @@ def _wrap_dimension_dependent_gaussian_input_mfs(
             list[GaussianMF],
             [
                 DimensionDependentGaussianMF(
-                    mean=mf.mean.detach().item(),
-                    sigma=mf.sigma.detach().item(),
+                    mean=cast(GaussianMF, mf).mean.detach().item(),
+                    sigma=cast(GaussianMF, mf).sigma.detach().item(),
                     dimension=dimension,
                     xi=xi,
                     rho=rho,
@@ -393,7 +658,7 @@ def _wrap_dimension_dependent_gaussian_input_mfs(
 
 
 def _wrap_composite_gaussian_input_mfs(
-    input_mfs: dict[str, list[GaussianMF]],
+    input_mfs: Mapping[str, Sequence[MembershipFunction]],
     eps: float | None = None,
 ) -> dict[str, list[GaussianMF]]:
     return {
@@ -401,8 +666,8 @@ def _wrap_composite_gaussian_input_mfs(
             list[GaussianMF],
             [
                 CompositeGMF(
-                    mean=mf.mean.detach().item(),
-                    sigma=mf.sigma.detach().item(),
+                    mean=cast(GaussianMF, mf).mean.detach().item(),
+                    sigma=cast(GaussianMF, mf).sigma.detach().item(),
                     eps=eps if eps is not None else mf.eps,
                 )
                 for mf in mfs
@@ -413,7 +678,7 @@ def _wrap_composite_gaussian_input_mfs(
 
 
 def _wrap_gaussian_pimf_input_mfs(
-    input_mfs: dict[str, list[GaussianMF]],
+    input_mfs: Mapping[str, Sequence[MembershipFunction]],
     K: float = 1.0,
     eps: float | None = None,
 ) -> dict[str, list[GaussianMF]]:
@@ -422,8 +687,8 @@ def _wrap_gaussian_pimf_input_mfs(
             list[GaussianMF],
             [
                 GaussianPIMF(
-                    mean=mf.mean.detach().item(),
-                    sigma=mf.sigma.detach().item(),
+                    mean=cast(GaussianMF, mf).mean.detach().item(),
+                    sigma=cast(GaussianMF, mf).sigma.detach().item(),
                     K=float(K),
                     eps=eps if eps is not None else mf.eps,
                 )
@@ -596,7 +861,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         """Convert numpy array to float32 tensor."""
         return torch.as_tensor(x, dtype=torch.float32)
 
-    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[dict[str, list[GaussianMF]], list[str], str]:
+    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         """Build MFs and resolve rule_base from the initialization mode."""
         init = str(self.mf_init).lower()
         if init not in {"kmeans", "fcm", "grid"}:
@@ -657,7 +922,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
     @abstractmethod
     def _build_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
@@ -973,7 +1238,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         """Convert numpy array to float32 tensor."""
         return torch.as_tensor(x, dtype=torch.float32)
 
-    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[dict[str, list[GaussianMF]], list[str], str]:
+    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         """Build MFs and resolve rule_base from the initialization mode."""
         init = str(self.mf_init).lower()
         if init not in {"kmeans", "fcm", "grid"}:
@@ -1034,7 +1299,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
     @abstractmethod
     def _build_regressor_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
@@ -1266,7 +1531,7 @@ class HTSKClassifierEstimator(_BaseClassifierEstimator):
 
     def _build_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
@@ -1373,7 +1638,7 @@ class HTSKRegressorEstimator(_BaseRegressorEstimator):
 
     def _build_regressor_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
@@ -1488,7 +1753,7 @@ class TSKClassifierEstimator(_BaseClassifierEstimator):
 
     def _build_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
@@ -1595,13 +1860,469 @@ class TSKRegressorEstimator(_BaseRegressorEstimator):
 
     def _build_regressor_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
         return TSKRegressor(
             input_mfs,
             rule_base=rule_base,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+
+class MHTSKClassifierEstimator(_BaseClassifierEstimator):
+    """Estimator for the multihead Takagi-Sugeno-Kang fuzzy system.
+
+    This estimator supports paper-derived automatic scale parameter resolution
+    for head size and number of heads, and it optionally subsamples instances
+    when building each head as described in the MHTSK paper.
+
+    MHTSK builds multiple sparse subantecedents from random feature
+    subsets and jointly optimizes their rule consequents.
+
+    Reference:
+        Z. Bian, Q. Chang, J. Wang and N. R. Pal, "Multihead
+        Takagi-Sugeno-Kang Fuzzy System," in IEEE Transactions
+        on Fuzzy Systems, vol. 33, no. 8, pp. 2561-2573, Aug. 2025,
+        doi: 10.1109/TFUZZ.2025.3569227.
+
+    Example:
+        ```python
+        from highfis import MHTSKClassifierEstimator
+
+        clf = MHTSKClassifierEstimator()
+        clf.fit(X_train, y_train)
+        ```
+    """
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 3,
+        n_heads: int | None = None,
+        head_size: int | None = None,
+        head_size_ratio: float | None = None,
+        fcm_m: float = 2.0,
+        rule_sigma: float = 1.0,
+        fcr_target: float = 0.85,
+        h_value: float | None = None,
+        xi: float = 743.0,
+        instance_sample_fraction: float = 0.8,
+        rule_extraction: bool = False,
+        crcr_us: float = 0.5,
+        crcr_s: float = 0.5,
+        retrain_after_extraction: bool = True,
+        random_state: int | None = None,
+        epochs: int = 10,
+        learning_rate: float = 1e-2,
+        verbose: bool | int = False,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        patience: int | None = 20,
+        restore_best: bool = True,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+    ) -> None:
+        """Initialize a MHTSK classifier estimator.
+
+        Args:
+            input_configs: Optional list of per-feature input configurations.
+                Only the feature names are used for FCM-based MHTSK head construction.
+            n_mfs: Number of FCM clusters per head (number of rules generated by each head).
+            n_heads: Number of random heads. If ``None``, this is resolved from
+                ``head_size`` together with ``fcr_target`` or ``h_value``.
+            head_size: Number of features sampled per head. If ``None``, defaults to
+                ``round(D * 0.02)`` for ``D <= 5000`` and ``round(D * 0.01)`` for larger inputs.
+            head_size_ratio: Alternative relative head size, as a fraction of the input dimension.
+            fcm_m: Fuzzification exponent for FCM cluster fitting.
+            rule_sigma: Gaussian sigma applied to rule antecedent membership functions.
+            fcr_target: Target feature coverage rate for randomly sampled heads.
+            h_value: Paper-derived scale constant ``H`` used to compute the number of heads.
+                When set, this overrides ``fcr_target``.
+            xi: Numeric underflow threshold constant used to bound ``head_size``.
+            instance_sample_fraction: Fraction of training instances sampled per head for FCM.
+            rule_extraction: If ``True``, perform post-fit rule extraction (MHTSK_RE).
+            crcr_us: Unsupervised cumulative rule contribution rate target used in extraction.
+            crcr_s: Supervised cumulative rule contribution rate target used in extraction.
+            retrain_after_extraction: If ``True``, retrain the extracted rule base after extraction.
+            random_state: Random seed for reproducible head construction and FCM initialization.
+            epochs: Maximum number of training epochs.
+            learning_rate: Adam optimizer learning rate.
+            verbose: Verbosity level during training.
+            batch_size: Mini-batch size for gradient descent.
+            shuffle: Whether to shuffle training samples each epoch.
+            ur_weight: Weight of the uncertainty regularization term.
+            ur_target: Target firing-level for uncertainty regularization.
+            consequent_batch_norm: Apply batch normalization to the consequent layer inputs.
+            patience: Early-stopping patience for validation.
+            restore_best: Whether to restore the best validation model weights after training.
+            validation_data: Optional validation tuple ``(X_val, y_val)`` used for early stopping.
+            weight_decay: Weight decay coefficient for the optimizer.
+        """
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init="fcm",
+            sigma_scale=1.0,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base="custom",
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            pfrb_max_rules=None,
+            patience=patience,
+            restore_best=restore_best,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
+        self.n_heads = int(n_heads) if n_heads is not None else None
+        self.head_size = int(head_size) if head_size is not None else None
+        self.head_size_ratio = float(head_size_ratio) if head_size_ratio is not None else None
+        self.fcm_m = float(fcm_m)
+        self.rule_sigma = float(rule_sigma)
+        self.fcr_target = float(fcr_target)
+        self.h_value = float(h_value) if h_value is not None else None
+        self.xi = float(xi)
+        self.instance_sample_fraction = float(instance_sample_fraction)
+        self.rule_extraction = bool(rule_extraction)
+        self.crcr_us = float(crcr_us)
+        self.crcr_s = float(crcr_s)
+        self.retrain_after_extraction = bool(retrain_after_extraction)
+        self._extracted_rule_indices_: list[int] | None = None
+
+    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:  # type: ignore[override]
+        feature_names = self._resolve_feature_names(x_arr)
+        head_size, n_heads = _resolve_mhtsk_scale_parameters(
+            n_features=x_arr.shape[1],
+            head_size=self.head_size,
+            head_size_ratio=self.head_size_ratio,
+            n_heads=self.n_heads,
+            fcr_target=self.fcr_target,
+            h_value=self.h_value,
+            sigma=self.rule_sigma,
+            xi=self.xi,
+        )
+        input_mfs, rules, rule_feature_mask = _build_mhtsk_input_mfs(
+            x_arr,
+            feature_names=feature_names,
+            n_heads=n_heads,
+            head_size=head_size,
+            n_clusters=int(self.n_mfs),
+            fcm_m=self.fcm_m,
+            rule_sigma=self.rule_sigma,
+            instance_sample_fraction=self.instance_sample_fraction,
+            random_state=self.random_state,
+        )
+        self._mhtsk_rules = rules
+        self._mhtsk_rule_feature_mask = torch.as_tensor(rule_feature_mask, dtype=torch.bool)
+        return input_mfs, feature_names, "custom"
+
+    def _build_model(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        n_classes: int,
+        rule_base: str,
+    ) -> BaseTSK:
+        return MHTSKClassifier(
+            input_mfs,
+            self._mhtsk_rule_feature_mask,
+            self._mhtsk_rules,
+            n_classes=n_classes,
+            consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+    def _build_extracted_model(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        rule_indices: list[int],
+    ) -> None:
+        if not rule_indices:
+            raise ValueError("At least one rule must be selected for extraction")
+        self._mhtsk_rules = [self._mhtsk_rules[i] for i in rule_indices]
+        self._mhtsk_rule_feature_mask = self._mhtsk_rule_feature_mask[rule_indices]
+        self.model_ = self._build_model(input_mfs, len(self.classes_), self.rule_base_)
+
+    def fit(self, x: Any, y: Any) -> Self:
+        x_arr, y_arr = check_X_y(x, y)
+        super().fit(x, y)
+
+        if not bool(self.rule_extraction):
+            return self
+
+        x_t = self._as_tensor_x(x_arr)
+        self.model_.eval()
+        with torch.no_grad():
+            norm_w = self.model_.forward_antecedents(x_t)
+
+        y_t = torch.as_tensor(self._label_encoder_.transform(np.asarray(y_arr)), dtype=torch.long)
+        selected = _extract_mhtsk_rule_indices(norm_w, y_t, self.crcr_us, self.crcr_s)
+        self._extracted_rule_indices_ = selected
+
+        input_mfs = self.model_.input_mfs
+        self._build_extracted_model(input_mfs, selected)
+
+        if self.retrain_after_extraction:
+            x_val_t: torch.Tensor | None = None
+            y_val_t: torch.Tensor | None = None
+            if self.validation_data is not None:
+                x_v, y_v = self.validation_data
+                x_v_arr = check_array(x_v)
+                y_v_idx = self._label_encoder_.transform(np.asarray(y_v))
+                x_val_t = self._as_tensor_x(x_v_arr)
+                y_val_t = torch.as_tensor(y_v_idx, dtype=torch.long)
+            self.history_ = self.model_.fit(
+                x_t,
+                y_t,
+                epochs=int(self.epochs),
+                learning_rate=float(self.learning_rate),
+                batch_size=self.batch_size,
+                shuffle=bool(self.shuffle),
+                ur_weight=float(self.ur_weight),
+                ur_target=self.ur_target,
+                verbose=self.verbose,
+                x_val=x_val_t,
+                y_val=y_val_t,
+                patience=self.patience,
+                restore_best=self.restore_best,
+                weight_decay=float(self.weight_decay),
+            )
+        return self
+
+
+class MHTSKRegressorEstimator(_BaseRegressorEstimator):
+    """Estimator for the multihead Takagi-Sugeno-Kang fuzzy system.
+
+    The regressor uses the same MHTSK head construction and scale parameter
+    strategy as the classifier. Rule extraction is currently implemented with
+    an unsupervised scheme only, since regression does not provide class labels
+    for the Mann-Whitney based selection used in classification.
+
+    MHTSK builds multiple sparse subantecedents from random feature
+    subsets and jointly optimizes their rule consequents.
+
+    Reference:
+        Z. Bian, Q. Chang, J. Wang and N. R. Pal, "Multihead
+        Takagi-Sugeno-Kang Fuzzy System," in IEEE Transactions
+        on Fuzzy Systems, vol. 33, no. 8, pp. 2561-2573, Aug. 2025,
+        doi: 10.1109/TFUZZ.2025.3569227.
+
+    Example:
+        ```python
+        from highfis import MHTSKRegressorEstimator
+
+        reg = MHTSKRegressorEstimator()
+        reg.fit(X_train, y_train)
+        ```
+    """
+
+    def __init__(
+        self,
+        *,
+        input_configs: list[InputConfig] | None = None,
+        n_mfs: int = 3,
+        n_heads: int | None = None,
+        head_size: int | None = None,
+        head_size_ratio: float | None = None,
+        fcm_m: float = 2.0,
+        rule_sigma: float = 1.0,
+        fcr_target: float = 0.85,
+        h_value: float | None = None,
+        xi: float = 743.0,
+        instance_sample_fraction: float = 0.8,
+        rule_extraction: bool = False,
+        crcr_us: float = 0.5,
+        retrain_after_extraction: bool = True,
+        random_state: int | None = None,
+        epochs: int = 10,
+        learning_rate: float = 1e-2,
+        verbose: bool | int = False,
+        batch_size: int | None = 512,
+        shuffle: bool = True,
+        ur_weight: float = 0.0,
+        ur_target: float | None = None,
+        consequent_batch_norm: bool = False,
+        patience: int | None = 20,
+        restore_best: bool = True,
+        validation_data: tuple[Any, Any] | None = None,
+        weight_decay: float = 1e-8,
+    ) -> None:
+        """Initialize a MHTSK regressor estimator.
+
+        Args:
+            input_configs: Optional list of per-feature input configurations.
+                Only the feature names are used for FCM-based MHTSK head construction.
+            n_mfs: Number of FCM clusters per head (number of rules generated by each head).
+            n_heads: Number of random heads. If ``None``, this is resolved from
+                ``head_size`` together with ``fcr_target`` or ``h_value``.
+            head_size: Number of features sampled per head. If ``None``, defaults to
+                ``round(D * 0.02)`` for ``D <= 5000`` and ``round(D * 0.01)`` for larger inputs.
+            head_size_ratio: Alternative relative head size, as a fraction of the input dimension.
+            fcm_m: Fuzzification exponent for FCM cluster fitting.
+            rule_sigma: Gaussian sigma applied to rule antecedent membership functions.
+            fcr_target: Target feature coverage rate for randomly sampled heads.
+            h_value: Paper-derived scale constant ``H`` used to compute the number of heads.
+                When set, this overrides ``fcr_target``.
+            xi: Numeric underflow threshold constant used to bound ``head_size``.
+            instance_sample_fraction: Fraction of training instances sampled per head for FCM.
+            rule_extraction: If ``True``, perform post-fit rule extraction.
+            crcr_us: Unsupervised cumulative rule contribution rate target used in extraction.
+            retrain_after_extraction: If ``True``, retrain the extracted rule base after extraction.
+            random_state: Random seed for reproducible head construction and FCM initialization.
+            epochs: Maximum number of training epochs.
+            learning_rate: Adam optimizer learning rate.
+            verbose: Verbosity level during training.
+            batch_size: Mini-batch size for gradient descent.
+            shuffle: Whether to shuffle training samples each epoch.
+            ur_weight: Weight of the uncertainty regularization term.
+            ur_target: Target firing-level for uncertainty regularization.
+            consequent_batch_norm: Apply batch normalization to the consequent layer inputs.
+            patience: Early-stopping patience for validation.
+            restore_best: Whether to restore the best validation model weights after training.
+            validation_data: Optional validation tuple ``(X_val, y_val)`` used for early stopping.
+            weight_decay: Weight decay coefficient for the optimizer.
+
+        Notes:
+            The regressor supports only unsupervised rule extraction via
+            ``crcr_us`` because no label-based Mann-Whitney selection is available.
+        """
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=n_mfs,
+            mf_init="fcm",
+            sigma_scale=1.0,
+            random_state=random_state,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            verbose=verbose,
+            rule_base="custom",
+            batch_size=batch_size,
+            shuffle=shuffle,
+            ur_weight=ur_weight,
+            ur_target=ur_target,
+            consequent_batch_norm=consequent_batch_norm,
+            pfrb_max_rules=None,
+            patience=patience,
+            restore_best=restore_best,
+            validation_data=validation_data,
+            weight_decay=weight_decay,
+        )
+        self.n_heads = int(n_heads) if n_heads is not None else None
+        self.head_size = int(head_size) if head_size is not None else None
+        self.head_size_ratio = float(head_size_ratio) if head_size_ratio is not None else None
+        self.fcm_m = float(fcm_m)
+        self.rule_sigma = float(rule_sigma)
+        self.fcr_target = float(fcr_target)
+        self.h_value = float(h_value) if h_value is not None else None
+        self.xi = float(xi)
+        self.instance_sample_fraction = float(instance_sample_fraction)
+        self.rule_extraction = bool(rule_extraction)
+        self.crcr_us = float(crcr_us)
+        self.retrain_after_extraction = bool(retrain_after_extraction)
+        self._extracted_rule_indices_: list[int] | None = None
+
+    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:  # type: ignore[override]
+        feature_names = self._resolve_feature_names(x_arr)
+        head_size, n_heads = _resolve_mhtsk_scale_parameters(
+            n_features=x_arr.shape[1],
+            head_size=self.head_size,
+            head_size_ratio=self.head_size_ratio,
+            n_heads=self.n_heads,
+            fcr_target=self.fcr_target,
+            h_value=self.h_value,
+            sigma=self.rule_sigma,
+            xi=self.xi,
+        )
+        input_mfs, rules, rule_feature_mask = _build_mhtsk_input_mfs(
+            x_arr,
+            feature_names=feature_names,
+            n_heads=n_heads,
+            head_size=head_size,
+            n_clusters=int(self.n_mfs),
+            fcm_m=self.fcm_m,
+            rule_sigma=self.rule_sigma,
+            instance_sample_fraction=self.instance_sample_fraction,
+            random_state=self.random_state,
+        )
+        self._mhtsk_rules = rules
+        self._mhtsk_rule_feature_mask = torch.as_tensor(rule_feature_mask, dtype=torch.bool)
+        return input_mfs, feature_names, "custom"
+
+    def _build_extracted_model(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        rule_indices: list[int],
+    ) -> None:
+        if not rule_indices:
+            raise ValueError("At least one rule must be selected for extraction")
+        self._mhtsk_rules = [self._mhtsk_rules[i] for i in rule_indices]
+        self._mhtsk_rule_feature_mask = self._mhtsk_rule_feature_mask[rule_indices]
+        self.model_ = self._build_regressor_model(input_mfs, self.rule_base_, None)
+
+    def fit(self, x: Any, y: Any) -> Self:
+        x_arr, y_arr = check_X_y(x, y)
+        super().fit(x, y)
+
+        if not bool(self.rule_extraction):
+            return self
+
+        x_t = self._as_tensor_x(x_arr)
+        self.model_.eval()
+        with torch.no_grad():
+            norm_w = self.model_.forward_antecedents(x_t)
+
+        selected = _extract_mhtsk_rule_indices_unsupervised(norm_w, self.crcr_us)
+        self._extracted_rule_indices_ = selected
+
+        input_mfs = self.model_.input_mfs
+        self._build_extracted_model(input_mfs, selected)
+
+        if self.retrain_after_extraction:
+            y_t = torch.as_tensor(np.asarray(y_arr), dtype=torch.float32)
+            x_val_t: torch.Tensor | None = None
+            y_val_t: torch.Tensor | None = None
+            if self.validation_data is not None:
+                x_v, y_v = self.validation_data
+                x_v_arr = check_array(x_v)
+                y_val_t = torch.as_tensor(np.asarray(y_v), dtype=torch.float32)
+                x_val_t = self._as_tensor_x(x_v_arr)
+            self.history_ = self.model_.fit(
+                x_t,
+                y_t,
+                epochs=int(self.epochs),
+                learning_rate=float(self.learning_rate),
+                batch_size=self.batch_size,
+                shuffle=bool(self.shuffle),
+                ur_weight=float(self.ur_weight),
+                ur_target=self.ur_target,
+                verbose=self.verbose,
+                x_val=x_val_t,
+                y_val=y_val_t,
+                patience=self.patience,
+                restore_best=self.restore_best,
+                weight_decay=float(self.weight_decay),
+            )
+        return self
+
+    def _build_regressor_model(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        rule_base: str,
+        n_classes: int | None = None,
+    ) -> BaseTSK:
+        return MHTSKRegressor(
+            input_mfs,
+            self._mhtsk_rule_feature_mask,
+            self._mhtsk_rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
         )
 
@@ -1678,7 +2399,7 @@ class HDFISProdClassifierEstimator(_BaseClassifierEstimator):
         self.xi = float(xi)
         self.rho = rho
 
-    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[dict[str, list[GaussianMF]], list[str], str]:
+    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
         return (
             _wrap_dimension_dependent_gaussian_input_mfs(
@@ -1693,7 +2414,7 @@ class HDFISProdClassifierEstimator(_BaseClassifierEstimator):
 
     def _build_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
@@ -1775,7 +2496,7 @@ class HDFISProdRegressorEstimator(_BaseRegressorEstimator):
         self.xi = float(xi)
         self.rho = rho
 
-    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[dict[str, list[GaussianMF]], list[str], str]:
+    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
         return (
             _wrap_dimension_dependent_gaussian_input_mfs(
@@ -1790,7 +2511,7 @@ class HDFISProdRegressorEstimator(_BaseRegressorEstimator):
 
     def _build_regressor_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
@@ -1874,7 +2595,7 @@ class HDFISMinClassifierEstimator(_BaseClassifierEstimator):
 
     def _build_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
@@ -1956,7 +2677,7 @@ class HDFISMinRegressorEstimator(_BaseRegressorEstimator):
 
     def _build_regressor_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
@@ -2065,7 +2786,7 @@ class AYATSKClassifierEstimator(_BaseClassifierEstimator):
 
     def _build_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
@@ -2169,7 +2890,7 @@ class AYATSKRegressorEstimator(_BaseRegressorEstimator):
 
     def _build_regressor_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
@@ -2279,7 +3000,7 @@ class DombiTSKClassifierEstimator(_BaseClassifierEstimator):
 
     def _build_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
@@ -2384,7 +3105,7 @@ class DombiTSKRegressorEstimator(_BaseRegressorEstimator):
 
     def _build_regressor_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
@@ -2506,7 +3227,7 @@ class ADMTSKClassifierEstimator(_BaseClassifierEstimator):
         self.lower_bound = float(lower_bound)
         self.K = float(K)
 
-    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[dict[str, list[GaussianMF]], list[str], str]:
+    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
         return (
             _wrap_composite_gaussian_input_mfs(input_mfs),
@@ -2516,7 +3237,7 @@ class ADMTSKClassifierEstimator(_BaseClassifierEstimator):
 
     def _build_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
@@ -2639,7 +3360,7 @@ class ADMTSKRegressorEstimator(_BaseRegressorEstimator):
         self.lower_bound = float(lower_bound)
         self.K = float(K)
 
-    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[dict[str, list[GaussianMF]], list[str], str]:
+    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
         return (
             _wrap_composite_gaussian_input_mfs(input_mfs),
@@ -2649,7 +3370,7 @@ class ADMTSKRegressorEstimator(_BaseRegressorEstimator):
 
     def _build_regressor_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
@@ -2778,7 +3499,7 @@ class ADPTSKClassifierEstimator(_BaseClassifierEstimator):
 
     def _build_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
@@ -2908,7 +3629,7 @@ class ADPTSKRegressorEstimator(_BaseRegressorEstimator):
 
     def _build_regressor_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
@@ -3014,7 +3735,7 @@ class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
 
     def _build_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
@@ -3117,7 +3838,7 @@ class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
 
     def _build_regressor_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
@@ -3237,7 +3958,7 @@ class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
 
     def _build_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
@@ -3356,7 +4077,7 @@ class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
 
     def _build_regressor_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
@@ -3397,7 +4118,7 @@ class DGALETSKClassifierEstimator(FSREAdaTSKClassifierEstimator):
 
     def _build_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
@@ -3440,7 +4161,7 @@ class DGALETSKRegressorEstimator(FSREAdaTSKRegressorEstimator):
 
     def _build_regressor_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
@@ -3552,7 +4273,7 @@ class DGTSKClassifierEstimator(_BaseClassifierEstimator):
 
     def _build_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
@@ -3664,7 +4385,7 @@ class DGTSKRegressorEstimator(_BaseRegressorEstimator):
 
     def _build_regressor_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
@@ -3776,7 +4497,7 @@ class LogTSKClassifierEstimator(_BaseClassifierEstimator):
 
     def _build_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
@@ -3883,7 +4604,7 @@ class LogTSKRegressorEstimator(_BaseRegressorEstimator):
 
     def _build_regressor_model(
         self,
-        input_mfs: dict[str, list[GaussianMF]],
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:

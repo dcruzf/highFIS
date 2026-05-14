@@ -18,6 +18,8 @@ Layer overview:
     **Consequent heads**
         - ``ClassificationConsequentLayer``
         - ``RegressionConsequentLayer``
+        - ``SparseClassificationConsequentLayer``
+        - ``SparseRegressionConsequentLayer``
         - ``GatedClassificationConsequentLayer``
         - ``GatedClassificationZeroOrderConsequentLayer``
         - ``GatedRegressionConsequentLayer``
@@ -25,6 +27,10 @@ Layer overview:
 
 Gate activations:
     ``gate1``, ``gate2``, ``gate3``, ``gate4``, ``gate_m``
+
+Notes:
+    - Sparse consequent layers support per-rule feature masks for MHTSK
+      models and other partial-rule consequent architectures.
 """
 
 from __future__ import annotations
@@ -595,6 +601,75 @@ class ClassificationConsequentLayer(nn.Module):
 
         f = torch.einsum("bd,rkd->brk", x, self.weight) + self.bias.unsqueeze(0)
         return torch.einsum("br,brk->bk", norm_w, f)
+
+
+class SparseClassificationConsequentLayer(nn.Module):
+    """Sparse linear TSK consequent layer for classification logits."""
+
+    rule_feature_mask: Tensor
+
+    def __init__(self, n_rules: int, n_inputs: int, n_classes: int, rule_feature_mask: Tensor) -> None:
+        """Initialize sparse consequent parameters for classification."""
+        super().__init__()
+        if n_rules <= 0 or n_inputs <= 0 or n_classes <= 0:
+            raise ValueError("n_rules, n_inputs and n_classes must be positive")
+        if rule_feature_mask.shape != (n_rules, n_inputs):
+            raise ValueError("rule_feature_mask must have shape (n_rules, n_inputs)")
+
+        self.n_rules = n_rules
+        self.n_inputs = n_inputs
+        self.n_classes = n_classes
+        self.register_buffer("rule_feature_mask", rule_feature_mask.to(torch.bool))
+        self.weight = nn.Parameter(torch.empty(n_rules, n_classes, n_inputs))
+        self.bias = nn.Parameter(torch.empty(n_rules, n_classes))
+        nn.init.kaiming_normal_(self.weight, mode="fan_in", nonlinearity="linear")
+        nn.init.zeros_(self.bias)
+
+    def forward(self, x: Tensor, norm_w: Tensor) -> Tensor:
+        """Compute class logits from sparse inputs and normalized rule strengths."""
+        if x.ndim != 2 or x.shape[1] != self.n_inputs:
+            raise ValueError(f"expected x shape (batch, {self.n_inputs}), got {tuple(x.shape)}")
+        if norm_w.ndim != 2 or norm_w.shape[1] != self.n_rules:
+            raise ValueError(f"expected norm_w shape (batch, {self.n_rules}), got {tuple(norm_w.shape)}")
+
+        rule_feature_mask = self.rule_feature_mask
+        gated_weight = self.weight * rule_feature_mask.unsqueeze(1)
+        f = torch.einsum("bd,rkd->brk", x, gated_weight) + self.bias.unsqueeze(0)
+        return torch.einsum("br,brk->bk", norm_w, f)
+
+
+class SparseRegressionConsequentLayer(nn.Module):
+    """Sparse linear TSK consequent layer for scalar regression output."""
+
+    rule_feature_mask: Tensor
+
+    def __init__(self, n_rules: int, n_inputs: int, rule_feature_mask: Tensor) -> None:
+        """Initialize sparse consequent parameters for regression."""
+        super().__init__()
+        if n_rules <= 0 or n_inputs <= 0:
+            raise ValueError("n_rules and n_inputs must be positive")
+        if rule_feature_mask.shape != (n_rules, n_inputs):
+            raise ValueError("rule_feature_mask must have shape (n_rules, n_inputs)")
+
+        self.n_rules = n_rules
+        self.n_inputs = n_inputs
+        self.register_buffer("rule_feature_mask", rule_feature_mask.to(torch.bool))
+        self.weight = nn.Parameter(torch.empty(n_rules, n_inputs))
+        self.bias = nn.Parameter(torch.empty(n_rules))
+        nn.init.kaiming_normal_(self.weight, mode="fan_in", nonlinearity="linear")
+        nn.init.zeros_(self.bias)
+
+    def forward(self, x: Tensor, norm_w: Tensor) -> Tensor:
+        """Compute scalar regression output from sparse inputs and normalized rule strengths."""
+        if x.ndim != 2 or x.shape[1] != self.n_inputs:
+            raise ValueError(f"expected x shape (batch, {self.n_inputs}), got {tuple(x.shape)}")
+        if norm_w.ndim != 2 or norm_w.shape[1] != self.n_rules:
+            raise ValueError(f"expected norm_w shape (batch, {self.n_rules}), got {tuple(norm_w.shape)}")
+
+        rule_feature_mask = self.rule_feature_mask
+        gated_weight = self.weight * rule_feature_mask
+        f = torch.einsum("bd,rd->br", x, gated_weight) + self.bias.unsqueeze(0)
+        return torch.einsum("br,br->b", norm_w, f).unsqueeze(1)
 
 
 class GatedClassificationConsequentLayer(nn.Module):

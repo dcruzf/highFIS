@@ -58,6 +58,7 @@ high-dimensional inference strategy.
 - `HTSK` — high-dimensional TSK with geometric mean aggregation and log-space
   normalization.
 - `LogTSK` — log-domain inverse-log normalization for stable aggregation.
+- `MHTSK` — multihead sparse TSK with feature-subset heads and sparse consequents.
 - `DombiTSK` — Dombi t-norm aggregation with a learnable shape parameter.
 - `ADMTSK` — adaptive Dombi TSK with Composite Gaussian membership functions.
 - `AYATSK` — Yager aggregation for flexible antecedent behavior.
@@ -87,6 +88,7 @@ Each family exposes classifier and regressor variants.
 - `DGALETSKClassifier`, `DGALETSKRegressor`
 - `HDFISProdClassifier`, `HDFISProdRegressor`
 - `HDFISMinClassifier`, `HDFISMinRegressor`
+- `MHTSKClassifier`, `MHTSKRegressor`
 
 ### Estimator wrappers
 
@@ -95,6 +97,7 @@ Each family exposes classifier and regressor variants.
 - `LogTSKClassifierEstimator`, `LogTSKRegressorEstimator`
 - `DombiTSKClassifierEstimator`, `DombiTSKRegressorEstimator`
 - `ADMTSKClassifierEstimator`, `ADMTSKRegressorEstimator`
+- `MHTSKClassifierEstimator`, `MHTSKRegressorEstimator`
 - `DGALETSKClassifierEstimator`, `DGALETSKRegressorEstimator`
 - `DGTSKClassifierEstimator`, `DGTSKRegressorEstimator`
 - `FSREAdaTSKClassifierEstimator`, `FSREAdaTSKRegressorEstimator`
@@ -145,6 +148,7 @@ Key reference pages:
 - [DGTSK](https://dcruzf.github.io/highFIS/latest/models/dg-tsk)
 - [DG-ALETSK](https://dcruzf.github.io/highFIS/latest/models/dg-aletsk)
 - [FSRE-AdaTSK](https://dcruzf.github.io/highFIS/latest/models/fsre-adatsk)
+- [MHTSK](https://dcruzf.github.io/highFIS/latest/models/mhtsk)
 - [HDFIS](https://dcruzf.github.io/highFIS/latest/models/hdfis)
 
 ## 🧪 Testing & quality
