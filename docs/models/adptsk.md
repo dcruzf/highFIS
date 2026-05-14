@@ -6,7 +6,7 @@ ADPTSK is a high-dimensional Takagi-Sugeno-Kang fuzzy system built on two key id
 
 ## Reference
 
-> Ma, M., Qian, L., Zhang, Y., Fang, Q., & Xue, G. (2025). An adaptive double-parameter softmin based Takagi-Sugeno-Kang fuzzy system for high-dimensional data. Fuzzy Sets and Systems, 521, 109582. https://doi.org/10.1016/j.fss.2025.109582
+> Ma, M., Qian, L., Zhang, Y., Fang, Q., & Xue, G. (2025). An adaptive double-parameter softmin based Takagi-Sugeno-Kang fuzzy system for high-dimensional data. Fuzzy Sets and Systems, 521, 109582, doi: [10.1016/j.fss.2025.109582](https://doi.org/10.1016/j.fss.2025.109582).
 
 ## Mathematical Formulation
 

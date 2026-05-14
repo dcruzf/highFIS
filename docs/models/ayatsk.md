@@ -4,7 +4,7 @@ AYATSK extends TSK by using an adaptive Yager T-norm aggregation and optional po
 
 ## Reference
 
-> G. Xue, Y. Yang and J. Wang, "Adaptive Yager T-Norm-Based Takagi–Sugeno–Kang Fuzzy Systems," in IEEE Transactions on Systems, Man, and Cybernetics: Systems, vol. 55, no. 12, pp. 9802-9815, Dec. 2025, doi: 10.1109/TSMC.2025.3621346.
+> G. Xue, Y. Yang and J. Wang, "Adaptive Yager T-Norm-Based Takagi–Sugeno–Kang Fuzzy Systems," in IEEE Transactions on Systems, Man, and Cybernetics: Systems, vol. 55, no. 12, pp. 9802-9815, Dec. 2025, doi: [10.1109/TSMC.2025.3621346](https://doi.org/10.1109/TSMC.2025.3621346).
 
 ## Mathematical Formulation
 

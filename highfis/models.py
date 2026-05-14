@@ -78,6 +78,18 @@ Model Family Overview:
             - `FSREAdaTSKClassifier`
             - `FSREAdaTSKRegressor`
 
+    **MHTSK**
+        Configuration: `t_norm="prod"` + `SumBasedDefuzzifier` with sparse
+        per-rule consequents and custom partial-rule masks.
+
+        Classes:
+            - `MHTSKClassifier`
+            - `MHTSKRegressor`
+
+        Behavior:
+            - sparse rule consequents using feature masks and "don't care"
+              membership functions.
+
     **DG-ALETSK**
         Configuration: ALE-softmin + `SoftmaxLogDefuzzifier`
 
@@ -135,6 +147,8 @@ from .layers import (
     GatedRegressionConsequentLayer,
     GatedRegressionZeroOrderConsequentLayer,
     RegressionConsequentLayer,
+    SparseClassificationConsequentLayer,
+    SparseRegressionConsequentLayer,
     _gate_activation,
 )
 from .memberships import MembershipFunction
@@ -181,6 +195,25 @@ def _solve_lse(A: Tensor, Y: Tensor) -> Tensor:
     """Solve a least-squares problem A X = Y for X."""
     # torch.pinverse handles both overdetermined and underdetermined systems.
     return torch.pinverse(A) @ Y
+
+
+def build_rule_feature_mask(rules: Sequence[Sequence[int]], dont_care_indices: Sequence[int]) -> Tensor:
+    """Build a boolean mask indicating which features are active in each rule."""
+    if len(rules) == 0:
+        raise ValueError("rules must not be empty")
+    n_rules = len(rules)
+    n_inputs = len(rules[0])
+    if len(dont_care_indices) != n_inputs:
+        raise ValueError("dont_care_indices must match the rule input dimension")
+
+    mask = torch.ones((n_rules, n_inputs), dtype=torch.bool)
+    for r, rule in enumerate(rules):
+        if len(rule) != n_inputs:
+            raise ValueError("all rules must have the same length")
+        for i, mf_idx in enumerate(rule):
+            if mf_idx == dont_care_indices[i]:
+                mask[r, i] = False
+    return mask
 
 
 # =====================================================================
@@ -473,6 +506,120 @@ class TSKRegressor(BaseTSKRegressor):
     def _build_consequent_layer(self) -> nn.Module:
         """Build regression consequent head."""
         return RegressionConsequentLayer(self.n_rules, self.n_inputs)
+
+    def _default_criterion(self) -> nn.Module:
+        """Return MSELoss as the default regression loss."""
+        return nn.MSELoss()
+
+
+class MHTSKClassifier(BaseTSKClassifier):
+    """Multihead TSK classifier with sparse rule consequents.
+
+    MHTSK builds multiple sparse subantecedents from random feature
+    subsets and jointly optimizes their rule consequents.
+
+    Reference:
+        Z. Bian, Q. Chang, J. Wang and N. R. Pal, "Multihead
+        Takagi-Sugeno-Kang Fuzzy System," in IEEE Transactions
+        on Fuzzy Systems, vol. 33, no. 8, pp. 2561-2573, Aug. 2025,
+        doi: 10.1109/TFUZZ.2025.3569227.
+    """
+
+    def __init__(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        rule_feature_mask: Tensor,
+        rules: Sequence[Sequence[int]],
+        n_classes: int,
+        t_norm: str = "prod",
+        t_norm_fn: TNormFn | None = None,
+        defuzzifier: nn.Module | None = None,
+        consequent_batch_norm: bool = False,
+    ) -> None:
+        """Initialize the MHTSK classifier.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of membership functions.
+            rule_feature_mask: Boolean tensor of shape (n_rules, n_inputs) indicating
+                which features are active for each rule.
+            rules: Explicit per-rule MF index sequences for all inputs.
+            n_classes: Number of output classes.
+            t_norm: Antecedent aggregation operator (default ``"prod"``).
+            t_norm_fn: Optional custom t-norm callable.
+            defuzzifier: Custom defuzzifier. Defaults to ``SumBasedDefuzzifier``.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+        """
+        if n_classes < 2:
+            raise ValueError("n_classes must be >= 2")
+        self.n_classes = int(n_classes)
+        self.rule_feature_mask = rule_feature_mask
+        super().__init__(
+            input_mfs,
+            rule_base="custom",
+            t_norm=t_norm,
+            t_norm_fn=t_norm_fn,
+            rules=rules,
+            defuzzifier=defuzzifier or SumBasedDefuzzifier(),
+            consequent_batch_norm=consequent_batch_norm,
+        )
+
+    def _build_consequent_layer(self) -> nn.Module:
+        """Build sparse classification consequent head."""
+        return SparseClassificationConsequentLayer(
+            self.n_rules,
+            self.n_inputs,
+            self.n_classes,
+            self.rule_feature_mask,
+        )
+
+    def _default_criterion(self) -> nn.Module:
+        """Return CrossEntropyLoss as the default classification loss."""
+        return nn.CrossEntropyLoss()
+
+
+class MHTSKRegressor(BaseTSKRegressor):
+    """Multihead TSK regressor with sparse rule consequents.
+
+    MHTSK builds multiple sparse subantecedents from random feature
+    subsets and jointly optimizes their rule consequents.
+
+    Reference:
+        Z. Bian, Q. Chang, J. Wang and N. R. Pal, "Multihead
+        Takagi-Sugeno-Kang Fuzzy System," in IEEE Transactions
+        on Fuzzy Systems, vol. 33, no. 8, pp. 2561-2573, Aug. 2025,
+        doi: 10.1109/TFUZZ.2025.3569227.
+
+    """
+
+    def __init__(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        rule_feature_mask: Tensor,
+        rules: Sequence[Sequence[int]],
+        t_norm: str = "prod",
+        t_norm_fn: TNormFn | None = None,
+        defuzzifier: nn.Module | None = None,
+        consequent_batch_norm: bool = False,
+    ) -> None:
+        """Initialize the MHTSK regressor."""
+        self.rule_feature_mask = rule_feature_mask
+        super().__init__(
+            input_mfs,
+            rule_base="custom",
+            t_norm=t_norm,
+            t_norm_fn=t_norm_fn,
+            rules=rules,
+            defuzzifier=defuzzifier or SumBasedDefuzzifier(),
+            consequent_batch_norm=consequent_batch_norm,
+        )
+
+    def _build_consequent_layer(self) -> nn.Module:
+        """Build sparse regression consequent head."""
+        return SparseRegressionConsequentLayer(
+            self.n_rules,
+            self.n_inputs,
+            self.rule_feature_mask,
+        )
 
     def _default_criterion(self) -> nn.Module:
         """Return MSELoss as the default regression loss."""

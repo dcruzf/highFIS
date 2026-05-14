@@ -6,7 +6,7 @@ high-dimensional inference strategies: HDFIS-prod and HDFIS-min.
 
 ## Reference
 
-> G. Xue, J. Wang, K. Zhang and N. R. Pal, "High-Dimensional Fuzzy Inference Systems," in IEEE Transactions on Systems, Man, and Cybernetics: Systems, vol. 54, no. 1, pp. 507-519, Jan. 2024, doi: 10.1109/TSMC.2023.3311475.
+> G. Xue, J. Wang, K. Zhang and N. R. Pal, "High-Dimensional Fuzzy Inference Systems," in IEEE Transactions on Systems, Man, and Cybernetics: Systems, vol. 54, no. 1, pp. 507-519, Jan. 2024, doi: [10.1109/TSMC.2023.3311475](https://doi.org/10.1109/TSMC.2023.3311475).
 
 ## Mathematical formulation
 

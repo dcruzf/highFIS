@@ -27,6 +27,8 @@ from .estimators import (
     InputConfig,
     LogTSKClassifierEstimator,
     LogTSKRegressorEstimator,
+    MHTSKClassifierEstimator,
+    MHTSKRegressorEstimator,
     TSKClassifierEstimator,
     TSKRegressorEstimator,
 )
@@ -74,6 +76,8 @@ from .models import (
     HTSKRegressor,
     LogTSKClassifier,
     LogTSKRegressor,
+    MHTSKClassifier,
+    MHTSKRegressor,
     TSKClassifier,
     TSKRegressor,
 )
@@ -142,6 +146,10 @@ __all__: list[str] = [
     "LogTSKClassifierEstimator",
     "LogTSKRegressor",
     "LogTSKRegressorEstimator",
+    "MHTSKClassifier",
+    "MHTSKClassifierEstimator",
+    "MHTSKRegressor",
+    "MHTSKRegressorEstimator",
     "MembershipFunction",
     "PiMF",
     "ProdSigmoidalMF",

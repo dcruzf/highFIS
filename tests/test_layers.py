@@ -13,6 +13,8 @@ from highfis.layers import (
     MembershipLayer,
     RegressionConsequentLayer,
     RuleLayer,
+    SparseClassificationConsequentLayer,
+    SparseRegressionConsequentLayer,
     _generate_en_frb,
     gate1,
     gate2,
@@ -156,6 +158,76 @@ def test_classification_consequent_layer_he_init() -> None:
     # Weight std should be close to sqrt(2/fan_in) = sqrt(2/10) ≈ 0.447
     # but can vary; just check it's not the default randn scale (~1.0)
     assert float(layer.weight.detach().std()) < 1.0
+
+
+def test_sparse_classification_consequent_masks_weights() -> None:
+    mask = torch.tensor([[True, False], [False, True]], dtype=torch.bool)
+    layer = SparseClassificationConsequentLayer(n_rules=2, n_inputs=2, n_classes=2, rule_feature_mask=mask)
+    assert layer.rule_feature_mask.shape == (2, 2)
+    assert layer.weight.shape == (2, 2, 2)
+    assert layer.bias.shape == (2, 2)
+
+    x = torch.randn(3, 2)
+    norm_w = torch.softmax(torch.randn(3, 2), dim=1)
+    logits = layer(x, norm_w)
+
+    assert logits.shape == (3, 2)
+
+
+def test_sparse_regression_consequent_masks_weights() -> None:
+    mask = torch.tensor([[True, False], [False, True]], dtype=torch.bool)
+    layer = SparseRegressionConsequentLayer(n_rules=2, n_inputs=2, rule_feature_mask=mask)
+    assert layer.rule_feature_mask.shape == (2, 2)
+    assert layer.weight.shape == (2, 2)
+    assert layer.bias.shape == (2,)
+
+    x = torch.randn(3, 2)
+    norm_w = torch.softmax(torch.randn(3, 2), dim=1)
+    output = layer(x, norm_w)
+
+    assert output.shape == (3, 1)
+
+
+def test_sparse_classification_consequent_invalid_init_and_forward_shape() -> None:
+    mask = torch.tensor([[True, False], [False, True]], dtype=torch.bool)
+    with pytest.raises(ValueError, match="n_rules, n_inputs and n_classes must be positive"):
+        SparseClassificationConsequentLayer(n_rules=0, n_inputs=2, n_classes=2, rule_feature_mask=mask)
+
+    with pytest.raises(ValueError, match="rule_feature_mask must have shape"):
+        SparseClassificationConsequentLayer(
+            n_rules=2, n_inputs=2, n_classes=2, rule_feature_mask=torch.ones((1, 2), dtype=torch.bool)
+        )
+
+    layer = SparseClassificationConsequentLayer(n_rules=2, n_inputs=2, n_classes=2, rule_feature_mask=mask)
+    x = torch.randn(3, 3)
+    norm_w = torch.softmax(torch.randn(3, 2), dim=1)
+    with pytest.raises(ValueError, match="expected x shape"):
+        layer(x, norm_w)
+
+    x = torch.randn(3, 2)
+    norm_w = torch.randn(3, 1)
+    with pytest.raises(ValueError, match="expected norm_w shape"):
+        layer(x, norm_w)
+
+
+def test_sparse_regression_consequent_invalid_init_and_forward_shape() -> None:
+    mask = torch.tensor([[True, False], [False, True]], dtype=torch.bool)
+    with pytest.raises(ValueError, match="n_rules and n_inputs must be positive"):
+        SparseRegressionConsequentLayer(n_rules=0, n_inputs=2, rule_feature_mask=mask)
+
+    with pytest.raises(ValueError, match="rule_feature_mask must have shape"):
+        SparseRegressionConsequentLayer(n_rules=2, n_inputs=2, rule_feature_mask=torch.ones((1, 2), dtype=torch.bool))
+
+    layer = SparseRegressionConsequentLayer(n_rules=2, n_inputs=2, rule_feature_mask=mask)
+    x = torch.randn(3, 3)
+    norm_w = torch.softmax(torch.randn(3, 2), dim=1)
+    with pytest.raises(ValueError, match="expected x shape"):
+        layer(x, norm_w)
+
+    x = torch.randn(3, 2)
+    norm_w = torch.randn(3, 1)
+    with pytest.raises(ValueError, match="expected norm_w shape"):
+        layer(x, norm_w)
 
 
 def test_generate_en_frb_has_unique_rules() -> None:

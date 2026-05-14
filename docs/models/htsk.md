@@ -4,7 +4,7 @@ HTSK modifies standard TSK aggregation by averaging membership values in log-spa
 
 ## Reference
 
-> Y. Cui, D. Wu & Y. Xu, "Curse of Dimensionality for TSK Fuzzy Neural Networks: Explanation and Solutions," 2021 International Joint Conference on Neural Networks (IJCNN), Shenzhen, China, 2021, pp. 1-8, doi: 10.1109/IJCNN52387.2021.9534265.
+> Y. Cui, D. Wu & Y. Xu, "Curse of Dimensionality for TSK Fuzzy Neural Networks: Explanation and Solutions," 2021 International Joint Conference on Neural Networks (IJCNN), Shenzhen, China, 2021, pp. 1-8, doi: [10.1109/IJCNN52387.2021.9534265](https://doi.org/10.1109/IJCNN52387.2021.9534265).
 
 ## Mathematical Formulation
 
