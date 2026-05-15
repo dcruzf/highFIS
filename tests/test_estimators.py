@@ -622,6 +622,18 @@ def test_estimator_predict_proba_requires_fit() -> None:
         est.predict_proba(x)
 
 
+def test_estimator_fit_accepts_validation_data_in_fit() -> None:
+    x, y = _make_dataset(40)
+    x_val, y_val = _make_dataset(10)
+    est = HTSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=16)
+    est = est.fit(x, y, x_val=x_val, y_val=y_val)
+
+    assert hasattr(est, "history_")
+    assert "train" in est.history_
+    assert "val" in est.history_
+    assert est.model_ is not None
+
+
 def test_estimator_validates_input_config_length() -> None:
     x, y = _make_dataset(20)
     est = HTSKClassifierEstimator(input_configs=[InputConfig(name="x1", n_mfs=2)], batch_size=16)
@@ -1147,9 +1159,8 @@ def test_mhtsk_classifier_estimator_rule_extraction_with_validation_data() -> No
         epochs=1,
         batch_size=16,
         random_state=0,
-        validation_data=(x_val, y_val),
     )
-    est.fit(x, y)
+    est.fit(x, y, x_val=x_val, y_val=y_val)
     assert est._extracted_rule_indices_ is not None
     assert len(est._extracted_rule_indices_) > 0
 
@@ -1171,9 +1182,8 @@ def test_mhtsk_regressor_estimator_rule_extraction_with_validation_data() -> Non
         epochs=1,
         batch_size=16,
         random_state=0,
-        validation_data=(x_val, y_val),
     )
-    est.fit(x, y)
+    est.fit(x, y, x_val=x_val, y_val=y_val)
     assert est._extracted_rule_indices_ is not None
     assert len(est._extracted_rule_indices_) > 0
 
@@ -1700,9 +1710,8 @@ def test_estimator_early_stopping_with_validation_data() -> None:
         learning_rate=5e-2,
         random_state=7,
         patience=3,
-        validation_data=(x_val, y_val),
     )
-    est.fit(x_train, y_train)
+    est.fit(x_train, y_train, x_val=x_val, y_val=y_val)
 
     assert "val" in est.history_
     assert len(est.history_["val"]) > 0
@@ -1737,9 +1746,8 @@ def test_estimator_patience_none_disables_early_stopping() -> None:
         learning_rate=5e-2,
         random_state=7,
         patience=None,
-        validation_data=(x_val, y_val),
     )
-    est.fit(x_train, y_train)
+    est.fit(x_train, y_train, x_val=x_val, y_val=y_val)
 
     assert est.history_["stopped_epoch"] == 10
     assert len(est.history_["val"]) == 10
@@ -1759,9 +1767,8 @@ def test_estimator_restore_best_false_does_not_restore_best_model() -> None:
         random_state=7,
         patience=1,
         restore_best=False,
-        validation_data=(x_val, y_val),
     )
-    est.fit(x_train, y_train)
+    est.fit(x_train, y_train, x_val=x_val, y_val=y_val)
 
     assert est.history_["stopped_epoch"] == 5
     assert len(est.history_["val"]) == 5
@@ -2127,9 +2134,8 @@ def test_regressor_estimator_early_stopping_with_validation_data() -> None:
         learning_rate=5e-2,
         random_state=7,
         patience=3,
-        validation_data=(x_val, y_val),
     )
-    est.fit(x_train, y_train)
+    est.fit(x_train, y_train, x_val=x_val, y_val=y_val)
 
     assert "val" in est.history_
     assert len(est.history_["val"]) > 0

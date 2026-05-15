@@ -743,7 +743,6 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         pfrb_max_rules: int | None = None,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialise shared hyperparameters for TSK classifier estimators.
@@ -806,10 +805,9 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
                 training samples as rule prototypes.
             patience: Number of consecutive epochs without improvement on
                 the validation loss before training is stopped early. Only
-                active when ``validation_data`` is provided.
+                active when ``x_val`` and ``y_val`` are provided.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
-            validation_data: Optional ``(X_val, y_val)`` tuple used for
                 early stopping and held-out performance monitoring.
             weight_decay: L2 weight-decay coefficient applied to consequent
                 layer parameters by the Adam optimiser.
@@ -831,7 +829,6 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         self.pfrb_max_rules = pfrb_max_rules
         self.patience = patience
         self.restore_best = restore_best
-        self.validation_data = validation_data
         self.weight_decay = weight_decay
 
     # -- helpers ----------------------------------------------------------
@@ -930,8 +927,19 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
 
     # -- sklearn API ------------------------------------------------------
 
-    def fit(self, x: Any, y: Any) -> Self:
-        """Train the TSK classifier on labeled samples."""
+    def fit(
+        self,
+        x: Any,
+        y: Any,
+        *,
+        x_val: Any | None = None,
+        y_val: Any | None = None,
+    ) -> Self:
+        """Train the TSK classifier on labeled samples.
+
+        Validation data should be supplied using ``x_val`` and ``y_val``
+        when available.
+        """
         x_arr, y_arr = check_X_y(x, y)
 
         if self.random_state is not None:
@@ -951,15 +959,15 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
 
         y_t = torch.as_tensor(y_idx, dtype=torch.long)
 
-        # Prepare validation tensors if provided
+        # Prepare validation tensors if provided via fit.
         x_val_t: torch.Tensor | None = None
         y_val_t: torch.Tensor | None = None
-        if self.validation_data is not None:
-            x_v, y_v = self.validation_data
-            x_v_arr = check_array(x_v)
-            y_v_idx = self._label_encoder_.transform(np.asarray(y_v))
+        if (x_val is None) ^ (y_val is None):
+            raise ValueError("x_val and y_val must be provided together")
+        if x_val is not None and y_val is not None:
+            x_v_arr, y_v_arr = check_X_y(x_val, y_val)
             x_val_t = self._as_tensor_x(x_v_arr)
-            y_val_t = torch.as_tensor(y_v_idx, dtype=torch.long)
+            y_val_t = torch.as_tensor(np.asarray(y_v_arr, dtype=np.int64), dtype=torch.long)
 
         self.history_ = self.model_.fit(
             self._as_tensor_x(x_arr),
@@ -1123,7 +1131,6 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         pfrb_max_rules: int | None = None,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialise shared hyperparameters for TSK regressor estimators.
@@ -1183,11 +1190,9 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
                 ``rule_base='pfrb'``. ``None`` uses all training samples.
             patience: Number of consecutive epochs without improvement on
                 the validation loss before training is stopped early. Only
-                active when ``validation_data`` is provided.
+                active when ``x_val`` and ``y_val`` are provided.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
-            validation_data: Optional ``(X_val, y_val)`` tuple used for
-                early stopping and held-out performance monitoring.
             weight_decay: L2 weight-decay coefficient applied to consequent
                 layer parameters by the Adam optimiser.
         """
@@ -1208,7 +1213,6 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         self.pfrb_max_rules = pfrb_max_rules
         self.patience = patience
         self.restore_best = restore_best
-        self.validation_data = validation_data
         self.weight_decay = weight_decay
 
     # -- helpers ----------------------------------------------------------
@@ -1307,8 +1311,19 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
 
     # -- sklearn API ------------------------------------------------------
 
-    def fit(self, x: Any, y: Any) -> Self:
-        """Train the TSK regressor on labeled samples."""
+    def fit(
+        self,
+        x: Any,
+        y: Any,
+        *,
+        x_val: Any | None = None,
+        y_val: Any | None = None,
+    ) -> Self:
+        """Train the TSK regressor on labeled samples.
+
+        Validation data should be supplied using ``x_val`` and ``y_val``
+        when available.
+        """
         x_arr, y_arr = check_X_y(x, y)
 
         if self.random_state is not None:
@@ -1323,14 +1338,15 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
 
         y_t = torch.as_tensor(np.asarray(y_arr, dtype=np.float32), dtype=torch.float32)
 
-        # Prepare validation tensors if provided
+        # Prepare validation tensors if provided via fit.
         x_val_t: torch.Tensor | None = None
         y_val_t: torch.Tensor | None = None
-        if self.validation_data is not None:
-            x_v, y_v = self.validation_data
-            x_v_arr = check_array(x_v)
+        if (x_val is None) ^ (y_val is None):
+            raise ValueError("x_val and y_val must be provided together")
+        if x_val is not None and y_val is not None:
+            x_v_arr, y_v_arr = check_X_y(x_val, y_val)
             x_val_t = self._as_tensor_x(x_v_arr)
-            y_val_t = torch.as_tensor(np.asarray(y_v, dtype=np.float32), dtype=torch.float32)
+            y_val_t = torch.as_tensor(np.asarray(y_v_arr, dtype=np.float32), dtype=torch.float32)
 
         self.history_ = self.model_.fit(
             self._as_tensor_x(x_arr),
@@ -1478,7 +1494,6 @@ class HTSKClassifierEstimator(_BaseClassifierEstimator):
         pfrb_max_rules: int | None = None,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialise an HTSK classifier.
@@ -1504,7 +1519,6 @@ class HTSKClassifierEstimator(_BaseClassifierEstimator):
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
-            validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
         """
         super().__init__(
@@ -1525,7 +1539,6 @@ class HTSKClassifierEstimator(_BaseClassifierEstimator):
             pfrb_max_rules=pfrb_max_rules,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
 
@@ -1585,7 +1598,6 @@ class HTSKRegressorEstimator(_BaseRegressorEstimator):
         pfrb_max_rules: int | None = None,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialise an HTSK regressor.
@@ -1612,7 +1624,6 @@ class HTSKRegressorEstimator(_BaseRegressorEstimator):
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
-            validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
         """
         super().__init__(
@@ -1632,7 +1643,6 @@ class HTSKRegressorEstimator(_BaseRegressorEstimator):
             consequent_batch_norm=consequent_batch_norm,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
 
@@ -1697,7 +1707,6 @@ class TSKClassifierEstimator(_BaseClassifierEstimator):
         pfrb_max_rules: int | None = None,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialise a vanilla TSK classifier.
@@ -1726,7 +1735,6 @@ class TSKClassifierEstimator(_BaseClassifierEstimator):
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
-            validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
         """
         super().__init__(
@@ -1747,7 +1755,6 @@ class TSKClassifierEstimator(_BaseClassifierEstimator):
             pfrb_max_rules=pfrb_max_rules,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
 
@@ -1807,7 +1814,6 @@ class TSKRegressorEstimator(_BaseRegressorEstimator):
         consequent_batch_norm: bool = False,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialise a vanilla TSK regressor.
@@ -1834,7 +1840,6 @@ class TSKRegressorEstimator(_BaseRegressorEstimator):
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
-            validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
         """
         super().__init__(
@@ -1854,7 +1859,6 @@ class TSKRegressorEstimator(_BaseRegressorEstimator):
             consequent_batch_norm=consequent_batch_norm,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
 
@@ -1925,7 +1929,6 @@ class MHTSKClassifierEstimator(_BaseClassifierEstimator):
         consequent_batch_norm: bool = False,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialize a MHTSK classifier estimator.
@@ -1961,7 +1964,6 @@ class MHTSKClassifierEstimator(_BaseClassifierEstimator):
             consequent_batch_norm: Apply batch normalization to the consequent layer inputs.
             patience: Early-stopping patience for validation.
             restore_best: Whether to restore the best validation model weights after training.
-            validation_data: Optional validation tuple ``(X_val, y_val)`` used for early stopping.
             weight_decay: Weight decay coefficient for the optimizer.
         """
         super().__init__(
@@ -1982,7 +1984,6 @@ class MHTSKClassifierEstimator(_BaseClassifierEstimator):
             pfrb_max_rules=None,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
         self.n_heads = int(n_heads) if n_heads is not None else None
@@ -2052,9 +2053,9 @@ class MHTSKClassifierEstimator(_BaseClassifierEstimator):
         self._mhtsk_rule_feature_mask = self._mhtsk_rule_feature_mask[rule_indices]
         self.model_ = self._build_model(input_mfs, len(self.classes_), self.rule_base_)
 
-    def fit(self, x: Any, y: Any) -> Self:
+    def fit(self, x: Any, y: Any, *, x_val: Any | None = None, y_val: Any | None = None) -> Self:
         x_arr, y_arr = check_X_y(x, y)
-        super().fit(x, y)
+        super().fit(x, y, x_val=x_val, y_val=y_val)
 
         if not bool(self.rule_extraction):
             return self
@@ -2074,12 +2075,13 @@ class MHTSKClassifierEstimator(_BaseClassifierEstimator):
         if self.retrain_after_extraction:
             x_val_t: torch.Tensor | None = None
             y_val_t: torch.Tensor | None = None
-            if self.validation_data is not None:
-                x_v, y_v = self.validation_data
-                x_v_arr = check_array(x_v)
-                y_v_idx = self._label_encoder_.transform(np.asarray(y_v))
+            if x_val is not None and y_val is not None:
+                x_v_arr, y_v_arr = check_X_y(x_val, y_val)
                 x_val_t = self._as_tensor_x(x_v_arr)
-                y_val_t = torch.as_tensor(y_v_idx, dtype=torch.long)
+                y_val_t = torch.as_tensor(
+                    self._label_encoder_.transform(np.asarray(y_v_arr)),
+                    dtype=torch.long,
+                )
             self.history_ = self.model_.fit(
                 x_t,
                 y_t,
@@ -2153,7 +2155,6 @@ class MHTSKRegressorEstimator(_BaseRegressorEstimator):
         consequent_batch_norm: bool = False,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialize a MHTSK regressor estimator.
@@ -2188,7 +2189,6 @@ class MHTSKRegressorEstimator(_BaseRegressorEstimator):
             consequent_batch_norm: Apply batch normalization to the consequent layer inputs.
             patience: Early-stopping patience for validation.
             restore_best: Whether to restore the best validation model weights after training.
-            validation_data: Optional validation tuple ``(X_val, y_val)`` used for early stopping.
             weight_decay: Weight decay coefficient for the optimizer.
 
         Notes:
@@ -2213,7 +2213,6 @@ class MHTSKRegressorEstimator(_BaseRegressorEstimator):
             pfrb_max_rules=None,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
         self.n_heads = int(n_heads) if n_heads is not None else None
@@ -2268,9 +2267,9 @@ class MHTSKRegressorEstimator(_BaseRegressorEstimator):
         self._mhtsk_rule_feature_mask = self._mhtsk_rule_feature_mask[rule_indices]
         self.model_ = self._build_regressor_model(input_mfs, self.rule_base_, None)
 
-    def fit(self, x: Any, y: Any) -> Self:
+    def fit(self, x: Any, y: Any, *, x_val: Any | None = None, y_val: Any | None = None) -> Self:
         x_arr, y_arr = check_X_y(x, y)
-        super().fit(x, y)
+        super().fit(x, y, x_val=x_val, y_val=y_val)
 
         if not bool(self.rule_extraction):
             return self
@@ -2290,11 +2289,10 @@ class MHTSKRegressorEstimator(_BaseRegressorEstimator):
             y_t = torch.as_tensor(np.asarray(y_arr), dtype=torch.float32)
             x_val_t: torch.Tensor | None = None
             y_val_t: torch.Tensor | None = None
-            if self.validation_data is not None:
-                x_v, y_v = self.validation_data
-                x_v_arr = check_array(x_v)
-                y_val_t = torch.as_tensor(np.asarray(y_v), dtype=torch.float32)
+            if x_val is not None and y_val is not None:
+                x_v_arr, y_v_arr = check_X_y(x_val, y_val)
                 x_val_t = self._as_tensor_x(x_v_arr)
+                y_val_t = torch.as_tensor(np.asarray(y_v_arr, dtype=np.float32), dtype=torch.float32)
             self.history_ = self.model_.fit(
                 x_t,
                 y_t,
@@ -2370,7 +2368,6 @@ class HDFISProdClassifierEstimator(_BaseClassifierEstimator):
         pfrb_max_rules: int | None = None,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
         xi: float = 745.0,
         rho: float | None = None,
@@ -2393,7 +2390,6 @@ class HDFISProdClassifierEstimator(_BaseClassifierEstimator):
             pfrb_max_rules=pfrb_max_rules,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
         self.xi = float(xi)
@@ -2468,7 +2464,6 @@ class HDFISProdRegressorEstimator(_BaseRegressorEstimator):
         consequent_batch_norm: bool = False,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
         xi: float = 745.0,
         rho: float | None = None,
@@ -2490,7 +2485,6 @@ class HDFISProdRegressorEstimator(_BaseRegressorEstimator):
             consequent_batch_norm=consequent_batch_norm,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
         self.xi = float(xi)
@@ -2567,7 +2561,6 @@ class HDFISMinClassifierEstimator(_BaseClassifierEstimator):
         pfrb_max_rules: int | None = None,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialise an HDFIS-min classifier estimator."""
@@ -2589,7 +2582,6 @@ class HDFISMinClassifierEstimator(_BaseClassifierEstimator):
             pfrb_max_rules=pfrb_max_rules,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
 
@@ -2650,7 +2642,6 @@ class HDFISMinRegressorEstimator(_BaseRegressorEstimator):
         consequent_batch_norm: bool = False,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialise an HDFIS-min regressor estimator."""
@@ -2671,7 +2662,6 @@ class HDFISMinRegressorEstimator(_BaseRegressorEstimator):
             consequent_batch_norm=consequent_batch_norm,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
 
@@ -2730,7 +2720,6 @@ class AYATSKClassifierEstimator(_BaseClassifierEstimator):
         pfrb_max_rules: int | None = None,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialise an AYATSK classifier.
@@ -2759,7 +2748,6 @@ class AYATSKClassifierEstimator(_BaseClassifierEstimator):
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
-            validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
         """
         super().__init__(
@@ -2780,7 +2768,6 @@ class AYATSKClassifierEstimator(_BaseClassifierEstimator):
             pfrb_max_rules=pfrb_max_rules,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
 
@@ -2840,7 +2827,6 @@ class AYATSKRegressorEstimator(_BaseRegressorEstimator):
         consequent_batch_norm: bool = False,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialise an AYATSK regressor.
@@ -2864,7 +2850,6 @@ class AYATSKRegressorEstimator(_BaseRegressorEstimator):
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
-            validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
         """
         super().__init__(
@@ -2884,7 +2869,6 @@ class AYATSKRegressorEstimator(_BaseRegressorEstimator):
             consequent_batch_norm=consequent_batch_norm,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
 
@@ -2945,7 +2929,6 @@ class DombiTSKClassifierEstimator(_BaseClassifierEstimator):
         pfrb_max_rules: int | None = None,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialise a DombiTSK classifier.
@@ -2973,7 +2956,6 @@ class DombiTSKClassifierEstimator(_BaseClassifierEstimator):
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
-            validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
         """
         super().__init__(
@@ -2994,7 +2976,6 @@ class DombiTSKClassifierEstimator(_BaseClassifierEstimator):
             pfrb_max_rules=pfrb_max_rules,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
 
@@ -3055,7 +3036,6 @@ class DombiTSKRegressorEstimator(_BaseRegressorEstimator):
         consequent_batch_norm: bool = False,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialise a DombiTSK regressor.
@@ -3079,7 +3059,6 @@ class DombiTSKRegressorEstimator(_BaseRegressorEstimator):
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
-            validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
         """
         super().__init__(
@@ -3099,7 +3078,6 @@ class DombiTSKRegressorEstimator(_BaseRegressorEstimator):
             consequent_batch_norm=consequent_batch_norm,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
 
@@ -3159,7 +3137,6 @@ class ADMTSKClassifierEstimator(_BaseClassifierEstimator):
         pfrb_max_rules: int | None = None,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
         adaptive: bool = True,
         lambda_: float = 1.0,
@@ -3191,7 +3168,6 @@ class ADMTSKClassifierEstimator(_BaseClassifierEstimator):
             pfrb_max_rules: Maximum number of rules for point-based FRB.
             patience: Early stopping patience. Use ``None`` to disable.
             restore_best: If True, restore the best validation weights.
-            validation_data: Validation dataset used for early stopping.
             weight_decay: Weight decay applied during training.
             adaptive: If True, use adaptive lambda selection for Dombi T-norm.
             lambda_: Fixed Dombi parameter when adaptive is False.
@@ -3219,7 +3195,6 @@ class ADMTSKClassifierEstimator(_BaseClassifierEstimator):
             pfrb_max_rules=pfrb_max_rules,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
         self.adaptive = bool(adaptive)
@@ -3294,7 +3269,6 @@ class ADMTSKRegressorEstimator(_BaseRegressorEstimator):
         consequent_batch_norm: bool = False,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
         adaptive: bool = True,
         lambda_: float = 1.0,
@@ -3325,7 +3299,6 @@ class ADMTSKRegressorEstimator(_BaseRegressorEstimator):
                 consequent inputs.
             patience: Early stopping patience. Use ``None`` to disable.
             restore_best: If True, restore the best validation weights.
-            validation_data: Validation dataset used for early stopping.
             weight_decay: Weight decay applied during training.
             adaptive: If True, use adaptive lambda selection for Dombi T-norm.
             lambda_: Fixed Dombi parameter when adaptive is False.
@@ -3352,7 +3325,6 @@ class ADMTSKRegressorEstimator(_BaseRegressorEstimator):
             consequent_batch_norm=consequent_batch_norm,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
         self.adaptive = bool(adaptive)
@@ -3428,7 +3400,6 @@ class ADPTSKClassifierEstimator(_BaseClassifierEstimator):
         pfrb_max_rules: int | None = None,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
         kappa: float = 690.0,
         xi: float = 730.0,
@@ -3462,7 +3433,6 @@ class ADPTSKClassifierEstimator(_BaseClassifierEstimator):
             patience: Early-stopping patience. ``None`` disables early stopping.
             restore_best: Restore the best validation model weights after
                 training.
-            validation_data: Optional ``(X_val, y_val)`` tuple for early
                 stopping.
             weight_decay: L2 weight decay coefficient for consequent parameters.
             kappa: ADPTSK ``κ`` parameter controlling the double-softmin
@@ -3489,7 +3459,6 @@ class ADPTSKClassifierEstimator(_BaseClassifierEstimator):
             pfrb_max_rules=pfrb_max_rules,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
         self.kappa = float(kappa)
@@ -3558,7 +3527,6 @@ class ADPTSKRegressorEstimator(_BaseRegressorEstimator):
         pfrb_max_rules: int | None = None,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
         kappa: float = 690.0,
         xi: float = 730.0,
@@ -3592,7 +3560,6 @@ class ADPTSKRegressorEstimator(_BaseRegressorEstimator):
             patience: Early-stopping patience. ``None`` disables early stopping.
             restore_best: Restore the best validation model weights after
                 training.
-            validation_data: Optional ``(X_val, y_val)`` tuple for early
                 stopping.
             weight_decay: L2 weight decay coefficient for consequent parameters.
             kappa: ADPTSK ``κ`` parameter controlling the double-softmin
@@ -3619,7 +3586,6 @@ class ADPTSKRegressorEstimator(_BaseRegressorEstimator):
             pfrb_max_rules=pfrb_max_rules,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
         self.kappa = float(kappa)
@@ -3684,7 +3650,6 @@ class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
         consequent_batch_norm: bool = False,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialise an AdaTSK classifier.
@@ -3709,7 +3674,6 @@ class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
-            validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
         """
         super().__init__(
@@ -3729,7 +3693,6 @@ class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
             consequent_batch_norm=consequent_batch_norm,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
 
@@ -3788,7 +3751,6 @@ class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
         consequent_batch_norm: bool = False,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialise an AdaTSK regressor.
@@ -3812,7 +3774,6 @@ class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
-            validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
         """
         super().__init__(
@@ -3832,7 +3793,6 @@ class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
             consequent_batch_norm=consequent_batch_norm,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
 
@@ -3892,7 +3852,6 @@ class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
         consequent_batch_norm: bool = False,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialise an FSRE-AdaTSK classifier.
@@ -3925,7 +3884,6 @@ class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
-            validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
 
         Raises:
@@ -3952,7 +3910,6 @@ class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
             consequent_batch_norm=consequent_batch_norm,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
 
@@ -4014,7 +3971,6 @@ class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
         consequent_batch_norm: bool = False,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialise an FSRE-AdaTSK regressor.
@@ -4044,7 +4000,6 @@ class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
-            validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
 
         Raises:
@@ -4071,7 +4026,6 @@ class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
             consequent_batch_norm=consequent_batch_norm,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
 
@@ -4218,7 +4172,6 @@ class DGTSKClassifierEstimator(_BaseClassifierEstimator):
         pfrb_max_rules: int | None = None,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialise a DG-TSK classifier.
@@ -4245,7 +4198,6 @@ class DGTSKClassifierEstimator(_BaseClassifierEstimator):
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
-            validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
         """
         self.use_en_frb = bool(use_en_frb)
@@ -4267,7 +4219,6 @@ class DGTSKClassifierEstimator(_BaseClassifierEstimator):
             pfrb_max_rules=pfrb_max_rules,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
 
@@ -4330,7 +4281,6 @@ class DGTSKRegressorEstimator(_BaseRegressorEstimator):
         pfrb_max_rules: int | None = None,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialise a DG-TSK regressor.
@@ -4357,7 +4307,6 @@ class DGTSKRegressorEstimator(_BaseRegressorEstimator):
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
-            validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
         """
         self.use_en_frb = bool(use_en_frb)
@@ -4379,7 +4328,6 @@ class DGTSKRegressorEstimator(_BaseRegressorEstimator):
             pfrb_max_rules=pfrb_max_rules,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
 
@@ -4447,7 +4395,6 @@ class LogTSKClassifierEstimator(_BaseClassifierEstimator):
         consequent_batch_norm: bool = False,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialise a LogTSK classifier.
@@ -4471,7 +4418,6 @@ class LogTSKClassifierEstimator(_BaseClassifierEstimator):
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
-            validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
         """
         super().__init__(
@@ -4491,7 +4437,6 @@ class LogTSKClassifierEstimator(_BaseClassifierEstimator):
             consequent_batch_norm=consequent_batch_norm,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
 
@@ -4554,7 +4499,6 @@ class LogTSKRegressorEstimator(_BaseRegressorEstimator):
         consequent_batch_norm: bool = False,
         patience: int | None = 20,
         restore_best: bool = True,
-        validation_data: tuple[Any, Any] | None = None,
         weight_decay: float = 1e-8,
     ) -> None:
         """Initialise a LogTSK regressor.
@@ -4578,7 +4522,6 @@ class LogTSKRegressorEstimator(_BaseRegressorEstimator):
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
-            validation_data: Optional ``(X_val, y_val)`` for early stopping.
             weight_decay: L2 weight decay for consequent parameters.
         """
         super().__init__(
@@ -4598,7 +4541,6 @@ class LogTSKRegressorEstimator(_BaseRegressorEstimator):
             consequent_batch_norm=consequent_batch_norm,
             patience=patience,
             restore_best=restore_best,
-            validation_data=validation_data,
             weight_decay=weight_decay,
         )
 
