@@ -47,8 +47,7 @@ $$
 \tag{4}
 $$
 
-This exposes the saturation issue identified in
-`HTSK_2021.md`: as $D$ grows, the log-domain activations become more extreme,
+This exposes the saturation issue: as $D$ grows, the log-domain activations become more extreme,
 making the normalized weights dominated by a single rule.
 
 ### Consequent (first-order)
