@@ -1,26 +1,33 @@
 from __future__ import annotations
 
 import math
+from typing import Any
 
 import pytest
 import torch
 
 from highfis.memberships import (
+    BellMF,
     CompositeExponentialMF,
     CompositeGaussianMF,
     CompositeGMF,
+    ConstantMF,
     DiffSigmoidalMF,
     DimensionDependentGaussianMF,
     GaussianMF,
     GaussianPIMF,
     LinSShapedMF,
     LinZShapedMF,
+    MembershipFunction,
     PiMF,
     ProdSigmoidalMF,
     SigmoidalMF,
     SShapedMF,
+    TrapezoidalMF,
+    TriangularMF,
     ZShapedMF,
 )
+from highfis.models import TSKRegressor
 
 
 def test_gaussian_mf_rejects_non_positive_sigma() -> None:
@@ -259,5 +266,83 @@ def test_gaussian_pimf_infimum_positive() -> None:
     mf = GaussianPIMF(mean=0.0, sigma=1.0, K=2.0)
     x = torch.tensor([100.0])
     y = mf(x)
-    assert y.item() > 0.0
-    assert y.item() < 1.0
+    assert y.shape == x.shape
+    assert bool(torch.all(y > 0.0))
+
+
+@pytest.mark.parametrize(
+    "mf, expected",
+    [
+        (ConstantMF(value=0.5), {"value": 0.5}),
+        (GaussianMF(mean=0.5, sigma=1.5), {"mean": 0.5, "sigma": 1.5}),
+        (
+            DimensionDependentGaussianMF(mean=0.5, sigma=2.0, dimension=1000, xi=745.0),
+            {
+                "mean": 0.5,
+                "sigma": 2.0,
+                "dimension": 1000.0,
+                "xi": 745.0,
+                "rho": float(1.0 - math.log(745.0) / math.log(1000.0)),
+            },
+        ),
+        (CompositeGaussianMF(mean=0.5, sigma=2.0), {"mean": 0.5, "sigma": 2.0}),
+        (CompositeGMF(mean=0.5, sigma=2.0), {"mean": 0.5, "sigma": 2.0}),
+        (TriangularMF(left=-1.0, center=0.0, right=1.0), {"left": -1.0, "center": 0.0, "right": 1.0}),
+        (TrapezoidalMF(a=0.0, b=1.0, c=2.0, d=3.0), {"a": 0.0, "b": 1.0, "c": 2.0, "d": 3.0}),
+        (BellMF(a=1.0, b=2.0, center=0.0), {"a": 1.0, "b": 2.0, "center": 0.0}),
+        (CompositeExponentialMF(center=0.5, sigma=2.0, k=10.0), {"center": 0.5, "sigma": 2.0, "k": 10.0}),
+        (SigmoidalMF(a=1.0, center=0.0), {"a": 1.0, "center": 0.0}),
+        (
+            DiffSigmoidalMF(a1=2.0, center1=-1.0, a2=3.0, center2=1.0),
+            {"a1": 2.0, "center1": -1.0, "a2": 3.0, "center2": 1.0},
+        ),
+        (
+            ProdSigmoidalMF(a1=2.0, center1=-1.0, a2=-3.0, center2=1.0),
+            {"a1": 2.0, "center1": -1.0, "a2": -3.0, "center2": 1.0},
+        ),
+        (SShapedMF(a=0.0, b=1.0), {"a": 0.0, "b": 1.0}),
+        (LinSShapedMF(a=0.0, b=1.0), {"a": 0.0, "b": 1.0}),
+        (ZShapedMF(a=0.0, b=1.0), {"a": 0.0, "b": 1.0}),
+        (LinZShapedMF(a=0.0, b=1.0), {"a": 0.0, "b": 1.0}),
+        (PiMF(a=0.0, b=0.5, c=1.0, d=1.5), {"a": 0.0, "b": 0.5, "c": 1.0, "d": 1.5}),
+        (GaussianPIMF(mean=0.5, sigma=2.0, K=5.0), {"mean": 0.5, "sigma": 2.0, "K": 5.0}),
+    ],
+)
+def test_all_membership_functions_expose_inspect_params(mf: Any, expected: dict[str, float]) -> None:
+    params = mf.inspect_params()
+    assert isinstance(params, dict)
+    assert set(params) == set(expected)
+    for key, value in expected.items():
+        assert params[key] == pytest.approx(value)
+
+
+def test_membership_function_default_inspect_params_with_base_class() -> None:
+    class DummyMF(MembershipFunction):
+        def __init__(self) -> None:
+            super().__init__()
+            self.raw_value = torch.nn.Parameter(torch.tensor(1.2))
+
+        @property
+        def value(self) -> float:
+            return float(self.raw_value.detach())
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            return x
+
+    mf = DummyMF()
+    params = mf.inspect_params()
+    assert set(params) == {"value"}
+    assert params["value"] == pytest.approx(1.2)
+
+
+def test_tsk_regressor_get_mf_params_returns_sane_structure() -> None:
+    input_mfs = {"x1": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.5)]}
+    model = TSKRegressor(input_mfs)
+    params = model.get_mf_params()
+
+    assert set(params) == {"x1"}
+    assert isinstance(params["x1"], list)
+    assert len(params["x1"]) == 2
+    assert params["x1"][0]["type"] == "GaussianMF"
+    assert params["x1"][0]["mean"] == pytest.approx(0.0)
+    assert params["x1"][0]["sigma"] == pytest.approx(1.0)
