@@ -143,9 +143,7 @@ hatch run typing
 ## 🤝 Contributing
 
 Contributions are welcome! Please open issues or pull requests, and refer to
-our development guide in the documentation:
-
-https://dcruzf.github.io/highFIS/latest/contributing/
+our development guide in the documentation: [contributing](https://dcruzf.github.io/highFIS/latest/contributing/)
 
 ## 📄 License
 
