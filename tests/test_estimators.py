@@ -4,6 +4,7 @@ import math
 import tempfile
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import Any, cast
 
 import numpy as np
 import pytest
@@ -50,13 +51,14 @@ from highfis.estimators import (
     _build_pfrb_input_mfs,
     _extract_mhtsk_rule_indices,
     _mann_whitney_p_value,
+    _normalize_importance,
     _rankdata,
     _resolve_mhtsk_scale_parameters,
     _select_rule_indices,
     feature_coverage_rate,
 )
 from highfis.memberships import CompositeGMF, DimensionDependentGaussianMF, GaussianMF, MembershipFunction
-from highfis.models import HDFISMinClassifier, HDFISMinRegressor
+from highfis.models import HDFISMinClassifier, HDFISMinRegressor, TSKRegressor
 
 
 def _make_dataset(n_samples: int = 60) -> tuple[np.ndarray, np.ndarray]:
@@ -2040,6 +2042,222 @@ def test_regressor_estimator_grid_init_fit_predict() -> None:
     pred = est.predict(x)
 
     assert pred.shape == (x.shape[0],)
+
+
+def test_estimator_inspection_methods_for_tsk_classifier() -> None:
+    x, y = _make_dataset(40)
+    est = TSKClassifierEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=3,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+        verbose=False,
+    )
+    est.fit(x, y)
+
+    info = est.inspect()
+    assert info["n_rules"] == est.model_.n_rules
+    assert info["n_inputs"] == est.model_.n_inputs
+    assert info["feature_names"] == list(est.model_.input_names)
+    assert info["rule_base"] == est.rule_base_
+    assert info["defuzzifier_type"] == type(est.model_.defuzzifier).__name__
+    assert isinstance(info["mf_params"], dict)
+    assert isinstance(info["rule_table"], list)
+    assert len(info["rule_table"]) == est.model_.n_rules
+    assert all("rule_id" in rule for rule in info["rule_table"])
+    assert all("type" in mf for mfs in info["mf_params"].values() for mf in mfs)
+
+    activations = est.rule_activation(x[:5])
+    assert activations.shape == (5, est.model_.n_rules)
+    assert np.all(activations >= 0.0)
+    assert np.all(activations <= 1.0)
+    assert np.allclose(np.sum(activations, axis=1), 1.0, atol=1e-5)
+
+    importance = est.feature_importance()
+    assert importance is not None
+    assert importance.shape == (x.shape[1],)
+    assert np.all(importance >= 0.0)
+    assert np.isclose(np.sum(importance), 1.0)
+
+
+def test_estimator_inspection_methods_for_tsk_regressor() -> None:
+    x, y = _make_regression_dataset(40)
+    est = TSKRegressorEstimator(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=3,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+        verbose=False,
+    )
+    est.fit(x, y)
+
+    info = est.inspect()
+    assert info["n_rules"] == est.model_.n_rules
+    assert info["n_inputs"] == est.model_.n_inputs
+    assert info["feature_names"] == list(est.model_.input_names)
+    assert info["rule_base"] == est.rule_base_
+
+    activations = est.rule_activation(x[:5])
+    assert activations.shape == (5, est.model_.n_rules)
+    assert np.allclose(np.sum(activations, axis=1), 1.0, atol=1e-5)
+
+    importance = est.feature_importance()
+    assert importance is not None
+    assert importance.shape == (x.shape[1],)
+    assert np.all(importance >= 0.0)
+    assert np.isclose(np.sum(importance), 1.0)
+
+
+def test_classifier_fit_requires_validation_inputs_together() -> None:
+    x, y = _make_dataset(20)
+    est = TSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    with pytest.raises(ValueError, match="x_val and y_val must be provided together"):
+        est.fit(x, y, x_val=x, y_val=None)
+
+
+def test_regressor_fit_requires_validation_inputs_together() -> None:
+    x, y = _make_regression_dataset(20)
+    est = TSKRegressorEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    with pytest.raises(ValueError, match="x_val and y_val must be provided together"):
+        est.fit(x, y, x_val=x, y_val=None)
+
+
+def test_classifier_rule_activation_validates_feature_count() -> None:
+    x, y = _make_dataset(20)
+    est = TSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    est.fit(x, y)
+    with pytest.raises(ValueError, match=r"expected .* features, got"):
+        est.rule_activation(x[:, :2])
+
+
+def test_regressor_rule_activation_validates_feature_count() -> None:
+    x, y = _make_regression_dataset(20)
+    est = TSKRegressorEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    est.fit(x, y)
+    with pytest.raises(ValueError, match=r"expected .* features, got"):
+        est.rule_activation(x[:, :2])
+
+
+def test_normalize_importance_returns_uniform_distribution_for_zero_total() -> None:
+    values = torch.zeros(3, dtype=torch.float32)
+    normalized = _normalize_importance(values)
+    assert normalized.shape == (3,)
+    assert np.allclose(normalized, np.array([1.0 / 3.0] * 3))
+
+
+def test_classifier_feature_importance_returns_none_when_consequent_weights_missing() -> None:
+    x, y = _make_dataset(20)
+    est = TSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    est.fit(x, y)
+    est.model_.get_consequent_weights = cast(Any, lambda: None)
+    assert est.feature_importance() is None
+
+
+def test_regressor_feature_importance_returns_none_when_consequent_weights_missing() -> None:
+    x, y = _make_regression_dataset(20)
+    est = TSKRegressorEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    est.fit(x, y)
+    est.model_.get_consequent_weights = cast(Any, lambda: None)
+    assert est.feature_importance() is None
+
+
+def test_classifier_feature_importance_handles_3d_weights_and_mask() -> None:
+    x, y = _make_dataset(20)
+    est = TSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    est.fit(x, y)
+    est.model_.get_consequent_weights = cast(Any, lambda: torch.ones(2, 3, x.shape[1], dtype=torch.float32))
+    est.model_.consequent_layer.rule_feature_mask = torch.ones(3, dtype=torch.float32)  # type: ignore[attr-defined]
+    importance = est.feature_importance()
+    assert importance is not None
+    assert importance.shape == (x.shape[1],)
+    assert np.isclose(np.sum(importance), 1.0)
+
+
+def test_classifier_feature_importance_handles_2d_weights() -> None:
+    x, y = _make_dataset(20)
+    est = TSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    est.fit(x, y)
+    est.model_.get_consequent_weights = cast(Any, lambda: torch.ones(3, x.shape[1], dtype=torch.float32))
+    importance = est.feature_importance()
+    assert importance is not None
+    assert importance.shape == (x.shape[1],)
+    assert np.isclose(np.sum(importance), 1.0)
+
+
+def test_classifier_feature_importance_raises_for_unsupported_weight_shape() -> None:
+    x, y = _make_dataset(20)
+    est = TSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    est.fit(x, y)
+    est.model_.get_consequent_weights = cast(Any, lambda: torch.ones(1, 2, 3, 4, dtype=torch.float32))
+    with pytest.raises(ValueError, match="unsupported consequent weight shape"):
+        est.feature_importance()
+
+
+def test_regressor_feature_importance_raises_for_unsupported_weight_shape() -> None:
+    x, y = _make_regression_dataset(20)
+    est = TSKRegressorEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    est.fit(x, y)
+    est.model_.get_consequent_weights = cast(Any, lambda: torch.ones(1, 2, 3, 4, dtype=torch.float32))
+    with pytest.raises(ValueError, match="unsupported consequent weight shape"):
+        est.feature_importance()
+
+
+def test_base_get_consequent_weights_returns_none_when_no_weight_attribute() -> None:
+    model = TSKRegressor({"x1": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.5)]})
+    if hasattr(model.consequent_layer, "weight"):
+        delattr(model.consequent_layer, "weight")
+    assert model.get_consequent_weights() is None
+
+
+def test_base_get_consequent_weights_returns_tensor_when_weight_exists() -> None:
+    model = TSKRegressor({"x1": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.5)]})
+    weight = model.get_consequent_weights()
+    assert weight is None or isinstance(weight, torch.Tensor)
+
+
+def test_regressor_feature_importance_handles_3d_weights_and_mask() -> None:
+    x, y = _make_regression_dataset(20)
+    est = TSKRegressorEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    est.fit(x, y)
+    est.model_.get_consequent_weights = cast(Any, lambda: torch.ones(2, 3, x.shape[1], dtype=torch.float32))
+    est.model_.consequent_layer.rule_feature_mask = torch.ones(3, dtype=torch.float32)  # type: ignore[attr-defined]
+    importance = est.feature_importance()
+    assert importance is not None
+    assert importance.shape == (x.shape[1],)
+    assert np.isclose(np.sum(importance), 1.0)
+
+
+def test_estimator_inspection_methods_for_mhtsk_classifier() -> None:
+    x, y = _make_dataset(40)
+    est = MHTSKClassifierEstimator(
+        n_mfs=2,
+        n_heads=2,
+        head_size=2,
+        epochs=3,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+        verbose=False,
+    )
+    est.fit(x, y)
+
+    info = est.inspect()
+    assert info["n_rules"] == est.model_.n_rules
+    assert len(info["rule_table"]) == est.model_.n_rules
+
+    activations = est.rule_activation(x[:5])
+    assert activations.shape == (5, est.model_.n_rules)
+    assert np.allclose(np.sum(activations, axis=1), 1.0, atol=1e-5)
+
+    importance = est.feature_importance()
+    assert importance is not None
+    assert importance.shape == (x.shape[1],)
+    assert np.all(importance >= 0.0)
+    assert np.isclose(np.sum(importance), 1.0)
 
 
 def test_adatsk_regressor_estimator_fit_predict() -> None:

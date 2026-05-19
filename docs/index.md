@@ -82,6 +82,8 @@ highFIS includes the following concrete TSK model families:
   feature selection and rule extraction.
 - [`DG-ALETSK`](models/dg-aletsk.md) — adaptive Ln-Exp softmin with embedded
   feature and rule gates for sparse high-dimensional modeling.
+- [`MHTSK`](models/mhtsk.md) — multihead sparse subantecedents for high-dimensional
+  rule extraction and scalable TSK learning.
 
 Each model family exposes both classifier and regressor variants.
 

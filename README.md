@@ -73,52 +73,21 @@ Each family exposes classifier and regressor variants.
 
 ## 🔧 Core components
 
-### Models
+highFIS exposes a compact, model-family-driven API with both concrete
+model classes and sklearn-compatible estimator wrappers.
 
-- `HTSKClassifier`, `HTSKRegressor`
-- `TSKClassifier`, `TSKRegressor`
-- `LogTSKClassifier`, `LogTSKRegressor`
-- `DombiTSKClassifier`, `DombiTSKRegressor`
-- `ADMTSKClassifier`, `ADMTSKRegressor`
-- `AYATSKClassifier`, `AYATSKRegressor`
-- `AdaTSKClassifier`, `AdaTSKRegressor`
-- `ADPTSKClassifier`, `ADPTSKRegressor`
-- `FSREAdaTSKClassifier`, `FSREAdaTSKRegressor`
-- `DGTSKClassifier`, `DGTSKRegressor`
-- `DGALETSKClassifier`, `DGALETSKRegressor`
-- `HDFISProdClassifier`, `HDFISProdRegressor`
-- `HDFISMinClassifier`, `HDFISMinRegressor`
-- `MHTSKClassifier`, `MHTSKRegressor`
+- Model families: `TSK`, `HTSK`, `LogTSK`, `MHTSK`, `DombiTSK`, `ADMTSK`,
+  `AYATSK`, `AdaTSK`, `ADPTSK`, `FSRE-AdaTSK`, `DG-TSK`, `DG-ALETSK`,
+  `HDFIS`
+- Estimator wrappers: `*ClassifierEstimator` and `*RegressorEstimator`
+  variants for each model family
+- Building blocks: membership functions, defuzzifiers, t-norms, and rule
+  base strategies
 
-### Estimator wrappers
+For the full class list and API reference, see the documentation:
 
-- `HTSKClassifierEstimator`, `HTSKRegressorEstimator`
-- `TSKClassifierEstimator`, `TSKRegressorEstimator`
-- `LogTSKClassifierEstimator`, `LogTSKRegressorEstimator`
-- `DombiTSKClassifierEstimator`, `DombiTSKRegressorEstimator`
-- `ADMTSKClassifierEstimator`, `ADMTSKRegressorEstimator`
-- `MHTSKClassifierEstimator`, `MHTSKRegressorEstimator`
-- `DGALETSKClassifierEstimator`, `DGALETSKRegressorEstimator`
-- `DGTSKClassifierEstimator`, `DGTSKRegressorEstimator`
-- `FSREAdaTSKClassifierEstimator`, `FSREAdaTSKRegressorEstimator`
-- `AYATSKClassifierEstimator`, `AYATSKRegressorEstimator`
-- `AdaTSKClassifierEstimator`, `AdaTSKRegressorEstimator`
-- `ADPTSKClassifierEstimator`, `ADPTSKRegressorEstimator`
-- `HDFISProdClassifierEstimator`, `HDFISProdRegressorEstimator`
-- `HDFISMinClassifierEstimator`, `HDFISMinRegressorEstimator`
-
-### Building blocks
-
-- Memberships: `GaussianMF`, `TriangularMF`, `TrapezoidalMF`, `BellMF`,
-  `SigmoidalMF`, `DiffSigmoidalMF`, `ProdSigmoidalMF`, `SShapedMF`,
-  `LinSShapedMF`, `ZShapedMF`, `LinZShapedMF`, `PiMF`,
-  `CompositeExponentialMF`, `GaussianPIMF`
-- Defuzzifiers: `SoftmaxLogDefuzzifier`, `SumBasedDefuzzifier`,
-  `LogSumDefuzzifier`
-- T-norms: `prod`, `min`, `gmean`, `dombi`, `yager`, `yager_simple`,
-  `ale_softmin_yager`
-- Rule base strategies: `cartesian`, `coco`, `en`, `custom`
-- Persistence: checkpoint save/load and validation via `highfis.persistence`
+- [Models](https://dcruzf.github.io/highFIS/latest/api/models)
+- [Estimators](https://dcruzf.github.io/highFIS/latest/api/estimators)
 
 ## 🛠️ Training options
 
@@ -174,9 +143,7 @@ hatch run typing
 ## 🤝 Contributing
 
 Contributions are welcome! Please open issues or pull requests, and refer to
-our development guide in the documentation:
-
-https://dcruzf.github.io/highFIS/latest/contributing/
+our development guide in the documentation: [contributing](https://dcruzf.github.io/highFIS/latest/contributing/).
 
 ## 📄 License
 
