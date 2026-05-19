@@ -46,6 +46,7 @@ Notes:
 from __future__ import annotations
 
 import math
+from typing import Any
 
 import torch
 from torch import Tensor, nn
@@ -83,6 +84,24 @@ class MembershipFunction(nn.Module):
             return x
         return torch.as_tensor(x, dtype=torch.get_default_dtype())
 
+    def inspect_params(self) -> dict[str, Any]:
+        """Return a serializable parameter dict for this membership function."""
+        params: dict[str, Any] = {}
+        for name, param in self.named_parameters(recurse=False):
+            if name.startswith("raw_"):
+                public_name = name[4:]
+                value = getattr(self, public_name, param)
+                param_name = public_name
+            else:
+                value = getattr(self, name)
+                param_name = name
+
+            if isinstance(value, Tensor):
+                params[param_name] = float(value.detach().cpu().item())
+            else:
+                params[param_name] = value
+        return params
+
 
 class ConstantMF(MembershipFunction):
     """Membership function that returns a constant degree for all inputs."""
@@ -101,6 +120,9 @@ class ConstantMF(MembershipFunction):
         """Return the constant membership value for each input sample."""
         x = self._as_tensor(x)
         return torch.full_like(x, fill_value=self.value)
+
+    def inspect_params(self) -> dict[str, Any]:
+        return {"value": self.value}
 
 
 class GaussianMF(MembershipFunction):
@@ -189,6 +211,15 @@ class DimensionDependentGaussianMF(GaussianMF):
         x = self._as_tensor(x)
         denom = self.scale + self.sigma.square() + self.eps
         return torch.exp(-(x - self.mean).square() / denom)
+
+    def inspect_params(self) -> dict[str, Any]:
+        return {
+            "mean": float(self.mean.detach().cpu().item()),
+            "sigma": float(self.sigma.detach().cpu().item()),
+            "dimension": float(self.dimension),
+            "xi": float(self.xi),
+            "rho": float(self.rho),
+        }
 
 
 class CompositeGaussianMF(MembershipFunction):
@@ -381,6 +412,14 @@ class CompositeExponentialMF(MembershipFunction):
         exponent = -0.5 * ((x - self.center) / self.sigma).square()
         return torch.pow(self.k, -1.0 + torch.exp(exponent))
 
+    def inspect_params(self) -> dict[str, Any]:
+        """Return the serializable parameters for this membership function."""
+        return {
+            "center": float(self.center.detach().cpu().item()),
+            "sigma": float(self.sigma.detach().cpu().item()),
+            "k": float(self.k),
+        }
+
 
 class SigmoidalMF(MembershipFunction):
     """Sigmoidal membership: 1 / (1 + exp(-a*(x-c)))."""
@@ -457,6 +496,13 @@ class SShapedMF(MembershipFunction):
         t = ((x - self.a) / (self.b - self.a + self.eps)).clamp(0.0, 1.0)
         return _smoothstep(t)
 
+    def inspect_params(self) -> dict[str, Any]:
+        """Return the serializable parameters for this membership function."""
+        return {
+            "a": float(self.a.detach().cpu().item()),
+            "b": float(self.b.detach().cpu().item()),
+        }
+
 
 class LinSShapedMF(MembershipFunction):
     """Linear S-shaped membership from 0 to 1 between a and b."""
@@ -478,6 +524,13 @@ class LinSShapedMF(MembershipFunction):
         """Compute linear S-shaped membership values for input tensor."""
         x = self._as_tensor(x)
         return ((x - self.a) / (self.b - self.a + self.eps)).clamp(0.0, 1.0)
+
+    def inspect_params(self) -> dict[str, Any]:
+        """Return the serializable parameters for this membership function."""
+        return {
+            "a": float(self.a.detach().cpu().item()),
+            "b": float(self.b.detach().cpu().item()),
+        }
 
 
 class ZShapedMF(MembershipFunction):
@@ -502,6 +555,13 @@ class ZShapedMF(MembershipFunction):
         t = ((x - self.a) / (self.b - self.a + self.eps)).clamp(0.0, 1.0)
         return 1.0 - _smoothstep(t)
 
+    def inspect_params(self) -> dict[str, Any]:
+        """Return the serializable parameters for this membership function."""
+        return {
+            "a": float(self.a.detach().cpu().item()),
+            "b": float(self.b.detach().cpu().item()),
+        }
+
 
 class LinZShapedMF(MembershipFunction):
     """Linear Z-shaped membership from 1 to 0 between a and b."""
@@ -523,6 +583,13 @@ class LinZShapedMF(MembershipFunction):
         """Compute linear Z-shaped membership values for input tensor."""
         x = self._as_tensor(x)
         return 1.0 - ((x - self.a) / (self.b - self.a + self.eps)).clamp(0.0, 1.0)
+
+    def inspect_params(self) -> dict[str, Any]:
+        """Return the serializable parameters for this membership function."""
+        return {
+            "a": float(self.a.detach().cpu().item()),
+            "b": float(self.b.detach().cpu().item()),
+        }
 
 
 class PiMF(MembershipFunction):
@@ -560,6 +627,16 @@ class PiMF(MembershipFunction):
         zero = torch.zeros_like(x)
         one = torch.ones_like(x)
         return torch.where(x < a, zero, torch.where(x <= b, s, torch.where(x <= c, one, torch.where(x < d, z, zero))))
+
+    def inspect_params(self) -> dict[str, Any]:
+        """Return the serializable parameters for this membership function."""
+        a, b, c, d = self.points()
+        return {
+            "a": float(a.detach().cpu().item()),
+            "b": float(b.detach().cpu().item()),
+            "c": float(c.detach().cpu().item()),
+            "d": float(d.detach().cpu().item()),
+        }
 
 
 class GaussianPIMF(MembershipFunction):
@@ -611,6 +688,14 @@ class GaussianPIMF(MembershipFunction):
         z_sq = ((x - self.mean) / self.sigma).square()
         inner = 1.0 - torch.exp(-0.5 * z_sq)
         return torch.exp(-self.K * inner)
+
+    def inspect_params(self) -> dict[str, Any]:
+        """Return the serializable parameters for this membership function."""
+        return {
+            "mean": float(self.mean.detach().cpu().item()),
+            "sigma": float(self.sigma.detach().cpu().item()),
+            "K": float(self.K),
+        }
 
 
 __all__: list[str] = [

@@ -176,6 +176,30 @@ class BaseTSK(nn.Module):
         w = self.rule_layer(mu)
         return cast(Tensor, self.defuzzifier(w))
 
+    def get_mf_params(self) -> dict[str, list[dict[str, Any]]]:
+        """Return a serializable description of the model's membership functions."""
+        return {
+            name: [{"type": type(mf).__name__, **mf.inspect_params()} for mf in cast(Sequence[MembershipFunction], mfs)]
+            for name, mfs in self.membership_layer.input_mfs.items()
+        }
+
+    def get_rule_table(self) -> list[dict[str, Any]]:
+        """Return the rule base as a table of feature-to-MF indices."""
+        return [
+            dict(
+                rule_id=rule_index,
+                **dict(zip(self.rule_layer.input_names, rule, strict=False)),
+            )
+            for rule_index, rule in enumerate(self.rule_layer.rules)
+        ]
+
+    def get_consequent_weights(self) -> Tensor | None:
+        """Return the consequent layer weights or ``None`` when unavailable."""
+        weight = getattr(self.consequent_layer, "weight", None)
+        if isinstance(weight, Tensor):
+            return weight.detach()
+        return None
+
     def _forward_train(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """Forward pass returning ``(output, norm_w)`` to avoid double computation."""
         mu = self.membership_layer(x)

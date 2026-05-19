@@ -633,6 +633,18 @@ def _build_pfrb_input_mfs(
     return input_mfs
 
 
+def _to_numpy(tensor: Tensor) -> np.ndarray:
+    return tensor.detach().cpu().numpy()
+
+
+def _normalize_importance(values: Tensor) -> np.ndarray:
+    importance = _to_numpy(values)
+    total = float(np.sum(importance))
+    if total <= 0.0:
+        return np.full(importance.shape, 1.0 / float(importance.shape[0]), dtype=np.float64)
+    return importance / total
+
+
 def _wrap_dimension_dependent_gaussian_input_mfs(
     input_mfs: Mapping[str, Sequence[MembershipFunction]],
     dimension: int,
@@ -1087,6 +1099,63 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
             metrics=metrics,
         )
 
+    def get_mf_params(self) -> dict[str, list[dict[str, Any]]]:
+        """Return model membership function metadata after fitting."""
+        check_is_fitted(self, "model_")
+        return self.model_.get_mf_params()
+
+    def rule_activation(self, X: Any) -> np.ndarray:
+        """Return normalized rule activations for the provided inputs."""
+        check_is_fitted(self, "model_")
+        x_arr = check_array(X)
+        if x_arr.shape[1] != self.n_features_in_:
+            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
+
+        was_training = self.model_.training
+        try:
+            self.model_.eval()
+            with torch.no_grad():
+                norm_w = self.model_.forward_antecedents(self._as_tensor_x(x_arr))
+        finally:
+            self.model_.train(was_training)
+
+        return _to_numpy(norm_w)
+
+    def inspect(self) -> dict[str, Any]:
+        """Return a structured summary of fitted model state and rule metadata."""
+        check_is_fitted(self, "model_")
+        return {
+            "n_rules": int(self.model_.n_rules),
+            "n_inputs": int(self.model_.n_inputs),
+            "feature_names": list(self.model_.input_names),
+            "rule_base": self.rule_base_,
+            "defuzzifier_type": type(self.model_.defuzzifier).__name__,
+            "mf_params": self.get_mf_params(),
+            "rule_table": self.model_.get_rule_table(),
+        }
+
+    def feature_importance(self) -> np.ndarray | None:
+        """Compute a normalized feature importance vector from consequent weights."""
+        check_is_fitted(self, "model_")
+        weights = self.model_.get_consequent_weights()
+        if weights is None:
+            return None
+
+        consequent_layer = self.model_.consequent_layer
+        if hasattr(consequent_layer, "rule_feature_mask"):
+            rule_feature_mask = cast(Tensor, consequent_layer.rule_feature_mask)
+            weights = weights * rule_feature_mask.unsqueeze(1) if weights.ndim == 3 else weights * rule_feature_mask
+
+        abs_weights = weights.abs()
+        if abs_weights.ndim == 3:
+            importance = abs_weights.mean(dim=(0, 1))
+        elif abs_weights.ndim == 2:
+            importance = abs_weights.mean(dim=0)
+        else:
+            raise ValueError("unsupported consequent weight shape for feature importance")
+
+        return _normalize_importance(importance)
+
 
 class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[misc]
     """Abstract base class for all highFIS TSK regressor estimators.
@@ -1446,6 +1515,63 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
             sample_weight=sample_weight,
             metrics=metrics,
         )
+
+    def get_mf_params(self) -> dict[str, list[dict[str, Any]]]:
+        """Return model membership function metadata after fitting."""
+        check_is_fitted(self, "model_")
+        return self.model_.get_mf_params()
+
+    def rule_activation(self, X: Any) -> np.ndarray:
+        """Return normalized rule activations for the provided inputs."""
+        check_is_fitted(self, "model_")
+        x_arr = check_array(X)
+        if x_arr.shape[1] != self.n_features_in_:
+            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
+
+        was_training = self.model_.training
+        try:
+            self.model_.eval()
+            with torch.no_grad():
+                norm_w = self.model_.forward_antecedents(self._as_tensor_x(x_arr))
+        finally:
+            self.model_.train(was_training)
+
+        return _to_numpy(norm_w)
+
+    def inspect(self) -> dict[str, Any]:
+        """Return a structured summary of fitted model state and rule metadata."""
+        check_is_fitted(self, "model_")
+        return {
+            "n_rules": int(self.model_.n_rules),
+            "n_inputs": int(self.model_.n_inputs),
+            "feature_names": list(self.model_.input_names),
+            "rule_base": self.rule_base_,
+            "defuzzifier_type": type(self.model_.defuzzifier).__name__,
+            "mf_params": self.get_mf_params(),
+            "rule_table": self.model_.get_rule_table(),
+        }
+
+    def feature_importance(self) -> np.ndarray | None:
+        """Compute a normalized feature importance vector from consequent weights."""
+        check_is_fitted(self, "model_")
+        weights = self.model_.get_consequent_weights()
+        if weights is None:
+            return None
+
+        consequent_layer = self.model_.consequent_layer
+        if hasattr(consequent_layer, "rule_feature_mask"):
+            rule_feature_mask = cast(Tensor, consequent_layer.rule_feature_mask)
+            weights = weights * rule_feature_mask.unsqueeze(1) if weights.ndim == 3 else weights * rule_feature_mask
+
+        abs_weights = weights.abs()
+        if abs_weights.ndim == 3:
+            importance = abs_weights.mean(dim=(0, 1))
+        elif abs_weights.ndim == 2:
+            importance = abs_weights.mean(dim=0)
+        else:
+            raise ValueError("unsupported consequent weight shape for feature importance")
+
+        return _normalize_importance(importance)
 
 
 # =====================================================================
