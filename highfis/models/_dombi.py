@@ -52,7 +52,10 @@ class DombiTSKClassifier(BaseTSKClassifier):
             input_mfs: Mapping from feature name to a sequence of
                 :class:`~highfis.memberships.MembershipFunction` objects.
             n_classes: Number of output classes (must be ≥ 2).
-            rule_base: ``"cartesian"`` or ``"coco"`` rule-base strategy.
+            rule_base: Rule-base construction strategy.  ``"cartesian"``
+                (default, all MF combinations), ``"coco"`` (same-index
+                compact), ``"en"`` (enhanced FRB), or ``"custom"``
+                (explicit rules via *rules*).
             t_norm: T-norm name or callable (default ``"dombi"``). When a
                 string, a ``DombiTNorm`` with *lambda_* is used.
             lambda_: Dombi parameter ``λ > 0``.  ``λ = 1`` gives the
@@ -121,7 +124,10 @@ class DombiTSKRegressor(BaseTSKRegressor):
         Args:
             input_mfs: Mapping from feature name to a sequence of
                 :class:`~highfis.memberships.MembershipFunction` objects.
-            rule_base: ``"cartesian"`` or ``"coco"`` rule-base strategy.
+            rule_base: Rule-base construction strategy.  ``"cartesian"``
+                (default, all MF combinations), ``"coco"`` (same-index
+                compact), ``"en"`` (enhanced FRB), or ``"custom"``
+                (explicit rules via *rules*).
             t_norm: T-norm name or callable (default ``"dombi"``). When a
                 string, a ``DombiTNorm`` with *lambda_* is used.
             lambda_: Dombi parameter ``λ > 0``.  Ignored when *t_norm* is callable.
@@ -190,8 +196,10 @@ class ADMTSKClassifier(BaseTSKClassifier):
             input_mfs: Mapping from feature name to a sequence of
                 membership functions.
             n_classes: Number of output classes. Must be >= 2.
-            rule_base: Rule base strategy, either ``"coco"`` or
-                ``"cartesian"``.
+            rule_base: Rule-base construction strategy.  ``"coco"``
+                (default, same-index compact), ``"cartesian"`` (all MF
+                combinations), ``"en"`` (enhanced FRB), or ``"custom"``
+                (explicit rules via *rules*).
             t_norm: T-norm name or callable (default ``"dombi"``). When a
                 string, an adaptive or fixed ``DombiTNorm`` is built from
                 *adaptive*, *lambda_*, *lower_bound*, and *k*.
@@ -278,8 +286,10 @@ class ADMTSKRegressor(BaseTSKRegressor):
         Args:
             input_mfs: Mapping from feature name to a sequence of
                 membership functions.
-            rule_base: Rule base strategy, either ``"coco"`` or
-                ``"cartesian"``.
+            rule_base: Rule-base construction strategy.  ``"coco"``
+                (default, same-index compact), ``"cartesian"`` (all MF
+                combinations), ``"en"`` (enhanced FRB), or ``"custom"``
+                (explicit rules via *rules*).
             t_norm: T-norm name or callable (default ``"dombi"``). When a
                 string, an adaptive or fixed ``DombiTNorm`` is built from
                 *adaptive*, *lambda_*, *lower_bound*, and *k*.

@@ -63,7 +63,10 @@ class DGTSKClassifier(BaseTSKClassifier):
             input_mfs: Mapping from feature name to a sequence of
                 :class:`~highfis.memberships.MembershipFunction` objects.
             n_classes: Number of output classes (must be ≥ 2).
-            rule_base: ``"coco"`` (default) or ``"cartesian"``.
+            rule_base: Rule-base construction strategy.  ``"coco"``
+                (default, same-index compact), ``"cartesian"`` (all MF
+                combinations), ``"en"`` (enhanced FRB; see also
+                *use_en_frb*), or ``"custom"`` (explicit rules via *rules*).
             gate_fea: Gate function for antecedent feature selection.
                 ``"gate_m"`` (default) uses the M-gate from the DG-TSK paper.
                 Can also be any callable ``Tensor → Tensor``.
@@ -320,9 +323,12 @@ class DGTSKRegressor(BaseTSKRegressor):
         Args:
             input_mfs: Mapping from feature name to a sequence of
                 :class:`~highfis.memberships.MembershipFunction` objects.
-            rule_base: ``"coco"`` (default) or ``"cartesian"``.
+            rule_base: Rule-base construction strategy.  ``"coco"``
+                (default, same-index compact), ``"cartesian"`` (all MF
+                combinations), ``"en"`` (enhanced FRB; see also
+                *use_en_frb*), or ``"custom"`` (explicit rules via *rules*).
             gate_fea: Gate function for antecedent feature selection
-                (default ``"gate_m"``).
+                (default ``"gate_m"``)).
             gate_rule: Gate function for consequent rule selection
                 (default ``"gate_m"``).
             rules: Explicit rule antecedent indices; ignored when

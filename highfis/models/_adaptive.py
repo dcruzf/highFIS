@@ -49,7 +49,10 @@ class AdaTSKClassifier(BaseTSKClassifier):
             input_mfs: Mapping from feature name to a sequence of
                 :class:`~highfis.memberships.MembershipFunction` objects.
             n_classes: Number of output classes (must be ≥ 2).
-            rule_base: ``"coco"`` (default) or ``"cartesian"``.
+            rule_base: Rule-base construction strategy.  ``"coco"``
+                (default, same-index compact), ``"cartesian"`` (all MF
+                combinations), ``"en"`` (enhanced FRB), or ``"custom"``
+                (explicit rules via *rules*).
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to
                 :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
@@ -116,7 +119,10 @@ class AdaTSKRegressor(BaseTSKRegressor):
         Args:
             input_mfs: Mapping from feature name to a sequence of
                 :class:`~highfis.memberships.MembershipFunction` objects.
-            rule_base: ``"coco"`` (default) or ``"cartesian"``.
+            rule_base: Rule-base construction strategy.  ``"coco"``
+                (default, same-index compact), ``"cartesian"`` (all MF
+                combinations), ``"en"`` (enhanced FRB), or ``"custom"``
+                (explicit rules via *rules*).
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to
                 :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
@@ -176,7 +182,27 @@ class ADPTSKClassifier(BaseTSKClassifier):
         xi: float = 730.0,
         eps: float | None = None,
     ) -> None:
-        """Initialise the ADPTSK classifier."""
+        """Initialise the ADPTSK classifier.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+            n_classes: Number of output classes (must be ≥ 2).
+            rule_base: Rule-base construction strategy.  ``"coco"``
+                (default, same-index compact), ``"cartesian"`` (all MF
+                combinations), ``"en"`` (enhanced FRB), or ``"custom"``
+                (explicit rules via *rules*).
+            rules: Explicit rule antecedent indices.
+            defuzzifier: Custom defuzzifier.  Defaults to
+                :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+            kappa: ADP-softmin parameter ``κ > 0`` (default ``690.0``).
+            xi: ADP-softmin parameter ``ξ > 0`` (default ``730.0``).
+            eps: Numerical stability epsilon.
+
+        Raises:
+            ValueError: If ``n_classes < 2``, ``kappa <= 0``, or ``xi <= 0``.
+        """
         if n_classes < 2:
             raise ValueError("n_classes must be >= 2")
         if kappa <= 0.0:
@@ -241,7 +267,26 @@ class ADPTSKRegressor(BaseTSKRegressor):
         xi: float = 730.0,
         eps: float | None = None,
     ) -> None:
-        """Initialise the ADPTSK regressor."""
+        """Initialise the ADPTSK regressor.
+
+        Args:
+            input_mfs: Mapping from feature name to a sequence of
+                :class:`~highfis.memberships.MembershipFunction` objects.
+            rule_base: Rule-base construction strategy.  ``"coco"``
+                (default, same-index compact), ``"cartesian"`` (all MF
+                combinations), ``"en"`` (enhanced FRB), or ``"custom"``
+                (explicit rules via *rules*).
+            rules: Explicit rule antecedent indices.
+            defuzzifier: Custom defuzzifier.  Defaults to
+                :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+            kappa: ADP-softmin parameter ``κ > 0`` (default ``690.0``).
+            xi: ADP-softmin parameter ``ξ > 0`` (default ``730.0``).
+            eps: Numerical stability epsilon.
+
+        Raises:
+            ValueError: If ``kappa <= 0`` or ``xi <= 0``.
+        """
         if kappa <= 0.0:
             raise ValueError("kappa must be > 0")
         if xi <= 0.0:

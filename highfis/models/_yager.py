@@ -49,7 +49,10 @@ class AYATSKClassifier(BaseTSKClassifier):
             input_mfs: Mapping from feature name to a sequence of
                 :class:`~highfis.memberships.MembershipFunction` objects.
             n_classes: Number of output classes (must be ≥ 2).
-            rule_base: ``"coco"`` (default) or ``"cartesian"``.
+            rule_base: Rule-base construction strategy.  ``"coco"``
+                (default, same-index compact), ``"cartesian"`` (all MF
+                combinations), ``"en"`` (enhanced FRB), or ``"custom"``
+                (explicit rules via *rules*).
             t_norm: T-norm name or callable (default ``"yager"``).
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to
@@ -106,7 +109,10 @@ class AYATSKRegressor(BaseTSKRegressor):
         Args:
             input_mfs: Mapping from feature name to a sequence of
                 :class:`~highfis.memberships.MembershipFunction` objects.
-            rule_base: ``"coco"`` (default) or ``"cartesian"``.
+            rule_base: Rule-base construction strategy.  ``"coco"``
+                (default, same-index compact), ``"cartesian"`` (all MF
+                combinations), ``"en"`` (enhanced FRB), or ``"custom"``
+                (explicit rules via *rules*).
             t_norm: T-norm name or callable (default ``"yager"``).
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to

@@ -65,7 +65,10 @@ class DGALETSKClassifier(BaseTSKClassifier):
             input_mfs: Mapping from feature name to a sequence of
                 :class:`~highfis.memberships.MembershipFunction` objects.
             n_classes: Number of output classes (must be ≥ 2).
-            rule_base: ``"coco"`` (default) or ``"cartesian"``.
+            rule_base: Rule-base construction strategy.  ``"coco"``
+                (default, same-index compact), ``"cartesian"`` (all MF
+                combinations), ``"en"`` (enhanced FRB; see also
+                *use_en_frb*), or ``"custom"`` (explicit rules via *rules*).
             lambda_init: Initial ALE-softmin parameter ``alpha > 0``
                 (default ``1.0``).
             rules: Explicit rule antecedent indices; ignored when
@@ -323,7 +326,10 @@ class DGALETSKRegressor(BaseTSKRegressor):
         Args:
             input_mfs: Mapping from feature name to a sequence of
                 :class:`~highfis.memberships.MembershipFunction` objects.
-            rule_base: ``"coco"`` (default) or ``"cartesian"``.
+            rule_base: Rule-base construction strategy.  ``"coco"``
+                (default, same-index compact), ``"cartesian"`` (all MF
+                combinations), ``"en"`` (enhanced FRB; see also
+                *use_en_frb*), or ``"custom"`` (explicit rules via *rules*).
             lambda_init: Initial ALE-softmin parameter ``alpha > 0``
                 (default ``1.0``).
             rules: Explicit rule antecedent indices; ignored when

@@ -48,7 +48,10 @@ class LogTSKClassifier(BaseTSKClassifier):
             input_mfs: Mapping from feature name to a sequence of
                 :class:`~highfis.memberships.MembershipFunction` objects.
             n_classes: Number of output classes (must be ≥ 2).
-            rule_base: ``"cartesian"`` or ``"coco"`` rule-base strategy.
+            rule_base: Rule-base construction strategy.  ``"cartesian"``
+                (default, all MF combinations), ``"coco"`` (same-index
+                compact), ``"en"`` (enhanced FRB), or ``"custom"``
+                (explicit rules via *rules*).
             t_norm: Antecedent aggregation operator (default ``"prod"``).
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to
@@ -106,8 +109,11 @@ class LogTSKRegressor(BaseTSKRegressor):
         Args:
             input_mfs: Mapping from feature name to a sequence of
                 :class:`~highfis.memberships.MembershipFunction` objects.
-            rule_base: ``"cartesian"`` or ``"coco"`` rule-base strategy.
-            t_norm: Antecedent aggregation operator (default ``"prod"``).
+            rule_base: Rule-base construction strategy.  ``"cartesian"``
+                (default, all MF combinations), ``"coco"`` (same-index
+                compact), ``"en"`` (enhanced FRB), or ``"custom"``
+                (explicit rules via *rules*).
+            t_norm: Antecedent aggregation operator (default ``"prod"``.
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to
                 :class:`~highfis.defuzzifiers.InvLogDefuzzifier`.
