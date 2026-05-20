@@ -45,6 +45,7 @@ from tqdm.auto import trange
 from .defuzzifiers import SoftmaxLogDefuzzifier
 from .layers import MembershipLayer, RuleLayer
 from .memberships import MembershipFunction
+from .protocols import Defuzzifier
 from .t_norms import TNormFn
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -92,7 +93,7 @@ class BaseTSK(nn.Module):
         t_norm: str = "gmean",
         t_norm_fn: TNormFn | None = None,
         rules: Sequence[Sequence[int]] | None = None,
-        defuzzifier: nn.Module | None = None,
+        defuzzifier: Defuzzifier | None = None,
         consequent_batch_norm: bool = False,
     ) -> None:
         """Initialize the TSK pipeline layers.
@@ -142,7 +143,7 @@ class BaseTSK(nn.Module):
             t_norm_fn=t_norm_fn,
         )
         self.n_rules = self.rule_layer.n_rules
-        self.defuzzifier = defuzzifier or SoftmaxLogDefuzzifier()
+        self.defuzzifier: Defuzzifier = defuzzifier or SoftmaxLogDefuzzifier()
         self.consequent_batch_norm = bool(consequent_batch_norm)
         self.consequent_bn = nn.BatchNorm1d(self.n_inputs) if self.consequent_batch_norm else None
         self.consequent_layer = self._build_consequent_layer()
@@ -174,7 +175,7 @@ class BaseTSK(nn.Module):
         """Compute normalized rule strengths from model antecedents."""
         mu = self.membership_layer(x)
         w = self.rule_layer(mu)
-        return cast(Tensor, self.defuzzifier(w))
+        return self.defuzzifier(w)
 
     def get_mf_params(self) -> dict[str, list[dict[str, Any]]]:
         """Return a serializable description of the model's membership functions."""
@@ -206,7 +207,7 @@ class BaseTSK(nn.Module):
         w = self.rule_layer(mu)
         norm_w = self.defuzzifier(w)
         x_cons = self.consequent_bn(x) if self.consequent_bn is not None else x
-        output = cast(Tensor, self.consequent_layer(x_cons, norm_w))
+        output = self.consequent_layer(x_cons, norm_w)
         return output, norm_w
 
     def forward(self, x: Tensor) -> Tensor:
@@ -499,7 +500,9 @@ class BaseTSK(nn.Module):
         else:
             epoch_iterator = range(epochs)
 
+        stopped_epoch = 0
         for epoch in epoch_iterator:
+            stopped_epoch = epoch + 1
             epoch_train_loss, epoch_ur_loss = self._run_minibatch_epoch(
                 x, y, train_criterion, train_optimizer, batch_size, shuffle, ur_weight, ur_target
             )
@@ -543,7 +546,7 @@ class BaseTSK(nn.Module):
         if restore_best and best_state is not None:
             self.load_state_dict(best_state)
 
-        history["stopped_epoch"] = epoch + 1  # type: ignore[possibly-undefined]
+        history["stopped_epoch"] = stopped_epoch
 
         return history
 
