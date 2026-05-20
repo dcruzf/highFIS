@@ -122,12 +122,12 @@ select = [
     "RUF",    # Ruff-specific rules
     "W",      # pycodestyle (Warning)
 ]
-ignore = ["D100", "D104"]
 pydocstyle = { convention = "google" }
 isort = { known-first-party = ["highfis", "tests"] }
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["D", "S"]
+"highfis/py.typed" = ["D100"]
 
 [tool.pytest.ini_options]
 testpaths = "tests"

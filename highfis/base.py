@@ -241,7 +241,7 @@ class BaseTSK(nn.Module):
     def _resolve_verbose(self, verbose: bool | int = False) -> int:
         """Normalize verbose settings to a numeric verbosity level."""
         if isinstance(verbose, bool):
-            return 2 if verbose else 0
+            return 1 if verbose else 0
         if not isinstance(verbose, int):
             raise TypeError("verbose must be an int in 0..3 or a bool")
         if verbose < 0 or verbose > 3:
@@ -457,7 +457,7 @@ class BaseTSK(nn.Module):
                 ``1 / n_rules``.
             verbose: Verbosity level. ``0`` = quiet, ``1`` = progress bar,
                 ``2`` = per-epoch summary logging, ``3`` = per-epoch detailed
-                logging. ``True`` is accepted as an alias for ``2``.
+                logging. ``True`` is accepted as an alias for ``1``.
             x_val: Optional validation features of shape
                 ``(M, n_inputs)``.
             y_val: Optional validation targets of shape ``(M,)``.

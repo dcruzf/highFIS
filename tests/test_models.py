@@ -1038,7 +1038,7 @@ def test_htsk_classifier_fit_mse_with_validation() -> None:
 
 
 def test_htsk_classifier_fit_verbose_with_early_stopping() -> None:
-    """verbose=True + early stopping exercises logging lines 246 and 257."""
+    """verbose=2 + early stopping exercises per-epoch logging with validation."""
     torch.manual_seed(42)
     model = HTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(30, 2)
@@ -1054,19 +1054,19 @@ def test_htsk_classifier_fit_verbose_with_early_stopping() -> None:
         y_val=y_val,
         patience=5,
         learning_rate=1e-2,
-        verbose=True,
+        verbose=2,
     )
     assert history["stopped_epoch"] < 500
 
 
 def test_htsk_classifier_fit_verbose_no_validation() -> None:
-    """verbose=True without validation exercises the no-val logging path (line 261)."""
+    """verbose=2 without validation exercises the no-val per-epoch logging path."""
     torch.manual_seed(0)
     model = HTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(20, 2)
     y = torch.randint(0, 2, (20,), dtype=torch.long)
 
-    history = model.fit(x, y, epochs=10, verbose=True)
+    history = model.fit(x, y, epochs=10, verbose=2)
     assert len(history["train"]) == 10
 
 
@@ -1215,7 +1215,7 @@ def test_htsk_regressor_fit_verbose_with_early_stopping() -> None:
         y_val=y_val,
         patience=15,
         learning_rate=5e-2,
-        verbose=True,
+        verbose=2,
     )
     assert history["stopped_epoch"] < 2000
 
@@ -1226,7 +1226,7 @@ def test_htsk_regressor_fit_verbose_no_validation() -> None:
     x = torch.randn(20, 2)
     y = torch.randn(20)
 
-    history = model.fit(x, y, epochs=10, verbose=True)
+    history = model.fit(x, y, epochs=10, verbose=2)
     assert len(history["train"]) == 10
 
 
