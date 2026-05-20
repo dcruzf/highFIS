@@ -77,18 +77,18 @@ $$
 
 | Equation | Class / Method | Description |
 |----------|----------------|-------------|
-| Dombi aggregation | `DombiTSKClassifier` / `DombiTSKRegressor` | Fixed-λ Dombi antecedent aggregation with `t_norm="dombi"` |
+| Dombi aggregation | `DombiTSKClassifierModel` / `DombiTSKRegressorModel` | Fixed-λ Dombi antecedent aggregation with `t_norm="dombi"` |
 | Normalization | `SumBasedDefuzzifier` | Sum-based rule strength normalization |
 | Consequent | `ClassificationConsequentLayer` / `RegressionConsequentLayer` | First-order linear consequents |
 | Membership functions | `GaussianMF` | Standard Gaussian antecedent MFs |
 
 ## Implementation notes
 
-- `DombiTSKClassifier` and `DombiTSKRegressor` use a fixed Dombi parameter
+- `DombiTSKClassifierModel` and `DombiTSKRegressorModel` use a fixed Dombi parameter
   `lambda_ > 0` in the antecedent and default to `SumBasedDefuzzifier`.
-- `DombiTSKClassifierEstimator` and `DombiTSKRegressorEstimator` are
+- `DombiTSKClassifier` and `DombiTSKRegressor` are
   sklearn-compatible wrappers that build the rule base and membership
-  functions from `input_configs`, `n_mfs`, `mf_init`, and `sigma_scale`.
+  functions from `input_configs`, `n_rules`, `mf_init`, and `sigma_scale`.
 - The estimators default to `mf_init="kmeans"` and `sigma_scale=1.0`.
 - The default `rule_base` for estimator-built models is `"coco"` with
   `mf_init="kmeans"` and `"cartesian"` with `mf_init="grid"`.
@@ -102,8 +102,8 @@ $$
 
 - The paper defines a Dombi TSK baseline with Dombi antecedent aggregation and
   first-order consequent structure.
-- highFIS implements this baseline directly through `DombiTSKClassifier` and
-  `DombiTSKRegressor`.
+- highFIS implements this baseline directly through `DombiTSKClassifierModel` and
+  `DombiTSKRegressorModel`.
 - Rule strengths are normalized by sum-based defuzzification, matching the
   paper's TSK output aggregation.
 - The package also includes building blocks for the ADMTSK extension:

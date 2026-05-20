@@ -14,9 +14,10 @@ experimentation.
 - Built for high-dimensional data and numerical stability.
 - Supports adaptive and gated fuzzy inference, including feature selection
   and rule extraction.
-- Includes HDFIS variants for product-DMF and minimum frozen-antecedent
+- Includes HDFIS variants for product T-norm and minimum T-norm
   high-dimensional inference.
-- Ships with both model-level classes and sklearn-style estimator wrappers.
+- Ships sklearn-compatible estimators (`*Classifier` / `*Regressor`) for every
+  model family.
 - Works seamlessly with `Pipeline`, `GridSearchCV`, and standard
   scikit-learn workflows.
 
@@ -30,20 +31,20 @@ highFIS models combine:
 - built-in metrics and evaluation utilities for regression and classification,
 - task-specific consequent layers for classification or regression.
 
-Use `BaseTSK` for custom pipelines, or choose a concrete model variant when
-you want a ready-to-use TSK architecture.
+Use a model class from `highfis.models` for custom PyTorch pipelines, or
+import an estimator directly from `highfis` for sklearn-compatible training.
 
 ## Quick Start
 
 ```bash
-pip install highFIS
+pip install highfis
 ```
 
 ```python
-from highfis import HTSKClassifierEstimator
+from highfis import HTSKClassifier
 
-clf = HTSKClassifierEstimator(
-    n_mfs=4,
+clf = HTSKClassifier(
+    n_rules=10,
     mf_init="kmeans",
     epochs=150,
     learning_rate=1e-3,
@@ -68,19 +69,19 @@ highFIS includes the following concrete TSK model families:
   inference (HDFIS-min).
 - [`DombiTSK`](models/dombitsk.md) — Dombi parametric aggregation with a
   learnable shape parameter.
-- [`ADMTSK`](models/admtsk.md) — adaptive Dombi TSK with Composite GMF and
-  positive lower-bound membership values.
+- [`ADMTSK`](models/admtsk.md) — adaptive Dombi TSK with dimension-dependent
+  Gaussian membership functions.
 - [`AYATSK`](models/ayatsk.md) — Yager-style aggregation for more flexible
   antecedent behavior.
-- [`AdaTSK`](models/adatsk.md) — adaptive softmin aggregation with dynamic
+- [`ADATSK`](models/adatsk.md) — adaptive softmin aggregation with dynamic
   rule weighting.
 - [`ADPTSK`](models/adptsk.md) — adaptive double-parameter softmin aggregation
   with stable normalized rule weights.
-- [`FSRE-AdaTSK`](models/fsre-adatsk.md) — gated feature selection and rule
+- [`FSRE-ADATSK`](models/fsre-adatsk.md) — gated feature selection and rule
   extraction inside an adaptive inference pipeline.
-- [`DG-TSK`](models/dg-tsk.md) — double-gated training for simultaneous
+- [`DGTSK`](models/dg-tsk.md) — double-gated training for simultaneous
   feature selection and rule extraction.
-- [`DG-ALETSK`](models/dg-aletsk.md) — adaptive Ln-Exp softmin with embedded
+- [`DGALETSK`](models/dg-aletsk.md) — adaptive Ln-Exp softmin with embedded
   feature and rule gates for sparse high-dimensional modeling.
 - [`MHTSK`](models/mhtsk.md) — multihead sparse subantecedents for high-dimensional
   rule extraction and scalable TSK learning.
@@ -96,7 +97,7 @@ Each model family exposes both classifier and regressor variants.
   aggregation behavior.
 - Choose `HDFIS` when you need high-dimensional inference with either a
   dimension-dependent product antecedent or a frozen minimum antecedent.
-- Choose `AdaTSK`, `FSRE-AdaTSK`, `DG-TSK`, or `DG-ALETSK` when you need
+- Choose `ADATSK`, `FSRE-ADATSK`, `DGTSK`, or `DGALETSK` when you need
   adaptive sparsity, feature gating, or rule extraction.
 
 ## Documentation
@@ -118,5 +119,5 @@ Each model family exposes both classifier and regressor variants.
 
 ## Get Started
 
-Use the top-level `highfis` classes for fast prototyping, or extend
-`BaseTSK` directly for custom fuzzy pipelines.
+Import estimators directly from `highfis` for sklearn-compatible usage, or
+access PyTorch model classes via `highfis.models` for custom training loops.

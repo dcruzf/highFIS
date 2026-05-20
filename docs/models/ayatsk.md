@@ -80,25 +80,25 @@ $$
 
 | Concept | Class / Method | Notes |
 |---|---|---|
-| Adaptive Yager T-norm | `AYATSKClassifier`, `AYATSKRegressor` | Default `t_norm="yager"` in highFIS |
+| Adaptive Yager T-norm | `AYATSKClassifierModel`, `AYATSKRegressorModel` | Default `t_norm="yager"` in highFIS |
 | Yager exponent $p_r$ | `YagerTNorm` | Learnable per-rule exponent controlling softmin behavior |
 | Sum-based defuzzification | `SumBasedDefuzzifier` | Normalizes $\bar{f}_r$ across rules |
 | Composite Exponential MF | `CompositeExponentialMF` | Provides a positive lower bound needed by the adaptive strategy |
-| Estimator wrapper | `AYATSKClassifierEstimator`, `AYATSKRegressorEstimator` | Builds input MFs and handles training/hyperparameters |
+| Estimator wrapper | `AYATSKClassifier`, `AYATSKRegressor` | Builds input MFs and handles training/hyperparameters |
 
 ## Implementation notes
 
-- `AYATSKClassifier` and `AYATSKRegressor` default to `t_norm="yager"`.
+- `AYATSKClassifierModel` and `AYATSKRegressorModel` default to `t_norm="yager"`.
 - The adaptive Yager index is compatible with standard Gaussian MFs, but the paper’s recommended CEMF ensures a positive lower bound and more stable high-dimensional behavior.
 - `rule_base` is typically `"coco"` for k-means initialization and `"cartesian"` for grid initialization.
-- `AYATSKClassifierEstimator` and `AYATSKRegressorEstimator` follow the standard highFIS estimator pattern and expose the same fitting parameters as other estimators.
+- `AYATSKClassifier` and `AYATSKRegressor` follow the standard highFIS estimator pattern and expose the same fitting parameters as other estimators.
 - The model is trained end-to-end with backpropagation; `BaseTSK.fit()` uses mini-batch Adam optimization with optional early stopping.
 
 ## Estimator wrappers
 
-- `AYATSKClassifierEstimator` wraps `AYATSKClassifier` and supports classification with adaptive Yager aggregation.
-- `AYATSKRegressorEstimator` wraps `AYATSKRegressor` for regression tasks.
-- Estimators accept the usual hyperparameters: `n_mfs`, `mf_init`, `sigma_scale`, `random_state`, `epochs`, `learning_rate`, `batch_size`, `shuffle`, `validation_data`, and `patience`.
+- `AYATSKClassifier` wraps `AYATSKClassifierModel` and supports classification with adaptive Yager aggregation.
+- `AYATSKRegressor` wraps `AYATSKRegressorModel` for regression tasks.
+- Estimators accept the usual hyperparameters: `n_rules`, `mf_init`, `sigma_scale`, `random_state`, `epochs`, `learning_rate`, `batch_size`, `shuffle`, `validation_data`, and `patience`.
 - `pfrb_max_rules` exists on the shared estimator base but is unused by AYATSK.
 
 ## Alignment with the paper

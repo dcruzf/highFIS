@@ -65,7 +65,7 @@ For regression, the result is the scalar weighted sum of sparse consequents.
 | Subset feature sampling `S`, `T` | `highfis.estimators._build_mhtsk_input_mfs` | Random head construction with feature subsets and FCM on each head |
 | Feature coverage rate | `highfis.estimators.feature_coverage_rate` | Computes `1 - (1 - S/D)^T` from the paper |
 | Scale parameter defaults | `highfis.estimators._resolve_mhtsk_scale_parameters` | Derives `S` and `T` from `h_value`, `fcr_target`, `xi`, and `sigma` |
-| Sparse antecedents | `highfis.models.MHTSKClassifier`, `highfis.models.MHTSKRegressor` | Build rules with constant don't-care MFs on inactive features |
+| Sparse antecedents | `highfis.models.MHTSKClassifierModel`, `highfis.models.MHTSKRegressorModel` | Build rules with constant don't-care MFs on inactive features |
 | Sparse consequent | `highfis.layers.SparseClassificationConsequentLayer`, `highfis.layers.SparseRegressionConsequentLayer` | Applies a mask so each rule only uses active input dimensions |
 | Rule extraction | `highfis.estimators._extract_mhtsk_rule_indices` | Combines unsupervised max-firing strength and supervised Mann–Whitney selection |
 
@@ -73,15 +73,15 @@ For regression, the result is the scalar weighted sum of sparse consequents.
 
 - `highfis` represents each head with a partial rule base created by `FuzzyCMeans` on the sampled feature subset.
 - Every input feature has a constant `ConstantMF(1.0)` to support don't-care membership when the feature is not selected by a head.
-- The total number of rules is `n_heads * n_mfs`, because each head produces `n_mfs` cluster-based rules.
+- The total number of rules is `n_heads * n_mfs`, because each head produces `n_rules` cluster-based rules.
 - The sparse consequent is implemented by masking the weight tensor with `rule_feature_mask` inside `SparseClassificationConsequentLayer` and `SparseRegressionConsequentLayer`.
 - The rule masks are derived from the selected feature subsets and the per-head cluster indices.
 - `rule_sigma` controls the Gaussian spread used for all selected feature MFs; the paper fixes this value to preserve interpretability and avoid numeric underflow.
 
 ## Model classes
 
-- `highfis.models.MHTSKClassifier`
-- `highfis.models.MHTSKRegressor`
+- `highfis.models.MHTSKClassifierModel`
+- `highfis.models.MHTSKRegressorModel`
 
 These classes extend `BaseTSKClassifier` and `BaseTSKRegressor`, respectively, and use `rule_base="custom"` with explicit rule definitions and a sparse consequent.
 
@@ -99,14 +99,14 @@ These classes extend `BaseTSKClassifier` and `BaseTSKRegressor`, respectively, a
 
 ## Estimator wrappers
 
-- `highfis.estimators.MHTSKClassifierEstimator`
-- `highfis.estimators.MHTSKRegressorEstimator`
+- `highfis.estimators.MHTSKClassifier`
+- `highfis.estimators.MHTSKRegressor`
 
 These sklearn-style wrappers build the MHTSK rule base from raw data and expose the paper's scale parameter defaults.
 
 ### Key estimator parameters
 
-- `n_mfs`: Number of FCM clusters per head (`K`). Default: `3`.
+- `n_rules`: Number of FCM clusters per head (`K`). Default: `3`.
 - `n_heads`: Number of heads (`T`). When `None`, defaults are resolved from `head_size`, `fcr_target`, and `h_value`.
 - `head_size`: Number of features per head (`S`). When `None`, defaults to `max(1, round(D * 0.02))` for `D <= 5000` or `max(1, round(D * 0.01))` otherwise.
 - `head_size_ratio`: Alternative way to specify `head_size` as a fraction of `D`.
@@ -159,4 +159,4 @@ $$
 
 - The default `head_size` and `n_heads` resolution reproduces the paper's recommended scale parameter strategy using `xi`, `sigma`, `fcr_target`, and `h_value`.
 - The sparse consequent layers mirror the paper's per-rule subspace-specific linear consequents.
-- The `MHTSKClassifierEstimator` and `MHTSKRegressorEstimator` provide a user-facing API that reflects the paper's `S`, `T`, `K`, and rule extraction workflow.
+- The `MHTSKClassifier` and `MHTSKRegressor` provide a user-facing API that reflects the paper's `S`, `T`, `K`, and rule extraction workflow.

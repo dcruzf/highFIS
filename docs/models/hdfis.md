@@ -109,14 +109,14 @@ $$
 | Paper concept | highFIS implementation |
 |---|---|
 | Dimension-dependent Gaussian MF | `highfis.memberships.DimensionDependentGaussianMF` |
-| HDFIS-prod classifier | `highfis.models.HDFISProdClassifier` |
-| HDFIS-prod regressor | `highfis.models.HDFISProdRegressor` |
-| HDFIS-min classifier | `highfis.models.HDFISMinClassifier` |
-| HDFIS-min regressor | `highfis.models.HDFISMinRegressor` |
-| Estimator wrapper for HDFIS-prod classifier | `highfis.estimators.HDFISProdClassifierEstimator` |
-| Estimator wrapper for HDFIS-prod regressor | `highfis.estimators.HDFISProdRegressorEstimator` |
-| Estimator wrapper for HDFIS-min classifier | `highfis.estimators.HDFISMinClassifierEstimator` |
-| Estimator wrapper for HDFIS-min regressor | `highfis.estimators.HDFISMinRegressorEstimator` |
+| HDFIS-prod classifier | `highfis.models.HDFISProdClassifierModel` |
+| HDFIS-prod regressor | `highfis.models.HDFISProdRegressorModel` |
+| HDFIS-min classifier | `highfis.models.HDFISMinClassifierModel` |
+| HDFIS-min regressor | `highfis.models.HDFISMinRegressorModel` |
+| Estimator wrapper for HDFIS-prod classifier | `highfis.estimators.HDFISProdClassifier` |
+| Estimator wrapper for HDFIS-prod regressor | `highfis.estimators.HDFISProdRegressor` |
+| Estimator wrapper for HDFIS-min classifier | `highfis.estimators.HDFISMinClassifier` |
+| Estimator wrapper for HDFIS-min regressor | `highfis.estimators.HDFISMinRegressor` |
 | Product T-norm antecedent | `t_norm="prod"` in `HDFISProd*` models |
 | Minimum T-norm antecedent | `t_norm="min"` in `HDFISMin*` models |
 | Sum-based normalization | `highfis.defuzzifiers.SumBasedDefuzzifier` |
@@ -125,19 +125,19 @@ $$
 
 ### Model classes
 
-- `HDFISProdClassifier` and `HDFISProdRegressor` are concrete model classes
+- `HDFISProdClassifierModel` and `HDFISProdRegressorModel` are concrete model classes
   that use product aggregation and dimension-dependent Gaussian membership
   functions for high-dimensional inference.
-- `HDFISMinClassifier` and `HDFISMinRegressor` are concrete model classes
+- `HDFISMinClassifierModel` and `HDFISMinRegressorModel` are concrete model classes
   that use minimum aggregation and freeze antecedent membership parameters.
 - All HDFIS classes use first-order TSK consequents and
   `highfis.defuzzifiers.SumBasedDefuzzifier`.
 
 ### Estimator wrappers
 
-- `HDFISProdClassifierEstimator` and `HDFISProdRegressorEstimator` are
+- `HDFISProdClassifier` and `HDFISProdRegressor` are
   sklearn-like wrappers around `HDFISProd*` models.
-- `HDFISMinClassifierEstimator` and `HDFISMinRegressorEstimator` are
+- `HDFISMinClassifier` and `HDFISMinRegressor` are
   sklearn-like wrappers around `HDFISMin*` models.
 - The estimators expose standard training hyperparameters such as `epochs`,
   `learning_rate`, `batch_size`, `shuffle`, `patience`, `restore_best`,

@@ -65,7 +65,7 @@ For regression, the result is the scalar weighted sum of sparse consequents.
 | Subset feature sampling `S`, `T` | `highfis.estimators._build_mhtsk_input_mfs` | Random head construction with feature subsets and FCM on each head |
 | Feature coverage rate | `highfis.estimators.feature_coverage_rate` | Computes `1 - (1 - S/D)^T` from the paper |
 | Scale parameter defaults | `highfis.estimators._resolve_mhtsk_scale_parameters` | Derives `S` and `T` from `h_value`, `fcr_target`, `xi`, and `sigma` |
-| Sparse antecedents | `highfis.models.MHTSKClassifier`, `highfis.models.MHTSKRegressor` | Build rules with constant don't-care MFs on inactive features |
+| Sparse antecedents | `highfis.models.MHTSKClassifierModel`, `highfis.models.MHTSKRegressorModel` | Build rules with constant don't-care MFs on inactive features |
 | Sparse consequent | `highfis.layers.SparseClassificationConsequentLayer`, `highfis.layers.SparseRegressionConsequentLayer` | Applies a mask so each rule only uses active input dimensions |
 | Rule extraction | `highfis.estimators._extract_mhtsk_rule_indices` | Combines unsupervised max-firing strength and supervised Mann–Whitney selection |
 
@@ -80,18 +80,18 @@ For regression, the result is the scalar weighted sum of sparse consequents.
 
 ## Model classes
 
-- `highfis.models.MHTSKClassifier`
-- `highfis.models.MHTSKRegressor`
+- `highfis.models.MHTSKClassifierModel`
+- `highfis.models.MHTSKRegressorModel`
 
 These classes extend `BaseTSKClassifier` and `BaseTSKRegressor`, respectively, and use `rule_base="custom"` with explicit rule definitions and a sparse consequent.
 
-### MHTSKClassifier
+### MHTSKClassifierModel
 
 - Uses `SparseClassificationConsequentLayer`
 - Default antecedent t-norm: `prod`
 - Default defuzzifier: `SumBasedDefuzzifier`
 
-### MHTSKRegressor
+### MHTSKRegressorModel
 
 - Uses `SparseRegressionConsequentLayer`
 - Default antecedent t-norm: `prod`
@@ -99,8 +99,8 @@ These classes extend `BaseTSKClassifier` and `BaseTSKRegressor`, respectively, a
 
 ## Estimator wrappers
 
-- `highfis.estimators.MHTSKClassifierEstimator`
-- `highfis.estimators.MHTSKRegressorEstimator`
+- `highfis.estimators.MHTSKClassifier`
+- `highfis.estimators.MHTSKRegressor`
 
 These sklearn-style wrappers build the MHTSK rule base from raw data and expose the paper's scale parameter defaults.
 
@@ -159,4 +159,4 @@ $$
 
 - The default `head_size` and `n_heads` resolution reproduces the paper's recommended scale parameter strategy using `xi`, `sigma`, `fcr_target`, and `h_value`.
 - The sparse consequent layers mirror the paper's per-rule subspace-specific linear consequents.
-- The `MHTSKClassifierEstimator` and `MHTSKRegressorEstimator` provide a user-facing API that reflects the paper's `S`, `T`, `K`, and rule extraction workflow.
+- The `MHTSKClassifier` and `MHTSKRegressor` provide a user-facing API that reflects the paper's `S`, `T`, `K`, and rule extraction workflow.
