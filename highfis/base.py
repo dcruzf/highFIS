@@ -90,8 +90,7 @@ class BaseTSK(nn.Module):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         *,
         rule_base: str = "cartesian",
-        t_norm: str = "gmean",
-        t_norm_fn: TNormFn | None = None,
+        t_norm: str | TNormFn = "gmean",
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: Defuzzifier | None = None,
         consequent_batch_norm: bool = False,
@@ -106,12 +105,10 @@ class BaseTSK(nn.Module):
                 ``"cartesian"`` (all MF combinations), ``"coco"``
                 (same-index compact), ``"en"`` (enhanced FRB), or
                 ``"custom"`` (explicit rules via *rules*).
-            t_norm: Built-in T-norm name.  Ignored when *t_norm_fn* is
-                provided.  Common values: ``"prod"``, ``"gmean"``,
-                ``"min"``, ``"dombi"``, ``"yager"``.
-            t_norm_fn: Optional custom T-norm callable.  When provided,
-                *t_norm* is internally set to ``"prod"`` and the rule
-                layer applies this function instead.
+            t_norm: T-norm name or callable.  Common string values: ``"prod"``,
+                ``"gmean"``, ``"min"``, ``"dombi"``, ``"yager"``.  A
+                callable implementing the T-norm interface may be passed
+                directly.
             rules: Explicit rule index sequences.  Required when
                 *rule_base* is ``"custom"``.
             defuzzifier: Normalization module applied to raw rule firing
@@ -139,8 +136,7 @@ class BaseTSK(nn.Module):
             mf_per_input,
             rules=rules,
             rule_base=rule_base,
-            t_norm=t_norm if t_norm_fn is None else "prod",
-            t_norm_fn=t_norm_fn,
+            t_norm=t_norm,
         )
         self.n_rules = self.rule_layer.n_rules
         self.defuzzifier: Defuzzifier = defuzzifier or SoftmaxLogDefuzzifier()

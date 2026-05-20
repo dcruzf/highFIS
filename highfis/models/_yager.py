@@ -38,8 +38,7 @@ class AYATSKClassifier(BaseTSKClassifier):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str = "coco",
-        t_norm: str = "yager",
-        t_norm_fn: TNormFn | None = None,
+        t_norm: str | TNormFn = "yager",
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -51,8 +50,7 @@ class AYATSKClassifier(BaseTSKClassifier):
                 :class:`~highfis.memberships.MembershipFunction` objects.
             n_classes: Number of output classes (must be ≥ 2).
             rule_base: ``"coco"`` (default) or ``"cartesian"``.
-            t_norm: T-norm identifier (default ``"yager"``).
-            t_norm_fn: Optional custom t-norm callable.
+            t_norm: T-norm name or callable (default ``"yager"``).
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to
                 :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
@@ -68,7 +66,6 @@ class AYATSKClassifier(BaseTSKClassifier):
             input_mfs,
             rule_base=rule_base,
             t_norm=t_norm,
-            t_norm_fn=t_norm_fn,
             rules=rules,
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
@@ -99,8 +96,7 @@ class AYATSKRegressor(BaseTSKRegressor):
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str = "coco",
-        t_norm: str = "yager",
-        t_norm_fn: TNormFn | None = None,
+        t_norm: str | TNormFn = "yager",
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -111,8 +107,7 @@ class AYATSKRegressor(BaseTSKRegressor):
             input_mfs: Mapping from feature name to a sequence of
                 :class:`~highfis.memberships.MembershipFunction` objects.
             rule_base: ``"coco"`` (default) or ``"cartesian"``.
-            t_norm: T-norm identifier (default ``"yager"``).
-            t_norm_fn: Optional custom t-norm callable.
+            t_norm: T-norm name or callable (default ``"yager"``).
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to
                 :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
@@ -122,7 +117,6 @@ class AYATSKRegressor(BaseTSKRegressor):
             input_mfs,
             rule_base=rule_base,
             t_norm=t_norm,
-            t_norm_fn=t_norm_fn,
             rules=rules,
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,

@@ -37,8 +37,7 @@ class LogTSKClassifier(BaseTSKClassifier):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str = "cartesian",
-        t_norm: str = "prod",
-        t_norm_fn: TNormFn | None = None,
+        t_norm: str | TNormFn = "prod",
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -51,7 +50,6 @@ class LogTSKClassifier(BaseTSKClassifier):
             n_classes: Number of output classes (must be ≥ 2).
             rule_base: ``"cartesian"`` or ``"coco"`` rule-base strategy.
             t_norm: Antecedent aggregation operator (default ``"prod"``).
-            t_norm_fn: Optional custom t-norm callable.
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to
                 :class:`~highfis.defuzzifiers.InvLogDefuzzifier`.
@@ -67,7 +65,6 @@ class LogTSKClassifier(BaseTSKClassifier):
             input_mfs,
             rule_base=rule_base,
             t_norm=t_norm,
-            t_norm_fn=t_norm_fn,
             rules=rules,
             defuzzifier=defuzzifier or InvLogDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
@@ -99,8 +96,7 @@ class LogTSKRegressor(BaseTSKRegressor):
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str = "cartesian",
-        t_norm: str = "prod",
-        t_norm_fn: TNormFn | None = None,
+        t_norm: str | TNormFn = "prod",
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -112,7 +108,6 @@ class LogTSKRegressor(BaseTSKRegressor):
                 :class:`~highfis.memberships.MembershipFunction` objects.
             rule_base: ``"cartesian"`` or ``"coco"`` rule-base strategy.
             t_norm: Antecedent aggregation operator (default ``"prod"``).
-            t_norm_fn: Optional custom t-norm callable.
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to
                 :class:`~highfis.defuzzifiers.InvLogDefuzzifier`.
@@ -122,7 +117,6 @@ class LogTSKRegressor(BaseTSKRegressor):
             input_mfs,
             rule_base=rule_base,
             t_norm=t_norm,
-            t_norm_fn=t_norm_fn,
             rules=rules,
             defuzzifier=defuzzifier or InvLogDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,

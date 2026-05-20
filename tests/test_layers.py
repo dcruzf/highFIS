@@ -317,11 +317,11 @@ def test_rule_layer_custom_rejects_missing_rules() -> None:
 
 
 def test_rule_layer_custom_t_norm_fn_overrides_default() -> None:
-    """t_norm_fn parameter uses the custom function (line 195)."""
+    """Custom callable passed via t_norm uses the custom function."""
     layer = RuleLayer(
         ["x1", "x2"],
         [2, 2],
-        t_norm_fn=lambda t: t.prod(dim=-1),
+        t_norm=lambda t: t.prod(dim=-1),
     )
     m = MembershipLayer(_build_input_mfs())
     x = torch.randn(3, 2)

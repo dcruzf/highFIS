@@ -368,7 +368,7 @@ def test_admtsk_classifier_accepts_custom_t_norm_fn() -> None:
     model = ADMTSKClassifier(
         _build_input_mfs(),
         n_classes=2,
-        t_norm_fn=DombiTNorm(lambda_=1.5),
+        t_norm=DombiTNorm(lambda_=1.5),
     )
     x = torch.randn(4, 3)
     out = model.forward(x)
@@ -378,7 +378,7 @@ def test_admtsk_classifier_accepts_custom_t_norm_fn() -> None:
 def test_admtsk_regressor_accepts_custom_t_norm_fn() -> None:
     model = ADMTSKRegressor(
         _build_input_mfs(),
-        t_norm_fn=DombiTNorm(lambda_=1.5),
+        t_norm=DombiTNorm(lambda_=1.5),
     )
     x = torch.randn(4, 3)
     out = model.forward(x)
@@ -618,7 +618,7 @@ def test_dombi_tsk_classifier_explicit_t_norm_fn_branch() -> None:
         _build_input_mfs(n_inputs=2, n_mfs=2),
         n_classes=2,
         lambda_=1.5,
-        t_norm_fn=lambda terms, dim=-1: terms.prod(dim=dim),
+        t_norm=lambda terms, dim=-1: terms.prod(dim=dim),
     )
     x = torch.randn(4, 2)
     logits = model.forward(x)
@@ -636,7 +636,7 @@ def test_dombi_tsk_regressor_explicit_t_norm_fn_branch() -> None:
     model = DombiTSKRegressor(
         _build_input_mfs(n_inputs=2, n_mfs=2),
         lambda_=1.0,
-        t_norm_fn=lambda terms, dim=-1: terms.prod(dim=dim),
+        t_norm=lambda terms, dim=-1: terms.prod(dim=dim),
     )
     x = torch.randn(4, 2)
     out = model.forward(x)

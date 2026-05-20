@@ -37,8 +37,7 @@ class HTSKClassifier(BaseTSKClassifier):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str = "cartesian",
-        t_norm: str = "gmean",
-        t_norm_fn: TNormFn | None = None,
+        t_norm: str | TNormFn = "gmean",
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -52,10 +51,8 @@ class HTSKClassifier(BaseTSKClassifier):
             rule_base: Rule-base construction strategy.  ``"cartesian"``
                 builds the full Cartesian product; ``"coco"`` uses a
                 one-cluster-per-rule scheme.
-            t_norm: Antecedent aggregation operator name (default
-                ``"gmean"`` for HTSK).
-            t_norm_fn: Optional custom t-norm callable; overrides
-                ``t_norm`` when provided.
+            t_norm: Antecedent aggregation operator name or callable
+                (default ``"gmean"`` for HTSK).
             rules: Explicit rule antecedent indices.  If ``None``, rules
                 are inferred from ``rule_base``.
             defuzzifier: Custom defuzzifier module.  Defaults to
@@ -73,7 +70,6 @@ class HTSKClassifier(BaseTSKClassifier):
             input_mfs,
             rule_base=rule_base,
             t_norm=t_norm,
-            t_norm_fn=t_norm_fn,
             rules=rules,
             defuzzifier=defuzzifier,
             consequent_batch_norm=consequent_batch_norm,
@@ -105,8 +101,7 @@ class HTSKRegressor(BaseTSKRegressor):
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str = "cartesian",
-        t_norm: str = "gmean",
-        t_norm_fn: TNormFn | None = None,
+        t_norm: str | TNormFn = "gmean",
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -119,7 +114,6 @@ class HTSKRegressor(BaseTSKRegressor):
             rule_base: Rule-base construction strategy (``"cartesian"`` or
                 ``"coco"``).
             t_norm: Antecedent aggregation operator (default ``"gmean"``).
-            t_norm_fn: Optional custom t-norm callable.
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to
                 :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`.
@@ -129,7 +123,6 @@ class HTSKRegressor(BaseTSKRegressor):
             input_mfs,
             rule_base=rule_base,
             t_norm=t_norm,
-            t_norm_fn=t_norm_fn,
             rules=rules,
             defuzzifier=defuzzifier,
             consequent_batch_norm=consequent_batch_norm,
@@ -163,8 +156,7 @@ class TSKClassifier(BaseTSKClassifier):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str = "cartesian",
-        t_norm: str = "prod",
-        t_norm_fn: TNormFn | None = None,
+        t_norm: str | TNormFn = "prod",
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -177,7 +169,6 @@ class TSKClassifier(BaseTSKClassifier):
             n_classes: Number of output classes (must be ≥ 2).
             rule_base: ``"cartesian"`` or ``"coco"`` rule-base strategy.
             t_norm: Antecedent aggregation operator (default ``"prod"``).
-            t_norm_fn: Optional custom t-norm callable.
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to
                 :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
@@ -193,7 +184,6 @@ class TSKClassifier(BaseTSKClassifier):
             input_mfs,
             rule_base=rule_base,
             t_norm=t_norm,
-            t_norm_fn=t_norm_fn,
             rules=rules,
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
@@ -226,8 +216,7 @@ class TSKRegressor(BaseTSKRegressor):
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str = "cartesian",
-        t_norm: str = "prod",
-        t_norm_fn: TNormFn | None = None,
+        t_norm: str | TNormFn = "prod",
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -239,7 +228,6 @@ class TSKRegressor(BaseTSKRegressor):
                 :class:`~highfis.memberships.MembershipFunction` objects.
             rule_base: ``"cartesian"`` or ``"coco"`` rule-base strategy.
             t_norm: Antecedent aggregation operator (default ``"prod"``).
-            t_norm_fn: Optional custom t-norm callable.
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to
                 :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
@@ -249,7 +237,6 @@ class TSKRegressor(BaseTSKRegressor):
             input_mfs,
             rule_base=rule_base,
             t_norm=t_norm,
-            t_norm_fn=t_norm_fn,
             rules=rules,
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,

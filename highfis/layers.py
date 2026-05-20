@@ -184,8 +184,7 @@ class RuleLayer(nn.Module):
         mf_per_input: list[int],
         rules: Sequence[Sequence[int]] | None = None,
         rule_base: str = "cartesian",
-        t_norm: str = "prod",
-        t_norm_fn: TNormFn | None = None,
+        t_norm: str | TNormFn = "prod",
     ) -> None:
         """Initialize rule generation and firing-strength aggregation strategy."""
         super().__init__()
@@ -203,7 +202,6 @@ class RuleLayer(nn.Module):
         self.input_names = input_names
         self.mf_per_input = mf_per_input
         self.n_inputs = len(input_names)
-        self.t_norm_fn = t_norm_fn
         self._resolved_t_norm = resolve_t_norm(t_norm)
 
         if rules is None and rule_base == "cartesian":
@@ -258,12 +256,10 @@ class RuleLayer(nn.Module):
 
     def _apply_t_norm(self, terms: Tensor) -> Tensor:
         dim = terms.ndim - 1
-        if self.t_norm_fn is not None:
-            try:
-                return self.t_norm_fn(terms, dim=dim)
-            except TypeError:
-                return self.t_norm_fn(terms)
-        return self._resolved_t_norm(terms, dim=dim)
+        try:
+            return self._resolved_t_norm(terms, dim=dim)
+        except TypeError:
+            return self._resolved_t_norm(terms)
 
     def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
         """Compute rule firing strengths from membership outputs.
@@ -307,7 +303,7 @@ class AdaSoftminRuleLayer(RuleLayer):
     ) -> None:
         """Initialize Ada-softmin rule layer."""
         self.eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else float(eps)
-        super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod", t_norm_fn=None)
+        super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod")
 
     def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
         """Compute Ada-softmin rule strengths from membership outputs."""
@@ -355,7 +351,7 @@ class ADPSoftminRuleLayer(RuleLayer):
         self.eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else float(eps)
         self.kappa = float(kappa)
         self.xi = float(xi)
-        super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod", t_norm_fn=None)
+        super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod")
 
     def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
         """Compute ADP-softmin rule strengths from membership outputs."""
@@ -413,7 +409,7 @@ class DGALETSKRuleLayer(RuleLayer):
         if alpha_init <= 0.0:
             raise ValueError("alpha_init must be > 0")
         self.eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else float(eps)
-        super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod", t_norm_fn=None)
+        super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod")
         self.raw_alpha = nn.Parameter(torch.full((1,), _inv_softplus(alpha_init, self.eps)))
         self.lambda_gates = nn.Parameter(torch.zeros(self.n_inputs))
         nn.init.uniform_(self.lambda_gates, -0.1, 0.1)
@@ -463,7 +459,7 @@ class DGTSKRuleLayer(RuleLayer):
         """Initialize DGTSK rule layer."""
         self.eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else float(eps)
         self.gate_fn = resolve_gate_fn(gate_fea)
-        super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod", t_norm_fn=None)
+        super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod")
         self.lambda_gates = nn.Parameter(torch.zeros(self.n_inputs))
         nn.init.uniform_(self.lambda_gates, -0.1, 0.1)
 
@@ -504,7 +500,7 @@ class AdaptiveDombiRuleLayer(RuleLayer):
         if lambda_init <= 0.0:
             raise ValueError("lambda_init must be > 0")
         self.eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else float(eps)
-        super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod", t_norm_fn=None)
+        super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod")
         self.raw_lambdas = nn.Parameter(torch.full((self.n_rules,), _inv_softplus(lambda_init, self.eps)))
 
     @property

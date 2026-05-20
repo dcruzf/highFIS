@@ -40,9 +40,8 @@ class DombiTSKClassifier(BaseTSKClassifier):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str = "cartesian",
-        t_norm: str = "dombi",
+        t_norm: str | TNormFn = "dombi",
         lambda_: float = 1.0,
-        t_norm_fn: TNormFn | None = None,
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -54,11 +53,10 @@ class DombiTSKClassifier(BaseTSKClassifier):
                 :class:`~highfis.memberships.MembershipFunction` objects.
             n_classes: Number of output classes (must be ≥ 2).
             rule_base: ``"cartesian"`` or ``"coco"`` rule-base strategy.
-            t_norm: T-norm identifier (default ``"dombi"``).
+            t_norm: T-norm name or callable (default ``"dombi"``). When a
+                string, a ``DombiTNorm`` with *lambda_* is used.
             lambda_: Dombi parameter ``λ > 0``.  ``λ = 1`` gives the
-                algebraic product.
-            t_norm_fn: Optional custom t-norm callable; overrides
-                ``lambda_`` and ``t_norm`` when provided.
+                algebraic product.  Ignored when *t_norm* is callable.
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to
                 :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
@@ -74,14 +72,13 @@ class DombiTSKClassifier(BaseTSKClassifier):
 
         self.n_classes = int(n_classes)
         self.lambda_ = float(lambda_)
-        if t_norm_fn is None:
-            t_norm_fn = DombiTNorm(lambda_=self.lambda_)
+        if not callable(t_norm):
+            t_norm = DombiTNorm(lambda_=self.lambda_)
 
         super().__init__(
             input_mfs,
             rule_base=rule_base,
             t_norm=t_norm,
-            t_norm_fn=t_norm_fn,
             rules=rules,
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
@@ -113,9 +110,8 @@ class DombiTSKRegressor(BaseTSKRegressor):
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str = "cartesian",
-        t_norm: str = "dombi",
+        t_norm: str | TNormFn = "dombi",
         lambda_: float = 1.0,
-        t_norm_fn: TNormFn | None = None,
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -126,9 +122,9 @@ class DombiTSKRegressor(BaseTSKRegressor):
             input_mfs: Mapping from feature name to a sequence of
                 :class:`~highfis.memberships.MembershipFunction` objects.
             rule_base: ``"cartesian"`` or ``"coco"`` rule-base strategy.
-            t_norm: T-norm identifier (default ``"dombi"``).
-            lambda_: Dombi parameter ``λ > 0``.
-            t_norm_fn: Optional custom t-norm callable.
+            t_norm: T-norm name or callable (default ``"dombi"``). When a
+                string, a ``DombiTNorm`` with *lambda_* is used.
+            lambda_: Dombi parameter ``λ > 0``.  Ignored when *t_norm* is callable.
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to
                 :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
@@ -141,14 +137,13 @@ class DombiTSKRegressor(BaseTSKRegressor):
             raise ValueError("lambda_ must be > 0")
 
         self.lambda_ = float(lambda_)
-        if t_norm_fn is None:
-            t_norm_fn = DombiTNorm(lambda_=self.lambda_)
+        if not callable(t_norm):
+            t_norm = DombiTNorm(lambda_=self.lambda_)
 
         super().__init__(
             input_mfs,
             rule_base=rule_base,
             t_norm=t_norm,
-            t_norm_fn=t_norm_fn,
             rules=rules,
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
@@ -180,12 +175,11 @@ class ADMTSKClassifier(BaseTSKClassifier):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str = "coco",
-        t_norm: str = "dombi",
+        t_norm: str | TNormFn = "dombi",
         adaptive: bool = True,
         lambda_: float = 1.0,
         lower_bound: float = 1.0 / math.e,
         k: float = 10.0,
-        t_norm_fn: TNormFn | None = None,
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -198,14 +192,14 @@ class ADMTSKClassifier(BaseTSKClassifier):
             n_classes: Number of output classes. Must be >= 2.
             rule_base: Rule base strategy, either ``"coco"`` or
                 ``"cartesian"``.
-            t_norm: T-norm identifier. Defaults to ``"dombi"``.
+            t_norm: T-norm name or callable (default ``"dombi"``). When a
+                string, an adaptive or fixed ``DombiTNorm`` is built from
+                *adaptive*, *lambda_*, *lower_bound*, and *k*.
             adaptive: If True, compute adaptive lambda using the feature
                 dimension and membership lower bound.
             lambda_: Fixed Dombi parameter ``λ > 0`` when adaptive is False.
             lower_bound: The lower bound for Composite GMF values.
             k: Heuristic constant used to compute adaptive lambda.
-            t_norm_fn: Optional custom T-norm implementation. Overrides
-                ``adaptive`` and ``lambda_`` when provided.
             rules: Explicit rule antecedent indices for custom rule bases.
             defuzzifier: Optional defuzzifier module.
             consequent_batch_norm: If True, apply batch normalization to
@@ -226,21 +220,20 @@ class ADMTSKClassifier(BaseTSKClassifier):
         self.lower_bound = float(lower_bound)
         self.k = float(k)
 
-        if t_norm_fn is None:
+        if not callable(t_norm):
             if self.adaptive:
-                t_norm_fn = AdaptiveDombiTNorm(
+                t_norm = AdaptiveDombiTNorm(
                     dimension=len(input_mfs),
                     lower_bound=self.lower_bound,
                     k=self.k,
                 )
             else:
-                t_norm_fn = DombiTNorm(lambda_=self.lambda_)
+                t_norm = DombiTNorm(lambda_=self.lambda_)
 
         super().__init__(
             input_mfs,
             rule_base=rule_base,
             t_norm=t_norm,
-            t_norm_fn=t_norm_fn,
             rules=rules,
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
@@ -271,12 +264,11 @@ class ADMTSKRegressor(BaseTSKRegressor):
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str = "coco",
-        t_norm: str = "dombi",
+        t_norm: str | TNormFn = "dombi",
         adaptive: bool = True,
         lambda_: float = 1.0,
         lower_bound: float = 1.0 / math.e,
         k: float = 10.0,
-        t_norm_fn: TNormFn | None = None,
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -288,14 +280,14 @@ class ADMTSKRegressor(BaseTSKRegressor):
                 membership functions.
             rule_base: Rule base strategy, either ``"coco"`` or
                 ``"cartesian"``.
-            t_norm: T-norm identifier. Defaults to ``"dombi"``.
+            t_norm: T-norm name or callable (default ``"dombi"``). When a
+                string, an adaptive or fixed ``DombiTNorm`` is built from
+                *adaptive*, *lambda_*, *lower_bound*, and *k*.
             adaptive: If True, compute adaptive lambda using the feature
                 dimension and membership lower bound.
             lambda_: Fixed Dombi parameter ``λ > 0`` when adaptive is False.
             lower_bound: The lower bound for Composite GMF values.
             k: Heuristic constant used to compute adaptive lambda.
-            t_norm_fn: Optional custom T-norm implementation. Overrides
-                ``adaptive`` and ``lambda_`` when provided.
             rules: Explicit rule antecedent indices for custom rule bases.
             defuzzifier: Optional defuzzifier module.
             consequent_batch_norm: If True, apply batch normalization to
@@ -312,21 +304,20 @@ class ADMTSKRegressor(BaseTSKRegressor):
         self.lower_bound = float(lower_bound)
         self.k = float(k)
 
-        if t_norm_fn is None:
+        if not callable(t_norm):
             if self.adaptive:
-                t_norm_fn = AdaptiveDombiTNorm(
+                t_norm = AdaptiveDombiTNorm(
                     dimension=len(input_mfs),
                     lower_bound=self.lower_bound,
                     k=self.k,
                 )
             else:
-                t_norm_fn = DombiTNorm(lambda_=self.lambda_)
+                t_norm = DombiTNorm(lambda_=self.lambda_)
 
         super().__init__(
             input_mfs,
             rule_base=rule_base,
             t_norm=t_norm,
-            t_norm_fn=t_norm_fn,
             rules=rules,
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,

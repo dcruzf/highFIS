@@ -26,6 +26,7 @@ from __future__ import annotations
 import math
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from typing import cast
 
 import torch
 from torch import Tensor, nn
@@ -245,8 +246,10 @@ class ALESoftminYagerTNorm(BaseTNorm):
         return 1.0 - softmin
 
 
-def resolve_t_norm(name: str) -> TNormFn:
-    """Resolve a built-in t-norm by name."""
+def resolve_t_norm(name: str | TNormFn) -> TNormFn:
+    """Resolve a t-norm by name or return a callable directly."""
+    if callable(name):
+        return cast(TNormFn, name)
     if name == "prod":
         return ProductTNorm()
     if name == "min":

@@ -38,8 +38,7 @@ class MHTSKClassifier(BaseTSKClassifier):
         rule_feature_mask: Tensor,
         rules: Sequence[Sequence[int]],
         n_classes: int,
-        t_norm: str = "prod",
-        t_norm_fn: TNormFn | None = None,
+        t_norm: str | TNormFn = "prod",
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
     ) -> None:
@@ -52,7 +51,6 @@ class MHTSKClassifier(BaseTSKClassifier):
             rules: Explicit per-rule MF index sequences for all inputs.
             n_classes: Number of output classes.
             t_norm: Antecedent aggregation operator (default ``"prod"``).
-            t_norm_fn: Optional custom t-norm callable.
             defuzzifier: Custom defuzzifier. Defaults to ``SumBasedDefuzzifier``.
             consequent_batch_norm: Batch normalisation on consequent inputs.
         """
@@ -64,7 +62,6 @@ class MHTSKClassifier(BaseTSKClassifier):
             input_mfs,
             rule_base="custom",
             t_norm=t_norm,
-            t_norm_fn=t_norm_fn,
             rules=rules,
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
@@ -103,8 +100,7 @@ class MHTSKRegressor(BaseTSKRegressor):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_feature_mask: Tensor,
         rules: Sequence[Sequence[int]],
-        t_norm: str = "prod",
-        t_norm_fn: TNormFn | None = None,
+        t_norm: str | TNormFn = "prod",
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
     ) -> None:
@@ -114,7 +110,6 @@ class MHTSKRegressor(BaseTSKRegressor):
             input_mfs,
             rule_base="custom",
             t_norm=t_norm,
-            t_norm_fn=t_norm_fn,
             rules=rules,
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
