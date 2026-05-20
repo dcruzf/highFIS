@@ -10,13 +10,13 @@ import torch
 from torch import Tensor, nn
 
 from ..defuzzifiers import SoftmaxLogDefuzzifier
+from ..gates import _gate_activation
 from ..layers import (
     DGALETSKRuleLayer,
     GatedClassificationConsequentLayer,
     GatedClassificationZeroOrderConsequentLayer,
     GatedRegressionConsequentLayer,
     GatedRegressionZeroOrderConsequentLayer,
-    _gate_activation,
 )
 from ..memberships import MembershipFunction
 from ._common import (
