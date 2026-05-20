@@ -31,8 +31,10 @@ from ..metrics import compute_metrics
 from ..persistence import (
     CHECKPOINT_FORMAT,
     CHECKPOINT_VERSION,
+    deserialize_input_mfs,
     load_checkpoint,
     save_checkpoint,
+    serialize_input_mfs,
     validate_checkpoint_payload,
 )
 
@@ -855,11 +857,17 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         fitted_attrs: dict[str, Any],
     ) -> dict[str, Any]:
         check_is_fitted(self, "model_")
+        params = self.get_params(deep=False)
+        if params.get("input_configs") is not None:
+            params["input_configs"] = [
+                {"name": c.name, "n_mfs": c.n_mfs, "overlap": c.overlap, "margin": c.margin}
+                for c in params["input_configs"]
+            ]
         return {
             "format": CHECKPOINT_FORMAT,
             "format_version": CHECKPOINT_VERSION,
             "estimator_class": self.__class__.__name__,
-            "estimator_params": self.get_params(deep=False),
+            "estimator_params": params,
             "model_init": model_init,
             "model_state_dict": self.model_.state_dict(),
             "fitted_attrs": fitted_attrs,
@@ -870,7 +878,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         """Persist estimator configuration, model weights and fitted metadata."""
         checkpoint = self._build_checkpoint_base(
             model_init={
-                "input_mfs": self.model_.input_mfs,
+                "input_mfs_config": serialize_input_mfs(self.model_.input_mfs),
                 "n_classes": len(self.classes_),
                 "rule_base": self.rule_base_,
             },
@@ -888,11 +896,14 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         checkpoint = load_checkpoint(path)
         validate_checkpoint_payload(checkpoint, expected_estimator_class=cls.__name__)
 
-        estimator = cls(**checkpoint["estimator_params"])
+        params: dict[str, Any] = dict(checkpoint["estimator_params"])
+        if params.get("input_configs") is not None:
+            params["input_configs"] = [InputConfig(**c) for c in params["input_configs"]]
+        estimator = cls(**params)
         model_init = checkpoint["model_init"]
         estimator.rule_base_ = model_init["rule_base"]
         estimator.model_ = estimator._build_model(
-            model_init["input_mfs"],
+            deserialize_input_mfs(model_init["input_mfs_config"]),
             int(model_init["n_classes"]),
             str(model_init["rule_base"]),
         )
@@ -1291,11 +1302,17 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         fitted_attrs: dict[str, Any],
     ) -> dict[str, Any]:
         check_is_fitted(self, "model_")
+        params = self.get_params(deep=False)
+        if params.get("input_configs") is not None:
+            params["input_configs"] = [
+                {"name": c.name, "n_mfs": c.n_mfs, "overlap": c.overlap, "margin": c.margin}
+                for c in params["input_configs"]
+            ]
         return {
             "format": CHECKPOINT_FORMAT,
             "format_version": CHECKPOINT_VERSION,
             "estimator_class": self.__class__.__name__,
-            "estimator_params": self.get_params(deep=False),
+            "estimator_params": params,
             "model_init": model_init,
             "model_state_dict": self.model_.state_dict(),
             "fitted_attrs": fitted_attrs,
@@ -1306,7 +1323,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         """Persist estimator configuration, model weights and fitted metadata."""
         checkpoint = self._build_checkpoint_base(
             model_init={
-                "input_mfs": self.model_.input_mfs,
+                "input_mfs_config": serialize_input_mfs(self.model_.input_mfs),
                 "rule_base": self.rule_base_,
             },
             fitted_attrs={
@@ -1322,11 +1339,14 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         checkpoint = load_checkpoint(path)
         validate_checkpoint_payload(checkpoint, expected_estimator_class=cls.__name__)
 
-        estimator = cls(**checkpoint["estimator_params"])
+        params: dict[str, Any] = dict(checkpoint["estimator_params"])
+        if params.get("input_configs") is not None:
+            params["input_configs"] = [InputConfig(**c) for c in params["input_configs"]]
+        estimator = cls(**params)
         model_init = checkpoint["model_init"]
         estimator.rule_base_ = model_init["rule_base"]
         estimator.model_ = estimator._build_regressor_model(
-            model_init["input_mfs"],
+            deserialize_input_mfs(model_init["input_mfs_config"]),
             str(model_init["rule_base"]),
         )
         estimator.model_.load_state_dict(checkpoint["model_state_dict"])

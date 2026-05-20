@@ -22,7 +22,7 @@ def _valid_payload() -> dict[str, object]:
         "format_version": CHECKPOINT_VERSION,
         "estimator_class": "FakeEstimator",
         "estimator_params": {"n_mfs": 1},
-        "model_init": {"input_mfs": {}, "rule_base": "cartesian"},
+        "model_init": {"input_mfs_config": {}, "rule_base": "cartesian"},
         "model_state_dict": {},
         "fitted_attrs": {"n_features_in": 1, "feature_names_in": ["x1"]},
         "history": None,
@@ -58,24 +58,23 @@ class TestPersistenceIO:
         assert path.exists()
         assert load_checkpoint(path) == payload
 
-    def test_load_checkpoint_falls_back_when_weights_only_unsupported(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_load_checkpoint_uses_weights_only_true(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         payload = _valid_payload()
         path = tmp_path / "ckpt.pt"
         torch.save(payload, path)
 
-        sentinel = object()
+        calls: list[dict] = []
 
-        def fake_load(source, map_location, weights_only=sentinel):
-            if weights_only is not sentinel:
-                raise TypeError("weights_only not supported")
-            return payload
+        _original_load = torch.load
 
-        monkeypatch.setattr(torch, "load", fake_load)
-        loaded = load_checkpoint(path)
+        def capturing_load(source, map_location, weights_only):
+            calls.append({"weights_only": weights_only})
+            return _original_load(source, map_location=map_location, weights_only=weights_only)
 
-        assert loaded == payload
+        monkeypatch.setattr(torch, "load", capturing_load)
+        load_checkpoint(path)
+
+        assert calls == [{"weights_only": True}]
 
     @pytest.mark.parametrize(
         "missing_key",

@@ -37,8 +37,75 @@ from typing import Any
 
 from .version import __version__
 
+
+def _get_mf_registry() -> dict[str, type]:
+    """Lazily return the supported MF type registry to avoid circular imports."""
+    from .memberships import (
+        CompositeGMF,
+        DimensionDependentGaussianMF,
+        GaussianMF,
+        GaussianPIMF,
+    )
+
+    return {
+        "CompositeGMF": CompositeGMF,
+        "DimensionDependentGaussianMF": DimensionDependentGaussianMF,
+        "GaussianMF": GaussianMF,
+        "GaussianPIMF": GaussianPIMF,
+    }
+
+
 CHECKPOINT_FORMAT = "highfis_estimator"
 CHECKPOINT_VERSION = __version__
+
+
+def serialize_input_mfs(input_mfs: Any) -> dict[str, list[dict[str, Any]]]:
+    """Serialize an ``nn.ModuleDict`` of membership functions to a plain dict.
+
+    Converts each membership function to a ``{"type": classname, "params": {...}}``
+    entry so the checkpoint contains only primitive Python types and tensors,
+    making it compatible with ``torch.load(..., weights_only=True)``.
+
+    Args:
+        input_mfs: The ``input_mfs`` attribute of a fitted
+            :class:`~highfis.layers.FuzzificationLayer` (an ``nn.ModuleDict``).
+
+    Returns:
+        A JSON-serializable dict mapping feature name to a list of MF configs.
+    """
+    return {
+        name: [{"type": type(mf).__name__, "params": mf.inspect_params()} for mf in mf_list]
+        for name, mf_list in input_mfs.items()
+    }
+
+
+def deserialize_input_mfs(
+    config: dict[str, list[dict[str, Any]]],
+) -> dict[str, list[Any]]:
+    """Reconstruct ``input_mfs`` from a serialized config dict.
+
+    Args:
+        config: A dict as returned by :func:`serialize_input_mfs`.
+
+    Returns:
+        A mapping of feature name to a list of
+        :class:`~highfis.memberships.MembershipFunction` instances suitable
+        for passing to :class:`~highfis.layers.FuzzificationLayer`.
+
+    Raises:
+        ValueError: If the config contains an unrecognised MF type name.
+    """
+    registry = _get_mf_registry()
+    result: dict[str, list[Any]] = {}
+    for name, mf_configs in config.items():
+        mf_list: list[Any] = []
+        for mf_cfg in mf_configs:
+            mf_type = mf_cfg["type"]
+            if mf_type not in registry:
+                raise ValueError(f"unknown membership function type '{mf_type}'; known types: {sorted(registry)}")
+            mf_list.append(registry[mf_type](**mf_cfg["params"]))
+        result[name] = mf_list
+    return result
 
 
 def save_checkpoint(path: str | Path, checkpoint: dict[str, Any]) -> None:
@@ -72,10 +139,7 @@ def load_checkpoint(path: str | Path) -> dict[str, Any]:
     import torch
 
     source = Path(path)
-    try:
-        payload = torch.load(source, map_location="cpu", weights_only=False)  # nosec
-    except TypeError:
-        payload = torch.load(source, map_location="cpu")  # nosec
+    payload = torch.load(source, map_location="cpu", weights_only=True)
 
     if not isinstance(payload, dict):
         raise ValueError("invalid checkpoint: expected a dictionary payload")
