@@ -20,11 +20,10 @@ from ..base import BaseTSK
 from ..clustering import FuzzyCMeans
 from ..clustering import KMeans as TorchKMeans
 from ..memberships import (
-    CompositeGMF,
     ConstantMF,
     DimensionDependentGaussianMF,
     GaussianMF,
-    GaussianPIMF,
+    GaussianPiMF,
     MembershipFunction,
 )
 from ..metrics import compute_metrics
@@ -527,9 +526,10 @@ def _wrap_composite_gaussian_input_mfs(
         name: cast(
             list[GaussianMF],
             [
-                CompositeGMF(
+                GaussianPiMF(
                     mean=cast(GaussianMF, mf).mean.detach().item(),
                     sigma=cast(GaussianMF, mf).sigma.detach().item(),
+                    k=1.0,
                     eps=eps if eps is not None else mf.eps,
                 )
                 for mf in mfs
@@ -548,7 +548,7 @@ def _wrap_gaussian_pimf_input_mfs(
         name: cast(
             list[GaussianMF],
             [
-                GaussianPIMF(
+                GaussianPiMF(
                     mean=cast(GaussianMF, mf).mean.detach().item(),
                     sigma=cast(GaussianMF, mf).sigma.detach().item(),
                     k=float(k),

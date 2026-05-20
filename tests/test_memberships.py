@@ -15,7 +15,7 @@ from highfis.memberships import (
     DiffSigmoidalMF,
     DimensionDependentGaussianMF,
     GaussianMF,
-    GaussianPIMF,
+    GaussianPiMF,
     LinSShapedMF,
     LinZShapedMF,
     MembershipFunction,
@@ -89,6 +89,7 @@ def test_composite_exponential_mf_rejects_non_positive_sigma() -> None:
         CompositeExponentialMF(center=0.0, sigma=0.0)
 
 
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_composite_gmf_forward_lower_bound() -> None:
     mf = CompositeGMF(mean=0.0, sigma=1.0)
     x = torch.tensor([-10.0, 0.0, 10.0], dtype=torch.float32)
@@ -99,9 +100,24 @@ def test_composite_gmf_forward_lower_bound() -> None:
     assert float(torch.min(y).item()) == pytest.approx(math.exp(-1.0), rel=1e-6)
 
 
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_composite_gmf_rejects_non_positive_sigma() -> None:
     with pytest.raises(ValueError, match="sigma must be positive"):
         CompositeGMF(mean=0.0, sigma=0.0)
+
+
+def test_composite_gmf_emits_deprecation_warning() -> None:
+    with pytest.warns(DeprecationWarning, match="CompositeGMF is deprecated"):
+        CompositeGMF(mean=0.0, sigma=1.0)
+
+
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
+def test_composite_gmf_inspect_params_returns_mean_sigma() -> None:
+    mf = CompositeGMF(mean=0.5, sigma=2.0)
+    params = mf.inspect_params()
+    assert set(params) == {"mean", "sigma"}
+    assert params["mean"] == pytest.approx(0.5)
+    assert params["sigma"] == pytest.approx(2.0)
 
 
 def test_composite_exponential_mf_rejects_invalid_k() -> None:
@@ -254,16 +270,16 @@ def test_pi_mf_rejects_invalid_bounds() -> None:
 
 def test_gaussian_pimf_rejects_invalid_sigma() -> None:
     with pytest.raises(ValueError, match="sigma must be positive"):
-        GaussianPIMF(mean=0.0, sigma=0.0, k=1.0)
+        GaussianPiMF(mean=0.0, sigma=0.0, k=1.0)
 
 
 def test_gaussian_pimf_rejects_invalid_k() -> None:
     with pytest.raises(ValueError, match=r"k must be in the interval \(0, 745\]"):
-        GaussianPIMF(mean=0.0, sigma=1.0, k=0.0)
+        GaussianPiMF(mean=0.0, sigma=1.0, k=0.0)
 
 
 def test_gaussian_pimf_infimum_positive() -> None:
-    mf = GaussianPIMF(mean=0.0, sigma=1.0, k=2.0)
+    mf = GaussianPiMF(mean=0.0, sigma=1.0, k=2.0)
     x = torch.tensor([100.0])
     y = mf(x)
     assert y.shape == x.shape
@@ -286,7 +302,6 @@ def test_gaussian_pimf_infimum_positive() -> None:
             },
         ),
         (CompositeGaussianMF(mean=0.5, sigma=2.0), {"mean": 0.5, "sigma": 2.0}),
-        (CompositeGMF(mean=0.5, sigma=2.0), {"mean": 0.5, "sigma": 2.0}),
         (TriangularMF(left=-1.0, center=0.0, right=1.0), {"left": -1.0, "center": 0.0, "right": 1.0}),
         (TrapezoidalMF(a=0.0, b=1.0, c=2.0, d=3.0), {"a": 0.0, "b": 1.0, "c": 2.0, "d": 3.0}),
         (BellMF(a=1.0, b=2.0, center=0.0), {"a": 1.0, "b": 2.0, "center": 0.0}),
@@ -305,7 +320,7 @@ def test_gaussian_pimf_infimum_positive() -> None:
         (ZShapedMF(a=0.0, b=1.0), {"a": 0.0, "b": 1.0}),
         (LinZShapedMF(a=0.0, b=1.0), {"a": 0.0, "b": 1.0}),
         (PiMF(a=0.0, b=0.5, c=1.0, d=1.5), {"a": 0.0, "b": 0.5, "c": 1.0, "d": 1.5}),
-        (GaussianPIMF(mean=0.5, sigma=2.0, k=5.0), {"mean": 0.5, "sigma": 2.0, "k": 5.0}),
+        (GaussianPiMF(mean=0.5, sigma=2.0, k=5.0), {"mean": 0.5, "sigma": 2.0, "k": 5.0}),
     ],
 )
 def test_all_membership_functions_expose_inspect_params(mf: Any, expected: dict[str, float]) -> None:

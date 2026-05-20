@@ -59,7 +59,7 @@ from highfis.estimators._base import (
     _resolve_mhtsk_scale_parameters,
     _select_rule_indices,
 )
-from highfis.memberships import CompositeGMF, DimensionDependentGaussianMF, GaussianMF, MembershipFunction
+from highfis.memberships import DimensionDependentGaussianMF, GaussianMF, GaussianPiMF, MembershipFunction
 from highfis.models import HDFISMinClassifier, HDFISMinRegressor, TSKRegressor
 
 
@@ -1418,7 +1418,7 @@ def test_admtsk_classifier_estimator_uses_composite_gmf() -> None:
         batch_size=16,
     )
     est.fit(x, y)
-    assert all(isinstance(mf, CompositeGMF) for mfs in est.model_.input_mfs.values() for mf in mfs)
+    assert all(isinstance(mf, GaussianPiMF) for mfs in est.model_.input_mfs.values() for mf in mfs)
 
 
 def test_admtsk_regressor_estimator_fit_predict() -> None:

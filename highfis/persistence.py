@@ -43,14 +43,16 @@ def _get_mf_registry() -> dict[str, type]:
         CompositeGMF,
         DimensionDependentGaussianMF,
         GaussianMF,
-        GaussianPIMF,
+        GaussianPiMF,
     )
 
     return {
         "CompositeGMF": CompositeGMF,
         "DimensionDependentGaussianMF": DimensionDependentGaussianMF,
         "GaussianMF": GaussianMF,
-        "GaussianPIMF": GaussianPIMF,
+        "GaussianPiMF": GaussianPiMF,
+        # Legacy key kept for backward-compatible checkpoint loading.
+        "GaussianPIMF": GaussianPiMF,
     }
 
 
