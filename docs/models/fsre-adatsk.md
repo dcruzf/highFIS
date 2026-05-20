@@ -1,6 +1,6 @@
-# FSRE-AdaTSK
+# FSRE-ADATSK
 
-FSRE-AdaTSK extends AdaTSK with embedded feature-selection and rule-extraction phases, using gated consequents and an enhanced rule base for high-dimensional data.
+FSRE-ADATSK extends ADATSK with embedded feature-selection and rule-extraction phases, using gated consequents and an enhanced rule base for high-dimensional data.
 
 ## Reference
 
@@ -8,7 +8,7 @@ FSRE-AdaTSK extends AdaTSK with embedded feature-selection and rule-extraction p
 
 ## Overview
 
-FSRE-AdaTSK extends AdaTSK into a three-phase high-dimensional fuzzy model:
+FSRE-ADATSK extends ADATSK into a three-phase high-dimensional fuzzy model:
 
 1. **Feature Selection (FS)** — embedded gates on consequent coefficients
    identify and retain important input features.
@@ -34,7 +34,7 @@ where $c_{r,d}$ is the center and $\sigma_{r,d} > 0$ is the spread.
 
 ### Adaptive Softmin (Ada-softmin)
 
-FSRE-AdaTSK computes rule firing strengths with an adaptive softmin:
+FSRE-ADATSK computes rule firing strengths with an adaptive softmin:
 
 $$
 \phi_r(\mathbf{x}) = \left( \frac{1}{D} \sum_{d=1}^{D}
@@ -57,7 +57,7 @@ The normalized weights are then used to aggregate rule consequents.
 
 ### Gated Consequents
 
-FSRE-AdaTSK uses gates only in the consequent layer, not in the antecedent.
+FSRE-ADATSK uses gates only in the consequent layer, not in the antecedent.
 Each gate value $u$ modulates consequent strength with the paper's default
 activation:
 
@@ -79,7 +79,7 @@ rule-level gates are applied in the RE phase.
 
 ### Output Aggregation
 
-The FSRE-AdaTSK output for class $c$ is:
+The FSRE-ADATSK output for class $c$ is:
 
 $$
 y^c(\mathbf{x}) = \sum_{r=1}^{R} \bar{\phi}_r(\mathbf{x}) \, \hat{y}_r^c(\mathbf{x})
@@ -99,7 +99,7 @@ explicit phase transitions for FS, RE, and fine tuning.
 
 ## Learning Phases
 
-FSRE-AdaTSK is trained in three sequential phases, each with a clear role in
+FSRE-ADATSK is trained in three sequential phases, each with a clear role in
 making the model both compact and accurate.
 
 - **Feature Selection (`fit_fs`)**
@@ -130,7 +130,7 @@ making the model both compact and accurate.
     weights and bias terms for the final task.
 
 In the low-level API, these phases are explicit methods on
-`FSREAdaTSKClassifier`/`FSREAdaTSKRegressor`. The current implementation is
+`FSREADATSKClassifierModel`/`FSREADATSKRegressorModel`. The current implementation is
 correct: `fit_fs()` sets the consequent layer to feature-gate mode without
 changing the rule layer, `fit_re()` rebuilds the rule layer as En-FRB and
 switches to rule-gate mode, and `fit_finetune()` turns off gating entirely.
@@ -140,14 +140,14 @@ automatic end-to-end training.
 
 For the related DG-ALETSK implementation, see `docs/models/dg-aletsk.md`.
 
-## Comparison with the original IEEE FSRE-AdaTSK paper
+## Comparison with the original IEEE FSRE-ADATSK paper
 
-This document reflects the same FSRE-AdaTSK design presented in the paper
+This document reflects the same FSRE-ADATSK design presented in the paper
 "An Adaptive Neuro-Fuzzy System With Integrated Feature Selection and Rule
 Extraction for High-Dimensional Classification Problems." The paper's main
 claims are:
 
-- AdaTSK is the adaptive antecedent aggregation core.
+- ADATSK is the adaptive antecedent aggregation core.
 - Gates are embedded only in the consequent layer, not in antecedents.
 - Feature selection and rule extraction are performed in two successive
   phases, followed by a final fine-tuning phase.
@@ -161,7 +161,7 @@ $M(u) = u\\sqrt{e^{1 - u^2}}$, is the same gate activation function used in
 `GatedClassificationConsequentLayer` and `GatedRegressionConsequentLayer`.
 
 The highFIS implementation therefore matches the paper's distinction between
-AdaTSK as the base model and FSRE-AdaTSK as the three-phase extension with
+ADATSK as the base model and FSRE-ADATSK as the three-phase extension with
 feature selection, rule extraction, and En-FRB support.
 
 ## Code Correspondence
@@ -171,11 +171,11 @@ feature selection, rule extraction, and En-FRB support.
 | Adaptive softmin antecedent | `AdaSoftminRuleLayer` |
 | Gated classification consequent | `GatedClassificationConsequentLayer` |
 | Gated regression consequent | `GatedRegressionConsequentLayer` |
-| FSRE-AdaTSK classifier | `FSREAdaTSKClassifier` |
-| FSRE-AdaTSK regressor | `FSREAdaTSKRegressor` |
-| Sklearn-style classifier estimator | `FSREAdaTSKClassifierEstimator` |
-| Sklearn-style regressor estimator | `FSREAdaTSKRegressorEstimator` |
-| En-FRB expansion | `FSREAdaTSKClassifier.expand_to_en_frb()` / `FSREAdaTSKRegressor.expand_to_en_frb()` |
+| FSRE-ADATSK classifier | `FSREADATSKClassifierModel` |
+| FSRE-ADATSK regressor | `FSREADATSKRegressorModel` |
+| Sklearn-style classifier estimator | `FSREADATSKClassifier` |
+| Sklearn-style regressor estimator | `FSREADATSKRegressor` |
+| En-FRB expansion | `FSREADATSKClassifierModel.expand_to_en_frb()` / `FSREADATSKRegressorModel.expand_to_en_frb()` |
 | Phase training helpers | `fit_fs()`, `fit_re()`, `fit_finetune()` |
 
 ## Practical Notes
@@ -183,7 +183,7 @@ feature selection, rule extraction, and En-FRB support.
 - `AdaSoftminRuleLayer` implements adaptive softmin antecedent aggregation;
   no per-rule exponent parameter is explicitly learned outside this layer.
 - `lambda_init` is accepted by the estimator API for compatibility, but the
-  core FSRE-AdaTSK model computes its adaptive softmin index from current
+  core FSRE-ADATSK model computes its adaptive softmin index from current
   membership values rather than using a fixed learnable `lambda`.
 - Set `use_en_frb=True` to start from the enhanced fuzzy rule base; otherwise,
   training begins on a compact CoCo-FRB and expands to En-FRB during RE.
@@ -195,10 +195,10 @@ feature selection, rule extraction, and En-FRB support.
 ## Example
 
 ```python
-from highfis import FSREAdaTSKClassifierEstimator
+from highfis import FSREADATSKClassifier
 
-clf = FSREAdaTSKClassifierEstimator(
-    n_mfs=4,
+clf = FSREADATSKClassifier(
+    n_rules=4,
     mf_init="kmeans",
     lambda_init=1.0,
     epochs=200,
@@ -213,13 +213,14 @@ print(f"Accuracy: {clf.score(X_test, y_test):.4f}")
 Low-level usage with explicit FS/RE phases:
 
 ```python
-from highfis import FSREAdaTSKClassifier, GaussianMF
+from highfis.models import FSREADATSKClassifierModel
+from highfis.memberships import GaussianMF
 
 input_mfs = {
     "x1": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
     "x2": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
 }
-model = FSREAdaTSKClassifier(
+model = FSREADATSKClassifierModel(
     input_mfs,
     n_classes=3,
     lambda_init=1.0,

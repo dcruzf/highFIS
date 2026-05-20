@@ -16,7 +16,7 @@ and rule selection in high-dimensional fuzzy systems.
 ## 🚀 Overview
 
 - Differentiable TSK fuzzy systems built for high-dimensional data.
-- Supports both concrete model classes and sklearn-style estimator wrappers.
+- Supports both concrete PyTorch model classes and sklearn-compatible estimators.
 - Includes adaptive and gated inference variants for feature selection and
   sparse rule extraction.
 - Designed for numerical stability with log-space and inverse-log defuzzifiers.
@@ -32,10 +32,10 @@ pip install highfis
 ## 🧠 Quick Start
 
 ```python
-from highfis import HTSKClassifierEstimator
+from highfis import HTSKClassifier
 
-clf = HTSKClassifierEstimator(
-    n_mfs=4,
+clf = HTSKClassifier(
+    n_rules=10,
     mf_init="kmeans",
     epochs=150,
     learning_rate=1e-3,
@@ -59,15 +59,15 @@ high-dimensional inference strategy.
   normalization.
 - `LogTSK` — log-domain inverse-log normalization for stable aggregation.
 - `MHTSK` — multihead sparse TSK with feature-subset heads and sparse consequents.
-- `DombiTSK` — Dombi t-norm aggregation with a learnable shape parameter.
-- `ADMTSK` — adaptive Dombi TSK with Composite Gaussian membership functions.
-- `AYATSK` — Yager aggregation for flexible antecedent behavior.
-- `AdaTSK` — adaptive softmin-style inference with dynamic rule weighting.
+- `DombiTSK` — Dombi T-norm aggregation with a learnable shape parameter.
+- `ADMTSK` — adaptive Dombi TSK with dimension-dependent Gaussian membership functions.
+- `AYATSK` — Yager T-norm aggregation for flexible antecedent behavior.
+- `ADATSK` — adaptive softmin-style inference with dynamic rule weighting.
 - `ADPTSK` — adaptive double-parameter softmin inference with stable normalized rule weights.
-- `FSRE-AdaTSK` — adaptive model with gated feature selection and rule extraction.
-- `DG-TSK` — double-gated training for feature selection and rule extraction.
-- `DG-ALETSK` — adaptive Ln-Exp softmin with embedded feature and rule gates.
-- `HDFIS` — high-dimensional inference with product DMF (`HDFIS-prod`) and minimum T-norm frozen antecedents (`HDFIS-min`).
+- `FSRE-ADATSK` — adaptive model with gated feature selection and rule extraction.
+- `DGTSK` — double-gated training for feature selection and rule extraction.
+- `DGALETSK` — adaptive Ln-Exp softmin with embedded feature and rule gates.
+- `HDFIS` — high-dimensional inference with product T-norm (`HDFISProd`) and minimum T-norm (`HDFISMin`) variants.
 
 Each family exposes classifier and regressor variants.
 
@@ -77,12 +77,13 @@ highFIS exposes a compact, model-family-driven API with both concrete
 model classes and sklearn-compatible estimator wrappers.
 
 - Model families: `TSK`, `HTSK`, `LogTSK`, `MHTSK`, `DombiTSK`, `ADMTSK`,
-  `AYATSK`, `AdaTSK`, `ADPTSK`, `FSRE-AdaTSK`, `DG-TSK`, `DG-ALETSK`,
+  `AYATSK`, `ADATSK`, `ADPTSK`, `FSRE-ADATSK`, `DGTSK`, `DGALETSK`,
   `HDFIS`
-- Estimator wrappers: `*ClassifierEstimator` and `*RegressorEstimator`
-  variants for each model family
-- Building blocks: membership functions, defuzzifiers, t-norms, and rule
-  base strategies
+- Estimators: `*Classifier` and `*Regressor` variants for each model family,
+  accessible directly from `import highfis`
+- Building blocks: membership functions (`highfis.memberships`), defuzzifiers
+  (`highfis.defuzzifiers`), T-norms (`highfis.t_norms`), and PyTorch model
+  classes (`highfis.models`)
 
 For the full class list and API reference, see the documentation:
 
@@ -113,10 +114,10 @@ Key reference pages:
 - [DombiTSK](https://dcruzf.github.io/highFIS/latest/models/dombitsk)
 - [ADPTSK](https://dcruzf.github.io/highFIS/latest/models/adptsk)
 - [ADMTSK](https://dcruzf.github.io/highFIS/latest/models/admtsk)
-- [AdaTSK](https://dcruzf.github.io/highFIS/latest/models/adatsk)
+- [ADATSK](https://dcruzf.github.io/highFIS/latest/models/adatsk)
 - [DGTSK](https://dcruzf.github.io/highFIS/latest/models/dg-tsk)
 - [DG-ALETSK](https://dcruzf.github.io/highFIS/latest/models/dg-aletsk)
-- [FSRE-AdaTSK](https://dcruzf.github.io/highFIS/latest/models/fsre-adatsk)
+- [FSRE-ADATSK](https://dcruzf.github.io/highFIS/latest/models/fsre-adatsk)
 - [MHTSK](https://dcruzf.github.io/highFIS/latest/models/mhtsk)
 - [HDFIS](https://dcruzf.github.io/highFIS/latest/models/hdfis)
 

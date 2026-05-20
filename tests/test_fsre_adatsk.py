@@ -4,7 +4,7 @@ import torch
 
 from highfis.layers import AdaSoftminRuleLayer
 from highfis.memberships import GaussianMF
-from highfis.models import FSREAdaTSKClassifier, FSREAdaTSKRegressor
+from highfis.models import FSREADATSKClassifierModel, FSREADATSKRegressorModel
 
 
 def _build_input_mfs(n_inputs: int = 3, n_mfs: int = 2) -> dict[str, list[GaussianMF]]:
@@ -12,7 +12,7 @@ def _build_input_mfs(n_inputs: int = 3, n_mfs: int = 2) -> dict[str, list[Gaussi
 
 
 def test_fsre_adatsk_classifier_forward_shapes() -> None:
-    model = FSREAdaTSKClassifier(_build_input_mfs(), n_classes=3)
+    model = FSREADATSKClassifierModel(_build_input_mfs(), n_classes=3)
     x = torch.randn(5, 3)
 
     logits = model.forward(x)
@@ -26,7 +26,7 @@ def test_fsre_adatsk_classifier_forward_shapes() -> None:
 
 
 def test_fsre_adatsk_regressor_forward_shape() -> None:
-    model = FSREAdaTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = FSREADATSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(4, 2)
 
     output = model.forward(x)
@@ -35,7 +35,7 @@ def test_fsre_adatsk_regressor_forward_shape() -> None:
 
 
 def test_fsre_adatsk_forward_antecedents_row_sum_one() -> None:
-    model = FSREAdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(6, 2)
 
     norm_w = model.forward_antecedents(x)
@@ -45,7 +45,7 @@ def test_fsre_adatsk_forward_antecedents_row_sum_one() -> None:
 
 
 def test_fsre_adatsk_expand_to_en_frb_increases_rule_count() -> None:
-    model = FSREAdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     initial_rules = model.n_rules
 
     model.expand_to_en_frb()
@@ -61,14 +61,14 @@ def test_fsre_adatsk_expand_to_en_frb_increases_rule_count() -> None:
 
 def test_fsre_adatsk_classifier_lambda_gates_shared_per_feature() -> None:
     n_inputs = 4
-    model = FSREAdaTSKClassifier(_build_input_mfs(n_inputs=n_inputs, n_mfs=2), n_classes=2)
+    model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=n_inputs, n_mfs=2), n_classes=2)
     lam = model.consequent_layer.lambda_gates
     assert lam.shape == (n_inputs,), f"expected ({n_inputs},), got {lam.shape}"
 
 
 def test_fsre_adatsk_regressor_lambda_gates_shared_per_feature() -> None:
     n_inputs = 3
-    model = FSREAdaTSKRegressor(_build_input_mfs(n_inputs=n_inputs, n_mfs=2))
+    model = FSREADATSKRegressorModel(_build_input_mfs(n_inputs=n_inputs, n_mfs=2))
     lam = model.consequent_layer.lambda_gates
     assert lam.shape == (n_inputs,), f"expected ({n_inputs},), got {lam.shape}"
 
@@ -79,17 +79,17 @@ def test_fsre_adatsk_regressor_lambda_gates_shared_per_feature() -> None:
 
 
 def test_fsre_adatsk_classifier_initial_mode_is_fs() -> None:
-    model = FSREAdaTSKClassifier(_build_input_mfs(), n_classes=2)
+    model = FSREADATSKClassifierModel(_build_input_mfs(), n_classes=2)
     assert model.consequent_layer.mode == "fs"
 
 
 def test_fsre_adatsk_regressor_initial_mode_is_fs() -> None:
-    model = FSREAdaTSKRegressor(_build_input_mfs())
+    model = FSREADATSKRegressorModel(_build_input_mfs())
     assert model.consequent_layer.mode == "fs"
 
 
 def test_fsre_adatsk_classifier_expand_to_en_frb_resets_mode_to_fs() -> None:
-    model = FSREAdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     model.expand_to_en_frb()
     assert model.consequent_layer.mode == "fs"
 
@@ -101,7 +101,7 @@ def test_fsre_adatsk_classifier_expand_to_en_frb_resets_mode_to_fs() -> None:
 
 def test_fsre_adatsk_classifier_mode_fs_uses_only_feature_gates() -> None:
     """FS mode: lambda_gates affect output; zeroing theta_gates has no effect."""
-    model = FSREAdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(4, 2)
     model.consequent_layer.mode = "fs"
 
@@ -115,7 +115,7 @@ def test_fsre_adatsk_classifier_mode_fs_uses_only_feature_gates() -> None:
 
 def test_fsre_adatsk_classifier_mode_re_uses_only_rule_gates() -> None:
     """RE mode: theta_gates affect output; zeroing lambda_gates has no effect."""
-    model = FSREAdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(4, 2)
     model.consequent_layer.mode = "re"
 
@@ -129,7 +129,7 @@ def test_fsre_adatsk_classifier_mode_re_uses_only_rule_gates() -> None:
 
 def test_fsre_adatsk_classifier_mode_finetune_ignores_all_gates() -> None:
     """Finetune mode: neither gate family affects output."""
-    model = FSREAdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(4, 2)
     model.consequent_layer.mode = "finetune"
 
@@ -143,7 +143,7 @@ def test_fsre_adatsk_classifier_mode_finetune_ignores_all_gates() -> None:
 
 
 def test_fsre_adatsk_regressor_mode_fs_uses_only_feature_gates() -> None:
-    model = FSREAdaTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = FSREADATSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(4, 2)
     model.consequent_layer.mode = "fs"
 
@@ -156,7 +156,7 @@ def test_fsre_adatsk_regressor_mode_fs_uses_only_feature_gates() -> None:
 
 
 def test_fsre_adatsk_regressor_mode_re_uses_only_rule_gates() -> None:
-    model = FSREAdaTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = FSREADATSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(4, 2)
     model.consequent_layer.mode = "re"
 
@@ -169,7 +169,7 @@ def test_fsre_adatsk_regressor_mode_re_uses_only_rule_gates() -> None:
 
 
 def test_fsre_adatsk_regressor_mode_finetune_ignores_all_gates() -> None:
-    model = FSREAdaTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = FSREADATSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(4, 2)
     model.consequent_layer.mode = "finetune"
 

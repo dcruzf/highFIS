@@ -55,58 +55,58 @@ MSE loss.
 
 | Paper concept | highFIS class / method | Description |
 | --- | --- | --- |
-| Gaussian PIMF | `highfis.memberships.GaussianPIMF` | Gaussian membership with positive infimum `exp(-K)` |
+| Gaussian PIMF | `highfis.memberships.GaussianPiMF` | Gaussian membership with positive infimum `exp(-K)` |
 | ADP-softmin antecedent | `highfis.layers.ADPSoftminRuleLayer` | Adaptive double-parameter softmin rule aggregation |
-| ADPTSK classifier | `highfis.models.ADPTSKClassifier` | Classifier model using ADP-softmin antecedents |
-| ADPTSK regressor | `highfis.models.ADPTSKRegressor` | Regressor model using ADP-softmin antecedents |
-| Estimator wrapper | `highfis.estimators.ADPTSKClassifierEstimator` | sklearn-style wrapper using `GaussianPIMF` |
-| Estimator wrapper | `highfis.estimators.ADPTSKRegressorEstimator` | sklearn-style wrapper using `GaussianPIMF` |
+| ADPTSK classifier | `highfis.models.ADPTSKClassifierModel` | Classifier model using ADP-softmin antecedents |
+| ADPTSK regressor | `highfis.models.ADPTSKRegressorModel` | Regressor model using ADP-softmin antecedents |
+| Estimator wrapper | `highfis.estimators.ADPTSKClassifier` | sklearn-style wrapper using `GaussianPiMF` |
+| Estimator wrapper | `highfis.estimators.ADPTSKRegressor` | sklearn-style wrapper using `GaussianPiMF` |
 
 ## Implementation notes
 
-- The model uses `GaussianPIMF` to ensure antecedent membership values have a
+- The model uses `GaussianPiMF` to ensure antecedent membership values have a
   nonzero positive lower bound.
 - ADPTSK still builds on the BaseTSK pipeline, but replaces the rule layer
   with `ADPSoftminRuleLayer` instead of a vanilla product T-norm.
 - Default hyperparameters mirror the paper:
-  - `n_mfs=3` for compact CoCo rule bases,
+  - `n_rules=3` for compact CoCo rule bases,
   - `mf_init="kmeans"` with `sigma_scale=1.0`,
   - `kappa=690.0`, `xi=730.0`,
   - `K=1.0` for the Gaussian PIMF lower bound.
 - The estimator wrapper converts initialized `GaussianMF` objects to
-  `GaussianPIMF` before model construction.
+  `GaussianPiMF` before model construction.
 
 ## Model classes
 
-### `highfis.models.ADPTSKClassifier`
+### `highfis.models.ADPTSKClassifierModel`
 
 - Uses `ADPSoftminRuleLayer` for antecedent aggregation.
 - Defaults to `rule_base="coco"` when `mf_init="kmeans"`.
 - Uses `ClassificationConsequentLayer` and `CrossEntropyLoss`.
 
-### `highfis.models.ADPTSKRegressor`
+### `highfis.models.ADPTSKRegressorModel`
 
 - Uses the same ADP-softmin antecedent.
 - Uses `RegressionConsequentLayer` and `MSELoss`.
 
 ## Estimator wrappers
 
-### `highfis.estimators.ADPTSKClassifierEstimator`
+### `highfis.estimators.ADPTSKClassifier`
 
 This estimator:
 
 - builds Gaussian membership functions via `mf_init` and `input_configs`,
-- wraps them as `GaussianPIMF` with the chosen `K` value,
-- constructs `ADPTSKClassifier` with `kappa`, `xi`, and `eps`.
+- wraps them as `GaussianPiMF` with the chosen `K` value,
+- constructs `ADPTSKClassifierModel` with `kappa`, `xi`, and `eps`.
 
-### `highfis.estimators.ADPTSKRegressorEstimator`
+### `highfis.estimators.ADPTSKRegressor`
 
 This estimator is analogous to the classifier wrapper but builds
-`ADPTSKRegressor` for regression tasks.
+`ADPTSKRegressorModel` for regression tasks.
 
 ## Membership functions
 
-### `highfis.memberships.GaussianPIMF`
+### `highfis.memberships.GaussianPiMF`
 
 - Implements the PIMF version of Gaussian membership.
 - Prevents crash caused by zero membership values in large dimensionality.
@@ -117,7 +117,7 @@ This estimator is analogous to the classifier wrapper but builds
 - The paper optimizes ADPTSK end-to-end with gradient-based learning.
 - highFIS follows the same paradigm: the estimator builds the model and
   uses Adam-style optimization within `BaseTSK.fit()`.
-- `ADPTSKClassifierEstimator` and `ADPTSKRegressorEstimator` expose the
+- `ADPTSKClassifier` and `ADPTSKRegressor` expose the
   same training hyperparameters as other highFIS estimators.
 
 ## Alignment with the paper

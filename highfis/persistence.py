@@ -6,14 +6,15 @@ parameters, the fitted model state dict, and sklearn-compatible fit metadata
 (``n_features_in_``, ``feature_names_in_``, ``classes_``, etc.).
 
 The checkpoint schema is versioned. ``CHECKPOINT_FORMAT`` identifies the
-payload type and ``CHECKPOINT_VERSION`` is tied to the current package
+payload type and ``CHECKPOINT_FORMAT_VERSION`` is an integer string incremented
+only when the checkpoint schema itself changes — independent of the package
 version. ``validate_checkpoint_payload`` enforces both so that incompatible
 checkpoints are rejected before any state is restored.
 
 Checkpoint schema keys:
 
 - ``format`` — must equal ``CHECKPOINT_FORMAT``.
-- ``format_version`` — must equal ``CHECKPOINT_VERSION``.
+- ``format_version`` — must equal ``CHECKPOINT_FORMAT_VERSION``.
 - ``estimator_class`` — class name of the estimator that created the
   checkpoint.
 - ``estimator_params`` — constructor kwargs used to recreate the estimator.
@@ -25,9 +26,7 @@ Checkpoint schema keys:
 Examples:
     >>> from highfis.persistence import load_checkpoint, validate_checkpoint_payload
     >>> ckpt = load_checkpoint("artifacts/clf.pt")
-    >>> validate_checkpoint_payload(
-    ...     ckpt, expected_estimator_class="HTSKClassifierEstimator"
-    ... )
+    >>> validate_checkpoint_payload(ckpt, expected_estimator_class="HTSKClassifier")
 """
 
 from __future__ import annotations
@@ -35,10 +34,77 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .version import __version__
+
+def _get_mf_registry() -> dict[str, type]:
+    """Lazily return the supported MF type registry to avoid circular imports."""
+    from .memberships import (
+        CompositeGMF,
+        DimensionDependentGaussianMF,
+        GaussianMF,
+        GaussianPiMF,
+    )
+
+    return {
+        "CompositeGMF": CompositeGMF,
+        "DimensionDependentGaussianMF": DimensionDependentGaussianMF,
+        "GaussianMF": GaussianMF,
+        "GaussianPiMF": GaussianPiMF,
+        # Legacy key kept for backward-compatible checkpoint loading.
+        "GaussianPIMF": GaussianPiMF,
+    }
+
 
 CHECKPOINT_FORMAT = "highfis_estimator"
-CHECKPOINT_VERSION = __version__
+CHECKPOINT_FORMAT_VERSION = "1"
+
+
+def serialize_input_mfs(input_mfs: Any) -> dict[str, list[dict[str, Any]]]:
+    """Serialize an ``nn.ModuleDict`` of membership functions to a plain dict.
+
+    Converts each membership function to a ``{"type": classname, "params": {...}}``
+    entry so the checkpoint contains only primitive Python types and tensors,
+    making it compatible with ``torch.load(..., weights_only=True)``.
+
+    Args:
+        input_mfs: The ``input_mfs`` attribute of a fitted
+            :class:`~highfis.layers.FuzzificationLayer` (an ``nn.ModuleDict``).
+
+    Returns:
+        A JSON-serializable dict mapping feature name to a list of MF configs.
+    """
+    return {
+        name: [{"type": type(mf).__name__, "params": mf.inspect_params()} for mf in mf_list]
+        for name, mf_list in input_mfs.items()
+    }
+
+
+def deserialize_input_mfs(
+    config: dict[str, list[dict[str, Any]]],
+) -> dict[str, list[Any]]:
+    """Reconstruct ``input_mfs`` from a serialized config dict.
+
+    Args:
+        config: A dict as returned by :func:`serialize_input_mfs`.
+
+    Returns:
+        A mapping of feature name to a list of
+        :class:`~highfis.memberships.MembershipFunction` instances suitable
+        for passing to :class:`~highfis.layers.FuzzificationLayer`.
+
+    Raises:
+        ValueError: If the config contains an unrecognised MF type name.
+    """
+    registry = _get_mf_registry()
+    result: dict[str, list[Any]] = {}
+    for name, mf_configs in config.items():
+        mf_list: list[Any] = []
+        for mf_cfg in mf_configs:
+            mf_type = mf_cfg["type"]
+            if mf_type not in registry:
+                raise ValueError(f"unknown membership function type '{mf_type}'; known types: {sorted(registry)}")
+            mf_list.append(registry[mf_type](**mf_cfg["params"]))
+        result[name] = mf_list
+    return result
 
 
 def save_checkpoint(path: str | Path, checkpoint: dict[str, Any]) -> None:
@@ -72,10 +138,7 @@ def load_checkpoint(path: str | Path) -> dict[str, Any]:
     import torch
 
     source = Path(path)
-    try:
-        payload = torch.load(source, map_location="cpu", weights_only=False)  # nosec
-    except TypeError:
-        payload = torch.load(source, map_location="cpu")  # nosec
+    payload = torch.load(source, map_location="cpu", weights_only=True)
 
     if not isinstance(payload, dict):
         raise ValueError("invalid checkpoint: expected a dictionary payload")
@@ -100,8 +163,8 @@ def validate_checkpoint_payload(checkpoint: dict[str, Any], *, expected_estimato
         raise ValueError(f"invalid checkpoint format '{fmt}', expected '{CHECKPOINT_FORMAT}'")
 
     version = checkpoint.get("format_version")
-    if version != CHECKPOINT_VERSION:
-        raise ValueError(f"unsupported checkpoint version {version}, expected package version {CHECKPOINT_VERSION}")
+    if version != CHECKPOINT_FORMAT_VERSION:
+        raise ValueError(f"unsupported checkpoint version {version!r}, expected {CHECKPOINT_FORMAT_VERSION!r}")
 
     estimator_class = checkpoint.get("estimator_class")
     if estimator_class != expected_estimator_class:

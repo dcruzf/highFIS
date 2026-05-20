@@ -15,35 +15,38 @@ from torch import nn
 
 from highfis.base import BaseTSK
 from highfis.estimators import (
-    AdaTSKClassifierEstimator,
-    AdaTSKRegressorEstimator,
-    ADMTSKClassifierEstimator,
-    ADMTSKRegressorEstimator,
-    ADPTSKClassifierEstimator,
-    ADPTSKRegressorEstimator,
-    AYATSKClassifierEstimator,
-    AYATSKRegressorEstimator,
-    DGALETSKClassifierEstimator,
-    DGALETSKRegressorEstimator,
-    DGTSKClassifierEstimator,
-    DGTSKRegressorEstimator,
-    DombiTSKClassifierEstimator,
-    DombiTSKRegressorEstimator,
-    FSREAdaTSKClassifierEstimator,
-    FSREAdaTSKRegressorEstimator,
-    HDFISMinClassifierEstimator,
-    HDFISMinRegressorEstimator,
-    HDFISProdClassifierEstimator,
-    HDFISProdRegressorEstimator,
-    HTSKClassifierEstimator,
-    HTSKRegressorEstimator,
+    ADATSKClassifier,
+    ADATSKRegressor,
+    ADMTSKClassifier,
+    ADMTSKRegressor,
+    ADPTSKClassifier,
+    ADPTSKRegressor,
+    AYATSKClassifier,
+    AYATSKRegressor,
+    DGALETSKClassifier,
+    DGALETSKRegressor,
+    DGTSKClassifier,
+    DGTSKRegressor,
+    DombiTSKClassifier,
+    DombiTSKRegressor,
+    FSREADATSKClassifier,
+    FSREADATSKRegressor,
+    HDFISMinClassifier,
+    HDFISMinRegressor,
+    HDFISProdClassifier,
+    HDFISProdRegressor,
+    HTSKClassifier,
+    HTSKRegressor,
     InputConfig,
-    LogTSKClassifierEstimator,
-    LogTSKRegressorEstimator,
-    MHTSKClassifierEstimator,
-    MHTSKRegressorEstimator,
-    TSKClassifierEstimator,
-    TSKRegressorEstimator,
+    LogTSKClassifier,
+    LogTSKRegressor,
+    MHTSKClassifier,
+    MHTSKRegressor,
+    TSKClassifier,
+    TSKRegressor,
+    feature_coverage_rate,
+)
+from highfis.estimators._base import (
     _build_fuzzy_c_means_input_mfs,
     _build_gaussian_input_mfs,
     _build_kmeans_input_mfs,
@@ -55,10 +58,9 @@ from highfis.estimators import (
     _rankdata,
     _resolve_mhtsk_scale_parameters,
     _select_rule_indices,
-    feature_coverage_rate,
 )
-from highfis.memberships import CompositeGMF, DimensionDependentGaussianMF, GaussianMF, MembershipFunction
-from highfis.models import HDFISMinClassifier, HDFISMinRegressor, TSKRegressor
+from highfis.memberships import DimensionDependentGaussianMF, GaussianMF, GaussianPiMF, MembershipFunction
+from highfis.models import HDFISMinClassifierModel, HDFISMinRegressorModel, TSKRegressorModel
 
 
 def _make_dataset(n_samples: int = 60) -> tuple[np.ndarray, np.ndarray]:
@@ -100,7 +102,7 @@ def test_build_fuzzy_c_means_input_mfs_handles_zero_variance(monkeypatch) -> Non
         def fit(self, x: np.ndarray) -> DummyFuzzyCMeans:
             return self
 
-    monkeypatch.setattr("highfis.estimators.FuzzyCMeans", DummyFuzzyCMeans)
+    monkeypatch.setattr("highfis.estimators._base.FuzzyCMeans", DummyFuzzyCMeans)
     x = np.array([[0.0, 0.0], [0.0, 0.0]], dtype=np.float64)
     feature_names = ["x1", "x2"]
     input_mfs = _build_fuzzy_c_means_input_mfs(
@@ -119,7 +121,7 @@ def test_build_fuzzy_c_means_input_mfs_handles_zero_variance(monkeypatch) -> Non
 
 def test_htsk_classifier_estimator_fcm_input_initialization() -> None:
     x, y = _make_dataset(40)
-    est = HTSKClassifierEstimator(
+    est = HTSKClassifier(
         n_mfs=2,
         mf_init="fcm",
         epochs=1,
@@ -133,7 +135,7 @@ def test_htsk_classifier_estimator_fcm_input_initialization() -> None:
 def test_htsk_regressor_estimator_fcm_input_initialization() -> None:
     x, y = _make_dataset(40)
     y = y.astype(np.float32)
-    est = HTSKRegressorEstimator(
+    est = HTSKRegressor(
         n_mfs=2,
         mf_init="fcm",
         epochs=1,
@@ -146,7 +148,7 @@ def test_htsk_regressor_estimator_fcm_input_initialization() -> None:
 
 def test_estimator_fit_predict_proba_predict_score() -> None:
     x, y = _make_dataset(80)
-    est = HTSKClassifierEstimator(
+    est = HTSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -168,7 +170,7 @@ def test_estimator_fit_predict_proba_predict_score() -> None:
 
 def test_estimator_evaluate_classification_metrics() -> None:
     x, y = _make_dataset(80)
-    est = HTSKClassifierEstimator(
+    est = HTSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -192,7 +194,7 @@ def test_estimator_evaluate_classification_metrics() -> None:
 
 def test_classifier_estimator_pfrb_kmeans_fit_predict_proba() -> None:
     x, y = _make_dataset(40)
-    est = HTSKClassifierEstimator(
+    est = HTSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         rule_base="pfrb",
@@ -210,7 +212,7 @@ def test_classifier_estimator_pfrb_kmeans_fit_predict_proba() -> None:
 
 def test_classifier_estimator_pfrb_grid_fit_predict_proba() -> None:
     x, y = _make_dataset(40)
-    est = HTSKClassifierEstimator(
+    est = HTSKClassifier(
         n_mfs=2,
         mf_init="grid",
         rule_base="pfrb",
@@ -228,7 +230,7 @@ def test_classifier_estimator_pfrb_grid_fit_predict_proba() -> None:
 
 def test_hdfis_prod_classifier_estimator_uses_dimension_dependent_mfs() -> None:
     x, y = _make_dataset(40)
-    est = HDFISProdClassifierEstimator(
+    est = HDFISProdClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=3,
@@ -244,7 +246,7 @@ def test_hdfis_prod_classifier_estimator_uses_dimension_dependent_mfs() -> None:
 def test_hdfis_prod_regressor_estimator_uses_dimension_dependent_mfs() -> None:
     x = np.random.RandomState(0).normal(size=(40, 3)).astype(np.float32)
     y = (x[:, 0] * 0.5 + x[:, 1] * -0.2).astype(np.float32)
-    est = HDFISProdRegressorEstimator(
+    est = HDFISProdRegressor(
         n_mfs=2,
         mf_init="kmeans",
         epochs=3,
@@ -259,7 +261,7 @@ def test_hdfis_prod_regressor_estimator_uses_dimension_dependent_mfs() -> None:
 
 def test_hdfis_min_classifier_estimator_builds_hdfis_min_model() -> None:
     x, y = _make_dataset(40)
-    est = HDFISMinClassifierEstimator(
+    est = HDFISMinClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=2,
@@ -269,14 +271,14 @@ def test_hdfis_min_classifier_estimator_builds_hdfis_min_model() -> None:
     )
 
     est.fit(x, y)
-    assert isinstance(est.model_, HDFISMinClassifier)
+    assert isinstance(est.model_, HDFISMinClassifierModel)
     assert all(not p.requires_grad for p in est.model_.membership_layer.parameters())
 
 
 def test_hdfis_min_regressor_estimator_builds_hdfis_min_model() -> None:
     x = np.random.RandomState(0).normal(size=(40, 3)).astype(np.float32)
     y = (x[:, 0] * 0.5 + x[:, 1] * -0.2).astype(np.float32)
-    est = HDFISMinRegressorEstimator(
+    est = HDFISMinRegressor(
         n_mfs=2,
         mf_init="kmeans",
         epochs=2,
@@ -286,13 +288,13 @@ def test_hdfis_min_regressor_estimator_builds_hdfis_min_model() -> None:
     )
 
     est.fit(x, y)
-    assert isinstance(est.model_, HDFISMinRegressor)
+    assert isinstance(est.model_, HDFISMinRegressorModel)
     assert all(not p.requires_grad for p in est.model_.membership_layer.parameters())
 
 
 def test_ayatsk_classifier_estimator_fit_predict_score() -> None:
     x, y = _make_dataset(80)
-    est = AYATSKClassifierEstimator(
+    est = AYATSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -314,7 +316,7 @@ def test_ayatsk_classifier_estimator_fit_predict_score() -> None:
 
 def test_ayatsk_classifier_estimator_fit_predict_score_short() -> None:
     x, y = _make_dataset(80)
-    est = AYATSKClassifierEstimator(
+    est = AYATSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=3,
@@ -337,7 +339,7 @@ def test_ayatsk_classifier_estimator_fit_predict_score_short() -> None:
 def test_ayatsk_regressor_estimator_fit_predict() -> None:
     x = np.random.default_rng(123).normal(size=(40, 3)).astype(np.float32)
     y = x[:, 0] + 0.5 * x[:, 1]
-    est = AYATSKRegressorEstimator(
+    est = AYATSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         epochs=3,
@@ -354,7 +356,7 @@ def test_ayatsk_regressor_estimator_fit_predict() -> None:
 
 def test_dgaletsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
     x, y = _make_dataset(80)
-    est = DGALETSKClassifierEstimator(
+    est = DGALETSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         lambda_init=1.5,
@@ -378,7 +380,7 @@ def test_dgaletsk_classifier_estimator_fit_predict_proba_predict_score() -> None
 def test_dgaletsk_regressor_estimator_fit_predict_score() -> None:
     x = np.random.default_rng(123).normal(size=(80, 3)).astype(np.float32)
     y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=80).astype(np.float32)
-    est = DGALETSKRegressorEstimator(
+    est = DGALETSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         lambda_init=1.5,
@@ -398,7 +400,7 @@ def test_dgaletsk_regressor_estimator_fit_predict_score() -> None:
 
 def test_dgtsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
     x, y = _make_dataset(80)
-    est = DGTSKClassifierEstimator(
+    est = DGTSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -422,7 +424,7 @@ def test_dgtsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
 def test_dgtsk_regressor_estimator_fit_predict_score() -> None:
     x = np.random.default_rng(123).normal(size=(80, 3)).astype(np.float32)
     y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=80).astype(np.float32)
-    est = DGTSKRegressorEstimator(
+    est = DGTSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -442,7 +444,7 @@ def test_dgtsk_regressor_estimator_fit_predict_score() -> None:
 
 def test_dgtsk_classifier_estimator_pipeline_integration() -> None:
     x, y = _make_dataset(60)
-    est = DGTSKClassifierEstimator(
+    est = DGTSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -461,7 +463,7 @@ def test_dgtsk_classifier_estimator_pipeline_integration() -> None:
 def test_dgtsk_regressor_estimator_save_load_roundtrip() -> None:
     x = np.random.default_rng(123).normal(size=(80, 3)).astype(np.float32)
     y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=80).astype(np.float32)
-    est = DGTSKRegressorEstimator(
+    est = DGTSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -476,7 +478,7 @@ def test_dgtsk_regressor_estimator_save_load_roundtrip() -> None:
         path = tmp.name
     try:
         est.save(path)
-        loaded = DGTSKRegressorEstimator.load(path)
+        loaded = DGTSKRegressor.load(path)
         pred = loaded.predict(x)
         assert pred.shape == (x.shape[0],)
     finally:
@@ -512,7 +514,7 @@ def test_build_pfrb_input_mfs_max_rules_none_uses_all_samples() -> None:
 
 def test_dgtsk_classifier_estimator_rule_base_pfrb() -> None:
     x = np.arange(20, dtype=np.float32).reshape(5, 4)
-    est = DGTSKClassifierEstimator(
+    est = DGTSKClassifier(
         rule_base="pfrb",
         pfrb_max_rules=3,
         n_mfs=5,
@@ -532,7 +534,7 @@ def test_dgtsk_classifier_estimator_rule_base_pfrb() -> None:
 
 def test_estimator_grid_init_fit_predict() -> None:
     x, y = _make_dataset(80)
-    est = HTSKClassifierEstimator(
+    est = HTSKClassifier(
         n_mfs=2,
         mf_init="grid",
         epochs=5,
@@ -552,7 +554,7 @@ def test_estimator_grid_init_fit_predict() -> None:
 
 def test_adatsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
     x, y = _make_dataset(80)
-    est = AdaTSKClassifierEstimator(
+    est = ADATSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -574,7 +576,7 @@ def test_adatsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
 
 def test_adptsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
     x, y = _make_dataset(80)
-    est = ADPTSKClassifierEstimator(
+    est = ADPTSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -596,7 +598,7 @@ def test_adptsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
 
 def test_fsre_adatsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
     x, y = _make_dataset(80)
-    est = FSREAdaTSKClassifierEstimator(
+    est = FSREADATSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         lambda_init=1.5,
@@ -619,7 +621,7 @@ def test_fsre_adatsk_classifier_estimator_fit_predict_proba_predict_score() -> N
 
 def test_estimator_predict_proba_requires_fit() -> None:
     x, _ = _make_dataset(10)
-    est = HTSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=16)
+    est = HTSKClassifier(n_mfs=2, epochs=1, batch_size=16)
     with pytest.raises(NotFittedError):
         est.predict_proba(x)
 
@@ -627,7 +629,7 @@ def test_estimator_predict_proba_requires_fit() -> None:
 def test_estimator_fit_accepts_validation_data_in_fit() -> None:
     x, y = _make_dataset(40)
     x_val, y_val = _make_dataset(10)
-    est = HTSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=16)
+    est = HTSKClassifier(n_mfs=2, epochs=1, batch_size=16)
     est = est.fit(x, y, x_val=x_val, y_val=y_val)
 
     assert hasattr(est, "history_")
@@ -638,7 +640,7 @@ def test_estimator_fit_accepts_validation_data_in_fit() -> None:
 
 def test_estimator_validates_input_config_length() -> None:
     x, y = _make_dataset(20)
-    est = HTSKClassifierEstimator(input_configs=[InputConfig(name="x1", n_mfs=2)], batch_size=16)
+    est = HTSKClassifier(input_configs=[InputConfig(name="x1", n_mfs=2)], batch_size=16)
     with pytest.raises(ValueError, match="input_configs length"):
         est.fit(x, y)
 
@@ -675,7 +677,7 @@ def test_build_kmeans_input_mfs_raises_when_cluster_centers_missing(monkeypatch)
         def fit(self, x: np.ndarray):
             return self
 
-    monkeypatch.setattr("highfis.estimators.TorchKMeans", DummyKMeans)
+    monkeypatch.setattr("highfis.estimators._base.TorchKMeans", DummyKMeans)
 
     with pytest.raises(RuntimeError, match="KMeans did not compute cluster centers"):
         _build_kmeans_input_mfs(
@@ -752,7 +754,7 @@ def test_build_fcm_input_mfs_raises_when_fcm_does_not_converge(monkeypatch) -> N
         def fit(self, x: np.ndarray):
             return self
 
-    monkeypatch.setattr("highfis.estimators.FuzzyCMeans", DummyFuzzyCMeans)
+    monkeypatch.setattr("highfis.estimators._base.FuzzyCMeans", DummyFuzzyCMeans)
 
     with pytest.raises(RuntimeError, match="FuzzyCMeans did not converge"):
         _build_fuzzy_c_means_input_mfs(
@@ -774,7 +776,7 @@ def test_build_kmeans_input_mfs_works_with_numpy_cluster_centers(monkeypatch) ->
         def fit(self, x: np.ndarray):
             return self
 
-    monkeypatch.setattr("highfis.estimators.TorchKMeans", DummyKMeans)
+    monkeypatch.setattr("highfis.estimators._base.TorchKMeans", DummyKMeans)
 
     x = np.array([[0.0, 0.0], [1.0, 1.0]], dtype=np.float64)
     feature_names = ["x1", "x2"]
@@ -798,7 +800,7 @@ def test_build_kmeans_input_mfs_works_with_numpy_cluster_centers(monkeypatch) ->
 
 def test_mhtsk_classifier_estimator_fit_predict() -> None:
     x, y = _make_dataset(40)
-    est = MHTSKClassifierEstimator(
+    est = MHTSKClassifier(
         n_mfs=2,
         n_heads=2,
         head_size=1,
@@ -817,7 +819,7 @@ def test_mhtsk_classifier_estimator_fit_predict() -> None:
 def test_mhtsk_regressor_estimator_fit_predict() -> None:
     x, y = _make_dataset(40)
     y = y.astype(np.float32)
-    est = MHTSKRegressorEstimator(
+    est = MHTSKRegressor(
         n_mfs=2,
         n_heads=2,
         head_size=1,
@@ -835,7 +837,7 @@ def test_mhtsk_regressor_estimator_fit_predict() -> None:
 
 def test_mhtsk_classifier_estimator_rule_extraction_reduces_rules() -> None:
     x, y = _make_dataset(40)
-    est = MHTSKClassifierEstimator(
+    est = MHTSKClassifier(
         n_mfs=2,
         n_heads=2,
         head_size=1,
@@ -859,7 +861,7 @@ def test_mhtsk_classifier_estimator_rule_extraction_reduces_rules() -> None:
 def test_mhtsk_regressor_estimator_rule_extraction_reduces_rules() -> None:
     x, y = _make_dataset(40)
     y = y.astype(np.float32)
-    est = MHTSKRegressorEstimator(
+    est = MHTSKRegressor(
         n_mfs=2,
         n_heads=2,
         head_size=1,
@@ -1089,7 +1091,7 @@ def test_resolve_mhtsk_scale_parameters_validates_inputs() -> None:
 
 def test_mhtsk_regressor_estimator_samples_instances() -> None:
     x, y = _make_dataset(40)
-    est = MHTSKRegressorEstimator(
+    est = MHTSKRegressor(
         n_mfs=2,
         n_heads=2,
         head_size=1,
@@ -1148,7 +1150,7 @@ def test_extract_mhtsk_rule_indices_fallback_when_empty() -> None:
 def test_mhtsk_classifier_estimator_rule_extraction_with_validation_data() -> None:
     x, y = _make_dataset(40)
     x_val, y_val = _make_dataset(10)
-    est = MHTSKClassifierEstimator(
+    est = MHTSKClassifier(
         n_mfs=2,
         n_heads=2,
         head_size=1,
@@ -1172,7 +1174,7 @@ def test_mhtsk_regressor_estimator_rule_extraction_with_validation_data() -> Non
     y = y.astype(np.float32)
     x_val, y_val = _make_dataset(10)
     y_val = y_val.astype(np.float32)
-    est = MHTSKRegressorEstimator(
+    est = MHTSKRegressor(
         n_mfs=2,
         n_heads=2,
         head_size=1,
@@ -1192,7 +1194,7 @@ def test_mhtsk_regressor_estimator_rule_extraction_with_validation_data() -> Non
 
 def test_mhtsk_classifier_estimator_rule_extraction_without_validation_data() -> None:
     x, y = _make_dataset(40)
-    est = MHTSKClassifierEstimator(
+    est = MHTSKClassifier(
         n_mfs=2,
         n_heads=2,
         head_size=1,
@@ -1214,7 +1216,7 @@ def test_mhtsk_classifier_estimator_rule_extraction_without_validation_data() ->
 def test_mhtsk_regressor_estimator_rule_extraction_without_validation_data() -> None:
     x, y = _make_dataset(40)
     y = y.astype(np.float32)
-    est = MHTSKRegressorEstimator(
+    est = MHTSKRegressor(
         n_mfs=2,
         n_heads=2,
         head_size=1,
@@ -1234,7 +1236,7 @@ def test_mhtsk_regressor_estimator_rule_extraction_without_validation_data() -> 
 
 def test_mhtsk_classifier_estimator_rule_extraction_without_retraining() -> None:
     x, y = _make_dataset(40)
-    est = MHTSKClassifierEstimator(
+    est = MHTSKClassifier(
         n_mfs=2,
         n_heads=2,
         head_size=1,
@@ -1256,7 +1258,7 @@ def test_mhtsk_classifier_estimator_rule_extraction_without_retraining() -> None
 def test_mhtsk_regressor_estimator_rule_extraction_without_retraining() -> None:
     x, y = _make_dataset(40)
     y = y.astype(np.float32)
-    est = MHTSKRegressorEstimator(
+    est = MHTSKRegressor(
         n_mfs=2,
         n_heads=2,
         head_size=1,
@@ -1276,7 +1278,7 @@ def test_mhtsk_regressor_estimator_rule_extraction_without_retraining() -> None:
 
 def test_mhtsk_classifier_extracted_model_rejects_empty_rule_list() -> None:
     x, y = _make_dataset(20)
-    est = MHTSKClassifierEstimator(
+    est = MHTSKClassifier(
         n_mfs=2,
         n_heads=2,
         head_size=1,
@@ -1294,7 +1296,7 @@ def test_mhtsk_classifier_extracted_model_rejects_empty_rule_list() -> None:
 def test_mhtsk_regressor_extracted_model_rejects_empty_rule_list() -> None:
     x, y = _make_dataset(20)
     y = y.astype(np.float32)
-    est = MHTSKRegressorEstimator(
+    est = MHTSKRegressor(
         n_mfs=2,
         n_heads=2,
         head_size=1,
@@ -1311,7 +1313,7 @@ def test_mhtsk_regressor_extracted_model_rejects_empty_rule_list() -> None:
 
 def test_mhtsk_input_builder_rejects_invalid_head_size() -> None:
     x, _ = _make_dataset(10)
-    est = MHTSKClassifierEstimator(
+    est = MHTSKClassifier(
         n_mfs=2,
         n_heads=1,
         head_size=0,
@@ -1327,7 +1329,7 @@ def test_mhtsk_input_builder_rejects_invalid_head_size() -> None:
 
 def test_mhtsk_input_builder_rejects_invalid_n_heads() -> None:
     x, _ = _make_dataset(10)
-    est = MHTSKClassifierEstimator(
+    est = MHTSKClassifier(
         n_mfs=2,
         n_heads=0,
         head_size=1,
@@ -1351,9 +1353,9 @@ def test_mhtsk_input_builder_raises_when_fcm_fails(monkeypatch) -> None:
         def fit(self, x: np.ndarray) -> None:
             self.cluster_centers_ = None
 
-    monkeypatch.setattr("highfis.estimators.FuzzyCMeans", DummyFuzzyCMeans)
+    monkeypatch.setattr("highfis.estimators._base.FuzzyCMeans", DummyFuzzyCMeans)
 
-    est = MHTSKClassifierEstimator(
+    est = MHTSKClassifier(
         n_mfs=2,
         n_heads=1,
         head_size=1,
@@ -1369,14 +1371,14 @@ def test_mhtsk_input_builder_raises_when_fcm_fails(monkeypatch) -> None:
 
 def test_estimator_invalid_mf_init_raises() -> None:
     x, y = _make_dataset(20)
-    est = HTSKClassifierEstimator(n_mfs=2, mf_init="random", epochs=1, batch_size=16)
+    est = HTSKClassifier(n_mfs=2, mf_init="random", epochs=1, batch_size=16)
     with pytest.raises(ValueError, match="mf_init"):
         est.fit(x, y)
 
 
 def test_dombi_tsk_classifier_estimator_fit_predict() -> None:
     x, y = _make_dataset(60)
-    est = DombiTSKClassifierEstimator(
+    est = DombiTSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -1392,7 +1394,7 @@ def test_dombi_tsk_classifier_estimator_fit_predict() -> None:
 
 def test_dombi_tsk_regressor_estimator_fit_predict_score() -> None:
     x, y = _make_regression_dataset(80)
-    est = DombiTSKRegressorEstimator(
+    est = DombiTSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -1407,7 +1409,7 @@ def test_dombi_tsk_regressor_estimator_fit_predict_score() -> None:
 
 def test_admtsk_classifier_estimator_uses_composite_gmf() -> None:
     x, y = _make_dataset(80)
-    est = ADMTSKClassifierEstimator(
+    est = ADMTSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=3,
@@ -1416,12 +1418,12 @@ def test_admtsk_classifier_estimator_uses_composite_gmf() -> None:
         batch_size=16,
     )
     est.fit(x, y)
-    assert all(isinstance(mf, CompositeGMF) for mfs in est.model_.input_mfs.values() for mf in mfs)
+    assert all(isinstance(mf, GaussianPiMF) for mfs in est.model_.input_mfs.values() for mf in mfs)
 
 
 def test_admtsk_regressor_estimator_fit_predict() -> None:
     x, y = _make_regression_dataset(80)
-    est = ADMTSKRegressorEstimator(
+    est = ADMTSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         epochs=3,
@@ -1436,7 +1438,7 @@ def test_admtsk_regressor_estimator_fit_predict() -> None:
 
 def test_tsk_classifier_estimator_fit_predict() -> None:
     x, y = _make_dataset(60)
-    est = TSKClassifierEstimator(
+    est = TSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -1452,7 +1454,7 @@ def test_tsk_classifier_estimator_fit_predict() -> None:
 
 def test_tsk_regressor_estimator_fit_predict() -> None:
     x, y = _make_regression_dataset(80)
-    est = TSKRegressorEstimator(
+    est = TSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -1468,7 +1470,7 @@ def test_tsk_regressor_estimator_fit_predict() -> None:
 
 def test_tsk_regressor_estimator_save_load_roundtrip() -> None:
     x, y = _make_regression_dataset(80)
-    est = TSKRegressorEstimator(
+    est = TSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -1482,7 +1484,7 @@ def test_tsk_regressor_estimator_save_load_roundtrip() -> None:
         path = tmp.name
     try:
         est.save(path)
-        loaded = TSKRegressorEstimator.load(path)
+        loaded = TSKRegressor.load(path)
         pred = loaded.predict(x)
         assert pred.shape == (x.shape[0],)
     finally:
@@ -1492,14 +1494,14 @@ def test_tsk_regressor_estimator_save_load_roundtrip() -> None:
 def test_tsk_regressor_estimator_invalid_input_configs_length() -> None:
     x, y = _make_regression_dataset(20)
     configs = [InputConfig(name="x1", n_mfs=2)]
-    est = TSKRegressorEstimator(input_configs=configs, epochs=1, batch_size=8)
+    est = TSKRegressor(input_configs=configs, epochs=1, batch_size=8)
     with pytest.raises(ValueError, match="input_configs length"):
         est.fit(x, y)
 
 
 def test_logtsk_classifier_estimator_fit_predict() -> None:
     x, y = _make_dataset(60)
-    est = LogTSKClassifierEstimator(
+    est = LogTSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -1515,7 +1517,7 @@ def test_logtsk_classifier_estimator_fit_predict() -> None:
 
 def test_logtsk_regressor_estimator_fit_predict() -> None:
     x, y = _make_regression_dataset(80)
-    est = LogTSKRegressorEstimator(
+    est = LogTSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -1531,25 +1533,25 @@ def test_logtsk_regressor_estimator_fit_predict() -> None:
 
 def test_fsre_adatsk_classifier_estimator_rejects_nonpositive_lambda() -> None:
     with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        FSREAdaTSKClassifierEstimator(n_mfs=2, mf_init="kmeans", lambda_init=0.0, epochs=1, batch_size=16)
+        FSREADATSKClassifier(n_mfs=2, mf_init="kmeans", lambda_init=0.0, epochs=1, batch_size=16)
 
 
 def test_fsre_adatsk_regressor_estimator_rejects_nonpositive_lambda() -> None:
     with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        FSREAdaTSKRegressorEstimator(n_mfs=2, mf_init="kmeans", lambda_init=0.0, epochs=1, batch_size=16)
+        FSREADATSKRegressor(n_mfs=2, mf_init="kmeans", lambda_init=0.0, epochs=1, batch_size=16)
 
 
 def test_estimator_input_configs_length_validator_regressor() -> None:
     x, y = _make_regression_dataset(20)
     configs = [InputConfig(name="x1", n_mfs=2)]
-    est = HTSKRegressorEstimator(input_configs=configs, epochs=1, batch_size=8)
+    est = HTSKRegressor(input_configs=configs, epochs=1, batch_size=8)
     with pytest.raises(ValueError, match="input_configs length"):
         est.fit(x, y)
 
 
 def test_classifier_estimator_save_load_roundtrip() -> None:
     x, y = _make_dataset(60)
-    est = HTSKClassifierEstimator(
+    est = HTSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -1563,7 +1565,7 @@ def test_classifier_estimator_save_load_roundtrip() -> None:
         path = tmp.name
     try:
         est.save(path)
-        loaded = HTSKClassifierEstimator.load(path)
+        loaded = HTSKClassifier.load(path)
         assert np.array_equal(loaded.classes_, est.classes_)
         assert np.allclose(loaded.predict_proba(x), est.predict_proba(x), atol=1e-6)
     finally:
@@ -1572,7 +1574,7 @@ def test_classifier_estimator_save_load_roundtrip() -> None:
 
 def test_dgaletsk_classifier_estimator_pipeline_integration() -> None:
     x, y = _make_dataset(60)
-    est = DGALETSKClassifierEstimator(
+    est = DGALETSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         lambda_init=1.5,
@@ -1590,7 +1592,7 @@ def test_dgaletsk_classifier_estimator_pipeline_integration() -> None:
 
 def test_tsk_classifier_estimator_save_load_roundtrip() -> None:
     x, y = _make_dataset(60)
-    est = TSKClassifierEstimator(
+    est = TSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -1604,7 +1606,7 @@ def test_tsk_classifier_estimator_save_load_roundtrip() -> None:
         path = tmp.name
     try:
         est.save(path)
-        loaded = TSKClassifierEstimator.load(path)
+        loaded = TSKClassifier.load(path)
         assert np.array_equal(loaded.classes_, est.classes_)
         assert np.allclose(loaded.predict_proba(x), est.predict_proba(x), atol=1e-6)
     finally:
@@ -1614,7 +1616,7 @@ def test_tsk_classifier_estimator_save_load_roundtrip() -> None:
 def test_tsk_classifier_estimator_invalid_input_configs_length() -> None:
     x, y = _make_dataset(20)
     configs = [InputConfig(name="x1", n_mfs=2)]
-    est = TSKClassifierEstimator(input_configs=configs, epochs=1, batch_size=8)
+    est = TSKClassifier(input_configs=configs, epochs=1, batch_size=8)
     with pytest.raises(ValueError, match="input_configs length"):
         est.fit(x, y)
 
@@ -1622,7 +1624,7 @@ def test_tsk_classifier_estimator_invalid_input_configs_length() -> None:
 def test_tsk_classifier_resolve_input_configs_invalid_length() -> None:
     x, _ = _make_dataset(20)
     configs = [InputConfig(name="x1", n_mfs=2)]
-    est = TSKClassifierEstimator(input_configs=configs, epochs=1, batch_size=8)
+    est = TSKClassifier(input_configs=configs, epochs=1, batch_size=8)
     with pytest.raises(ValueError, match="input_configs length"):
         est._resolve_input_configs(x)
 
@@ -1630,7 +1632,7 @@ def test_tsk_classifier_resolve_input_configs_invalid_length() -> None:
 def test_tsk_regressor_resolve_input_configs_invalid_length() -> None:
     x, _ = _make_dataset(20)
     configs = [InputConfig(name="x1", n_mfs=2)]
-    est = TSKRegressorEstimator(input_configs=configs, epochs=1, batch_size=8)
+    est = TSKRegressor(input_configs=configs, epochs=1, batch_size=8)
     with pytest.raises(ValueError, match="input_configs length"):
         est._resolve_input_configs(x)
 
@@ -1638,7 +1640,7 @@ def test_tsk_regressor_resolve_input_configs_invalid_length() -> None:
 def test_tsk_classifier_estimator_fit_with_input_configs() -> None:
     x, y = _make_dataset(60)
     configs = [InputConfig(name=f"x{i + 1}", n_mfs=2) for i in range(3)]
-    est = TSKClassifierEstimator(
+    est = TSKClassifier(
         input_configs=configs,
         mf_init="grid",
         epochs=5,
@@ -1654,7 +1656,7 @@ def test_tsk_classifier_estimator_fit_with_input_configs() -> None:
 def test_tsk_regressor_estimator_fit_with_input_configs() -> None:
     x, y = _make_regression_dataset(80)
     configs = [InputConfig(name=f"x{i + 1}", n_mfs=2) for i in range(3)]
-    est = TSKRegressorEstimator(
+    est = TSKRegressor(
         input_configs=configs,
         mf_init="grid",
         epochs=5,
@@ -1669,7 +1671,7 @@ def test_tsk_regressor_estimator_fit_with_input_configs() -> None:
 
 def test_logtsk_classifier_estimator_save_load_roundtrip() -> None:
     x, y = _make_dataset(60)
-    est = LogTSKClassifierEstimator(
+    est = LogTSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -1683,7 +1685,7 @@ def test_logtsk_classifier_estimator_save_load_roundtrip() -> None:
         path = tmp.name
     try:
         est.save(path)
-        loaded = LogTSKClassifierEstimator.load(path)
+        loaded = LogTSKClassifier.load(path)
         assert np.array_equal(loaded.classes_, est.classes_)
         assert np.allclose(loaded.predict_proba(x), est.predict_proba(x), atol=1e-6)
     finally:
@@ -1693,7 +1695,7 @@ def test_logtsk_classifier_estimator_save_load_roundtrip() -> None:
 def test_estimator_kmeans_default_rule_base_is_coco() -> None:
     """When mf_init='kmeans' and rule_base is not set, model uses 'coco' rule base."""
     x, y = _make_dataset(60)
-    est = HTSKClassifierEstimator(n_mfs=3, mf_init="kmeans", epochs=2, random_state=0, batch_size=16)
+    est = HTSKClassifier(n_mfs=3, mf_init="kmeans", epochs=2, random_state=0, batch_size=16)
     est.fit(x, y)
     # With coco + 3 clusters and 3 features → 3 rules
     assert est.model_.n_rules == 3  # type: ignore[attr-defined]
@@ -1705,7 +1707,7 @@ def test_estimator_early_stopping_with_validation_data() -> None:
     x_train, x_val = x[:60], x[60:]
     y_train, y_val = y[:60], y[60:]
 
-    est = HTSKClassifierEstimator(
+    est = HTSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=1000,
@@ -1723,7 +1725,7 @@ def test_estimator_early_stopping_with_validation_data() -> None:
 def test_estimator_no_val_runs_full_epochs() -> None:
     """Without validation_data, training runs for the full epoch count."""
     x, y = _make_dataset(60)
-    est = HTSKClassifierEstimator(
+    est = HTSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=10,
@@ -1741,7 +1743,7 @@ def test_estimator_patience_none_disables_early_stopping() -> None:
     x_train, x_val = x[:60], x[60:]
     y_train, y_val = y[:60], y[60:]
 
-    est = HTSKClassifierEstimator(
+    est = HTSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=10,
@@ -1761,7 +1763,7 @@ def test_estimator_restore_best_false_does_not_restore_best_model() -> None:
     x_train, x_val = x[:60], x[60:]
     y_train, y_val = y[:60], y[60:]
 
-    est = HTSKClassifierEstimator(
+    est = HTSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -1796,7 +1798,7 @@ def test_estimator_passes_restore_best_to_model_fit() -> None:
             self.fit_kwargs = kwargs
             return {"train": [], "ur": [], "val": []}
 
-    class SpyEstimator(HTSKClassifierEstimator):
+    class SpyEstimator(HTSKClassifier):
         def _build_model(
             self,
             input_mfs: Mapping[str, Sequence[MembershipFunction]],
@@ -1825,7 +1827,7 @@ def test_estimator_passes_restore_best_to_model_fit() -> None:
 def test_estimator_sigma_scale_auto() -> None:
     """sigma_scale='auto' uses h=sqrt(D) where D is the number of features."""
     x, y = _make_dataset(60)
-    est = HTSKClassifierEstimator(
+    est = HTSKClassifier(
         n_mfs=3,
         mf_init="kmeans",
         sigma_scale="auto",
@@ -1900,7 +1902,7 @@ def test_estimator_fit_with_input_configs_grid_resolve_config() -> None:
     """input_configs set + grid init → _resolve_input_configs happy path (lines 171-175)."""
     x, y = _make_dataset(60)
     configs = [InputConfig(name=f"f{i}", n_mfs=2) for i in range(3)]
-    est = HTSKClassifierEstimator(
+    est = HTSKClassifier(
         input_configs=configs,
         mf_init="grid",
         epochs=2,
@@ -1915,7 +1917,7 @@ def test_estimator_fit_with_input_configs_kmeans_resolve_names() -> None:
     """input_configs set + kmeans init → _resolve_feature_names happy path (line 184)."""
     x, y = _make_dataset(60)
     configs = [InputConfig(name=f"g{i}", n_mfs=3) for i in range(3)]
-    est = HTSKClassifierEstimator(
+    est = HTSKClassifier(
         input_configs=configs,
         mf_init="kmeans",
         epochs=2,
@@ -1934,14 +1936,14 @@ def test_estimator_fit_with_input_configs_kmeans_resolve_names() -> None:
 def test_estimator_predict_proba_wrong_feature_count() -> None:
     """predict_proba with wrong number of features raises ValueError (line 271)."""
     x, y = _make_dataset(40)
-    est = HTSKClassifierEstimator(n_mfs=2, epochs=2, batch_size=16, random_state=0)
+    est = HTSKClassifier(n_mfs=2, epochs=2, batch_size=16, random_state=0)
     est.fit(x, y)
     with pytest.raises(ValueError, match="expected"):
         est.predict_proba(x[:, :2])
 
 
 # ===========================================================================
-# HTSKRegressorEstimator
+# HTSKRegressor
 # ===========================================================================
 
 
@@ -1954,7 +1956,7 @@ def _make_regression_dataset(n_samples: int = 60) -> tuple[np.ndarray, np.ndarra
 
 def test_regressor_estimator_fit_predict_score() -> None:
     x, y = _make_regression_dataset(80)
-    est = HTSKRegressorEstimator(
+    est = HTSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -1974,7 +1976,7 @@ def test_regressor_estimator_fit_predict_score() -> None:
 
 def test_regressor_estimator_evaluate_metrics() -> None:
     x, y = _make_regression_dataset(80)
-    est = HTSKRegressorEstimator(
+    est = HTSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -1993,7 +1995,7 @@ def test_regressor_estimator_evaluate_metrics() -> None:
 
 def test_regressor_estimator_pfrb_kmeans_fit_predict() -> None:
     x, y = _make_regression_dataset(40)
-    est = HTSKRegressorEstimator(
+    est = HTSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         rule_base="pfrb",
@@ -2011,7 +2013,7 @@ def test_regressor_estimator_pfrb_kmeans_fit_predict() -> None:
 
 def test_regressor_estimator_pfrb_grid_fit_predict() -> None:
     x, y = _make_regression_dataset(40)
-    est = HTSKRegressorEstimator(
+    est = HTSKRegressor(
         n_mfs=2,
         mf_init="grid",
         rule_base="pfrb",
@@ -2029,7 +2031,7 @@ def test_regressor_estimator_pfrb_grid_fit_predict() -> None:
 
 def test_regressor_estimator_grid_init_fit_predict() -> None:
     x, y = _make_regression_dataset(80)
-    est = HTSKRegressorEstimator(
+    est = HTSKRegressor(
         n_mfs=2,
         mf_init="grid",
         epochs=5,
@@ -2046,7 +2048,7 @@ def test_regressor_estimator_grid_init_fit_predict() -> None:
 
 def test_estimator_inspection_methods_for_tsk_classifier() -> None:
     x, y = _make_dataset(40)
-    est = TSKClassifierEstimator(
+    est = TSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=3,
@@ -2084,7 +2086,7 @@ def test_estimator_inspection_methods_for_tsk_classifier() -> None:
 
 def test_estimator_inspection_methods_for_tsk_regressor() -> None:
     x, y = _make_regression_dataset(40)
-    est = TSKRegressorEstimator(
+    est = TSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         epochs=3,
@@ -2114,21 +2116,21 @@ def test_estimator_inspection_methods_for_tsk_regressor() -> None:
 
 def test_classifier_fit_requires_validation_inputs_together() -> None:
     x, y = _make_dataset(20)
-    est = TSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    est = TSKClassifier(n_mfs=2, epochs=1, batch_size=5, random_state=0)
     with pytest.raises(ValueError, match="x_val and y_val must be provided together"):
         est.fit(x, y, x_val=x, y_val=None)
 
 
 def test_regressor_fit_requires_validation_inputs_together() -> None:
     x, y = _make_regression_dataset(20)
-    est = TSKRegressorEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    est = TSKRegressor(n_mfs=2, epochs=1, batch_size=5, random_state=0)
     with pytest.raises(ValueError, match="x_val and y_val must be provided together"):
         est.fit(x, y, x_val=x, y_val=None)
 
 
 def test_classifier_rule_activation_validates_feature_count() -> None:
     x, y = _make_dataset(20)
-    est = TSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    est = TSKClassifier(n_mfs=2, epochs=1, batch_size=5, random_state=0)
     est.fit(x, y)
     with pytest.raises(ValueError, match=r"expected .* features, got"):
         est.rule_activation(x[:, :2])
@@ -2136,7 +2138,7 @@ def test_classifier_rule_activation_validates_feature_count() -> None:
 
 def test_regressor_rule_activation_validates_feature_count() -> None:
     x, y = _make_regression_dataset(20)
-    est = TSKRegressorEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    est = TSKRegressor(n_mfs=2, epochs=1, batch_size=5, random_state=0)
     est.fit(x, y)
     with pytest.raises(ValueError, match=r"expected .* features, got"):
         est.rule_activation(x[:, :2])
@@ -2151,7 +2153,7 @@ def test_normalize_importance_returns_uniform_distribution_for_zero_total() -> N
 
 def test_classifier_feature_importance_returns_none_when_consequent_weights_missing() -> None:
     x, y = _make_dataset(20)
-    est = TSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    est = TSKClassifier(n_mfs=2, epochs=1, batch_size=5, random_state=0)
     est.fit(x, y)
     est.model_.get_consequent_weights = cast(Any, lambda: None)
     assert est.feature_importance() is None
@@ -2159,7 +2161,7 @@ def test_classifier_feature_importance_returns_none_when_consequent_weights_miss
 
 def test_regressor_feature_importance_returns_none_when_consequent_weights_missing() -> None:
     x, y = _make_regression_dataset(20)
-    est = TSKRegressorEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    est = TSKRegressor(n_mfs=2, epochs=1, batch_size=5, random_state=0)
     est.fit(x, y)
     est.model_.get_consequent_weights = cast(Any, lambda: None)
     assert est.feature_importance() is None
@@ -2167,7 +2169,7 @@ def test_regressor_feature_importance_returns_none_when_consequent_weights_missi
 
 def test_classifier_feature_importance_handles_3d_weights_and_mask() -> None:
     x, y = _make_dataset(20)
-    est = TSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    est = TSKClassifier(n_mfs=2, epochs=1, batch_size=5, random_state=0)
     est.fit(x, y)
     est.model_.get_consequent_weights = cast(Any, lambda: torch.ones(2, 3, x.shape[1], dtype=torch.float32))
     est.model_.consequent_layer.rule_feature_mask = torch.ones(3, dtype=torch.float32)  # type: ignore[attr-defined]
@@ -2179,7 +2181,7 @@ def test_classifier_feature_importance_handles_3d_weights_and_mask() -> None:
 
 def test_classifier_feature_importance_handles_2d_weights() -> None:
     x, y = _make_dataset(20)
-    est = TSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    est = TSKClassifier(n_mfs=2, epochs=1, batch_size=5, random_state=0)
     est.fit(x, y)
     est.model_.get_consequent_weights = cast(Any, lambda: torch.ones(3, x.shape[1], dtype=torch.float32))
     importance = est.feature_importance()
@@ -2190,7 +2192,7 @@ def test_classifier_feature_importance_handles_2d_weights() -> None:
 
 def test_classifier_feature_importance_raises_for_unsupported_weight_shape() -> None:
     x, y = _make_dataset(20)
-    est = TSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    est = TSKClassifier(n_mfs=2, epochs=1, batch_size=5, random_state=0)
     est.fit(x, y)
     est.model_.get_consequent_weights = cast(Any, lambda: torch.ones(1, 2, 3, 4, dtype=torch.float32))
     with pytest.raises(ValueError, match="unsupported consequent weight shape"):
@@ -2199,7 +2201,7 @@ def test_classifier_feature_importance_raises_for_unsupported_weight_shape() -> 
 
 def test_regressor_feature_importance_raises_for_unsupported_weight_shape() -> None:
     x, y = _make_regression_dataset(20)
-    est = TSKRegressorEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    est = TSKRegressor(n_mfs=2, epochs=1, batch_size=5, random_state=0)
     est.fit(x, y)
     est.model_.get_consequent_weights = cast(Any, lambda: torch.ones(1, 2, 3, 4, dtype=torch.float32))
     with pytest.raises(ValueError, match="unsupported consequent weight shape"):
@@ -2207,21 +2209,21 @@ def test_regressor_feature_importance_raises_for_unsupported_weight_shape() -> N
 
 
 def test_base_get_consequent_weights_returns_none_when_no_weight_attribute() -> None:
-    model = TSKRegressor({"x1": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.5)]})
+    model = TSKRegressorModel({"x1": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.5)]})
     if hasattr(model.consequent_layer, "weight"):
         delattr(model.consequent_layer, "weight")
     assert model.get_consequent_weights() is None
 
 
 def test_base_get_consequent_weights_returns_tensor_when_weight_exists() -> None:
-    model = TSKRegressor({"x1": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.5)]})
+    model = TSKRegressorModel({"x1": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.5)]})
     weight = model.get_consequent_weights()
     assert weight is None or isinstance(weight, torch.Tensor)
 
 
 def test_regressor_feature_importance_handles_3d_weights_and_mask() -> None:
     x, y = _make_regression_dataset(20)
-    est = TSKRegressorEstimator(n_mfs=2, epochs=1, batch_size=5, random_state=0)
+    est = TSKRegressor(n_mfs=2, epochs=1, batch_size=5, random_state=0)
     est.fit(x, y)
     est.model_.get_consequent_weights = cast(Any, lambda: torch.ones(2, 3, x.shape[1], dtype=torch.float32))
     est.model_.consequent_layer.rule_feature_mask = torch.ones(3, dtype=torch.float32)  # type: ignore[attr-defined]
@@ -2233,7 +2235,7 @@ def test_regressor_feature_importance_handles_3d_weights_and_mask() -> None:
 
 def test_estimator_inspection_methods_for_mhtsk_classifier() -> None:
     x, y = _make_dataset(40)
-    est = MHTSKClassifierEstimator(
+    est = MHTSKClassifier(
         n_mfs=2,
         n_heads=2,
         head_size=2,
@@ -2262,7 +2264,7 @@ def test_estimator_inspection_methods_for_mhtsk_classifier() -> None:
 
 def test_adatsk_regressor_estimator_fit_predict() -> None:
     x, y = _make_regression_dataset(80)
-    est = AdaTSKRegressorEstimator(
+    est = ADATSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -2279,7 +2281,7 @@ def test_adatsk_regressor_estimator_fit_predict() -> None:
 
 def test_adptsk_regressor_estimator_fit_predict() -> None:
     x, y = _make_regression_dataset(80)
-    est = ADPTSKRegressorEstimator(
+    est = ADPTSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -2296,7 +2298,7 @@ def test_adptsk_regressor_estimator_fit_predict() -> None:
 
 def test_fsre_adatsk_regressor_estimator_fit_predict() -> None:
     x, y = _make_regression_dataset(80)
-    est = FSREAdaTSKRegressorEstimator(
+    est = FSREADATSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         lambda_init=2.0,
@@ -2314,28 +2316,28 @@ def test_fsre_adatsk_regressor_estimator_fit_predict() -> None:
 
 def test_regressor_estimator_predict_requires_fit() -> None:
     x, _ = _make_regression_dataset(10)
-    est = HTSKRegressorEstimator(n_mfs=2, epochs=1, batch_size=16)
+    est = HTSKRegressor(n_mfs=2, epochs=1, batch_size=16)
     with pytest.raises(NotFittedError):
         est.predict(x)
 
 
 def test_regressor_estimator_validates_input_config_length() -> None:
     x, y = _make_regression_dataset(20)
-    est = HTSKRegressorEstimator(input_configs=[InputConfig(name="x1", n_mfs=2)], batch_size=16)
+    est = HTSKRegressor(input_configs=[InputConfig(name="x1", n_mfs=2)], batch_size=16)
     with pytest.raises(ValueError, match="input_configs length"):
         est.fit(x, y)
 
 
 def test_regressor_estimator_invalid_mf_init_raises() -> None:
     x, y = _make_regression_dataset(20)
-    est = HTSKRegressorEstimator(n_mfs=2, mf_init="random", epochs=1, batch_size=16)
+    est = HTSKRegressor(n_mfs=2, mf_init="random", epochs=1, batch_size=16)
     with pytest.raises(ValueError, match="mf_init"):
         est.fit(x, y)
 
 
 def test_regressor_estimator_kmeans_default_rule_base_is_coco() -> None:
     x, y = _make_regression_dataset(60)
-    est = HTSKRegressorEstimator(n_mfs=3, mf_init="kmeans", epochs=2, random_state=0, batch_size=16)
+    est = HTSKRegressor(n_mfs=3, mf_init="kmeans", epochs=2, random_state=0, batch_size=16)
     est.fit(x, y)
     assert est.model_.n_rules == 3  # type: ignore[attr-defined]
 
@@ -2345,7 +2347,7 @@ def test_regressor_estimator_early_stopping_with_validation_data() -> None:
     x_train, x_val = x[:60], x[60:]
     y_train, y_val = y[:60], y[60:]
 
-    est = HTSKRegressorEstimator(
+    est = HTSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         epochs=1000,
@@ -2362,7 +2364,7 @@ def test_regressor_estimator_early_stopping_with_validation_data() -> None:
 
 def test_regressor_estimator_no_val_runs_full_epochs() -> None:
     x, y = _make_regression_dataset(60)
-    est = HTSKRegressorEstimator(
+    est = HTSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         epochs=10,
@@ -2377,7 +2379,7 @@ def test_regressor_estimator_no_val_runs_full_epochs() -> None:
 
 def test_regressor_estimator_sigma_scale_auto() -> None:
     x, y = _make_regression_dataset(60)
-    est = HTSKRegressorEstimator(
+    est = HTSKRegressor(
         n_mfs=3,
         mf_init="kmeans",
         sigma_scale="auto",
@@ -2394,7 +2396,7 @@ def test_regressor_estimator_sigma_scale_auto() -> None:
 
 def test_regressor_estimator_predict_wrong_feature_count() -> None:
     x, y = _make_regression_dataset(40)
-    est = HTSKRegressorEstimator(n_mfs=2, epochs=2, batch_size=16, random_state=0)
+    est = HTSKRegressor(n_mfs=2, epochs=2, batch_size=16, random_state=0)
     est.fit(x, y)
     with pytest.raises(ValueError, match="expected"):
         est.predict(x[:, :2])
@@ -2403,7 +2405,7 @@ def test_regressor_estimator_predict_wrong_feature_count() -> None:
 def test_regressor_estimator_fit_with_input_configs_grid() -> None:
     x, y = _make_regression_dataset(60)
     configs = [InputConfig(name=f"f{i}", n_mfs=2) for i in range(3)]
-    est = HTSKRegressorEstimator(
+    est = HTSKRegressor(
         input_configs=configs,
         mf_init="grid",
         epochs=2,
@@ -2417,7 +2419,7 @@ def test_regressor_estimator_fit_with_input_configs_grid() -> None:
 def test_regressor_estimator_fit_with_input_configs_kmeans() -> None:
     x, y = _make_regression_dataset(60)
     configs = [InputConfig(name=f"g{i}", n_mfs=3) for i in range(3)]
-    est = HTSKRegressorEstimator(
+    est = HTSKRegressor(
         input_configs=configs,
         mf_init="kmeans",
         epochs=2,

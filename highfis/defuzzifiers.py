@@ -9,7 +9,7 @@ Built-in strategies:
     - ``SoftmaxLogDefuzzifier`` — ``softmax(log(w))``, numerically stable
       equivalent of ``w / sum(w)`` (default for HTSK and DG variants).
     - ``SumBasedDefuzzifier`` — classic ``w / sum(w)`` normalization
-      (used by TSK, AYATSK, DombiTSK, AdaTSK).
+      (used by TSK, AYATSK, DombiTSK, ADATSK).
     - ``LogSumDefuzzifier`` — temperature-scaled ``softmax(log(w) / T)``
       (used by LogTSK).
     - ``InvLogDefuzzifier`` — inverse-log normalization for log-domain

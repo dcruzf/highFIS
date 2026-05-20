@@ -1,6 +1,6 @@
-# AdaTSK
+# ADATSK
 
-AdaTSK extends TSK with an adaptive softmin antecedent that stabilizes high-dimensional fuzzy inference while preserving first-order TSK consequents.
+ADATSK extends TSK with an adaptive softmin antecedent that stabilizes high-dimensional fuzzy inference while preserving first-order TSK consequents.
 
 ## Reference
 
@@ -8,7 +8,7 @@ AdaTSK extends TSK with an adaptive softmin antecedent that stabilizes high-dime
 
 ## Mathematical Formulation
 
-AdaTSK extends TSK fuzzy inference by using an adaptive softmin antecedent
+ADATSK extends TSK fuzzy inference by using an adaptive softmin antecedent
 (Ada-softmin) together with first-order linear consequents.
 
 ### Antecedent
@@ -27,7 +27,7 @@ The paper's proposed positive lower-bound variant can be instantiated with
 
 ### Adaptive Ada-softmin aggregation
 
-AdaTSK computes rule firing strengths with an adaptive softmin based on the
+ADATSK computes rule firing strengths with an adaptive softmin based on the
 minimum antecedent membership for each rule:
 
 $$
@@ -53,7 +53,7 @@ $$
 
 ### Consequent
 
-AdaTSK uses a first-order TSK consequent for both classification and
+ADATSK uses a first-order TSK consequent for both classification and
 regression.
 
 For classification:
@@ -96,24 +96,24 @@ $$
 
 ## Implementation notes
 
-In highFIS, `AdaTSKClassifier` and `AdaTSKRegressor` implement the core
-AdaTSK model by replacing the standard product antecedent with the
+In highFIS, `ADATSKClassifierModel` and `ADATSKRegressorModel` implement the core
+ADATSK model by replacing the standard product antecedent with the
 adaptive softmin operator.
 
 ### Model classes
 
-- `AdaTSKClassifier` and `AdaTSKRegressor` use
+- `ADATSKClassifierModel` and `ADATSKRegressorModel` use
   `highfis.layers.AdaSoftminRuleLayer` to compute rule strengths.
 - The TSK consequent remains first-order linear and is normalized with
   `highfis.defuzzifiers.SumBasedDefuzzifier`.
-- `AdaTSKClassifier` and `AdaTSKRegressor` do not expose the feature-
-  selection / rule-extraction gates of FSRE-AdaTSK.
+- `ADATSKClassifierModel` and `ADATSKRegressorModel` do not expose the feature-
+  selection / rule-extraction gates of FSRE-ADATSK.
 
 ### Estimator wrappers
 
-- `AdaTSKClassifierEstimator` and `AdaTSKRegressorEstimator` are
-  sklearn-compatible wrappers around the low-level AdaTSK model classes.
-- They build Gaussian membership functions from `input_configs`, `n_mfs`,
+- `ADATSKClassifier` and `ADATSKRegressor` are
+  sklearn-compatible wrappers around the low-level ADATSK model classes.
+- They build Gaussian membership functions from `input_configs`, `n_rules`,
   `mf_init`, and `sigma_scale`.
 - The default `sigma_scale=1.0` is appropriate because the adaptive softmin
   operator handles high-dimensional stability.
@@ -127,17 +127,17 @@ adaptive softmin operator.
 
 ### Training in the paper vs. highFIS
 
-- The paper trains AdaTSK end-to-end by optimizing the task loss through
+- The paper trains ADATSK end-to-end by optimizing the task loss through
   the adaptive softmin operator.
 - highFIS follows the same gradient-based training paradigm in `BaseTSK.fit()`.
 - `eps` is used to clamp membership values and stabilize log-space
   computations in `AdaSoftminRuleLayer`.
 
-- FSRE-AdaTSK is documented separately in `docs/models/fsre-adatsk.md`.
+- FSRE-ADATSK is documented separately in `docs/models/fsre-adatsk.md`.
 
 ## Alignment with the paper
 
-- The paper's key AdaTSK contribution is the adaptive softmin antecedent
+- The paper's key ADATSK contribution is the adaptive softmin antecedent
   operator to avoid numeric underflow and fake minimum effects.
 - highFIS implements this via `AdaSoftminRuleLayer` with a per-rule exponent
   derived from the rule's minimum antecedent membership.
