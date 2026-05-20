@@ -100,7 +100,7 @@ def test_build_fuzzy_c_means_input_mfs_handles_zero_variance(monkeypatch) -> Non
         def fit(self, x: np.ndarray) -> DummyFuzzyCMeans:
             return self
 
-    monkeypatch.setattr("highfis.estimators.FuzzyCMeans", DummyFuzzyCMeans)
+    monkeypatch.setattr("highfis.estimators._base.FuzzyCMeans", DummyFuzzyCMeans)
     x = np.array([[0.0, 0.0], [0.0, 0.0]], dtype=np.float64)
     feature_names = ["x1", "x2"]
     input_mfs = _build_fuzzy_c_means_input_mfs(
@@ -675,7 +675,7 @@ def test_build_kmeans_input_mfs_raises_when_cluster_centers_missing(monkeypatch)
         def fit(self, x: np.ndarray):
             return self
 
-    monkeypatch.setattr("highfis.estimators.TorchKMeans", DummyKMeans)
+    monkeypatch.setattr("highfis.estimators._base.TorchKMeans", DummyKMeans)
 
     with pytest.raises(RuntimeError, match="KMeans did not compute cluster centers"):
         _build_kmeans_input_mfs(
@@ -752,7 +752,7 @@ def test_build_fcm_input_mfs_raises_when_fcm_does_not_converge(monkeypatch) -> N
         def fit(self, x: np.ndarray):
             return self
 
-    monkeypatch.setattr("highfis.estimators.FuzzyCMeans", DummyFuzzyCMeans)
+    monkeypatch.setattr("highfis.estimators._base.FuzzyCMeans", DummyFuzzyCMeans)
 
     with pytest.raises(RuntimeError, match="FuzzyCMeans did not converge"):
         _build_fuzzy_c_means_input_mfs(
@@ -774,7 +774,7 @@ def test_build_kmeans_input_mfs_works_with_numpy_cluster_centers(monkeypatch) ->
         def fit(self, x: np.ndarray):
             return self
 
-    monkeypatch.setattr("highfis.estimators.TorchKMeans", DummyKMeans)
+    monkeypatch.setattr("highfis.estimators._base.TorchKMeans", DummyKMeans)
 
     x = np.array([[0.0, 0.0], [1.0, 1.0]], dtype=np.float64)
     feature_names = ["x1", "x2"]
@@ -1351,7 +1351,7 @@ def test_mhtsk_input_builder_raises_when_fcm_fails(monkeypatch) -> None:
         def fit(self, x: np.ndarray) -> None:
             self.cluster_centers_ = None
 
-    monkeypatch.setattr("highfis.estimators.FuzzyCMeans", DummyFuzzyCMeans)
+    monkeypatch.setattr("highfis.estimators._base.FuzzyCMeans", DummyFuzzyCMeans)
 
     est = MHTSKClassifierEstimator(
         n_mfs=2,
