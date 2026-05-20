@@ -30,7 +30,7 @@ from ..memberships import (
 from ..metrics import compute_metrics
 from ..persistence import (
     CHECKPOINT_FORMAT,
-    CHECKPOINT_VERSION,
+    CHECKPOINT_FORMAT_VERSION,
     deserialize_input_mfs,
     load_checkpoint,
     save_checkpoint,
@@ -865,7 +865,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
             ]
         return {
             "format": CHECKPOINT_FORMAT,
-            "format_version": CHECKPOINT_VERSION,
+            "format_version": CHECKPOINT_FORMAT_VERSION,
             "estimator_class": self.__class__.__name__,
             "estimator_params": params,
             "model_init": model_init,
@@ -1310,7 +1310,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
             ]
         return {
             "format": CHECKPOINT_FORMAT,
-            "format_version": CHECKPOINT_VERSION,
+            "format_version": CHECKPOINT_FORMAT_VERSION,
             "estimator_class": self.__class__.__name__,
             "estimator_params": params,
             "model_init": model_init,

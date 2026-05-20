@@ -9,7 +9,7 @@ import torch
 from highfis.estimators import TSKClassifierEstimator, TSKRegressorEstimator
 from highfis.persistence import (
     CHECKPOINT_FORMAT,
-    CHECKPOINT_VERSION,
+    CHECKPOINT_FORMAT_VERSION,
     load_checkpoint,
     save_checkpoint,
     validate_checkpoint_payload,
@@ -19,7 +19,7 @@ from highfis.persistence import (
 def _valid_payload() -> dict[str, object]:
     return {
         "format": CHECKPOINT_FORMAT,
-        "format_version": CHECKPOINT_VERSION,
+        "format_version": CHECKPOINT_FORMAT_VERSION,
         "estimator_class": "FakeEstimator",
         "estimator_params": {"n_mfs": 1},
         "model_init": {"input_mfs_config": {}, "rule_base": "cartesian"},
@@ -38,7 +38,7 @@ class TestPersistenceIO:
         loaded = load_checkpoint(path)
 
         assert loaded["format"] == CHECKPOINT_FORMAT
-        assert loaded["format_version"] == CHECKPOINT_VERSION
+        assert loaded["format_version"] == CHECKPOINT_FORMAT_VERSION
         assert loaded["estimator_class"] == "FakeEstimator"
         assert loaded["model_init"]["rule_base"] == "cartesian"
 

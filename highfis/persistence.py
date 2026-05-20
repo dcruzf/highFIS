@@ -6,14 +6,15 @@ parameters, the fitted model state dict, and sklearn-compatible fit metadata
 (``n_features_in_``, ``feature_names_in_``, ``classes_``, etc.).
 
 The checkpoint schema is versioned. ``CHECKPOINT_FORMAT`` identifies the
-payload type and ``CHECKPOINT_VERSION`` is tied to the current package
+payload type and ``CHECKPOINT_FORMAT_VERSION`` is an integer string incremented
+only when the checkpoint schema itself changes — independent of the package
 version. ``validate_checkpoint_payload`` enforces both so that incompatible
 checkpoints are rejected before any state is restored.
 
 Checkpoint schema keys:
 
 - ``format`` — must equal ``CHECKPOINT_FORMAT``.
-- ``format_version`` — must equal ``CHECKPOINT_VERSION``.
+- ``format_version`` — must equal ``CHECKPOINT_FORMAT_VERSION``.
 - ``estimator_class`` — class name of the estimator that created the
   checkpoint.
 - ``estimator_params`` — constructor kwargs used to recreate the estimator.
@@ -35,8 +36,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .version import __version__
-
 
 def _get_mf_registry() -> dict[str, type]:
     """Lazily return the supported MF type registry to avoid circular imports."""
@@ -56,7 +55,7 @@ def _get_mf_registry() -> dict[str, type]:
 
 
 CHECKPOINT_FORMAT = "highfis_estimator"
-CHECKPOINT_VERSION = __version__
+CHECKPOINT_FORMAT_VERSION = "1"
 
 
 def serialize_input_mfs(input_mfs: Any) -> dict[str, list[dict[str, Any]]]:
@@ -164,8 +163,8 @@ def validate_checkpoint_payload(checkpoint: dict[str, Any], *, expected_estimato
         raise ValueError(f"invalid checkpoint format '{fmt}', expected '{CHECKPOINT_FORMAT}'")
 
     version = checkpoint.get("format_version")
-    if version != CHECKPOINT_VERSION:
-        raise ValueError(f"unsupported checkpoint version {version}, expected package version {CHECKPOINT_VERSION}")
+    if version != CHECKPOINT_FORMAT_VERSION:
+        raise ValueError(f"unsupported checkpoint version {version!r}, expected {CHECKPOINT_FORMAT_VERSION!r}")
 
     estimator_class = checkpoint.get("estimator_class")
     if estimator_class != expected_estimator_class:
