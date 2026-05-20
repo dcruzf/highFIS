@@ -7,8 +7,8 @@ from collections.abc import Mapping, Sequence
 from ..base import BaseTSK
 from ..memberships import MembershipFunction
 from ..models import (
-    DGTSKClassifier,
-    DGTSKRegressor,
+    DGTSKClassifierModel,
+    DGTSKRegressorModel,
 )
 from ._base import (
     InputConfig,
@@ -116,8 +116,8 @@ class DGTSKClassifierEstimator(_BaseClassifierEstimator):
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
-        """Create DGTSKClassifier."""
-        return DGTSKClassifier(
+        """Create DGTSKClassifierModel."""
+        return DGTSKClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
@@ -225,8 +225,8 @@ class DGTSKRegressorEstimator(_BaseRegressorEstimator):
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
-        """Create DGTSKRegressor."""
-        return DGTSKRegressor(
+        """Create DGTSKRegressorModel."""
+        return DGTSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),

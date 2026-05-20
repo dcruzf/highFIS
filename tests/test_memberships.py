@@ -27,7 +27,7 @@ from highfis.memberships import (
     TriangularMF,
     ZShapedMF,
 )
-from highfis.models import TSKRegressor
+from highfis.models import TSKRegressorModel
 
 
 def test_gaussian_mf_rejects_non_positive_sigma() -> None:
@@ -352,7 +352,7 @@ def test_membership_function_default_inspect_params_with_base_class() -> None:
 
 def test_tsk_regressor_get_mf_params_returns_sane_structure() -> None:
     input_mfs = {"x1": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.5)]}
-    model = TSKRegressor(input_mfs)
+    model = TSKRegressorModel(input_mfs)
     params = model.get_mf_params()
 
     assert set(params) == {"x1"}

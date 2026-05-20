@@ -15,12 +15,12 @@ from ..layers import (
 )
 from ..memberships import MembershipFunction
 from ._common import (
-    BaseTSKClassifier,
-    BaseTSKRegressor,
+    BaseTSKClassifierModel,
+    BaseTSKRegressorModel,
 )
 
 
-class FSREAdaTSKClassifier(BaseTSKClassifier):
+class FSREAdaTSKClassifierModel(BaseTSKClassifierModel):
     r"""FSRE-AdaTSK classifier with adaptive softmin antecedent and gated consequents.
 
     FSRE-AdaTSK (Feature Selection and Rule Extraction) extends AdaTSK.
@@ -130,7 +130,7 @@ class FSREAdaTSKClassifier(BaseTSKClassifier):
         return self.fit(x, y, **kwargs)
 
 
-class FSREAdaTSKRegressor(BaseTSKRegressor):
+class FSREAdaTSKRegressorModel(BaseTSKRegressorModel):
     r"""FSRE-AdaTSK regressor with adaptive softmin antecedent and gated consequents.
 
     FSRE-AdaTSK (Feature Selection and Rule Extraction) extends AdaTSK.

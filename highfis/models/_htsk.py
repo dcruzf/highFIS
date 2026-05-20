@@ -14,12 +14,12 @@ from ..layers import (
 from ..memberships import MembershipFunction
 from ..t_norms import TNormFn
 from ._common import (
-    BaseTSKClassifier,
-    BaseTSKRegressor,
+    BaseTSKClassifierModel,
+    BaseTSKRegressorModel,
 )
 
 
-class HTSKClassifier(BaseTSKClassifier):
+class HTSKClassifierModel(BaseTSKClassifierModel):
     r"""HTSK classifier for high-dimensional TSK inference.
 
     HTSK replaces the standard product t-norm with a geometric mean over
@@ -85,7 +85,7 @@ class HTSKClassifier(BaseTSKClassifier):
         return nn.CrossEntropyLoss()
 
 
-class HTSKRegressor(BaseTSKRegressor):
+class HTSKRegressorModel(BaseTSKRegressorModel):
     r"""HTSK regressor for high-dimensional TSK inference.
 
     HTSK replaces the standard product t-norm with a geometric mean over
@@ -140,7 +140,7 @@ class HTSKRegressor(BaseTSKRegressor):
         return nn.MSELoss()
 
 
-class TSKClassifier(BaseTSKClassifier):
+class TSKClassifierModel(BaseTSKClassifierModel):
     r"""Vanilla TSK classifier with sum-based rule normalization.
 
     The vanilla Takagi-Sugeno-Kang inference computes rule firing strengths
@@ -204,7 +204,7 @@ class TSKClassifier(BaseTSKClassifier):
         return nn.CrossEntropyLoss()
 
 
-class TSKRegressor(BaseTSKRegressor):
+class TSKRegressorModel(BaseTSKRegressorModel):
     r"""Vanilla TSK regressor with sum-based rule normalization.
 
     The vanilla Takagi-Sugeno-Kang inference computes rule firing strengths

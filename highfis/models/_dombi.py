@@ -15,12 +15,12 @@ from ..layers import (
 from ..memberships import MembershipFunction
 from ..t_norms import AdaptiveDombiTNorm, DombiTNorm, TNormFn
 from ._common import (
-    BaseTSKClassifier,
-    BaseTSKRegressor,
+    BaseTSKClassifierModel,
+    BaseTSKRegressorModel,
 )
 
 
-class DombiTSKClassifier(BaseTSKClassifier):
+class DombiTSKClassifierModel(BaseTSKClassifierModel):
     r"""TSK classifier with a fixed Dombi T-norm in the antecedent.
 
     DombiTSK extends TSK fuzzy inference by using a Dombi t-norm
@@ -94,7 +94,7 @@ class DombiTSKClassifier(BaseTSKClassifier):
         return nn.CrossEntropyLoss()
 
 
-class DombiTSKRegressor(BaseTSKRegressor):
+class DombiTSKRegressorModel(BaseTSKRegressorModel):
     r"""TSK regressor with a fixed Dombi T-norm in the antecedent.
 
     DombiTSK extends TSK fuzzy inference by using a Dombi t-norm
@@ -162,7 +162,7 @@ class DombiTSKRegressor(BaseTSKRegressor):
         return nn.MSELoss()
 
 
-class ADMTSKClassifier(BaseTSKClassifier):
+class ADMTSKClassifierModel(BaseTSKClassifierModel):
     r"""Adaptive Dombi TSK classifier with Composite Gaussian membership functions.
 
     ADMTSK is an adaptive Dombi TSK fuzzy system designed for high-dimensional inference.
@@ -254,7 +254,7 @@ class ADMTSKClassifier(BaseTSKClassifier):
         return nn.CrossEntropyLoss()
 
 
-class ADMTSKRegressor(BaseTSKRegressor):
+class ADMTSKRegressorModel(BaseTSKRegressorModel):
     r"""Adaptive Dombi TSK regressor with Composite Gaussian membership functions.
 
     ADMTSK is an adaptive Dombi TSK fuzzy system designed for high-dimensional inference.

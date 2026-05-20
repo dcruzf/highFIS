@@ -14,8 +14,8 @@ from ..memberships import (
     MembershipFunction,
 )
 from ..models import (
-    MHTSKClassifier,
-    MHTSKRegressor,
+    MHTSKClassifierModel,
+    MHTSKRegressorModel,
 )
 from ._base import (
     InputConfig,
@@ -187,7 +187,7 @@ class MHTSKClassifierEstimator(_BaseClassifierEstimator):
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
-        return MHTSKClassifier(
+        return MHTSKClassifierModel(
             input_mfs,
             self._mhtsk_rule_feature_mask,
             self._mhtsk_rules,
@@ -484,7 +484,7 @@ class MHTSKRegressorEstimator(_BaseRegressorEstimator):
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
-        return MHTSKRegressor(
+        return MHTSKRegressorModel(
             input_mfs,
             self._mhtsk_rule_feature_mask,
             self._mhtsk_rules,

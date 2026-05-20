@@ -14,12 +14,12 @@ from ..layers import (
 from ..memberships import MembershipFunction
 from ..t_norms import TNormFn
 from ._common import (
-    BaseTSKClassifier,
-    BaseTSKRegressor,
+    BaseTSKClassifierModel,
+    BaseTSKRegressorModel,
 )
 
 
-class MHTSKClassifier(BaseTSKClassifier):
+class MHTSKClassifierModel(BaseTSKClassifierModel):
     """Multihead TSK classifier with sparse rule consequents.
 
     MHTSK builds multiple sparse subantecedents from random feature
@@ -81,7 +81,7 @@ class MHTSKClassifier(BaseTSKClassifier):
         return nn.CrossEntropyLoss()
 
 
-class MHTSKRegressor(BaseTSKRegressor):
+class MHTSKRegressorModel(BaseTSKRegressorModel):
     """Multihead TSK regressor with sparse rule consequents.
 
     MHTSK builds multiple sparse subantecedents from random feature

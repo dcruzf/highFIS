@@ -9,10 +9,10 @@ from ..memberships import (
     MembershipFunction,
 )
 from ..models import (
-    AdaTSKClassifier,
-    AdaTSKRegressor,
-    ADPTSKClassifier,
-    ADPTSKRegressor,
+    AdaTSKClassifierModel,
+    AdaTSKRegressorModel,
+    ADPTSKClassifierModel,
+    ADPTSKRegressorModel,
 )
 from ._base import (
     InputConfig,
@@ -138,7 +138,7 @@ class ADPTSKClassifierEstimator(_BaseClassifierEstimator):
         rule_base: str,
     ) -> BaseTSK:
         input_mfs = _wrap_gaussian_pimf_input_mfs(input_mfs, k=self.k, eps=self.eps)
-        return ADPTSKClassifier(
+        return ADPTSKClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
@@ -265,7 +265,7 @@ class ADPTSKRegressorEstimator(_BaseRegressorEstimator):
         n_classes: int | None = None,
     ) -> BaseTSK:
         input_mfs = _wrap_gaussian_pimf_input_mfs(input_mfs, k=self.k, eps=self.eps)
-        return ADPTSKRegressor(
+        return ADPTSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),
@@ -367,8 +367,8 @@ class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
-        """Create AdaTSKClassifier."""
-        return AdaTSKClassifier(
+        """Create AdaTSKClassifierModel."""
+        return AdaTSKClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
@@ -467,8 +467,8 @@ class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
-        """Create AdaTSKRegressor."""
-        return AdaTSKRegressor(
+        """Create AdaTSKRegressorModel."""
+        return AdaTSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),

@@ -7,8 +7,8 @@ from collections.abc import Mapping, Sequence
 from ..base import BaseTSK
 from ..memberships import MembershipFunction
 from ..models import (
-    DGALETSKClassifier,
-    DGALETSKRegressor,
+    DGALETSKClassifierModel,
+    DGALETSKRegressorModel,
 )
 from ._fsre import (
     FSREAdaTSKClassifierEstimator,
@@ -48,8 +48,8 @@ class DGALETSKClassifierEstimator(FSREAdaTSKClassifierEstimator):
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
-        """Create DGALETSKClassifier."""
-        return DGALETSKClassifier(
+        """Create DGALETSKClassifierModel."""
+        return DGALETSKClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
@@ -91,8 +91,8 @@ class DGALETSKRegressorEstimator(FSREAdaTSKRegressorEstimator):
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
-        """Create DGALETSKRegressor."""
-        return DGALETSKRegressor(
+        """Create DGALETSKRegressorModel."""
+        return DGALETSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
             lambda_init=self.lambda_init,

@@ -7,8 +7,8 @@ from collections.abc import Mapping, Sequence
 from ..base import BaseTSK
 from ..memberships import MembershipFunction
 from ..models import (
-    FSREAdaTSKClassifier,
-    FSREAdaTSKRegressor,
+    FSREAdaTSKClassifierModel,
+    FSREAdaTSKRegressorModel,
 )
 from ._base import (
     InputConfig,
@@ -126,8 +126,8 @@ class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
-        """Create FSREAdaTSKClassifier."""
-        return FSREAdaTSKClassifier(
+        """Create FSREAdaTSKClassifierModel."""
+        return FSREAdaTSKClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
@@ -242,8 +242,8 @@ class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
-        """Create FSREAdaTSKRegressor."""
-        return FSREAdaTSKRegressor(
+        """Create FSREAdaTSKRegressorModel."""
+        return FSREAdaTSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),

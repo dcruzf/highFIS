@@ -11,10 +11,10 @@ from ..memberships import (
     MembershipFunction,
 )
 from ..models import (
-    HDFISMinClassifier,
-    HDFISMinRegressor,
-    HDFISProdClassifier,
-    HDFISProdRegressor,
+    HDFISMinClassifierModel,
+    HDFISMinRegressorModel,
+    HDFISProdClassifierModel,
+    HDFISProdRegressorModel,
 )
 from ._base import (
     InputConfig,
@@ -141,7 +141,7 @@ class HDFISProdClassifierEstimator(_BaseClassifierEstimator):
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
-        return HDFISProdClassifier(
+        return HDFISProdClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
@@ -262,7 +262,7 @@ class HDFISProdRegressorEstimator(_BaseRegressorEstimator):
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
-        return HDFISProdRegressor(
+        return HDFISProdRegressorModel(
             input_mfs,
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),
@@ -344,7 +344,7 @@ class HDFISMinClassifierEstimator(_BaseClassifierEstimator):
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
-        return HDFISMinClassifier(
+        return HDFISMinClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
@@ -424,7 +424,7 @@ class HDFISMinRegressorEstimator(_BaseRegressorEstimator):
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
-        return HDFISMinRegressor(
+        return HDFISMinRegressorModel(
             input_mfs,
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),

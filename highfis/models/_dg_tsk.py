@@ -19,15 +19,15 @@ from ..layers import (
 )
 from ..memberships import MembershipFunction
 from ._common import (
-    BaseTSKClassifier,
-    BaseTSKRegressor,
+    BaseTSKClassifierModel,
+    BaseTSKRegressorModel,
     _build_first_order_design_matrix,
     _solve_lse,
     _threshold_from_zeta,
 )
 
 
-class DGTSKClassifier(BaseTSKClassifier):
+class DGTSKClassifierModel(BaseTSKClassifierModel):
     """DG-TSK classifier with M-gate antecedent and point-based FRB (P-FRB).
 
     DG-TSK uses a data-guided M-gate function to automatically select
@@ -289,7 +289,7 @@ class DGTSKClassifier(BaseTSKClassifier):
         return self.fit(x, y, **kwargs)
 
 
-class DGTSKRegressor(BaseTSKRegressor):
+class DGTSKRegressorModel(BaseTSKRegressorModel):
     """DG-TSK regressor with M-gate antecedent and point-based FRB (P-FRB).
 
     DG-TSK uses a data-guided M-gate function to automatically select

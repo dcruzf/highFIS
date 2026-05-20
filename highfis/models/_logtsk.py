@@ -14,12 +14,12 @@ from ..layers import (
 from ..memberships import MembershipFunction
 from ..t_norms import TNormFn
 from ._common import (
-    BaseTSKClassifier,
-    BaseTSKRegressor,
+    BaseTSKClassifierModel,
+    BaseTSKRegressorModel,
 )
 
 
-class LogTSKClassifier(BaseTSKClassifier):
+class LogTSKClassifierModel(BaseTSKClassifierModel):
     r"""LogTSK classifier with inverse-log normalization of log-domain rules.
 
     Firing strengths are normalized using the inverse-log formula, which
@@ -82,7 +82,7 @@ class LogTSKClassifier(BaseTSKClassifier):
         return nn.CrossEntropyLoss()
 
 
-class LogTSKRegressor(BaseTSKRegressor):
+class LogTSKRegressorModel(BaseTSKRegressorModel):
     r"""LogTSK regressor with inverse-log normalization of log-domain rules.
 
     Firing strengths are normalized using the inverse-log formula, which

@@ -5,7 +5,7 @@ import torch
 
 from highfis.estimators import DGTSKClassifierEstimator, DGTSKRegressorEstimator
 from highfis.memberships import GaussianMF
-from highfis.models import DGTSKClassifier, DGTSKRegressor
+from highfis.models import DGTSKClassifierModel, DGTSKRegressorModel
 
 
 def _build_input_mfs(n_inputs: int = 3, n_mfs: int = 2) -> dict[str, list[GaussianMF]]:
@@ -13,7 +13,7 @@ def _build_input_mfs(n_inputs: int = 3, n_mfs: int = 2) -> dict[str, list[Gaussi
 
 
 def test_dgtsk_classifier_forward_shapes() -> None:
-    model = DGTSKClassifier(_build_input_mfs(), n_classes=3)
+    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=3)
     x = torch.randn(5, 3)
 
     logits = model.forward(x)
@@ -26,7 +26,7 @@ def test_dgtsk_classifier_forward_shapes() -> None:
 
 
 def test_dgtsk_regressor_forward_shape() -> None:
-    model = DGTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(4, 2)
 
     output = model.forward(x)
@@ -35,7 +35,7 @@ def test_dgtsk_regressor_forward_shape() -> None:
 
 
 def test_dgtsk_classifier_architecture() -> None:
-    model = DGTSKClassifier(_build_input_mfs(), n_classes=3)
+    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=3)
 
     assert model.rule_layer.__class__.__name__ == "DGTSKRuleLayer"
     assert model.consequent_layer.__class__.__name__ == "GatedClassificationZeroOrderConsequentLayer"
@@ -43,7 +43,7 @@ def test_dgtsk_classifier_architecture() -> None:
 
 def test_dgtsk_classifier_invalid_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
-        DGTSKClassifier(_build_input_mfs(), n_classes=1)
+        DGTSKClassifierModel(_build_input_mfs(), n_classes=1)
 
 
 def test_dgtsk_estimator_instantiation() -> None:
@@ -55,13 +55,13 @@ def test_dgtsk_estimator_instantiation() -> None:
 
 
 def test_dgtsk_classifier_apply_thresholds_invalid_thresholds_raises() -> None:
-    model = DGTSKClassifier(_build_input_mfs(), n_classes=2)
+    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
     with pytest.raises(ValueError, match="thresholds must be finite"):
         model.apply_thresholds(float("nan"), 0.0)
 
 
 def test_dgtsk_classifier_search_thresholds_verbose_and_inplace_true() -> None:
-    model = DGTSKClassifier(_build_input_mfs(), n_classes=2)
+    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
     x = torch.randn(16, 3)
     y = torch.randint(0, 2, (16,))
     model.fit_dg_phase(x, y, epochs=2, learning_rate=1e-2, batch_size=8, shuffle=False)
@@ -83,7 +83,7 @@ def test_dgtsk_classifier_search_thresholds_verbose_and_inplace_true() -> None:
 
 
 def test_dgtsk_regressor_search_thresholds_verbose_and_inplace_true() -> None:
-    model = DGTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(20, 2)
     y = torch.randn(20)
     model.fit_dg_phase(x, y, epochs=2, learning_rate=1e-2, batch_size=8, shuffle=False)
@@ -104,7 +104,7 @@ def test_dgtsk_regressor_search_thresholds_verbose_and_inplace_true() -> None:
 
 
 def test_dgtsk_classifier_convert_to_first_order_preserves_theta() -> None:
-    model = DGTSKClassifier(_build_input_mfs(), n_classes=2)
+    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
     theta_before = model.consequent_layer.theta_gates.detach().clone()
 
     model.convert_to_first_order()
@@ -114,7 +114,7 @@ def test_dgtsk_classifier_convert_to_first_order_preserves_theta() -> None:
 
 
 def test_dgtsk_regressor_convert_to_first_order_preserves_theta() -> None:
-    model = DGTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     theta_before = model.consequent_layer.theta_gates.detach().clone()
 
     model.convert_to_first_order()
@@ -124,7 +124,7 @@ def test_dgtsk_regressor_convert_to_first_order_preserves_theta() -> None:
 
 
 def test_dgtsk_classifier_thresholds_and_pruning() -> None:
-    model = DGTSKClassifier(_build_input_mfs(), n_classes=2)
+    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
     model.rule_layer.lambda_gates.data.fill_(0.0)
     model.rule_layer.lambda_gates.data[0] = 1.0
     model.consequent_layer.theta_gates.data.fill_(0.0)
@@ -140,7 +140,7 @@ def test_dgtsk_classifier_thresholds_and_pruning() -> None:
 
 
 def test_dgtsk_classifier_search_thresholds_returns_result() -> None:
-    model = DGTSKClassifier(_build_input_mfs(), n_classes=2)
+    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
     x = torch.randn(16, 3)
     y = torch.randint(0, 2, (16,))
     model.fit_dg_phase(x, y, epochs=5, learning_rate=1e-2, batch_size=8, shuffle=False)
@@ -151,7 +151,7 @@ def test_dgtsk_classifier_search_thresholds_returns_result() -> None:
 
 
 def test_dgtsk_regressor_search_thresholds_returns_result() -> None:
-    model = DGTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(20, 2)
     y = torch.randn(20)
     model.fit_dg_phase(x, y, epochs=5, learning_rate=1e-2, batch_size=8, shuffle=False)
@@ -161,7 +161,7 @@ def test_dgtsk_regressor_search_thresholds_returns_result() -> None:
 
 
 def test_dgtsk_classifier_search_thresholds_default_zeta_lists() -> None:
-    model = DGTSKClassifier(_build_input_mfs(), n_classes=2)
+    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
     x = torch.randn(16, 3)
     y = torch.randint(0, 2, (16,))
     model.fit_dg_phase(x, y, epochs=2, learning_rate=1e-2, batch_size=8, shuffle=False)
@@ -171,7 +171,7 @@ def test_dgtsk_classifier_search_thresholds_default_zeta_lists() -> None:
 
 
 def test_dgtsk_regressor_search_thresholds_default_zeta_lists() -> None:
-    model = DGTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(20, 2)
     y = torch.randn(20)
     model.fit_dg_phase(x, y, epochs=2, learning_rate=1e-2, batch_size=8, shuffle=False)
@@ -181,7 +181,7 @@ def test_dgtsk_regressor_search_thresholds_default_zeta_lists() -> None:
 
 
 def test_dgtsk_classifier_search_thresholds_on_first_order_model() -> None:
-    model = DGTSKClassifier(_build_input_mfs(), n_classes=2)
+    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
     model.convert_to_first_order()
     x = torch.randn(16, 3)
     y = torch.randint(0, 2, (16,))
@@ -192,7 +192,7 @@ def test_dgtsk_classifier_search_thresholds_on_first_order_model() -> None:
 
 
 def test_dgtsk_regressor_search_thresholds_on_first_order_model() -> None:
-    model = DGTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     model.convert_to_first_order()
     x = torch.randn(20, 2)
     y = torch.randn(20)
@@ -203,21 +203,21 @@ def test_dgtsk_regressor_search_thresholds_on_first_order_model() -> None:
 
 
 def test_dgtsk_classifier_convert_to_first_order_idempotent() -> None:
-    model = DGTSKClassifier(_build_input_mfs(), n_classes=2)
+    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
     model.convert_to_first_order()
     model.convert_to_first_order()
     assert model.consequent_layer.__class__.__name__ == "GatedClassificationConsequentLayer"
 
 
 def test_dgtsk_regressor_convert_to_first_order_idempotent() -> None:
-    model = DGTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     model.convert_to_first_order()
     model.convert_to_first_order()
     assert model.consequent_layer.__class__.__name__ == "GatedRegressionConsequentLayer"
 
 
 def test_dgtsk_regressor_search_thresholds_no_candidates_raises() -> None:
-    model = DGTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(8, 2)
     y = torch.randn(8)
 
@@ -226,7 +226,7 @@ def test_dgtsk_regressor_search_thresholds_no_candidates_raises() -> None:
 
 
 def test_dgtsk_classifier_search_thresholds_no_candidates_raises() -> None:
-    model = DGTSKClassifier(_build_input_mfs(), n_classes=2)
+    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
     x = torch.randn(8, 3)
     y = torch.randint(0, 2, (8,))
 
@@ -235,14 +235,14 @@ def test_dgtsk_classifier_search_thresholds_no_candidates_raises() -> None:
 
 
 def test_dgtsk_regressor_apply_thresholds_invalid_thresholds_raises() -> None:
-    model = DGTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
 
     with pytest.raises(ValueError, match="thresholds must be finite"):
         model.apply_thresholds(float("nan"), 0.0)
 
 
 def test_dgtsk_classifier_fit_first_order_consequents_requires_conversion() -> None:
-    model = DGTSKClassifier(_build_input_mfs(), n_classes=2)
+    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
     x = torch.randn(8, 3)
     y = torch.randint(0, 2, (8,))
 
@@ -251,7 +251,7 @@ def test_dgtsk_classifier_fit_first_order_consequents_requires_conversion() -> N
 
 
 def test_dgtsk_regressor_fit_first_order_consequents_requires_conversion() -> None:
-    model = DGTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(8, 2)
     y = torch.randn(8)
 
@@ -260,7 +260,7 @@ def test_dgtsk_regressor_fit_first_order_consequents_requires_conversion() -> No
 
 
 def test_dgtsk_classifier_fit_dg_phase_and_finetune() -> None:
-    model = DGTSKClassifier(_build_input_mfs(), n_classes=2)
+    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
     x = torch.randn(16, 3)
     y = torch.randint(0, 2, (16,))
 
@@ -272,7 +272,7 @@ def test_dgtsk_classifier_fit_dg_phase_and_finetune() -> None:
 
 
 def test_dgtsk_regressor_fit_dg_phase_and_finetune() -> None:
-    model = DGTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(20, 2)
     y = torch.randn(20)
 
@@ -285,25 +285,25 @@ def test_dgtsk_regressor_fit_dg_phase_and_finetune() -> None:
 
 def test_dgtsk_classifier_lambda_gates_shape_is_per_feature() -> None:
     """lambda_gates must be (n_inputs,) — shared across all rules per the DG-TSK paper."""
-    model = DGTSKClassifier(_build_input_mfs(n_inputs=4, n_mfs=2), n_classes=2)
+    model = DGTSKClassifierModel(_build_input_mfs(n_inputs=4, n_mfs=2), n_classes=2)
     assert model.rule_layer.lambda_gates.shape == (4,)
 
 
 def test_dgtsk_regressor_lambda_gates_shape_is_per_feature() -> None:
     """lambda_gates must be (n_inputs,) — shared across all rules per the DG-TSK paper."""
-    model = DGTSKRegressor(_build_input_mfs(n_inputs=5, n_mfs=2))
+    model = DGTSKRegressorModel(_build_input_mfs(n_inputs=5, n_mfs=2))
     assert model.rule_layer.lambda_gates.shape == (5,)
 
 
 def test_dgtsk_classifier_first_order_consequent_mode_is_re() -> None:
     """After convert_to_first_order(), consequent mode must be 're' (rule gates only)."""
-    model = DGTSKClassifier(_build_input_mfs(), n_classes=2)
+    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
     model.convert_to_first_order()
     assert model.consequent_layer.mode == "re"
 
 
 def test_dgtsk_regressor_first_order_consequent_mode_is_re() -> None:
     """After convert_to_first_order(), consequent mode must be 're' (rule gates only)."""
-    model = DGTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     model.convert_to_first_order()
     assert model.consequent_layer.mode == "re"

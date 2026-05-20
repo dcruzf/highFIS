@@ -76,7 +76,7 @@ def build_rule_feature_mask(rules: Sequence[Sequence[int]], dont_care_indices: S
 # =====================================================================
 
 
-class BaseTSKClassifier(BaseTSK):
+class BaseTSKClassifierModel(BaseTSK):
     """Abstract classifier base that provides task-specific training and inference helpers."""
 
     def _compute_loss(self, criterion: Callable[[Tensor, Tensor], Tensor], output: Tensor, target: Tensor) -> Tensor:
@@ -109,7 +109,7 @@ class BaseTSKClassifier(BaseTSK):
             return torch.argmax(self.predict_proba(x), dim=1)
 
 
-class BaseTSKRegressor(BaseTSK):
+class BaseTSKRegressorModel(BaseTSK):
     """Abstract regressor base that provides task-specific training and inference helpers."""
 
     def _compute_loss(self, criterion: Callable[[Tensor, Tensor], Tensor], output: Tensor, target: Tensor) -> Tensor:

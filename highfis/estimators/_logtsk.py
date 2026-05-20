@@ -9,8 +9,8 @@ from ..memberships import (
     MembershipFunction,
 )
 from ..models import (
-    LogTSKClassifier,
-    LogTSKRegressor,
+    LogTSKClassifierModel,
+    LogTSKRegressorModel,
 )
 from ._base import (
     InputConfig,
@@ -114,8 +114,8 @@ class LogTSKClassifierEstimator(_BaseClassifierEstimator):
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
-        """Create LogTSKClassifier."""
-        return LogTSKClassifier(
+        """Create LogTSKClassifierModel."""
+        return LogTSKClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
@@ -218,8 +218,8 @@ class LogTSKRegressorEstimator(_BaseRegressorEstimator):
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
-        """Create LogTSKRegressor."""
-        return LogTSKRegressor(
+        """Create LogTSKRegressorModel."""
+        return LogTSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),

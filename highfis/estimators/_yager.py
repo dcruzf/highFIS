@@ -9,8 +9,8 @@ from ..memberships import (
     MembershipFunction,
 )
 from ..models import (
-    AYATSKClassifier,
-    AYATSKRegressor,
+    AYATSKClassifierModel,
+    AYATSKRegressorModel,
 )
 from ._base import (
     InputConfig,
@@ -118,8 +118,8 @@ class AYATSKClassifierEstimator(_BaseClassifierEstimator):
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
-        """Create AYATSKClassifier."""
-        return AYATSKClassifier(
+        """Create AYATSKClassifierModel."""
+        return AYATSKClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
@@ -219,8 +219,8 @@ class AYATSKRegressorEstimator(_BaseRegressorEstimator):
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
-        """Create AYATSKRegressor."""
-        return AYATSKRegressor(
+        """Create AYATSKRegressorModel."""
+        return AYATSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),

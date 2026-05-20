@@ -14,12 +14,12 @@ from ..layers import (
 from ..memberships import MembershipFunction
 from ..t_norms import TNormFn
 from ._common import (
-    BaseTSKClassifier,
-    BaseTSKRegressor,
+    BaseTSKClassifierModel,
+    BaseTSKRegressorModel,
 )
 
 
-class HDFISProdClassifier(BaseTSKClassifier):
+class HDFISProdClassifierModel(BaseTSKClassifierModel):
     r"""HDFIS-prod classifier with dimension-dependent Gaussian MFs.
 
     HDFIS-prod combines the standard product T-norm with a dimension-dependent
@@ -64,7 +64,7 @@ class HDFISProdClassifier(BaseTSKClassifier):
         return nn.CrossEntropyLoss()
 
 
-class HDFISProdRegressor(BaseTSKRegressor):
+class HDFISProdRegressorModel(BaseTSKRegressorModel):
     r"""HDFIS-prod regressor with dimension-dependent Gaussian MFs.
 
     HDFIS-prod combines the standard product T-norm with a dimension-dependent
@@ -106,7 +106,7 @@ class HDFISProdRegressor(BaseTSKRegressor):
         return nn.MSELoss()
 
 
-class HDFISMinClassifier(BaseTSKClassifier):
+class HDFISMinClassifierModel(BaseTSKClassifierModel):
     r"""HDFIS-min classifier with frozen antecedents and minimum aggregation.
 
     HDFIS-min uses the minimum T-norm in the antecedent and only optimizes
@@ -152,7 +152,7 @@ class HDFISMinClassifier(BaseTSKClassifier):
         return nn.CrossEntropyLoss()
 
 
-class HDFISMinRegressor(BaseTSKRegressor):
+class HDFISMinRegressorModel(BaseTSKRegressorModel):
     r"""HDFIS-min regressor with frozen antecedents and minimum aggregation.
 
     HDFIS-min uses the minimum T-norm in the antecedent and only optimizes

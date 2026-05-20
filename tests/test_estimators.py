@@ -60,7 +60,7 @@ from highfis.estimators._base import (
     _select_rule_indices,
 )
 from highfis.memberships import DimensionDependentGaussianMF, GaussianMF, GaussianPiMF, MembershipFunction
-from highfis.models import HDFISMinClassifier, HDFISMinRegressor, TSKRegressor
+from highfis.models import HDFISMinClassifierModel, HDFISMinRegressorModel, TSKRegressorModel
 
 
 def _make_dataset(n_samples: int = 60) -> tuple[np.ndarray, np.ndarray]:
@@ -271,7 +271,7 @@ def test_hdfis_min_classifier_estimator_builds_hdfis_min_model() -> None:
     )
 
     est.fit(x, y)
-    assert isinstance(est.model_, HDFISMinClassifier)
+    assert isinstance(est.model_, HDFISMinClassifierModel)
     assert all(not p.requires_grad for p in est.model_.membership_layer.parameters())
 
 
@@ -288,7 +288,7 @@ def test_hdfis_min_regressor_estimator_builds_hdfis_min_model() -> None:
     )
 
     est.fit(x, y)
-    assert isinstance(est.model_, HDFISMinRegressor)
+    assert isinstance(est.model_, HDFISMinRegressorModel)
     assert all(not p.requires_grad for p in est.model_.membership_layer.parameters())
 
 
@@ -2209,14 +2209,14 @@ def test_regressor_feature_importance_raises_for_unsupported_weight_shape() -> N
 
 
 def test_base_get_consequent_weights_returns_none_when_no_weight_attribute() -> None:
-    model = TSKRegressor({"x1": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.5)]})
+    model = TSKRegressorModel({"x1": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.5)]})
     if hasattr(model.consequent_layer, "weight"):
         delattr(model.consequent_layer, "weight")
     assert model.get_consequent_weights() is None
 
 
 def test_base_get_consequent_weights_returns_tensor_when_weight_exists() -> None:
-    model = TSKRegressor({"x1": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.5)]})
+    model = TSKRegressorModel({"x1": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.5)]})
     weight = model.get_consequent_weights()
     assert weight is None or isinstance(weight, torch.Tensor)
 

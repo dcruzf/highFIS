@@ -20,15 +20,15 @@ from ..layers import (
 )
 from ..memberships import MembershipFunction
 from ._common import (
-    BaseTSKClassifier,
-    BaseTSKRegressor,
+    BaseTSKClassifierModel,
+    BaseTSKRegressorModel,
     _build_first_order_design_matrix,
     _solve_lse,
     _threshold_from_zeta,
 )
 
 
-class DGALETSKClassifier(BaseTSKClassifier):
+class DGALETSKClassifierModel(BaseTSKClassifierModel):
     """DG-ALETSK classifier with ALE-softmin antecedent and double-group gates.
 
     DG-ALETSK extends FSRE-AdaTSK by replacing the adaptive softmin with the
@@ -291,7 +291,7 @@ class DGALETSKClassifier(BaseTSKClassifier):
         return self.fit(x, y, **kwargs)
 
 
-class DGALETSKRegressor(BaseTSKRegressor):
+class DGALETSKRegressorModel(BaseTSKRegressorModel):
     """DG-ALETSK regressor with ALE-softmin antecedent and double-group gates.
 
     DG-ALETSK extends FSRE-AdaTSK by replacing the adaptive softmin with the

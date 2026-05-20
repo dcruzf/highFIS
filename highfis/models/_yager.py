@@ -14,12 +14,12 @@ from ..layers import (
 from ..memberships import MembershipFunction
 from ..t_norms import TNormFn
 from ._common import (
-    BaseTSKClassifier,
-    BaseTSKRegressor,
+    BaseTSKClassifierModel,
+    BaseTSKRegressorModel,
 )
 
 
-class AYATSKClassifier(BaseTSKClassifier):
+class AYATSKClassifierModel(BaseTSKClassifierModel):
     r"""TSK classifier with an adaptive Yager T-norm in the antecedent.
 
     AYATSK extends TSK by using an adaptive Yager T-norm aggregation and
@@ -81,7 +81,7 @@ class AYATSKClassifier(BaseTSKClassifier):
         return nn.CrossEntropyLoss()
 
 
-class AYATSKRegressor(BaseTSKRegressor):
+class AYATSKRegressorModel(BaseTSKRegressorModel):
     r"""TSK regressor with an adaptive Yager T-norm in the antecedent.
 
     AYATSK extends TSK by using an adaptive Yager T-norm aggregation and

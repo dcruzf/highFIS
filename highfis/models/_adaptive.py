@@ -15,12 +15,12 @@ from ..layers import (
 )
 from ..memberships import MembershipFunction
 from ._common import (
-    BaseTSKClassifier,
-    BaseTSKRegressor,
+    BaseTSKClassifierModel,
+    BaseTSKRegressorModel,
 )
 
 
-class AdaTSKClassifier(BaseTSKClassifier):
+class AdaTSKClassifierModel(BaseTSKClassifierModel):
     r"""TSK classifier with adaptive softmin antecedent (AdaTSK).
 
     The firing strength of each rule is computed with the Ada-softmin operator.
@@ -92,7 +92,7 @@ class AdaTSKClassifier(BaseTSKClassifier):
         return nn.CrossEntropyLoss()
 
 
-class AdaTSKRegressor(BaseTSKRegressor):
+class AdaTSKRegressorModel(BaseTSKRegressorModel):
     r"""TSK regressor with adaptive softmin antecedent (AdaTSK).
 
     The firing strength of each rule is computed with the Ada-softmin operator.
@@ -155,7 +155,7 @@ class AdaTSKRegressor(BaseTSKRegressor):
         return nn.MSELoss()
 
 
-class ADPTSKClassifier(BaseTSKClassifier):
+class ADPTSKClassifierModel(BaseTSKClassifierModel):
     r"""TSK classifier with adaptive double-parameter softmin antecedent (ADPTSK).
 
     The firing strengths of each rule are computed with the ADP-softmin
@@ -241,7 +241,7 @@ class ADPTSKClassifier(BaseTSKClassifier):
         return nn.CrossEntropyLoss()
 
 
-class ADPTSKRegressor(BaseTSKRegressor):
+class ADPTSKRegressorModel(BaseTSKRegressorModel):
     r"""TSK regressor with adaptive double-parameter softmin antecedent (ADPTSK).
 
     The firing strengths of each rule are computed with the ADP-softmin

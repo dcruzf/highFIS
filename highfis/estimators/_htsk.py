@@ -9,10 +9,10 @@ from ..memberships import (
     MembershipFunction,
 )
 from ..models import (
-    HTSKClassifier,
-    HTSKRegressor,
-    TSKClassifier,
-    TSKRegressor,
+    HTSKClassifierModel,
+    HTSKRegressorModel,
+    TSKClassifierModel,
+    TSKRegressorModel,
 )
 from ._base import (
     InputConfig,
@@ -116,8 +116,8 @@ class HTSKClassifierEstimator(_BaseClassifierEstimator):
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
-        """Create HTSKClassifier."""
-        return HTSKClassifier(
+        """Create HTSKClassifierModel."""
+        return HTSKClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
@@ -220,8 +220,8 @@ class HTSKRegressorEstimator(_BaseRegressorEstimator):
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
-        """Create HTSKRegressor."""
-        return HTSKRegressor(
+        """Create HTSKRegressorModel."""
+        return HTSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),
@@ -332,8 +332,8 @@ class TSKClassifierEstimator(_BaseClassifierEstimator):
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
-        """Create TSKClassifier."""
-        return TSKClassifier(
+        """Create TSKClassifierModel."""
+        return TSKClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
@@ -436,7 +436,7 @@ class TSKRegressorEstimator(_BaseRegressorEstimator):
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
-        return TSKRegressor(
+        return TSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),
