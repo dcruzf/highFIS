@@ -1,3 +1,5 @@
+"""Sklearn-compatible estimators for LogTSK models."""
+
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence

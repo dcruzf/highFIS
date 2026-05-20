@@ -1,3 +1,5 @@
+"""HDFIS (product and min T-norm) fuzzy model classes."""
+
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence

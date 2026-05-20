@@ -1,3 +1,5 @@
+"""Sklearn-compatible estimators for AdaTSK and ADPTSK models."""
+
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence

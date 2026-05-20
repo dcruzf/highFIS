@@ -1,3 +1,5 @@
+"""Gated TSK variants: FSRE-AdaTSK, DG-ALETSK and DG-TSK model classes."""
+
 from __future__ import annotations
 
 import copy

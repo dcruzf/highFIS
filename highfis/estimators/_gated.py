@@ -1,3 +1,5 @@
+"""Sklearn-compatible estimators for FSRE-AdaTSK, DG-ALETSK and DG-TSK models."""
+
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence

@@ -1,3 +1,5 @@
+"""Dombi T-norm TSK and ADMTSK fuzzy model classes."""
+
 from __future__ import annotations
 
 import math

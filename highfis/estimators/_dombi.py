@@ -1,3 +1,5 @@
+"""Sklearn-compatible estimators for Dombi-TSK and ADMTSK models."""
+
 from __future__ import annotations
 
 import math
