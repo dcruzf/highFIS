@@ -445,7 +445,7 @@
   <span class="md-ellipsis">
     
   
-  AdaTSK
+  ADATSK
 
     
   </span>
@@ -472,7 +472,7 @@
   <span class="md-ellipsis">
     
   
-  FSRE-AdaTSK
+  FSRE-ADATSK
 
     
   </span>
@@ -1802,35 +1802,35 @@ standard Gaussian MFs and then freezes the antecedent parameters.</p>
 </tr>
 <tr>
 <td>HDFIS-prod classifier</td>
-<td><code>highfis.models.HDFISProdClassifier</code></td>
+<td><code>highfis.models.HDFISProdClassifierModel</code></td>
 </tr>
 <tr>
 <td>HDFIS-prod regressor</td>
-<td><code>highfis.models.HDFISProdRegressor</code></td>
+<td><code>highfis.models.HDFISProdRegressorModel</code></td>
 </tr>
 <tr>
 <td>HDFIS-min classifier</td>
-<td><code>highfis.models.HDFISMinClassifier</code></td>
+<td><code>highfis.models.HDFISMinClassifierModel</code></td>
 </tr>
 <tr>
 <td>HDFIS-min regressor</td>
-<td><code>highfis.models.HDFISMinRegressor</code></td>
+<td><code>highfis.models.HDFISMinRegressorModel</code></td>
 </tr>
 <tr>
 <td>Estimator wrapper for HDFIS-prod classifier</td>
-<td><code>highfis.estimators.HDFISProdClassifierEstimator</code></td>
+<td><code>highfis.estimators.HDFISProdClassifier</code></td>
 </tr>
 <tr>
 <td>Estimator wrapper for HDFIS-prod regressor</td>
-<td><code>highfis.estimators.HDFISProdRegressorEstimator</code></td>
+<td><code>highfis.estimators.HDFISProdRegressor</code></td>
 </tr>
 <tr>
 <td>Estimator wrapper for HDFIS-min classifier</td>
-<td><code>highfis.estimators.HDFISMinClassifierEstimator</code></td>
+<td><code>highfis.estimators.HDFISMinClassifier</code></td>
 </tr>
 <tr>
 <td>Estimator wrapper for HDFIS-min regressor</td>
-<td><code>highfis.estimators.HDFISMinRegressorEstimator</code></td>
+<td><code>highfis.estimators.HDFISMinRegressor</code></td>
 </tr>
 <tr>
 <td>Product T-norm antecedent</td>
@@ -1849,19 +1849,19 @@ standard Gaussian MFs and then freezes the antecedent parameters.</p>
 <h2 id="implementation-notes">Implementation notes</h2>
 <h3 id="model-classes">Model classes</h3>
 <ul>
-<li><code>HDFISProdClassifier</code> and <code>HDFISProdRegressor</code> are concrete model classes
+<li><code>HDFISProdClassifierModel</code> and <code>HDFISProdRegressorModel</code> are concrete model classes
   that use product aggregation and dimension-dependent Gaussian membership
   functions for high-dimensional inference.</li>
-<li><code>HDFISMinClassifier</code> and <code>HDFISMinRegressor</code> are concrete model classes
+<li><code>HDFISMinClassifierModel</code> and <code>HDFISMinRegressorModel</code> are concrete model classes
   that use minimum aggregation and freeze antecedent membership parameters.</li>
 <li>All HDFIS classes use first-order TSK consequents and
   <code>highfis.defuzzifiers.SumBasedDefuzzifier</code>.</li>
 </ul>
 <h3 id="estimator-wrappers">Estimator wrappers</h3>
 <ul>
-<li><code>HDFISProdClassifierEstimator</code> and <code>HDFISProdRegressorEstimator</code> are
+<li><code>HDFISProdClassifier</code> and <code>HDFISProdRegressor</code> are
   sklearn-like wrappers around <code>HDFISProd*</code> models.</li>
-<li><code>HDFISMinClassifierEstimator</code> and <code>HDFISMinRegressorEstimator</code> are
+<li><code>HDFISMinClassifier</code> and <code>HDFISMinRegressor</code> are
   sklearn-like wrappers around <code>HDFISMin*</code> models.</li>
 <li>The estimators expose standard training hyperparameters such as <code>epochs</code>,
   <code>learning_rate</code>, <code>batch_size</code>, <code>shuffle</code>, <code>patience</code>, <code>restore_best</code>,

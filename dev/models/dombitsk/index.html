@@ -608,7 +608,7 @@
   <span class="md-ellipsis">
     
   
-  AdaTSK
+  ADATSK
 
     
   </span>
@@ -635,7 +635,7 @@
   <span class="md-ellipsis">
     
   
-  FSRE-AdaTSK
+  FSRE-ADATSK
 
     
   </span>
@@ -1566,7 +1566,7 @@ regression.</p>
 <tbody>
 <tr>
 <td>Dombi aggregation</td>
-<td><code>DombiTSKClassifier</code> / <code>DombiTSKRegressor</code></td>
+<td><code>DombiTSKClassifierModel</code> / <code>DombiTSKRegressorModel</code></td>
 <td>Fixed-λ Dombi antecedent aggregation with <code>t_norm="dombi"</code></td>
 </tr>
 <tr>
@@ -1588,11 +1588,11 @@ regression.</p>
 </table>
 <h2 id="implementation-notes">Implementation notes</h2>
 <ul>
-<li><code>DombiTSKClassifier</code> and <code>DombiTSKRegressor</code> use a fixed Dombi parameter
+<li><code>DombiTSKClassifierModel</code> and <code>DombiTSKRegressorModel</code> use a fixed Dombi parameter
   <code>lambda_ &gt; 0</code> in the antecedent and default to <code>SumBasedDefuzzifier</code>.</li>
-<li><code>DombiTSKClassifierEstimator</code> and <code>DombiTSKRegressorEstimator</code> are
+<li><code>DombiTSKClassifier</code> and <code>DombiTSKRegressor</code> are
   sklearn-compatible wrappers that build the rule base and membership
-  functions from <code>input_configs</code>, <code>n_mfs</code>, <code>mf_init</code>, and <code>sigma_scale</code>.</li>
+  functions from <code>input_configs</code>, <code>n_rules</code>, <code>mf_init</code>, and <code>sigma_scale</code>.</li>
 <li>The estimators default to <code>mf_init="kmeans"</code> and <code>sigma_scale=1.0</code>.</li>
 <li>The default <code>rule_base</code> for estimator-built models is <code>"coco"</code> with
   <code>mf_init="kmeans"</code> and <code>"cartesian"</code> with <code>mf_init="grid"</code>.</li>
@@ -1606,8 +1606,8 @@ regression.</p>
 <ul>
 <li>The paper defines a Dombi TSK baseline with Dombi antecedent aggregation and
   first-order consequent structure.</li>
-<li>highFIS implements this baseline directly through <code>DombiTSKClassifier</code> and
-  <code>DombiTSKRegressor</code>.</li>
+<li>highFIS implements this baseline directly through <code>DombiTSKClassifierModel</code> and
+  <code>DombiTSKRegressorModel</code>.</li>
 <li>Rule strengths are normalized by sum-based defuzzification, matching the
   paper's TSK output aggregation.</li>
 <li>The package also includes building blocks for the ADMTSK extension:
@@ -1672,13 +1672,13 @@ regression.</p>
         
         
           
-          <a href="../adatsk/" class="md-footer__link md-footer__link--next" aria-label="Next: AdaTSK">
+          <a href="../adatsk/" class="md-footer__link md-footer__link--next" aria-label="Next: ADATSK">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                AdaTSK
+                ADATSK
               </div>
             </div>
             <div class="md-footer__button md-icon">

@@ -445,7 +445,7 @@
   <span class="md-ellipsis">
     
   
-  AdaTSK
+  ADATSK
 
     
   </span>
@@ -472,7 +472,7 @@
   <span class="md-ellipsis">
     
   
-  FSRE-AdaTSK
+  FSRE-ADATSK
 
     
   </span>
@@ -1587,7 +1587,7 @@ w_r = \max\left(0,\; 1 - \left[\sum_{d=1}^{D} (1 - \mu_{r,d}(x_d))^{p_r}\right]^
 <tbody>
 <tr>
 <td>Adaptive Yager T-norm</td>
-<td><code>AYATSKClassifier</code>, <code>AYATSKRegressor</code></td>
+<td><code>AYATSKClassifierModel</code>, <code>AYATSKRegressorModel</code></td>
 <td>Default <code>t_norm="yager"</code> in highFIS</td>
 </tr>
 <tr>
@@ -1607,24 +1607,24 @@ w_r = \max\left(0,\; 1 - \left[\sum_{d=1}^{D} (1 - \mu_{r,d}(x_d))^{p_r}\right]^
 </tr>
 <tr>
 <td>Estimator wrapper</td>
-<td><code>AYATSKClassifierEstimator</code>, <code>AYATSKRegressorEstimator</code></td>
+<td><code>AYATSKClassifier</code>, <code>AYATSKRegressor</code></td>
 <td>Builds input MFs and handles training/hyperparameters</td>
 </tr>
 </tbody>
 </table>
 <h2 id="implementation-notes">Implementation notes</h2>
 <ul>
-<li><code>AYATSKClassifier</code> and <code>AYATSKRegressor</code> default to <code>t_norm="yager"</code>.</li>
+<li><code>AYATSKClassifierModel</code> and <code>AYATSKRegressorModel</code> default to <code>t_norm="yager"</code>.</li>
 <li>The adaptive Yager index is compatible with standard Gaussian MFs, but the paper’s recommended CEMF ensures a positive lower bound and more stable high-dimensional behavior.</li>
 <li><code>rule_base</code> is typically <code>"coco"</code> for k-means initialization and <code>"cartesian"</code> for grid initialization.</li>
-<li><code>AYATSKClassifierEstimator</code> and <code>AYATSKRegressorEstimator</code> follow the standard highFIS estimator pattern and expose the same fitting parameters as other estimators.</li>
+<li><code>AYATSKClassifier</code> and <code>AYATSKRegressor</code> follow the standard highFIS estimator pattern and expose the same fitting parameters as other estimators.</li>
 <li>The model is trained end-to-end with backpropagation; <code>BaseTSK.fit()</code> uses mini-batch Adam optimization with optional early stopping.</li>
 </ul>
 <h2 id="estimator-wrappers">Estimator wrappers</h2>
 <ul>
-<li><code>AYATSKClassifierEstimator</code> wraps <code>AYATSKClassifier</code> and supports classification with adaptive Yager aggregation.</li>
-<li><code>AYATSKRegressorEstimator</code> wraps <code>AYATSKRegressor</code> for regression tasks.</li>
-<li>Estimators accept the usual hyperparameters: <code>n_mfs</code>, <code>mf_init</code>, <code>sigma_scale</code>, <code>random_state</code>, <code>epochs</code>, <code>learning_rate</code>, <code>batch_size</code>, <code>shuffle</code>, <code>validation_data</code>, and <code>patience</code>.</li>
+<li><code>AYATSKClassifier</code> wraps <code>AYATSKClassifierModel</code> and supports classification with adaptive Yager aggregation.</li>
+<li><code>AYATSKRegressor</code> wraps <code>AYATSKRegressorModel</code> for regression tasks.</li>
+<li>Estimators accept the usual hyperparameters: <code>n_rules</code>, <code>mf_init</code>, <code>sigma_scale</code>, <code>random_state</code>, <code>epochs</code>, <code>learning_rate</code>, <code>batch_size</code>, <code>shuffle</code>, <code>validation_data</code>, and <code>patience</code>.</li>
 <li><code>pfrb_max_rules</code> exists on the shared estimator base but is unused by AYATSK.</li>
 </ul>
 <h2 id="alignment-with-the-paper">Alignment with the paper</h2>

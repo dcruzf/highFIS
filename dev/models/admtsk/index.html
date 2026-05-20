@@ -445,7 +445,7 @@
   <span class="md-ellipsis">
     
   
-  AdaTSK
+  ADATSK
 
     
   </span>
@@ -472,7 +472,7 @@
   <span class="md-ellipsis">
     
   
-  FSRE-AdaTSK
+  FSRE-ADATSK
 
     
   </span>
@@ -1569,19 +1569,19 @@
 <h1 id="admtsk">ADMTSK</h1>
 <p>ADMTSK is an adaptive Dombi TSK fuzzy system designed for high-dimensional inference.
 It combines a Dombi T-norm antecedent with a positive lower-bound Composite Gaussian
-membership function (CGMF) and normalized first-order consequents.</p>
+membership function (GaussianPiMF) and normalized first-order consequents.</p>
 <h2 id="reference">Reference</h2>
 <blockquote>
 <p>G. Xue, L. Hu, J. Wang and S. Ablameyko, "ADMTSK: A High-Dimensional Takagi–Sugeno–Kang Fuzzy System Based on Adaptive Dombi T-Norm," in IEEE Transactions on Fuzzy Systems, vol. 33, no. 6, pp. 1767-1780, June 2025, doi: <a href="https://doi.org/10.1109/TFUZZ.2025.3535640">10.1109/TFUZZ.2025.3535640</a>.</p>
 </blockquote>
 <h2 id="mathematical-formulation">Mathematical Formulation</h2>
 <h3 id="antecedent">Antecedent</h3>
-<p>The ADMTSK antecedent uses Composite GMFs with a positive lower bound:</p>
+<p>The ADMTSK antecedent uses GaussianPiMF with a positive lower bound:</p>
 <div class="arithmatex">\[
 \mu_{r,d}(x_d) = \exp\left(-1 + \exp\left(-\frac{(x_d - m_{r,d})^2}{2\sigma_{r,d}^2}\right)\right)
 \tag{1}
 \]</div>
-<p>This CGMF produces membership values in <span class="arithmatex">\((1/e, 1]\)</span> and avoids zero-valued
+<p>This GaussianPiMF produces membership values in <span class="arithmatex">\((1/e, 1]\)</span> and avoids zero-valued
 inputs to the Dombi T-norm.</p>
 <p>The rule firing strength is computed by a Dombi T-norm:</p>
 <div class="arithmatex">\[
@@ -1621,8 +1621,8 @@ feature dimension <span class="arithmatex">\(D\)</span> and the membership lower
 <tbody>
 <tr>
 <td>(1)</td>
-<td><code>CompositeGMF</code></td>
-<td>Paper's Composite Gaussian membership function with positive lower bound</td>
+<td><code>GaussianPiMF</code></td>
+<td>Composite Gaussian membership function with positive lower bound</td>
 </tr>
 <tr>
 <td>(2)</td>
@@ -1649,12 +1649,12 @@ feature dimension <span class="arithmatex">\(D\)</span> and the membership lower
 <h2 id="implementation-notes">Implementation notes</h2>
 <p>In highFIS, ADMTSK is implemented as two model classes:</p>
 <ul>
-<li><code>ADMTSKClassifier</code></li>
-<li><code>ADMTSKRegressor</code></li>
+<li><code>ADMTSKClassifierModel</code></li>
+<li><code>ADMTSKRegressorModel</code></li>
 </ul>
 <p>These classes accept an <code>input_mfs</code> mapping of feature names to membership
 functions. When used through the estimator wrappers, input Gaussian MFs are
-converted to <code>CompositeGMF</code> automatically.</p>
+converted to <code>GaussianPiMF</code> automatically.</p>
 <p>The adaptive lambda strategy is enabled by default through the <code>adaptive</code>
 parameter. When <code>adaptive=False</code>, ADMTSK falls back to a fixed Dombi parameter
 <code>lambda_</code>.</p>
@@ -1669,47 +1669,47 @@ rule base is set to <code>rule_base='coco'</code> unless explicitly overridden.<
 </ul>
 <h2 id="model-classes">Model classes</h2>
 <ul>
-<li><code>ADMTSKClassifier</code> — classifier variant of ADMTSK.</li>
-<li><code>ADMTSKRegressor</code> — regressor variant of ADMTSK.</li>
+<li><code>ADMTSKClassifierModel</code> — classifier variant of ADMTSK.</li>
+<li><code>ADMTSKRegressorModel</code> — regressor variant of ADMTSK.</li>
 </ul>
 <p>Both use the same antecedent and consequent structure as standard TSK, while
 replacing the product antecedent with adaptive Dombi aggregation and using
-Composite GMF antecedents.</p>
+GaussianPiMF antecedents.</p>
 <h2 id="estimator-wrappers">Estimator wrappers</h2>
 <ul>
-<li><code>ADMTSKClassifierEstimator</code></li>
-<li><code>ADMTSKRegressorEstimator</code></li>
+<li><code>ADMTSKClassifier</code></li>
+<li><code>ADMTSKRegressor</code></li>
 </ul>
 <p>These wrappers provide sklearn-compatible <code>fit</code>/<code>predict</code> APIs and build the
-inferential pipeline from high-level settings such as <code>n_mfs</code>, <code>mf_init</code>,
+inferential pipeline from high-level settings such as <code>n_rules</code>, <code>mf_init</code>,
 <code>sigma_scale</code>, and adaptive lambda parameters.</p>
 <p>When the estimator constructs input membership functions it converts the
-initial Gaussian MFs into <code>CompositeGMF</code>, matching the paper's positive lower
+initial Gaussian MFs into <code>GaussianPiMF</code>, matching the paper's positive lower
 bound membership design.</p>
 <h2 id="membership-functions">Membership functions</h2>
-<p>ADMTSK is designed around the Composite Gaussian MF (CGMF):</p>
+<p>ADMTSK is designed around the Gaussian Pi MF (GaussianPiMF):</p>
 <ul>
 <li>positive lower bound avoids zero membership values,</li>
 <li>enables stable Dombi computation in high dimensions,</li>
 <li>improves robustness in adaptive lambda selection.</li>
 </ul>
-<p>The estimator wrappers default to <code>CompositeGMF</code> for the ADMTSK pipeline.</p>
+<p>The estimator wrappers default to <code>GaussianPiMF</code> for the ADMTSK pipeline.</p>
 <h2 id="training-in-the-paper-vs-highfis">Training in the paper vs. highFIS</h2>
 <p>The ADMTSK paper describes end-to-end gradient-based training with adaptive
-Dombi lambda and CGMF antecedents. In highFIS, the model is trained through
+Dombi lambda and GaussianPiMF antecedents. In highFIS, the model is trained through
 <code>BaseTSK.fit()</code> using AdamW, optional early stopping, and standard PyTorch
 backpropagation.</p>
 <p>The highFIS implementation preserves the paper's main design:</p>
 <ul>
 <li>adaptive Dombi T-norm antecedent,</li>
-<li>CGMF antecedent membership functions,</li>
+<li>GaussianPiMF antecedent membership functions,</li>
 <li>first-order TSK consequents,</li>
 <li>normalized rule strengths via sum-based defuzzification.</li>
 </ul>
 <h2 id="alignment-with-the-paper">Alignment with the paper</h2>
 <p>This implementation mirrors the paper by:</p>
 <ul>
-<li>using <code>CompositeGMF</code> as the positive lower bound membership function,</li>
+<li>using <code>GaussianPiMF</code> as the positive lower bound membership function,</li>
 <li>computing a scalar adaptive <code>lambda</code> from feature dimension and lower bound,</li>
 <li>using a Dombi T-norm aggregation for antecedent rule firing strengths,</li>
 <li>keeping first-order consequents and standard sum normalization.</li>

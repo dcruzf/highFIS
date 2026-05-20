@@ -29,7 +29,7 @@
     
     
       
-        <title>FSRE-AdaTSK - highFIS Docs</title>
+        <title>FSRE-ADATSK - highFIS Docs</title>
       
     
     
@@ -125,7 +125,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              FSRE-AdaTSK
+              FSRE-ADATSK
             
           </span>
         </div>
@@ -445,7 +445,7 @@
   <span class="md-ellipsis">
     
   
-  AdaTSK
+  ADATSK
 
     
   </span>
@@ -481,7 +481,7 @@
   <span class="md-ellipsis">
     
   
-  FSRE-AdaTSK
+  FSRE-ADATSK
 
     
   </span>
@@ -498,7 +498,7 @@
   <span class="md-ellipsis">
     
   
-  FSRE-AdaTSK
+  FSRE-ADATSK
 
     
   </span>
@@ -643,7 +643,7 @@
   <a href="#comparison-with-the-original-ieee-fsre-adatsk-paper" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Comparison with the original IEEE FSRE-AdaTSK paper
+        Comparison with the original IEEE FSRE-ADATSK paper
       </span>
     </span>
   </a>
@@ -1452,7 +1452,7 @@
   <a href="#comparison-with-the-original-ieee-fsre-adatsk-paper" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Comparison with the original IEEE FSRE-AdaTSK paper
+        Comparison with the original IEEE FSRE-ADATSK paper
       </span>
     </span>
   </a>
@@ -1588,14 +1588,14 @@
                 
                   
 
-<h1 id="fsre-adatsk">FSRE-AdaTSK</h1>
-<p>FSRE-AdaTSK extends AdaTSK with embedded feature-selection and rule-extraction phases, using gated consequents and an enhanced rule base for high-dimensional data.</p>
+<h1 id="fsre-adatsk">FSRE-ADATSK</h1>
+<p>FSRE-ADATSK extends ADATSK with embedded feature-selection and rule-extraction phases, using gated consequents and an enhanced rule base for high-dimensional data.</p>
 <h2 id="reference">Reference</h2>
 <blockquote>
 <p>G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive Neuro-Fuzzy System With Integrated Feature Selection and Rule Extraction for High-Dimensional Classification Problems," in IEEE Transactions on Fuzzy Systems, vol. 31, no. 7, pp. 2167-2181, July 2023, doi: <a href="https://doi.org/10.1109/TFUZZ.2022.3220950">10.1109/TFUZZ.2022.3220950</a></p>
 </blockquote>
 <h2 id="overview">Overview</h2>
-<p>FSRE-AdaTSK extends AdaTSK into a three-phase high-dimensional fuzzy model:</p>
+<p>FSRE-ADATSK extends ADATSK into a three-phase high-dimensional fuzzy model:</p>
 <ol>
 <li><strong>Feature Selection (FS)</strong> — embedded gates on consequent coefficients
    identify and retain important input features.</li>
@@ -1614,7 +1614,7 @@ that feature and rule importance are learned jointly.</p>
 \]</div>
 <p>where <span class="arithmatex">\(c_{r,d}\)</span> is the center and <span class="arithmatex">\(\sigma_{r,d} &gt; 0\)</span> is the spread.</p>
 <h3 id="adaptive-softmin-ada-softmin">Adaptive Softmin (Ada-softmin)</h3>
-<p>FSRE-AdaTSK computes rule firing strengths with an adaptive softmin:</p>
+<p>FSRE-ADATSK computes rule firing strengths with an adaptive softmin:</p>
 <div class="arithmatex">\[
 \phi_r(\mathbf{x}) = \left( \frac{1}{D} \sum_{d=1}^{D}
       \mu_{r,d}(x_d)^{\hat{q}_r(\mathbf{x})} \right)^{1/\hat{q}_r(\mathbf{x})}
@@ -1629,7 +1629,7 @@ aggregation approximates minimum-like behavior.</p>
 \]</div>
 <p>The normalized weights are then used to aggregate rule consequents.</p>
 <h3 id="gated-consequents">Gated Consequents</h3>
-<p>FSRE-AdaTSK uses gates only in the consequent layer, not in the antecedent.
+<p>FSRE-ADATSK uses gates only in the consequent layer, not in the antecedent.
 Each gate value <span class="arithmatex">\(u\)</span> modulates consequent strength with the paper's default
 activation:</p>
 <div class="arithmatex">\[
@@ -1644,7 +1644,7 @@ making the selection process more responsive during training.</p>
 <p>In highFIS, feature-level gates are shared across rules in the FS phase, while
 rule-level gates are applied in the RE phase.</p>
 <h3 id="output-aggregation">Output Aggregation</h3>
-<p>The FSRE-AdaTSK output for class <span class="arithmatex">\(c\)</span> is:</p>
+<p>The FSRE-ADATSK output for class <span class="arithmatex">\(c\)</span> is:</p>
 <div class="arithmatex">\[
 y^c(\mathbf{x}) = \sum_{r=1}^{R} \bar{\phi}_r(\mathbf{x}) \, \hat{y}_r^c(\mathbf{x})
 \]</div>
@@ -1657,7 +1657,7 @@ extraction while avoiding exponential rule growth with feature dimension.</p>
 <p>In highFIS, En-FRB can be enabled via <code>use_en_frb=True</code>, and the model supports
 explicit phase transitions for FS, RE, and fine tuning.</p>
 <h2 id="learning-phases">Learning Phases</h2>
-<p>FSRE-AdaTSK is trained in three sequential phases, each with a clear role in
+<p>FSRE-ADATSK is trained in three sequential phases, each with a clear role in
 making the model both compact and accurate.</p>
 <ul>
 <li><strong>Feature Selection (<code>fit_fs</code>)</strong></li>
@@ -1694,20 +1694,20 @@ making the model both compact and accurate.</p>
     weights and bias terms for the final task.</li>
 </ul>
 <p>In the low-level API, these phases are explicit methods on
-<code>FSREAdaTSKClassifier</code>/<code>FSREAdaTSKRegressor</code>. The current implementation is
+<code>FSREADATSKClassifierModel</code>/<code>FSREADATSKRegressorModel</code>. The current implementation is
 correct: <code>fit_fs()</code> sets the consequent layer to feature-gate mode without
 changing the rule layer, <code>fit_re()</code> rebuilds the rule layer as En-FRB and
 switches to rule-gate mode, and <code>fit_finetune()</code> turns off gating entirely.</p>
 <p>Higher-level estimator wrappers can orchestrate the same sequence for
 automatic end-to-end training.</p>
 <p>For the related DG-ALETSK implementation, see <code>docs/models/dg-aletsk.md</code>.</p>
-<h2 id="comparison-with-the-original-ieee-fsre-adatsk-paper">Comparison with the original IEEE FSRE-AdaTSK paper</h2>
-<p>This document reflects the same FSRE-AdaTSK design presented in the paper
+<h2 id="comparison-with-the-original-ieee-fsre-adatsk-paper">Comparison with the original IEEE FSRE-ADATSK paper</h2>
+<p>This document reflects the same FSRE-ADATSK design presented in the paper
 "An Adaptive Neuro-Fuzzy System With Integrated Feature Selection and Rule
 Extraction for High-Dimensional Classification Problems." The paper's main
 claims are:</p>
 <ul>
-<li>AdaTSK is the adaptive antecedent aggregation core.</li>
+<li>ADATSK is the adaptive antecedent aggregation core.</li>
 <li>Gates are embedded only in the consequent layer, not in antecedents.</li>
 <li>Feature selection and rule extraction are performed in two successive
   phases, followed by a final fine-tuning phase.</li>
@@ -1720,7 +1720,7 @@ and regression. The gate function used in the paper,
 <span class="arithmatex">\(M(u) = u\\sqrt{e^{1 - u^2}}\)</span>, is the same gate activation function used in
 <code>GatedClassificationConsequentLayer</code> and <code>GatedRegressionConsequentLayer</code>.</p>
 <p>The highFIS implementation therefore matches the paper's distinction between
-AdaTSK as the base model and FSRE-AdaTSK as the three-phase extension with
+ADATSK as the base model and FSRE-ADATSK as the three-phase extension with
 feature selection, rule extraction, and En-FRB support.</p>
 <h2 id="code-correspondence">Code Correspondence</h2>
 <table>
@@ -1744,24 +1744,24 @@ feature selection, rule extraction, and En-FRB support.</p>
 <td><code>GatedRegressionConsequentLayer</code></td>
 </tr>
 <tr>
-<td>FSRE-AdaTSK classifier</td>
-<td><code>FSREAdaTSKClassifier</code></td>
+<td>FSRE-ADATSK classifier</td>
+<td><code>FSREADATSKClassifierModel</code></td>
 </tr>
 <tr>
-<td>FSRE-AdaTSK regressor</td>
-<td><code>FSREAdaTSKRegressor</code></td>
+<td>FSRE-ADATSK regressor</td>
+<td><code>FSREADATSKRegressorModel</code></td>
 </tr>
 <tr>
 <td>Sklearn-style classifier estimator</td>
-<td><code>FSREAdaTSKClassifierEstimator</code></td>
+<td><code>FSREADATSKClassifier</code></td>
 </tr>
 <tr>
 <td>Sklearn-style regressor estimator</td>
-<td><code>FSREAdaTSKRegressorEstimator</code></td>
+<td><code>FSREADATSKRegressor</code></td>
 </tr>
 <tr>
 <td>En-FRB expansion</td>
-<td><code>FSREAdaTSKClassifier.expand_to_en_frb()</code> / <code>FSREAdaTSKRegressor.expand_to_en_frb()</code></td>
+<td><code>FSREADATSKClassifierModel.expand_to_en_frb()</code> / <code>FSREADATSKRegressorModel.expand_to_en_frb()</code></td>
 </tr>
 <tr>
 <td>Phase training helpers</td>
@@ -1774,7 +1774,7 @@ feature selection, rule extraction, and En-FRB support.</p>
 <li><code>AdaSoftminRuleLayer</code> implements adaptive softmin antecedent aggregation;
   no per-rule exponent parameter is explicitly learned outside this layer.</li>
 <li><code>lambda_init</code> is accepted by the estimator API for compatibility, but the
-  core FSRE-AdaTSK model computes its adaptive softmin index from current
+  core FSRE-ADATSK model computes its adaptive softmin index from current
   membership values rather than using a fixed learnable <code>lambda</code>.</li>
 <li>Set <code>use_en_frb=True</code> to start from the enhanced fuzzy rule base; otherwise,
   training begins on a compact CoCo-FRB and expands to En-FRB during RE.</li>
@@ -1784,10 +1784,10 @@ feature selection, rule extraction, and En-FRB support.</p>
   and classification when features are poorly scaled.</li>
 </ul>
 <h2 id="example">Example</h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">FSREAdaTSKClassifierEstimator</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">FSREADATSKClassifier</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">FSREAdaTSKClassifierEstimator</span><span class="p">(</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">n_mfs</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">FSREADATSKClassifier</span><span class="p">(</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">n_rules</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
 </span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">mf_init</span><span class="o">=</span><span class="s2">&quot;kmeans&quot;</span><span class="p">,</span>
 </span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">lambda_init</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
 </span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">epochs</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
@@ -1799,21 +1799,22 @@ feature selection, rule extraction, and En-FRB support.</p>
 </span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Accuracy: </span><span class="si">{</span><span class="n">clf</span><span class="o">.</span><span class="n">score</span><span class="p">(</span><span class="n">X_test</span><span class="p">,</span><span class="w"> </span><span class="n">y_test</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Low-level usage with explicit FS/RE phases:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">FSREAdaTSKClassifier</span><span class="p">,</span> <span class="n">GaussianMF</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">input_mfs</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="s2">&quot;x1&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="s2">&quot;x2&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">}</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">model</span> <span class="o">=</span> <span class="n">FSREAdaTSKClassifier</span><span class="p">(</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">input_mfs</span><span class="p">,</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="n">n_classes</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">lambda_init</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    <span class="n">use_en_frb</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="p">)</span>
-</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="n">model</span><span class="o">.</span><span class="n">fit_fs</span><span class="p">(</span><span class="n">x_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
-</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="n">model</span><span class="o">.</span><span class="n">fit_re</span><span class="p">(</span><span class="n">x_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
-</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="n">model</span><span class="o">.</span><span class="n">fit_finetune</span><span class="p">(</span><span class="n">x_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">FSREADATSKClassifierModel</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis.memberships</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianMF</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">input_mfs</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="s2">&quot;x1&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="s2">&quot;x2&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">}</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">model</span> <span class="o">=</span> <span class="n">FSREADATSKClassifierModel</span><span class="p">(</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="n">input_mfs</span><span class="p">,</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">n_classes</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    <span class="n">lambda_init</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="n">use_en_frb</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="p">)</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="n">model</span><span class="o">.</span><span class="n">fit_fs</span><span class="p">(</span><span class="n">x_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="n">model</span><span class="o">.</span><span class="n">fit_re</span><span class="p">(</span><span class="n">x_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="n">model</span><span class="o">.</span><span class="n">fit_finetune</span><span class="p">(</span><span class="n">x_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">)</span>
 </span></code></pre></div>
 
 
@@ -1854,7 +1855,7 @@ feature selection, rule extraction, and En-FRB support.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../adatsk/" class="md-footer__link md-footer__link--prev" aria-label="Previous: AdaTSK">
+          <a href="../adatsk/" class="md-footer__link md-footer__link--prev" aria-label="Previous: ADATSK">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1864,7 +1865,7 @@ feature selection, rule extraction, and En-FRB support.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                AdaTSK
+                ADATSK
               </div>
             </div>
           </a>

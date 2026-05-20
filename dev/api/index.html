@@ -439,7 +439,7 @@
   <span class="md-ellipsis">
     
   
-  AdaTSK
+  ADATSK
 
     
   </span>
@@ -466,7 +466,7 @@
   <span class="md-ellipsis">
     
   
-  FSRE-AdaTSK
+  FSRE-ADATSK
 
     
   </span>
@@ -1128,6 +1128,56 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="highfis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#highfis--quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Quick start
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#highfis--estimator-families" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Estimator families
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#highfis--common-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Common parameters
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#highfis--advanced-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Advanced usage
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -1163,7 +1213,104 @@
 <a id="highfis"></a>
     <div class="doc doc-contents first">
 
-        <p>highFIS public API.</p>
+        <p>highFIS — sklearn-compatible TSK fuzzy inference system estimators.</p>
+<p>This package exposes <strong>Takagi-Sugeno-Kang (TSK) estimators</strong> that follow the
+scikit-learn <code>fit</code> / <code>predict</code> / <code>score</code> interface and integrate with
+<code>Pipeline</code>, <code>GridSearchCV</code>, and other sklearn utilities.</p>
+<h3 id="highfis--quick-start">Quick start</h3>
+<blockquote>
+<blockquote>
+<blockquote>
+<p>from highfis import HTSKClassifier
+clf = HTSKClassifier(n_rules=10)
+clf.fit(X_train, y_train)
+clf.predict(X_test)
+clf.score(X_test, y_test)</p>
+<p>from highfis import HTSKRegressor
+reg = HTSKRegressor(n_rules=8)
+reg.fit(X_train, y_train)
+reg.predict(X_test)</p>
+</blockquote>
+</blockquote>
+</blockquote>
+<h3 id="highfis--estimator-families">Estimator families</h3>
+<p>Each family comes in a <code>*Classifier</code> and <code>*Regressor</code> variant.</p>
+<ul>
+<li>
+<p><strong>TSK / HTSK</strong> — baseline TSK and hierarchical-softmax activation.
+  <code>TSKClassifier</code>, <code>TSKRegressor</code>, <code>HTSKClassifier</code>, <code>HTSKRegressor</code>.</p>
+</li>
+<li>
+<p><strong>ADATSK</strong> — adaptive softmin antecedent.
+  <code>ADATSKClassifier</code>, <code>ADATSKRegressor</code>.</p>
+</li>
+<li>
+<p><strong>ADPTSK</strong> — adaptive Pareto T-norm antecedent.
+  <code>ADPTSKClassifier</code>, <code>ADPTSKRegressor</code>.</p>
+</li>
+<li>
+<p><strong>ADMTSK / DombiTSK</strong> — Dombi T-norm antecedent.
+  <code>ADMTSKClassifier</code>, <code>ADMTSKRegressor</code>,
+  <code>DombiTSKClassifier</code>, <code>DombiTSKRegressor</code>.</p>
+</li>
+<li>
+<p><strong>DGTSK</strong> — data-driven Gaussian antecedent.
+  <code>DGTSKClassifier</code>, <code>DGTSKRegressor</code>.</p>
+</li>
+<li>
+<p><strong>DGALETSK</strong> — dimension-adaptive extension of DGTSK.
+  <code>DGALETSKClassifier</code>, <code>DGALETSKRegressor</code>.</p>
+</li>
+<li>
+<p><strong>FSREADATSK</strong> — feature selection and rule extraction over ADATSK.
+  <code>FSREADATSKClassifier</code>, <code>FSREADATSKRegressor</code>.</p>
+</li>
+<li>
+<p><strong>HDFIS</strong> — hierarchical defuzzification via minimum or product T-norm.
+  <code>HDFISMinClassifier</code>, <code>HDFISMinRegressor</code>,
+  <code>HDFISProdClassifier</code>, <code>HDFISProdRegressor</code>.</p>
+</li>
+<li>
+<p><strong>LogTSK</strong> — log-domain consequent.
+  <code>LogTSKClassifier</code>, <code>LogTSKRegressor</code>.</p>
+</li>
+<li>
+<p><strong>MHTSK</strong> — multi-hierarchical TSK.
+  <code>MHTSKClassifier</code>, <code>MHTSKRegressor</code>.</p>
+</li>
+<li>
+<p><strong>AYATSK</strong> — Yager T-norm antecedent.
+  <code>AYATSKClassifier</code>, <code>AYATSKRegressor</code>.</p>
+</li>
+</ul>
+<h3 id="highfis--common-parameters">Common parameters</h3>
+<p>n_rules : int
+    Number of fuzzy rules.  Ignored when <code>input_mfs</code> is supplied.
+mf_init : {"kmeans", "grid"}
+    Strategy for initialising input membership functions.
+    <code>"kmeans"</code> (default) fits Gaussian MF centres from k-means cluster
+    centroids computed on the training data.
+    <code>"grid"</code> places MFs on a uniform grid; requires <code>input_configs</code>.
+input_configs : list[InputConfig] or None
+    Per-feature configuration used when <code>mf_init="grid"</code>.  Each
+    <code>InputConfig</code> specifies the feature <code>name</code>, number of MFs
+    (<code>n_mfs</code>), spacing (<code>overlap</code>), and range padding (<code>margin</code>).
+input_mfs : dict[str, list[MembershipFunction]] or None
+    Pre-built membership functions keyed by feature name.  When supplied,
+    <code>n_rules</code> is inferred from the MF list length and <code>mf_init</code> is
+    ignored.  Import MF classes from <code>highfis.memberships</code>.
+random_state : int or None
+    Seed for reproducible k-means initialisation.</p>
+<h3 id="highfis--advanced-usage">Advanced usage</h3>
+<p>For custom membership functions import them explicitly::</p>
+<div class="language-text highlight"><pre><span></span><code>from highfis.memberships import GaussianMF, GaussianPiMF, TrapezoidalMF
+</code></pre></div>
+<p>For evaluation metrics (beyond sklearn's <code>score</code>)::</p>
+<div class="language-text highlight"><pre><span></span><code>from highfis.metrics import compute_metrics
+</code></pre></div>
+<p>For direct access to the underlying PyTorch models::</p>
+<div class="language-text highlight"><pre><span></span><code>from highfis.models import HTSKClassifierModel
+</code></pre></div>
 
 
 

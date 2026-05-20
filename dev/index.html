@@ -567,7 +567,7 @@
   <span class="md-ellipsis">
     
   
-  AdaTSK
+  ADATSK
 
     
   </span>
@@ -594,7 +594,7 @@
   <span class="md-ellipsis">
     
   
-  FSRE-AdaTSK
+  FSRE-ADATSK
 
     
   </span>
@@ -1357,9 +1357,10 @@ experimentation.</p>
 <li>Built for high-dimensional data and numerical stability.</li>
 <li>Supports adaptive and gated fuzzy inference, including feature selection
   and rule extraction.</li>
-<li>Includes HDFIS variants for product-DMF and minimum frozen-antecedent
+<li>Includes HDFIS variants for product T-norm and minimum T-norm
   high-dimensional inference.</li>
-<li>Ships with both model-level classes and sklearn-style estimator wrappers.</li>
+<li>Ships sklearn-compatible estimators (<code>*Classifier</code> / <code>*Regressor</code>) for every
+  model family.</li>
 <li>Works seamlessly with <code>Pipeline</code>, <code>GridSearchCV</code>, and standard
   scikit-learn workflows.</li>
 </ul>
@@ -1372,15 +1373,15 @@ experimentation.</p>
 <li>built-in metrics and evaluation utilities for regression and classification,</li>
 <li>task-specific consequent layers for classification or regression.</li>
 </ul>
-<p>Use <code>BaseTSK</code> for custom pipelines, or choose a concrete model variant when
-you want a ready-to-use TSK architecture.</p>
+<p>Use a model class from <code>highfis.models</code> for custom PyTorch pipelines, or
+import an estimator directly from <code>highfis</code> for sklearn-compatible training.</p>
 <h2 id="quick-start">Quick Start</h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>highFIS
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>highfis
 </span></code></pre></div>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKClassifierEstimator</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKClassifier</span>
 </span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">HTSKClassifierEstimator</span><span class="p">(</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">n_mfs</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">HTSKClassifier</span><span class="p">(</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">n_rules</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
 </span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">mf_init</span><span class="o">=</span><span class="s2">&quot;kmeans&quot;</span><span class="p">,</span>
 </span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">epochs</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span>
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span>
@@ -1403,19 +1404,19 @@ you want a ready-to-use TSK architecture.</p>
   inference (HDFIS-min).</li>
 <li><a href="models/dombitsk/"><code>DombiTSK</code></a> — Dombi parametric aggregation with a
   learnable shape parameter.</li>
-<li><a href="models/admtsk/"><code>ADMTSK</code></a> — adaptive Dombi TSK with Composite GMF and
-  positive lower-bound membership values.</li>
+<li><a href="models/admtsk/"><code>ADMTSK</code></a> — adaptive Dombi TSK with dimension-dependent
+  Gaussian membership functions.</li>
 <li><a href="models/ayatsk/"><code>AYATSK</code></a> — Yager-style aggregation for more flexible
   antecedent behavior.</li>
-<li><a href="models/adatsk/"><code>AdaTSK</code></a> — adaptive softmin aggregation with dynamic
+<li><a href="models/adatsk/"><code>ADATSK</code></a> — adaptive softmin aggregation with dynamic
   rule weighting.</li>
 <li><a href="models/adptsk/"><code>ADPTSK</code></a> — adaptive double-parameter softmin aggregation
   with stable normalized rule weights.</li>
-<li><a href="models/fsre-adatsk/"><code>FSRE-AdaTSK</code></a> — gated feature selection and rule
+<li><a href="models/fsre-adatsk/"><code>FSRE-ADATSK</code></a> — gated feature selection and rule
   extraction inside an adaptive inference pipeline.</li>
-<li><a href="models/dg-tsk/"><code>DG-TSK</code></a> — double-gated training for simultaneous
+<li><a href="models/dg-tsk/"><code>DGTSK</code></a> — double-gated training for simultaneous
   feature selection and rule extraction.</li>
-<li><a href="models/dg-aletsk/"><code>DG-ALETSK</code></a> — adaptive Ln-Exp softmin with embedded
+<li><a href="models/dg-aletsk/"><code>DGALETSK</code></a> — adaptive Ln-Exp softmin with embedded
   feature and rule gates for sparse high-dimensional modeling.</li>
 <li><a href="models/mhtsk/"><code>MHTSK</code></a> — multihead sparse subantecedents for high-dimensional
   rule extraction and scalable TSK learning.</li>
@@ -1430,7 +1431,7 @@ you want a ready-to-use TSK architecture.</p>
   aggregation behavior.</li>
 <li>Choose <code>HDFIS</code> when you need high-dimensional inference with either a
   dimension-dependent product antecedent or a frozen minimum antecedent.</li>
-<li>Choose <code>AdaTSK</code>, <code>FSRE-AdaTSK</code>, <code>DG-TSK</code>, or <code>DG-ALETSK</code> when you need
+<li>Choose <code>ADATSK</code>, <code>FSRE-ADATSK</code>, <code>DGTSK</code>, or <code>DGALETSK</code> when you need
   adaptive sparsity, feature gating, or rule extraction.</li>
 </ul>
 <h2 id="documentation">Documentation</h2>
@@ -1493,8 +1494,8 @@ you want a ready-to-use TSK architecture.</p>
 </tbody>
 </table>
 <h2 id="get-started">Get Started</h2>
-<p>Use the top-level <code>highfis</code> classes for fast prototyping, or extend
-<code>BaseTSK</code> directly for custom fuzzy pipelines.</p>
+<p>Import estimators directly from <code>highfis</code> for sklearn-compatible usage, or
+access PyTorch model classes via <code>highfis.models</code> for custom training loops.</p>
 
 
 

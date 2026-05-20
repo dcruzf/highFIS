@@ -445,7 +445,7 @@
   <span class="md-ellipsis">
     
   
-  AdaTSK
+  ADATSK
 
     
   </span>
@@ -472,7 +472,7 @@
   <span class="md-ellipsis">
     
   
-  FSRE-AdaTSK
+  FSRE-ADATSK
 
     
   </span>
@@ -1742,7 +1742,7 @@ f^{r}(\mathbf{x}) = p^{r}_0 + \sum_{s \in \mathcal{S}_t} p^{r}_{s} x_s
 </tr>
 <tr>
 <td>Sparse antecedents</td>
-<td><code>highfis.models.MHTSKClassifier</code>, <code>highfis.models.MHTSKRegressor</code></td>
+<td><code>highfis.models.MHTSKClassifierModel</code>, <code>highfis.models.MHTSKRegressorModel</code></td>
 <td>Build rules with constant don't-care MFs on inactive features</td>
 </tr>
 <tr>
@@ -1761,15 +1761,15 @@ f^{r}(\mathbf{x}) = p^{r}_0 + \sum_{s \in \mathcal{S}_t} p^{r}_{s} x_s
 <ul>
 <li><code>highfis</code> represents each head with a partial rule base created by <code>FuzzyCMeans</code> on the sampled feature subset.</li>
 <li>Every input feature has a constant <code>ConstantMF(1.0)</code> to support don't-care membership when the feature is not selected by a head.</li>
-<li>The total number of rules is <code>n_heads * n_mfs</code>, because each head produces <code>n_mfs</code> cluster-based rules.</li>
+<li>The total number of rules is <code>n_heads * n_mfs</code>, because each head produces <code>n_rules</code> cluster-based rules.</li>
 <li>The sparse consequent is implemented by masking the weight tensor with <code>rule_feature_mask</code> inside <code>SparseClassificationConsequentLayer</code> and <code>SparseRegressionConsequentLayer</code>.</li>
 <li>The rule masks are derived from the selected feature subsets and the per-head cluster indices.</li>
 <li><code>rule_sigma</code> controls the Gaussian spread used for all selected feature MFs; the paper fixes this value to preserve interpretability and avoid numeric underflow.</li>
 </ul>
 <h2 id="model-classes">Model classes</h2>
 <ul>
-<li><code>highfis.models.MHTSKClassifier</code></li>
-<li><code>highfis.models.MHTSKRegressor</code></li>
+<li><code>highfis.models.MHTSKClassifierModel</code></li>
+<li><code>highfis.models.MHTSKRegressorModel</code></li>
 </ul>
 <p>These classes extend <code>BaseTSKClassifier</code> and <code>BaseTSKRegressor</code>, respectively, and use <code>rule_base="custom"</code> with explicit rule definitions and a sparse consequent.</p>
 <h3 id="mhtskclassifier">MHTSKClassifier</h3>
@@ -1786,13 +1786,13 @@ f^{r}(\mathbf{x}) = p^{r}_0 + \sum_{s \in \mathcal{S}_t} p^{r}_{s} x_s
 </ul>
 <h2 id="estimator-wrappers">Estimator wrappers</h2>
 <ul>
-<li><code>highfis.estimators.MHTSKClassifierEstimator</code></li>
-<li><code>highfis.estimators.MHTSKRegressorEstimator</code></li>
+<li><code>highfis.estimators.MHTSKClassifier</code></li>
+<li><code>highfis.estimators.MHTSKRegressor</code></li>
 </ul>
 <p>These sklearn-style wrappers build the MHTSK rule base from raw data and expose the paper's scale parameter defaults.</p>
 <h3 id="key-estimator-parameters">Key estimator parameters</h3>
 <ul>
-<li><code>n_mfs</code>: Number of FCM clusters per head (<code>K</code>). Default: <code>3</code>.</li>
+<li><code>n_rules</code>: Number of FCM clusters per head (<code>K</code>). Default: <code>3</code>.</li>
 <li><code>n_heads</code>: Number of heads (<code>T</code>). When <code>None</code>, defaults are resolved from <code>head_size</code>, <code>fcr_target</code>, and <code>h_value</code>.</li>
 <li><code>head_size</code>: Number of features per head (<code>S</code>). When <code>None</code>, defaults to <code>max(1, round(D * 0.02))</code> for <code>D &lt;= 5000</code> or <code>max(1, round(D * 0.01))</code> otherwise.</li>
 <li><code>head_size_ratio</code>: Alternative way to specify <code>head_size</code> as a fraction of <code>D</code>.</li>
@@ -1841,7 +1841,7 @@ f^{r}(\mathbf{x}) = p^{r}_0 + \sum_{s \in \mathcal{S}_t} p^{r}_{s} x_s
 <ul>
 <li>The default <code>head_size</code> and <code>n_heads</code> resolution reproduces the paper's recommended scale parameter strategy using <code>xi</code>, <code>sigma</code>, <code>fcr_target</code>, and <code>h_value</code>.</li>
 <li>The sparse consequent layers mirror the paper's per-rule subspace-specific linear consequents.</li>
-<li>The <code>MHTSKClassifierEstimator</code> and <code>MHTSKRegressorEstimator</code> provide a user-facing API that reflects the paper's <code>S</code>, <code>T</code>, <code>K</code>, and rule extraction workflow.</li>
+<li>The <code>MHTSKClassifier</code> and <code>MHTSKRegressor</code> provide a user-facing API that reflects the paper's <code>S</code>, <code>T</code>, <code>K</code>, and rule extraction workflow.</li>
 </ul>
 
 

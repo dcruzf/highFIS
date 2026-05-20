@@ -29,7 +29,7 @@
     
     
       
-        <title>AdaTSK - highFIS Docs</title>
+        <title>ADATSK - highFIS Docs</title>
       
     
     
@@ -125,7 +125,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              AdaTSK
+              ADATSK
             
           </span>
         </div>
@@ -454,7 +454,7 @@
   <span class="md-ellipsis">
     
   
-  AdaTSK
+  ADATSK
 
     
   </span>
@@ -471,7 +471,7 @@
   <span class="md-ellipsis">
     
   
-  AdaTSK
+  ADATSK
 
     
   </span>
@@ -685,7 +685,7 @@
   <span class="md-ellipsis">
     
   
-  FSRE-AdaTSK
+  FSRE-ADATSK
 
     
   </span>
@@ -1600,14 +1600,14 @@
                 
                   
 
-<h1 id="adatsk">AdaTSK</h1>
-<p>AdaTSK extends TSK with an adaptive softmin antecedent that stabilizes high-dimensional fuzzy inference while preserving first-order TSK consequents.</p>
+<h1 id="adatsk">ADATSK</h1>
+<p>ADATSK extends TSK with an adaptive softmin antecedent that stabilizes high-dimensional fuzzy inference while preserving first-order TSK consequents.</p>
 <h2 id="reference">Reference</h2>
 <blockquote>
 <p>G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive Neuro-Fuzzy System With Integrated Feature Selection and Rule Extraction for High-Dimensional Classification Problems," in IEEE Transactions on Fuzzy Systems, vol. 31, no. 7, pp. 2167-2181, July 2023, doi: <a href="https://doi.org/10.1109/TFUZZ.2022.3220950">10.1109/TFUZZ.2022.3220950</a></p>
 </blockquote>
 <h2 id="mathematical-formulation">Mathematical Formulation</h2>
-<p>AdaTSK extends TSK fuzzy inference by using an adaptive softmin antecedent
+<p>ADATSK extends TSK fuzzy inference by using an adaptive softmin antecedent
 (Ada-softmin) together with first-order linear consequents.</p>
 <h3 id="antecedent">Antecedent</h3>
 <p>Each rule-term membership is typically computed with a Gaussian function:</p>
@@ -1619,7 +1619,7 @@
 The paper's proposed positive lower-bound variant can be instantiated with
 <code>highfis.memberships.CompositeGaussianMF</code> when desired.</p>
 <h3 id="adaptive-ada-softmin-aggregation">Adaptive Ada-softmin aggregation</h3>
-<p>AdaTSK computes rule firing strengths with an adaptive softmin based on the
+<p>ADATSK computes rule firing strengths with an adaptive softmin based on the
 minimum antecedent membership for each rule:</p>
 <div class="arithmatex">\[
 \hat{q}_r = \left\lceil \frac{690}{\ln (\min_{d}\mu_{r,d}(x_d))} \right\rceil,
@@ -1637,7 +1637,7 @@ of underflow and fake minimum.</p>
 \bar{\phi}_r = \frac{\phi_r}{\sum_{k=1}^{R} \phi_k}
 \]</div>
 <h3 id="consequent">Consequent</h3>
-<p>AdaTSK uses a first-order TSK consequent for both classification and
+<p>ADATSK uses a first-order TSK consequent for both classification and
 regression.</p>
 <p>For classification:</p>
 <div class="arithmatex">\[
@@ -1699,23 +1699,23 @@ regression.</p>
 </tbody>
 </table>
 <h2 id="implementation-notes">Implementation notes</h2>
-<p>In highFIS, <code>AdaTSKClassifier</code> and <code>AdaTSKRegressor</code> implement the core
-AdaTSK model by replacing the standard product antecedent with the
+<p>In highFIS, <code>ADATSKClassifierModel</code> and <code>ADATSKRegressorModel</code> implement the core
+ADATSK model by replacing the standard product antecedent with the
 adaptive softmin operator.</p>
 <h3 id="model-classes">Model classes</h3>
 <ul>
-<li><code>AdaTSKClassifier</code> and <code>AdaTSKRegressor</code> use
+<li><code>ADATSKClassifierModel</code> and <code>ADATSKRegressorModel</code> use
   <code>highfis.layers.AdaSoftminRuleLayer</code> to compute rule strengths.</li>
 <li>The TSK consequent remains first-order linear and is normalized with
   <code>highfis.defuzzifiers.SumBasedDefuzzifier</code>.</li>
-<li><code>AdaTSKClassifier</code> and <code>AdaTSKRegressor</code> do not expose the feature-
-  selection / rule-extraction gates of FSRE-AdaTSK.</li>
+<li><code>ADATSKClassifierModel</code> and <code>ADATSKRegressorModel</code> do not expose the feature-
+  selection / rule-extraction gates of FSRE-ADATSK.</li>
 </ul>
 <h3 id="estimator-wrappers">Estimator wrappers</h3>
 <ul>
-<li><code>AdaTSKClassifierEstimator</code> and <code>AdaTSKRegressorEstimator</code> are
-  sklearn-compatible wrappers around the low-level AdaTSK model classes.</li>
-<li>They build Gaussian membership functions from <code>input_configs</code>, <code>n_mfs</code>,
+<li><code>ADATSKClassifier</code> and <code>ADATSKRegressor</code> are
+  sklearn-compatible wrappers around the low-level ADATSK model classes.</li>
+<li>They build Gaussian membership functions from <code>input_configs</code>, <code>n_rules</code>,
   <code>mf_init</code>, and <code>sigma_scale</code>.</li>
 <li>The default <code>sigma_scale=1.0</code> is appropriate because the adaptive softmin
   operator handles high-dimensional stability.</li>
@@ -1729,7 +1729,7 @@ adaptive softmin operator.</p>
 </ul>
 <h3 id="training-in-the-paper-vs-highfis">Training in the paper vs. highFIS</h3>
 <ul>
-<li>The paper trains AdaTSK end-to-end by optimizing the task loss through
+<li>The paper trains ADATSK end-to-end by optimizing the task loss through
   the adaptive softmin operator.</li>
 <li>highFIS follows the same gradient-based training paradigm in <code>BaseTSK.fit()</code>.</li>
 <li>
@@ -1737,12 +1737,12 @@ adaptive softmin operator.</p>
   computations in <code>AdaSoftminRuleLayer</code>.</p>
 </li>
 <li>
-<p>FSRE-AdaTSK is documented separately in <code>docs/models/fsre-adatsk.md</code>.</p>
+<p>FSRE-ADATSK is documented separately in <code>docs/models/fsre-adatsk.md</code>.</p>
 </li>
 </ul>
 <h2 id="alignment-with-the-paper">Alignment with the paper</h2>
 <ul>
-<li>The paper's key AdaTSK contribution is the adaptive softmin antecedent
+<li>The paper's key ADATSK contribution is the adaptive softmin antecedent
   operator to avoid numeric underflow and fake minimum effects.</li>
 <li>highFIS implements this via <code>AdaSoftminRuleLayer</code> with a per-rule exponent
   derived from the rule's minimum antecedent membership.</li>
@@ -1806,13 +1806,13 @@ adaptive softmin operator.</p>
         
         
           
-          <a href="../fsre-adatsk/" class="md-footer__link md-footer__link--next" aria-label="Next: FSRE-AdaTSK">
+          <a href="../fsre-adatsk/" class="md-footer__link md-footer__link--next" aria-label="Next: FSRE-ADATSK">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                FSRE-AdaTSK
+                FSRE-ADATSK
               </div>
             </div>
             <div class="md-footer__button md-icon">

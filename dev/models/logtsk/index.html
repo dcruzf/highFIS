@@ -636,7 +636,7 @@
   <span class="md-ellipsis">
     
   
-  AdaTSK
+  ADATSK
 
     
   </span>
@@ -663,7 +663,7 @@
   <span class="md-ellipsis">
     
   
-  FSRE-AdaTSK
+  FSRE-ADATSK
 
     
   </span>
@@ -1628,7 +1628,7 @@ standard softmax normalization when <span class="arithmatex">\(D\)</span> is lar
 This is the repository's LogTSK implementation.</p>
 <h3 id="model-classes">Model classes</h3>
 <ul>
-<li><code>LogTSKClassifier</code> and <code>LogTSKRegressor</code> use the standard TSK product
+<li><code>LogTSKClassifierModel</code> and <code>LogTSKRegressorModel</code> use the standard TSK product
   antecedent (<code>t_norm="prod"</code>) together with
   <code>highfis.defuzzifiers.InvLogDefuzzifier</code>.</li>
 <li>The antecedent membership values are typically Gaussian, matching the
@@ -1638,10 +1638,10 @@ This is the repository's LogTSK implementation.</p>
 </ul>
 <h3 id="estimator-wrappers">Estimator wrappers</h3>
 <ul>
-<li><code>LogTSKClassifierEstimator</code> and <code>LogTSKRegressorEstimator</code> are sklearn-like
+<li><code>LogTSKClassifier</code> and <code>LogTSKRegressor</code> are sklearn-like
   wrappers around the low-level model classes.</li>
 <li>They build the rule base and Gaussian membership functions from
-  <code>input_configs</code> or the high-level <code>n_mfs</code>, <code>mf_init</code>, and <code>sigma_scale</code>
+  <code>input_configs</code> or the high-level <code>n_rules</code>, <code>mf_init</code>, and <code>sigma_scale</code>
   parameters.</li>
 <li>The default <code>sigma_scale=1.0</code> is recommended because the log-space
   defuzzifier is scale-invariant.</li>

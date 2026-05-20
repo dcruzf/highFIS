@@ -575,7 +575,7 @@
   <span class="md-ellipsis">
     
   
-  AdaTSK
+  ADATSK
 
     
   </span>
@@ -602,7 +602,7 @@
   <span class="md-ellipsis">
     
   
-  FSRE-AdaTSK
+  FSRE-ADATSK
 
     
   </span>
@@ -1518,9 +1518,9 @@ making the normalized weights dominated by a single rule.</p>
 <h2 id="implementation-notes">Implementation notes</h2>
 <ul>
 <li><code>TSKClassifier</code> and <code>TSKRegressor</code> default to <code>SumBasedDefuzzifier</code>.</li>
-<li>The highFIS estimator wrappers <code>TSKClassifierEstimator</code> and
-  <code>TSKRegressorEstimator</code> construct the Gaussian antecedent MFs from
-  <code>input_configs</code>, <code>n_mfs</code>, <code>mf_init</code>, and <code>sigma_scale</code>.</li>
+<li>The highFIS estimator wrappers <code>TSKClassifier</code> and
+  <code>TSKRegressor</code> construct the Gaussian antecedent MFs from
+  <code>input_configs</code>, <code>n_rules</code>, <code>mf_init</code>, and <code>sigma_scale</code>.</li>
 <li><code>GaussianMF</code> stores a raw parameter that is transformed with <code>softplus</code>
   to guarantee <span class="arithmatex">\(\sigma &gt; 0\)</span>.</li>
 <li><code>SumBasedDefuzzifier</code> clamps rule weights to a small floor before

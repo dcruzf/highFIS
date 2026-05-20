@@ -636,7 +636,7 @@
   <span class="md-ellipsis">
     
   
-  AdaTSK
+  ADATSK
 
     
   </span>
@@ -663,7 +663,7 @@
   <span class="md-ellipsis">
     
   
-  FSRE-AdaTSK
+  FSRE-ADATSK
 
     
   </span>
@@ -1615,11 +1615,11 @@ consequents and aggregates them with the normalized rule weights.</p>
 <tbody>
 <tr>
 <td>Geometric-mean antecedent</td>
-<td><code>HTSKClassifier</code> / <code>HTSKRegressor</code> with <code>t_norm="gmean"</code></td>
+<td><code>HTSKClassifierModel</code> / <code>HTSKRegressorModel</code> with <code>t_norm="gmean"</code></td>
 </tr>
 <tr>
 <td>Log-domain aggregation</td>
-<td><code>HTSKClassifier</code> / <code>HTSKRegressor</code> uses <code>SoftmaxLogDefuzzifier</code></td>
+<td><code>HTSKClassifierModel</code> / <code>HTSKRegressorModel</code> uses <code>SoftmaxLogDefuzzifier</code></td>
 </tr>
 <tr>
 <td>Normalized rule weights</td>
@@ -1633,7 +1633,7 @@ consequents and aggregates them with the normalized rule weights.</p>
 </table>
 <h2 id="implementation-notes">Implementation notes</h2>
 <ul>
-<li><code>HTSKClassifier</code> and <code>HTSKRegressor</code> default to <code>t_norm="gmean"</code> and
+<li><code>HTSKClassifierModel</code> and <code>HTSKRegressorModel</code> default to <code>t_norm="gmean"</code> and
   <code>SoftmaxLogDefuzzifier</code>.</li>
 <li><code>HTSK</code> is not the same as <code>LogTSK</code>: HTSK averages log-membership values and
   then applies a softmax, while LogTSK uses inverse-log normalisation.</li>
@@ -1647,9 +1647,9 @@ consequents and aggregates them with the normalized rule weights.</p>
 </ul>
 <h3 id="estimator-wrappers">Estimator wrappers</h3>
 <ul>
-<li><code>HTSKClassifierEstimator</code> and <code>HTSKRegressorEstimator</code> are sklearn-like
+<li><code>HTSKClassifier</code> and <code>HTSKRegressor</code> are sklearn-like
   wrappers around the low-level model classes.</li>
-<li>They build Gaussian membership functions from <code>input_configs</code> or <code>n_mfs</code>,
+<li>They build Gaussian membership functions from <code>input_configs</code> or <code>n_rules</code>,
   <code>mf_init</code>, and <code>sigma_scale</code>.</li>
 <li>The estimators expose the standard hyperparameters used in the paper,
   including <code>epochs</code>, <code>learning_rate</code>, <code>batch_size</code>, <code>shuffle</code>, and
@@ -1672,14 +1672,14 @@ consequents and aggregates them with the normalized rule weights.</p>
   <code>BaseTSK.fit()</code>, which supports mini-batch AdamW, optional early stopping,
   and optional uniform-rule regularization (<code>ur_weight</code>, <code>ur_target</code>).</li>
 <li>The default HTSK estimator settings mirror the experimental setup of the
-  paper: <code>n_mfs=30</code>, <code>mf_init="kmeans"</code>, <code>sigma_scale=1.0</code>, <code>epochs=200</code>,
+  paper: <code>n_rules=30</code>, <code>mf_init="kmeans"</code>, <code>sigma_scale=1.0</code>, <code>epochs=200</code>,
   <code>learning_rate=1e-2</code>, <code>batch_size=512</code>, and <code>patience=20</code>.</li>
 </ul>
 <h2 id="alignment-with-the-paper">Alignment with the paper</h2>
 <ul>
 <li>The paper introduces HTSK as a high-dimensional variant of TSK that
   avoids softmax saturation by averaging log-domain membership strengths.</li>
-<li>highFIS implements this directly with <code>HTSKClassifier</code>, <code>HTSKRegressor</code>,
+<li>highFIS implements this directly with <code>HTSKClassifierModel</code>, <code>HTSKRegressorModel</code>,
   and <code>SoftmaxLogDefuzzifier</code>.</li>
 <li>The antecedent remains a Gaussian product structure, but the rule activation
   is computed as a <span class="arithmatex">\(D\)</span>-th root of the product, which is equivalent to the
