@@ -2,7 +2,7 @@
 
 ADMTSK is an adaptive Dombi TSK fuzzy system designed for high-dimensional inference.
 It combines a Dombi T-norm antecedent with a positive lower-bound Composite Gaussian
-membership function (CGMF) and normalized first-order consequents.
+membership function (GaussianPiMF) and normalized first-order consequents.
 
 ## Reference
 
@@ -12,14 +12,14 @@ membership function (CGMF) and normalized first-order consequents.
 
 ### Antecedent
 
-The ADMTSK antecedent uses Composite GMFs with a positive lower bound:
+The ADMTSK antecedent uses GaussianPiMF with a positive lower bound:
 
 $$
 \mu_{r,d}(x_d) = \exp\left(-1 + \exp\left(-\frac{(x_d - m_{r,d})^2}{2\sigma_{r,d}^2}\right)\right)
 \tag{1}
 $$
 
-This CGMF produces membership values in $(1/e, 1]$ and avoids zero-valued
+This GaussianPiMF produces membership values in $(1/e, 1]$ and avoids zero-valued
 inputs to the Dombi T-norm.
 
 The rule firing strength is computed by a Dombi T-norm:
@@ -64,7 +64,7 @@ $$
 
 | Equation | Class / Method | Description |
 |---|---|---|
-| (1) | `CompositeGMF` | Paper's Composite Gaussian membership function with positive lower bound |
+| (1) | `GaussianPiMF` | Composite Gaussian membership function with positive lower bound |
 | (2) | `AdaptiveDombiTNorm` | Adaptive Dombi T-norm aggregation over antecedent degrees |
 | (3) | `AdaptiveDombiTNorm.__init__` | Computes scalar $\lambda$ from $D$, $\varepsilon$, and $K$ |
 | (4) | `SumBasedDefuzzifier` | Normalizes firing strengths into rule weights |
@@ -74,12 +74,12 @@ $$
 
 In highFIS, ADMTSK is implemented as two model classes:
 
-- `ADMTSKClassifier`
-- `ADMTSKRegressor`
+- `ADMTSKClassifierModel`
+- `ADMTSKRegressorModel`
 
 These classes accept an `input_mfs` mapping of feature names to membership
 functions. When used through the estimator wrappers, input Gaussian MFs are
-converted to `CompositeGMF` automatically.
+converted to `GaussianPiMF` automatically.
 
 The adaptive lambda strategy is enabled by default through the `adaptive`
 parameter. When `adaptive=False`, ADMTSK falls back to a fixed Dombi parameter
@@ -97,47 +97,47 @@ The default settings are:
 
 ## Model classes
 
-- `ADMTSKClassifier` — classifier variant of ADMTSK.
-- `ADMTSKRegressor` — regressor variant of ADMTSK.
+- `ADMTSKClassifierModel` — classifier variant of ADMTSK.
+- `ADMTSKRegressorModel` — regressor variant of ADMTSK.
 
 Both use the same antecedent and consequent structure as standard TSK, while
 replacing the product antecedent with adaptive Dombi aggregation and using
-Composite GMF antecedents.
+GaussianPiMF antecedents.
 
 ## Estimator wrappers
 
-- `ADMTSKClassifierEstimator`
-- `ADMTSKRegressorEstimator`
+- `ADMTSKClassifier`
+- `ADMTSKRegressor`
 
 These wrappers provide sklearn-compatible `fit`/`predict` APIs and build the
-inferential pipeline from high-level settings such as `n_mfs`, `mf_init`,
+inferential pipeline from high-level settings such as `n_rules`, `mf_init`,
 `sigma_scale`, and adaptive lambda parameters.
 
 When the estimator constructs input membership functions it converts the
-initial Gaussian MFs into `CompositeGMF`, matching the paper's positive lower
+initial Gaussian MFs into `GaussianPiMF`, matching the paper's positive lower
 bound membership design.
 
 ## Membership functions
 
-ADMTSK is designed around the Composite Gaussian MF (CGMF):
+ADMTSK is designed around the Gaussian Pi MF (GaussianPiMF):
 
 - positive lower bound avoids zero membership values,
 - enables stable Dombi computation in high dimensions,
 - improves robustness in adaptive lambda selection.
 
-The estimator wrappers default to `CompositeGMF` for the ADMTSK pipeline.
+The estimator wrappers default to `GaussianPiMF` for the ADMTSK pipeline.
 
 ## Training in the paper vs. highFIS
 
 The ADMTSK paper describes end-to-end gradient-based training with adaptive
-Dombi lambda and CGMF antecedents. In highFIS, the model is trained through
+Dombi lambda and GaussianPiMF antecedents. In highFIS, the model is trained through
 `BaseTSK.fit()` using AdamW, optional early stopping, and standard PyTorch
 backpropagation.
 
 The highFIS implementation preserves the paper's main design:
 
 - adaptive Dombi T-norm antecedent,
-- CGMF antecedent membership functions,
+- GaussianPiMF antecedent membership functions,
 - first-order TSK consequents,
 - normalized rule strengths via sum-based defuzzification.
 
@@ -145,7 +145,7 @@ The highFIS implementation preserves the paper's main design:
 
 This implementation mirrors the paper by:
 
-- using `CompositeGMF` as the positive lower bound membership function,
+- using `GaussianPiMF` as the positive lower bound membership function,
 - computing a scalar adaptive `lambda` from feature dimension and lower bound,
 - using a Dombi T-norm aggregation for antecedent rule firing strengths,
 - keeping first-order consequents and standard sum normalization.

@@ -9,7 +9,7 @@ Membership functions:
         - ``GaussianMF`` — standard Gaussian with ``mean`` and ``sigma``.
         - ``CompositeGaussianMF`` — Gaussian with a positive lower bound
           to avoid zero membership.
-        - ``GaussianPIMF`` — Gaussian with a positive infimum, useful for
+        - ``GaussianPiMF`` — Gaussian with a positive infimum, useful for
           softmin-stable models.
 
     **Dimension-dependent**
@@ -122,6 +122,7 @@ class ConstantMF(MembershipFunction):
         return torch.full_like(x, fill_value=self.value)
 
     def inspect_params(self) -> dict[str, Any]:
+        """Return the serializable parameters for this membership function."""
         return {"value": self.value}
 
 
@@ -213,6 +214,7 @@ class DimensionDependentGaussianMF(GaussianMF):
         return torch.exp(-(x - self.mean).square() / denom)
 
     def inspect_params(self) -> dict[str, Any]:
+        """Return the serializable parameters for this membership function."""
         return {
             "mean": float(self.mean.detach().cpu().item()),
             "sigma": float(self.sigma.detach().cpu().item()),
@@ -258,10 +260,19 @@ class CompositeGaussianMF(MembershipFunction):
 
 
 class CompositeGMF(MembershipFunction):
-    """Composite Gaussian membership with a positive lower bound based on ADMTSK."""
+    """Composite Gaussian membership with a positive lower bound based on ADMTSK.
+
+    .. deprecated::
+        Use :class:`GaussianPiMF` with ``k=1`` instead.
+        ``CompositeGMF`` is mathematically equivalent to ``GaussianPiMF(k=1)``
+        and will be removed in a future release.
+    """
 
     def __init__(self, mean: float = 0.0, sigma: float = 1.0, eps: float | None = None) -> None:
         r"""Initialize the composite GMF.
+
+        .. deprecated::
+            Use :class:`GaussianPiMF` with ``k=1`` instead.
 
         Args:
             mean: Center of the Gaussian `c`.
@@ -273,6 +284,13 @@ class CompositeGMF(MembershipFunction):
         Raises:
             ValueError: If *sigma* is not positive.
         """
+        import warnings
+
+        warnings.warn(
+            "CompositeGMF is deprecated and will be removed in a future release. Use GaussianPiMF(k=1) instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         super().__init__(eps=eps)
         if sigma <= 0:
             raise ValueError("sigma must be positive")
@@ -639,7 +657,7 @@ class PiMF(MembershipFunction):
         }
 
 
-class GaussianPIMF(MembershipFunction):
+class GaussianPiMF(MembershipFunction):
     """Gaussian membership with a positive infimum (PIMF).
 
     Defined as ``exp(-K * (1 - exp(-(x - m)^2 / (2 * sigma^2))))``.
@@ -656,26 +674,26 @@ class GaussianPIMF(MembershipFunction):
         self,
         mean: float = 0.0,
         sigma: float = 1.0,
-        K: float = 1.0,
+        k: float = 1.0,
         eps: float | None = None,
     ) -> None:
-        """Initialize Gaussian PIMF with center, spread, and infimum control K.
+        """Initialize Gaussian PIMF with center, spread, and infimum control k.
 
         Args:
             mean: Center of the Gaussian.
             sigma: Spread (standard deviation); must be positive.
-            K: Positive infimum control parameter in (0, 745].
-                The membership infimum is exp(-K).
+            k: Positive infimum control parameter in (0, 745].
+                The membership infimum is exp(-k).
             eps: Numerical stability constant.
         """
         super().__init__(eps=eps)
         if sigma <= 0:
             raise ValueError("sigma must be positive")
-        if not (0.0 < K <= 745.0):
-            raise ValueError("K must be in the interval (0, 745]")
+        if not (0.0 < k <= 745.0):
+            raise ValueError("k must be in the interval (0, 745]")
         self.mean = nn.Parameter(torch.tensor(float(mean)))
         self.raw_sigma = nn.Parameter(torch.tensor(_inv_softplus(float(sigma), eps)))
-        self.K = float(K)
+        self.k = float(k)
 
     @property
     def sigma(self) -> Tensor:
@@ -687,14 +705,14 @@ class GaussianPIMF(MembershipFunction):
         x = self._as_tensor(x)
         z_sq = ((x - self.mean) / self.sigma).square()
         inner = 1.0 - torch.exp(-0.5 * z_sq)
-        return torch.exp(-self.K * inner)
+        return torch.exp(-self.k * inner)
 
     def inspect_params(self) -> dict[str, Any]:
         """Return the serializable parameters for this membership function."""
         return {
             "mean": float(self.mean.detach().cpu().item()),
             "sigma": float(self.sigma.detach().cpu().item()),
-            "K": float(self.K),
+            "k": float(self.k),
         }
 
 
@@ -703,7 +721,7 @@ __all__: list[str] = [
     "CompositeExponentialMF",
     "CompositeGaussianMF",
     "GaussianMF",
-    "GaussianPIMF",
+    "GaussianPiMF",
     "LinSShapedMF",
     "LinZShapedMF",
     "MembershipFunction",

@@ -13,32 +13,34 @@ from highfis.layers import (
 )
 from highfis.memberships import GaussianMF
 from highfis.models import (
-    AdaTSKClassifier,
-    AdaTSKRegressor,
-    ADMTSKClassifier,
-    ADMTSKRegressor,
-    AYATSKClassifier,
-    AYATSKRegressor,
-    DGALETSKClassifier,
-    DGALETSKRegressor,
-    DombiTSKClassifier,
-    DombiTSKRegressor,
-    FSREAdaTSKClassifier,
-    FSREAdaTSKRegressor,
-    HDFISMinClassifier,
-    HDFISMinRegressor,
-    HDFISProdClassifier,
-    HTSKClassifier,
-    HTSKRegressor,
-    LogTSKClassifier,
-    LogTSKRegressor,
-    MHTSKClassifier,
-    MHTSKRegressor,
-    TSKClassifier,
-    TSKRegressor,
+    ADATSKClassifierModel,
+    ADATSKRegressorModel,
+    ADMTSKClassifierModel,
+    ADMTSKRegressorModel,
+    AYATSKClassifierModel,
+    AYATSKRegressorModel,
+    DGALETSKClassifierModel,
+    DGALETSKRegressorModel,
+    DombiTSKClassifierModel,
+    DombiTSKRegressorModel,
+    FSREADATSKClassifierModel,
+    FSREADATSKRegressorModel,
+    HDFISMinClassifierModel,
+    HDFISMinRegressorModel,
+    HDFISProdClassifierModel,
+    HTSKClassifierModel,
+    HTSKRegressorModel,
+    LogTSKClassifierModel,
+    LogTSKRegressorModel,
+    MHTSKClassifierModel,
+    MHTSKRegressorModel,
+    TSKClassifierModel,
+    TSKRegressorModel,
+    build_rule_feature_mask,
+)
+from highfis.models._common import (
     _build_first_order_design_matrix,
     _threshold_from_zeta,
-    build_rule_feature_mask,
 )
 from highfis.t_norms import DombiTNorm
 
@@ -49,14 +51,14 @@ def _build_input_mfs(n_inputs: int = 3, n_mfs: int = 2) -> dict[str, list[Gaussi
 
 def test_htsk_classifier_init_validates_arguments() -> None:
     with pytest.raises(ValueError, match="input_mfs must not be empty"):
-        HTSKClassifier({}, n_classes=2)
+        HTSKClassifierModel({}, n_classes=2)
 
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
-        HTSKClassifier(_build_input_mfs(), n_classes=1)
+        HTSKClassifierModel(_build_input_mfs(), n_classes=1)
 
 
 def test_htsk_classifier_forward_predict_shapes() -> None:
-    model = HTSKClassifier(_build_input_mfs(), n_classes=3)
+    model = HTSKClassifierModel(_build_input_mfs(), n_classes=3)
     x = torch.randn(8, 3)
 
     logits = model.forward(x)
@@ -70,7 +72,7 @@ def test_htsk_classifier_forward_predict_shapes() -> None:
 
 
 def test_htsk_classifier_forward_antecedents_row_sum_one() -> None:
-    model = HTSKClassifier(_build_input_mfs(), n_classes=2)
+    model = HTSKClassifierModel(_build_input_mfs(), n_classes=2)
     x = torch.randn(6, 3)
 
     norm_w = model.forward_antecedents(x)
@@ -80,7 +82,7 @@ def test_htsk_classifier_forward_antecedents_row_sum_one() -> None:
 
 
 def test_ayatsk_classifier_forward_predict_shapes() -> None:
-    model = AYATSKClassifier(_build_input_mfs(), n_classes=3)
+    model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3)
     x = torch.randn(8, 3)
 
     logits = model.forward(x)
@@ -94,7 +96,7 @@ def test_ayatsk_classifier_forward_predict_shapes() -> None:
 
 
 def test_ayatsk_regressor_forward_predict_shape() -> None:
-    model = AYATSKRegressor(_build_input_mfs(), rule_base="coco")
+    model = AYATSKRegressorModel(_build_input_mfs(), rule_base="coco")
     x = torch.randn(6, 3)
 
     output = model.forward(x)
@@ -106,18 +108,18 @@ def test_ayatsk_regressor_forward_predict_shape() -> None:
 
 def test_ayatsk_classifier_init_validates_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
-        AYATSKClassifier(_build_input_mfs(), n_classes=1)
+        AYATSKClassifierModel(_build_input_mfs(), n_classes=1)
 
 
 def test_ayatsk_regressor_default_criterion() -> None:
-    model = AYATSKRegressor(_build_input_mfs(), rule_base="coco")
+    model = AYATSKRegressorModel(_build_input_mfs(), rule_base="coco")
     assert isinstance(model._default_criterion(), nn.MSELoss)
 
 
 def test_adptsk_classifier_forward_predict_shapes() -> None:
-    from highfis.models import ADPTSKClassifier
+    from highfis.models import ADPTSKClassifierModel
 
-    model = ADPTSKClassifier(_build_input_mfs(), n_classes=3)
+    model = ADPTSKClassifierModel(_build_input_mfs(), n_classes=3)
     x = torch.randn(8, 3)
 
     logits = model.forward(x)
@@ -131,16 +133,34 @@ def test_adptsk_classifier_forward_predict_shapes() -> None:
 
 
 def test_adptsk_classifier_validates_n_classes() -> None:
-    from highfis.models import ADPTSKClassifier
+    from highfis.models import ADPTSKClassifierModel
 
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
-        ADPTSKClassifier(_build_input_mfs(), n_classes=1)
+        ADPTSKClassifierModel(_build_input_mfs(), n_classes=1)
+
+
+def test_adptsk_classifier_validates_kappa_xi() -> None:
+    from highfis.models import ADPTSKClassifierModel
+
+    with pytest.raises(ValueError, match="kappa must be > 0"):
+        ADPTSKClassifierModel(_build_input_mfs(), n_classes=2, kappa=0.0)
+    with pytest.raises(ValueError, match="xi must be > 0"):
+        ADPTSKClassifierModel(_build_input_mfs(), n_classes=2, xi=-1.0)
+
+
+def test_adptsk_regressor_validates_kappa_xi() -> None:
+    from highfis.models import ADPTSKRegressorModel
+
+    with pytest.raises(ValueError, match="kappa must be > 0"):
+        ADPTSKRegressorModel(_build_input_mfs(), kappa=-5.0)
+    with pytest.raises(ValueError, match="xi must be > 0"):
+        ADPTSKRegressorModel(_build_input_mfs(), xi=0.0)
 
 
 def test_adptsk_regressor_forward_predict_shape() -> None:
-    from highfis.models import ADPTSKRegressor
+    from highfis.models import ADPTSKRegressorModel
 
-    model = ADPTSKRegressor(_build_input_mfs(), rule_base="coco")
+    model = ADPTSKRegressorModel(_build_input_mfs(), rule_base="coco")
     x = torch.randn(6, 3)
 
     output = model.forward(x)
@@ -152,7 +172,7 @@ def test_adptsk_regressor_forward_predict_shape() -> None:
 
 def test_htsk_classifier_fit_returns_history() -> None:
     torch.manual_seed(1)
-    model = HTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = HTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(20, 2)
     y = torch.randint(0, 2, (20,), dtype=torch.long)
 
@@ -167,7 +187,7 @@ def test_htsk_classifier_fit_returns_history() -> None:
 
 def test_htsk_classifier_fit_supports_custom_criterion() -> None:
     torch.manual_seed(1)
-    model = HTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = HTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(16, 2)
     y = torch.randint(0, 2, (16,), dtype=torch.long)
 
@@ -177,7 +197,7 @@ def test_htsk_classifier_fit_supports_custom_criterion() -> None:
 
 
 def test_htsk_classifier_fit_validates_inputs() -> None:
-    model = HTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = HTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(10, 2)
     y = torch.randint(0, 2, (10,), dtype=torch.long)
 
@@ -204,7 +224,7 @@ def test_mhtsk_classifier_sparse_consequent_forward_shape() -> None:
     rules = [(0, 2), (2, 1)]
     rule_feature_mask = torch.tensor([[True, False], [False, True]], dtype=torch.bool)
 
-    model = MHTSKClassifier(input_mfs, rule_feature_mask, rules, n_classes=2)
+    model = MHTSKClassifierModel(input_mfs, rule_feature_mask, rules, n_classes=2)
     x = torch.randn(4, 2)
 
     logits = model.forward(x)
@@ -226,7 +246,7 @@ def test_mhtsk_regressor_sparse_consequent_forward_shape() -> None:
     rules = [(0, 2), (2, 1)]
     rule_feature_mask = torch.tensor([[True, False], [False, True]], dtype=torch.bool)
 
-    model = MHTSKRegressor(input_mfs, rule_feature_mask, rules)
+    model = MHTSKRegressorModel(input_mfs, rule_feature_mask, rules)
     x = torch.randn(4, 2)
 
     output = model.forward(x)
@@ -267,31 +287,31 @@ def test_mhtsk_classifier_rejects_invalid_n_classes() -> None:
     rule_feature_mask = torch.tensor([[True, False], [False, True]], dtype=torch.bool)
 
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
-        MHTSKClassifier(input_mfs, rule_feature_mask, rules, n_classes=1)
+        MHTSKClassifierModel(input_mfs, rule_feature_mask, rules, n_classes=1)
 
 
 def test_hdfismin_classifier_freezes_membership_parameters() -> None:
-    model = HDFISMinClassifier(_build_input_mfs(), n_classes=2)
+    model = HDFISMinClassifierModel(_build_input_mfs(), n_classes=2)
     assert all(not p.requires_grad for p in model.membership_layer.parameters())
 
 
 def test_hdfisprod_classifier_rejects_invalid_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
-        HDFISProdClassifier(_build_input_mfs(), n_classes=1)
+        HDFISProdClassifierModel(_build_input_mfs(), n_classes=1)
 
 
 def test_hdfismin_classifier_rejects_invalid_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
-        HDFISMinClassifier(_build_input_mfs(), n_classes=1)
+        HDFISMinClassifierModel(_build_input_mfs(), n_classes=1)
 
 
 def test_hdfismin_regressor_freezes_membership_parameters() -> None:
-    model = HDFISMinRegressor(_build_input_mfs(), rule_base="coco")
+    model = HDFISMinRegressorModel(_build_input_mfs(), rule_base="coco")
     assert all(not p.requires_grad for p in model.membership_layer.parameters())
 
 
 def test_dombitsk_classifier_forward_antecedents_row_sum_one() -> None:
-    model = DombiTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_=2.0)
+    model = DombiTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_=2.0)
     x = torch.randn(6, 2)
 
     norm_w = model.forward_antecedents(x)
@@ -302,16 +322,16 @@ def test_dombitsk_classifier_forward_antecedents_row_sum_one() -> None:
 
 def test_dombitsk_classifier_rejects_nonpositive_lambda() -> None:
     with pytest.raises(ValueError, match="lambda_ must be > 0"):
-        DombiTSKClassifier(_build_input_mfs(), n_classes=2, lambda_=0.0)
+        DombiTSKClassifierModel(_build_input_mfs(), n_classes=2, lambda_=0.0)
 
 
 def test_dombitsk_classifier_invalid_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
-        DombiTSKClassifier(_build_input_mfs(), n_classes=1, lambda_=1.0)
+        DombiTSKClassifierModel(_build_input_mfs(), n_classes=1, lambda_=1.0)
 
 
 def test_admtsk_classifier_forward_predict_shapes() -> None:
-    model = ADMTSKClassifier(_build_input_mfs(), n_classes=3)
+    model = ADMTSKClassifierModel(_build_input_mfs(), n_classes=3)
     x = torch.randn(8, 3)
 
     logits = model.forward(x)
@@ -325,7 +345,7 @@ def test_admtsk_classifier_forward_predict_shapes() -> None:
 
 
 def test_admtsk_regressor_forward_shape() -> None:
-    model = ADMTSKRegressor(_build_input_mfs(), rule_base="coco")
+    model = ADMTSKRegressorModel(_build_input_mfs(), rule_base="coco")
     x = torch.randn(5, 3)
 
     output = model.forward(x)
@@ -336,14 +356,14 @@ def test_admtsk_regressor_forward_shape() -> None:
 
 
 def test_admtsk_classifier_fixed_lambda_branch() -> None:
-    model = ADMTSKClassifier(_build_input_mfs(), n_classes=2, adaptive=False, lambda_=2.0)
+    model = ADMTSKClassifierModel(_build_input_mfs(), n_classes=2, adaptive=False, lambda_=2.0)
     x = torch.randn(6, 3)
     out = model.forward(x)
     assert out.shape == (6, 2)
 
 
 def test_admtsk_regressor_fixed_lambda_branch() -> None:
-    model = ADMTSKRegressor(_build_input_mfs(), adaptive=False, lambda_=2.0)
+    model = ADMTSKRegressorModel(_build_input_mfs(), adaptive=False, lambda_=2.0)
     x = torch.randn(5, 3)
     out = model.forward(x)
     assert out.shape == (5, 1)
@@ -351,24 +371,24 @@ def test_admtsk_regressor_fixed_lambda_branch() -> None:
 
 def test_admtsk_classifier_invalid_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
-        ADMTSKClassifier(_build_input_mfs(), n_classes=1)
+        ADMTSKClassifierModel(_build_input_mfs(), n_classes=1)
 
 
 def test_admtsk_classifier_invalid_lambda() -> None:
     with pytest.raises(ValueError, match="lambda_ must be > 0"):
-        ADMTSKClassifier(_build_input_mfs(), n_classes=2, adaptive=False, lambda_=0.0)
+        ADMTSKClassifierModel(_build_input_mfs(), n_classes=2, adaptive=False, lambda_=0.0)
 
 
 def test_admtsk_regressor_invalid_lambda() -> None:
     with pytest.raises(ValueError, match="lambda_ must be > 0"):
-        ADMTSKRegressor(_build_input_mfs(), adaptive=False, lambda_=0.0)
+        ADMTSKRegressorModel(_build_input_mfs(), adaptive=False, lambda_=0.0)
 
 
 def test_admtsk_classifier_accepts_custom_t_norm_fn() -> None:
-    model = ADMTSKClassifier(
+    model = ADMTSKClassifierModel(
         _build_input_mfs(),
         n_classes=2,
-        t_norm_fn=DombiTNorm(lambda_=1.5),
+        t_norm=DombiTNorm(lambda_=1.5),
     )
     x = torch.randn(4, 3)
     out = model.forward(x)
@@ -376,9 +396,9 @@ def test_admtsk_classifier_accepts_custom_t_norm_fn() -> None:
 
 
 def test_admtsk_regressor_accepts_custom_t_norm_fn() -> None:
-    model = ADMTSKRegressor(
+    model = ADMTSKRegressorModel(
         _build_input_mfs(),
-        t_norm_fn=DombiTNorm(lambda_=1.5),
+        t_norm=DombiTNorm(lambda_=1.5),
     )
     x = torch.randn(4, 3)
     out = model.forward(x)
@@ -386,14 +406,14 @@ def test_admtsk_regressor_accepts_custom_t_norm_fn() -> None:
 
 
 def test_dombitsk_classifier_default_t_norm_fn_branch() -> None:
-    model = DombiTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_=2.0)
+    model = DombiTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_=2.0)
     x = torch.randn(4, 2)
     logits = model.forward(x)
     assert logits.shape == (4, 2)
 
 
 def test_adatsk_classifier_forward_predict_shapes() -> None:
-    model = AdaTSKClassifier(_build_input_mfs(), n_classes=3)
+    model = ADATSKClassifierModel(_build_input_mfs(), n_classes=3)
     x = torch.randn(8, 3)
 
     logits = model.forward(x)
@@ -407,7 +427,7 @@ def test_adatsk_classifier_forward_predict_shapes() -> None:
 
 
 def test_adatsk_classifier_forward_antecedents_row_sum_one() -> None:
-    model = AdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = ADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(6, 2)
 
     norm_w = model.forward_antecedents(x)
@@ -419,12 +439,12 @@ def test_adatsk_classifier_forward_antecedents_row_sum_one() -> None:
 def test_adatsk_classifier_uses_ada_softmin_rule_layer() -> None:
     from highfis.layers import AdaSoftminRuleLayer
 
-    model = AdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = ADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     assert isinstance(model.rule_layer, AdaSoftminRuleLayer)
 
 
 def test_adatsk_regressor_forward_shape() -> None:
-    model = AdaTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = ADATSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(5, 2)
 
     output = model.forward(x)
@@ -434,7 +454,7 @@ def test_adatsk_regressor_forward_shape() -> None:
 
 def test_adatsk_regressor_fit_returns_history() -> None:
     torch.manual_seed(1)
-    model = AdaTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = ADATSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(20, 2)
     y = torch.randn(20)
 
@@ -448,11 +468,11 @@ def test_adatsk_regressor_fit_returns_history() -> None:
 
 def test_adatsk_classifier_rejects_invalid_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
-        AdaTSKClassifier(_build_input_mfs(), n_classes=1)
+        ADATSKClassifierModel(_build_input_mfs(), n_classes=1)
 
 
 def test_fsre_adatsk_classifier_helpers() -> None:
-    model = FSREAdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(12, 2)
     y = torch.randint(0, 2, (12,), dtype=torch.long)
 
@@ -468,11 +488,11 @@ def test_fsre_adatsk_classifier_helpers() -> None:
 
 def test_fsre_adatsk_classifier_invalid_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
-        FSREAdaTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=1)
+        FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=1)
 
 
 def test_fsre_adatsk_regressor_helpers() -> None:
-    model = FSREAdaTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = FSREADATSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(12, 2)
     y = torch.randn(12)
 
@@ -488,16 +508,16 @@ def test_fsre_adatsk_regressor_helpers() -> None:
 
 def test_dg_aletsk_classifier_invalid_lambda_init() -> None:
     with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=0.0)
+        DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=0.0)
 
 
 def test_dg_aletsk_classifier_invalid_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
-        DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=1, lambda_init=1.0)
+        DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=1, lambda_init=1.0)
 
 
 def test_dg_aletsk_classifier_thresholds_and_convert() -> None:
-    model = DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
     assert isinstance(model.consequent_layer, GatedClassificationZeroOrderConsequentLayer)
 
     model.convert_to_first_order()
@@ -515,7 +535,7 @@ def test_dg_aletsk_classifier_thresholds_and_convert() -> None:
 
 def test_dg_aletsk_classifier_search_thresholds_inplace_false() -> None:
     torch.manual_seed(0)
-    model = DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
     x = torch.randn(16, 2)
     y = torch.randint(0, 2, (16,), dtype=torch.long)
 
@@ -529,7 +549,7 @@ def test_dg_aletsk_classifier_search_thresholds_inplace_false() -> None:
 
 def test_dg_aletsk_classifier_search_thresholds_inplace_true_converts_zero_order_self() -> None:
     torch.manual_seed(0)
-    model = DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
     x = torch.randn(16, 2)
     y = torch.randint(0, 2, (16,), dtype=torch.long)
 
@@ -541,7 +561,7 @@ def test_dg_aletsk_classifier_search_thresholds_inplace_true_converts_zero_order
 
 
 def test_dg_aletsk_classifier_convert_to_first_order_idempotent() -> None:
-    model = DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
     model.convert_to_first_order()
     model.convert_to_first_order()
     assert isinstance(model.consequent_layer, GatedClassificationConsequentLayer)
@@ -549,12 +569,12 @@ def test_dg_aletsk_classifier_convert_to_first_order_idempotent() -> None:
 
 def test_dg_aletsk_regressor_invalid_lambda_init() -> None:
     with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=0.0)
+        DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=0.0)
 
 
 def test_dg_aletsk_regressor_thresholds_apply_and_search() -> None:
     torch.manual_seed(0)
-    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
     x = torch.randn(16, 2)
     y = x[:, 0] - x[:, 1]
 
@@ -567,7 +587,7 @@ def test_dg_aletsk_regressor_thresholds_apply_and_search() -> None:
 
 def test_dg_aletsk_regressor_search_thresholds_inplace_true_and_verbose() -> None:
     torch.manual_seed(0)
-    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
     model.convert_to_first_order()
     x = torch.randn(16, 2)
     y = x[:, 0] - x[:, 1]
@@ -578,7 +598,7 @@ def test_dg_aletsk_regressor_search_thresholds_inplace_true_and_verbose() -> Non
 
 def test_dg_aletsk_regressor_search_thresholds_inplace_true_converts_zero_order_self() -> None:
     torch.manual_seed(0)
-    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
     x = torch.randn(16, 2)
     y = x[:, 0] - x[:, 1]
 
@@ -590,7 +610,7 @@ def test_dg_aletsk_regressor_search_thresholds_inplace_true_converts_zero_order_
 
 
 def test_dg_aletsk_regressor_convert_to_first_order_idempotent() -> None:
-    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
     model.convert_to_first_order()
     model.convert_to_first_order()
     assert isinstance(model.consequent_layer, GatedRegressionConsequentLayer)
@@ -598,27 +618,27 @@ def test_dg_aletsk_regressor_convert_to_first_order_idempotent() -> None:
 
 def test_dombi_tsk_regressor_rejects_nonpositive_lambda() -> None:
     with pytest.raises(ValueError, match="lambda_ must be > 0"):
-        DombiTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_=0.0)
+        DombiTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_=0.0)
 
 
 def test_dombi_tsk_classifier_rejects_invalid_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
-        DombiTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=1, lambda_=1.0)
+        DombiTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=1, lambda_=1.0)
 
 
 def test_dombi_tsk_classifier_default_t_norm_fn_branch() -> None:
-    model = DombiTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_=1.5)
+    model = DombiTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_=1.5)
     x = torch.randn(4, 2)
     logits = model.forward(x)
     assert logits.shape == (4, 2)
 
 
 def test_dombi_tsk_classifier_explicit_t_norm_fn_branch() -> None:
-    model = DombiTSKClassifier(
+    model = DombiTSKClassifierModel(
         _build_input_mfs(n_inputs=2, n_mfs=2),
         n_classes=2,
         lambda_=1.5,
-        t_norm_fn=lambda terms, dim=-1: terms.prod(dim=dim),
+        t_norm=lambda terms, dim=-1: terms.prod(dim=dim),
     )
     x = torch.randn(4, 2)
     logits = model.forward(x)
@@ -626,17 +646,17 @@ def test_dombi_tsk_classifier_explicit_t_norm_fn_branch() -> None:
 
 
 def test_dombi_tsk_regressor_default_t_norm_fn_branch() -> None:
-    model = DombiTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_=1.0)
+    model = DombiTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_=1.0)
     x = torch.randn(4, 2)
     out = model.forward(x)
     assert out.shape == (4, 1)
 
 
 def test_dombi_tsk_regressor_explicit_t_norm_fn_branch() -> None:
-    model = DombiTSKRegressor(
+    model = DombiTSKRegressorModel(
         _build_input_mfs(n_inputs=2, n_mfs=2),
         lambda_=1.0,
-        t_norm_fn=lambda terms, dim=-1: terms.prod(dim=dim),
+        t_norm=lambda terms, dim=-1: terms.prod(dim=dim),
     )
     x = torch.randn(4, 2)
     out = model.forward(x)
@@ -653,11 +673,11 @@ def test_threshold_from_zeta_invalid_range() -> None:
 
 def test_tsk_classifier_invalid_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
-        TSKClassifier(_build_input_mfs(), n_classes=1)
+        TSKClassifierModel(_build_input_mfs(), n_classes=1)
 
 
 def test_tsk_regressor_forward_shape() -> None:
-    model = TSKRegressor(_build_input_mfs())
+    model = TSKRegressorModel(_build_input_mfs())
     x = torch.randn(4, 3)
     out = model.forward(x)
     assert out.shape == (4, 1)
@@ -665,11 +685,11 @@ def test_tsk_regressor_forward_shape() -> None:
 
 def test_log_tsk_classifier_invalid_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
-        LogTSKClassifier(_build_input_mfs(), n_classes=1)
+        LogTSKClassifierModel(_build_input_mfs(), n_classes=1)
 
 
 def test_log_tsk_classifier_forward_shapes() -> None:
-    model = LogTSKClassifier(_build_input_mfs(), n_classes=2)
+    model = LogTSKClassifierModel(_build_input_mfs(), n_classes=2)
     x = torch.randn(4, 3)
     logits = model.forward(x)
     assert logits.shape == (4, 2)
@@ -677,14 +697,14 @@ def test_log_tsk_classifier_forward_shapes() -> None:
 
 
 def test_log_tsk_regressor_forward_shape() -> None:
-    model = LogTSKRegressor(_build_input_mfs())
+    model = LogTSKRegressorModel(_build_input_mfs())
     x = torch.randn(4, 3)
     out = model.forward(x)
     assert out.shape == (4, 1)
 
 
 def test_tsk_classifier_forward_shapes() -> None:
-    model = TSKClassifier(_build_input_mfs(), n_classes=2)
+    model = TSKClassifierModel(_build_input_mfs(), n_classes=2)
     x = torch.randn(4, 3)
     logits = model.forward(x)
     assert logits.shape == (4, 2)
@@ -692,62 +712,62 @@ def test_tsk_classifier_forward_shapes() -> None:
 
 
 def test_tsk_classifier_default_criterion() -> None:
-    model = TSKClassifier(_build_input_mfs(), n_classes=2)
+    model = TSKClassifierModel(_build_input_mfs(), n_classes=2)
     assert isinstance(model._default_criterion(), nn.CrossEntropyLoss)
 
 
 def test_tsk_regressor_default_criterion() -> None:
-    model = TSKRegressor(_build_input_mfs())
+    model = TSKRegressorModel(_build_input_mfs())
     assert isinstance(model._default_criterion(), nn.MSELoss)
 
 
 def test_dombi_tsk_classifier_default_criterion() -> None:
-    model = DombiTSKClassifier(_build_input_mfs(), n_classes=2, lambda_=1.0)
+    model = DombiTSKClassifierModel(_build_input_mfs(), n_classes=2, lambda_=1.0)
     assert isinstance(model._default_criterion(), nn.CrossEntropyLoss)
 
 
 def test_dombi_tsk_regressor_default_criterion() -> None:
-    model = DombiTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_=1.0)
+    model = DombiTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_=1.0)
     assert isinstance(model._default_criterion(), nn.MSELoss)
 
 
 def test_log_tsk_classifier_default_criterion() -> None:
-    model = LogTSKClassifier(_build_input_mfs(), n_classes=2)
+    model = LogTSKClassifierModel(_build_input_mfs(), n_classes=2)
     assert isinstance(model._default_criterion(), nn.CrossEntropyLoss)
 
 
 def test_log_tsk_regressor_default_criterion() -> None:
-    model = LogTSKRegressor(_build_input_mfs())
+    model = LogTSKRegressorModel(_build_input_mfs())
     assert isinstance(model._default_criterion(), nn.MSELoss)
 
 
 def test_dg_aletsk_classifier_convert_to_first_order_preserves_theta() -> None:
-    model = DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
     assert isinstance(model.consequent_layer, GatedClassificationZeroOrderConsequentLayer)
     model.convert_to_first_order()
     assert isinstance(model.consequent_layer, GatedClassificationConsequentLayer)
 
 
 def test_dg_aletsk_regressor_convert_to_first_order_preserves_theta() -> None:
-    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
     assert isinstance(model.consequent_layer, GatedRegressionZeroOrderConsequentLayer)
     model.convert_to_first_order()
     assert isinstance(model.consequent_layer, GatedRegressionConsequentLayer)
 
 
 def test_dg_aletsk_classifier_default_criterion() -> None:
-    model = DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
     assert isinstance(model._default_criterion(), nn.CrossEntropyLoss)
 
 
 def test_dg_aletsk_regressor_default_criterion() -> None:
-    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
     assert isinstance(model._default_criterion(), nn.MSELoss)
 
 
 def test_dg_aletsk_regressor_search_thresholds_verbose() -> None:
     torch.manual_seed(0)
-    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
     x = torch.randn(16, 2)
     y = x[:, 0] - x[:, 1]
 
@@ -757,7 +777,7 @@ def test_dg_aletsk_regressor_search_thresholds_verbose() -> None:
 
 def test_dg_aletsk_regressor_search_thresholds_use_lse_false() -> None:
     torch.manual_seed(0)
-    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
     x = torch.randn(16, 2)
     y = x[:, 0] - x[:, 1]
 
@@ -766,7 +786,7 @@ def test_dg_aletsk_regressor_search_thresholds_use_lse_false() -> None:
 
 
 def test_dg_aletsk_classifier_fit_dg_phase_and_finetune() -> None:
-    model = DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
     x = torch.randn(16, 2)
     y = torch.randint(0, 2, (16,), dtype=torch.long)
 
@@ -778,7 +798,7 @@ def test_dg_aletsk_classifier_fit_dg_phase_and_finetune() -> None:
 
 
 def test_dg_aletsk_classifier_search_thresholds_no_candidates_raises() -> None:
-    model = DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
     x = torch.randn(8, 2)
     y = torch.randint(0, 2, (8,), dtype=torch.long)
 
@@ -787,7 +807,7 @@ def test_dg_aletsk_classifier_search_thresholds_no_candidates_raises() -> None:
 
 
 def test_dg_aletsk_regressor_fit_dg_phase_and_finetune() -> None:
-    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
     x = torch.randn(16, 2)
     y = torch.randn(16)
 
@@ -799,7 +819,7 @@ def test_dg_aletsk_regressor_fit_dg_phase_and_finetune() -> None:
 
 
 def test_dg_aletsk_regressor_search_thresholds_no_candidates_raises() -> None:
-    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
     x = torch.randn(8, 2)
     y = torch.randn(8)
 
@@ -808,7 +828,7 @@ def test_dg_aletsk_regressor_search_thresholds_no_candidates_raises() -> None:
 
 
 def test_dg_aletsk_classifier_convert_to_first_order_preserves_theta_values() -> None:
-    model = DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
     theta_before = model.consequent_layer.theta_gates.detach().clone()
 
     model.convert_to_first_order()
@@ -816,7 +836,7 @@ def test_dg_aletsk_classifier_convert_to_first_order_preserves_theta_values() ->
 
 
 def test_dg_aletsk_regressor_convert_to_first_order_preserves_theta_values() -> None:
-    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
     theta_before = model.consequent_layer.theta_gates.detach().clone()
 
     model.convert_to_first_order()
@@ -824,7 +844,7 @@ def test_dg_aletsk_regressor_convert_to_first_order_preserves_theta_values() -> 
 
 
 def test_adatsk_classifier_consequent_batch_norm() -> None:
-    model = AdaTSKClassifier(_build_input_mfs(), n_classes=2, consequent_batch_norm=True)
+    model = ADATSKClassifierModel(_build_input_mfs(), n_classes=2, consequent_batch_norm=True)
     x = torch.randn(8, 3)
     y = torch.randint(0, 2, (8,), dtype=torch.long)
 
@@ -836,7 +856,7 @@ def test_adatsk_classifier_consequent_batch_norm() -> None:
 def test_adatsk_classifier_custom_rule_base_and_rules() -> None:
     input_mfs = _build_input_mfs(n_inputs=2, n_mfs=2)
     custom_rules = [(0, 0), (1, 1)]
-    model = AdaTSKClassifier(
+    model = ADATSKClassifierModel(
         input_mfs,
         n_classes=2,
         rule_base="custom",
@@ -850,7 +870,7 @@ def test_adatsk_classifier_custom_rule_base_and_rules() -> None:
 
 
 def test_adatsk_regressor_consequent_batch_norm() -> None:
-    model = AdaTSKRegressor(
+    model = ADATSKRegressorModel(
         _build_input_mfs(n_inputs=2, n_mfs=2),
         consequent_batch_norm=True,
     )
@@ -862,7 +882,7 @@ def test_adatsk_regressor_consequent_batch_norm() -> None:
 
 
 def test_htsk_classifier_fit_history_keys_without_val() -> None:
-    model = HTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = HTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(20, 2)
     y = torch.randint(0, 2, (20,), dtype=torch.long)
 
@@ -875,7 +895,7 @@ def test_htsk_classifier_fit_history_keys_without_val() -> None:
 
 def test_htsk_classifier_early_stopping_with_val_data() -> None:
     torch.manual_seed(42)
-    model = HTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = HTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(30, 2)
     y = torch.randint(0, 2, (30,), dtype=torch.long)
     x_val = torch.randn(10, 2)
@@ -900,7 +920,7 @@ def test_htsk_classifier_early_stopping_with_val_data() -> None:
 
 
 def test_htsk_classifier_fit_validates_val_inputs() -> None:
-    model = HTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = HTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(10, 2)
     y = torch.randint(0, 2, (10,), dtype=torch.long)
 
@@ -934,11 +954,11 @@ def test_build_first_order_design_matrix_validates_input_shapes() -> None:
 
 def test_dombitsk_classifier_rejects_invalid_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
-        DombiTSKClassifier(_build_input_mfs(), n_classes=1, lambda_=1.0)
+        DombiTSKClassifierModel(_build_input_mfs(), n_classes=1, lambda_=1.0)
 
 
 def test_dg_aletsk_classifier_fit_first_order_consequents_requires_conversion() -> None:
-    model = DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
     x = torch.randn(8, 2)
     y = torch.randint(0, 2, (8,), dtype=torch.long)
 
@@ -948,7 +968,7 @@ def test_dg_aletsk_classifier_fit_first_order_consequents_requires_conversion() 
 
 def test_dg_aletsk_classifier_search_thresholds_inplace_true_loads_state() -> None:
     torch.manual_seed(0)
-    model = DGALETSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
     model.convert_to_first_order()
     x = torch.randn(16, 2)
     y = torch.randint(0, 2, (16,), dtype=torch.long)
@@ -961,7 +981,7 @@ def test_dg_aletsk_classifier_search_thresholds_inplace_true_loads_state() -> No
 
 def test_dg_aletsk_regressor_convert_to_first_order_and_search_inplace_true() -> None:
     torch.manual_seed(0)
-    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
     x = torch.randn(16, 2)
     y = x[:, 0] - x[:, 1]
 
@@ -973,7 +993,7 @@ def test_dg_aletsk_regressor_convert_to_first_order_and_search_inplace_true() ->
 
 
 def test_dg_aletsk_regressor_fit_first_order_consequents_requires_conversion() -> None:
-    model = DGALETSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
     x = torch.randn(8, 2)
     y = torch.randn(8)
 
@@ -989,7 +1009,7 @@ def test_dg_aletsk_regressor_fit_first_order_consequents_requires_conversion() -
 def test_htsk_classifier_consequent_batch_norm() -> None:
     """consequent_batch_norm=True covers BN in forward (line 169) and fit optimizer (line 174)."""
     torch.manual_seed(1)
-    model = HTSKClassifier(
+    model = HTSKClassifierModel(
         _build_input_mfs(n_inputs=2, n_mfs=2),
         n_classes=2,
         consequent_batch_norm=True,
@@ -1014,7 +1034,7 @@ def test_htsk_classifier_consequent_batch_norm() -> None:
 def test_htsk_classifier_fit_mse_with_validation() -> None:
     """MSELoss criterion + validation data covers the MSELoss path in val loop."""
     torch.manual_seed(0)
-    model = HTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = HTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(20, 2)
     y = torch.randint(0, 2, (20,), dtype=torch.long)
     x_val = torch.randn(8, 2)
@@ -1038,9 +1058,9 @@ def test_htsk_classifier_fit_mse_with_validation() -> None:
 
 
 def test_htsk_classifier_fit_verbose_with_early_stopping() -> None:
-    """verbose=True + early stopping exercises logging lines 246 and 257."""
+    """verbose=2 + early stopping exercises per-epoch logging with validation."""
     torch.manual_seed(42)
-    model = HTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = HTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(30, 2)
     y = torch.randint(0, 2, (30,), dtype=torch.long)
     x_val = torch.randn(10, 2)
@@ -1054,34 +1074,34 @@ def test_htsk_classifier_fit_verbose_with_early_stopping() -> None:
         y_val=y_val,
         patience=5,
         learning_rate=1e-2,
-        verbose=True,
+        verbose=2,
     )
     assert history["stopped_epoch"] < 500
 
 
 def test_htsk_classifier_fit_verbose_no_validation() -> None:
-    """verbose=True without validation exercises the no-val logging path (line 261)."""
+    """verbose=2 without validation exercises the no-val per-epoch logging path."""
     torch.manual_seed(0)
-    model = HTSKClassifier(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = HTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(20, 2)
     y = torch.randint(0, 2, (20,), dtype=torch.long)
 
-    history = model.fit(x, y, epochs=10, verbose=True)
+    history = model.fit(x, y, epochs=10, verbose=2)
     assert len(history["train"]) == 10
 
 
 # ===========================================================================
-# HTSKRegressor
+# HTSKRegressorModel
 # ===========================================================================
 
 
 def test_htsk_regressor_init_validates_arguments() -> None:
     with pytest.raises(ValueError, match="input_mfs must not be empty"):
-        HTSKRegressor({})
+        HTSKRegressorModel({})
 
 
 def test_htsk_regressor_forward_predict_shapes() -> None:
-    model = HTSKRegressor(_build_input_mfs())
+    model = HTSKRegressorModel(_build_input_mfs())
     x = torch.randn(8, 3)
 
     out = model.forward(x)
@@ -1092,7 +1112,7 @@ def test_htsk_regressor_forward_predict_shapes() -> None:
 
 
 def test_htsk_regressor_forward_antecedents_row_sum_one() -> None:
-    model = HTSKRegressor(_build_input_mfs())
+    model = HTSKRegressorModel(_build_input_mfs())
     x = torch.randn(6, 3)
 
     norm_w = model.forward_antecedents(x)
@@ -1103,7 +1123,7 @@ def test_htsk_regressor_forward_antecedents_row_sum_one() -> None:
 
 def test_htsk_regressor_fit_returns_history() -> None:
     torch.manual_seed(1)
-    model = HTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = HTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(20, 2)
     y = torch.randn(20)
 
@@ -1118,7 +1138,7 @@ def test_htsk_regressor_fit_returns_history() -> None:
 
 def test_htsk_regressor_fit_loss_decreases() -> None:
     torch.manual_seed(42)
-    model = HTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = HTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(40, 2)
     y = x[:, 0] + 0.5 * x[:, 1]
 
@@ -1128,7 +1148,7 @@ def test_htsk_regressor_fit_loss_decreases() -> None:
 
 
 def test_htsk_regressor_fit_validates_inputs() -> None:
-    model = HTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = HTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(10, 2)
     y = torch.randn(10)
 
@@ -1147,7 +1167,7 @@ def test_htsk_regressor_fit_validates_inputs() -> None:
 
 def test_htsk_regressor_early_stopping_with_val_data() -> None:
     torch.manual_seed(42)
-    model = HTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = HTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(30, 2)
     y = x[:, 0] + 0.5 * x[:, 1]
     x_val = torch.randn(10, 2)
@@ -1170,7 +1190,7 @@ def test_htsk_regressor_early_stopping_with_val_data() -> None:
 
 
 def test_htsk_regressor_fit_validates_val_inputs() -> None:
-    model = HTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = HTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(10, 2)
     y = torch.randn(10)
 
@@ -1183,7 +1203,7 @@ def test_htsk_regressor_fit_validates_val_inputs() -> None:
 
 def test_htsk_regressor_consequent_batch_norm() -> None:
     torch.manual_seed(1)
-    model = HTSKRegressor(
+    model = HTSKRegressorModel(
         _build_input_mfs(n_inputs=2, n_mfs=2),
         consequent_batch_norm=True,
     )
@@ -1201,7 +1221,7 @@ def test_htsk_regressor_consequent_batch_norm() -> None:
 
 def test_htsk_regressor_fit_verbose_with_early_stopping() -> None:
     torch.manual_seed(42)
-    model = HTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = HTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(30, 2)
     y = x[:, 0] + 0.5 * x[:, 1]
     x_val = torch.randn(10, 2)
@@ -1215,24 +1235,24 @@ def test_htsk_regressor_fit_verbose_with_early_stopping() -> None:
         y_val=y_val,
         patience=15,
         learning_rate=5e-2,
-        verbose=True,
+        verbose=2,
     )
     assert history["stopped_epoch"] < 2000
 
 
 def test_htsk_regressor_fit_verbose_no_validation() -> None:
     torch.manual_seed(0)
-    model = HTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = HTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(20, 2)
     y = torch.randn(20)
 
-    history = model.fit(x, y, epochs=10, verbose=True)
+    history = model.fit(x, y, epochs=10, verbose=2)
     assert len(history["train"]) == 10
 
 
 def test_htsk_regressor_single_sample() -> None:
     torch.manual_seed(0)
-    model = HTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = HTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(1, 2)
     y = torch.tensor([1.0])
 
@@ -1245,7 +1265,7 @@ def test_htsk_regressor_single_sample() -> None:
 
 def test_htsk_regressor_constant_targets() -> None:
     torch.manual_seed(0)
-    model = HTSKRegressor(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = HTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(20, 2)
     y = torch.full((20,), 3.14)
 

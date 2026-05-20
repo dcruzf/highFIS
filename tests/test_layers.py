@@ -317,11 +317,11 @@ def test_rule_layer_custom_rejects_missing_rules() -> None:
 
 
 def test_rule_layer_custom_t_norm_fn_overrides_default() -> None:
-    """t_norm_fn parameter uses the custom function (line 195)."""
+    """Custom callable passed via t_norm uses the custom function."""
     layer = RuleLayer(
         ["x1", "x2"],
         [2, 2],
-        t_norm_fn=lambda t: t.prod(dim=-1),
+        t_norm=lambda t: t.prod(dim=-1),
     )
     m = MembershipLayer(_build_input_mfs())
     x = torch.randn(3, 2)
@@ -430,6 +430,20 @@ def test_adp_softmin_rule_layer_missing_membership_output_raises() -> None:
     layer = ADPSoftminRuleLayer(["x1", "x2"], [2, 2])
     with pytest.raises(KeyError, match="missing membership output"):
         layer({"x1": torch.rand(2, 2)})
+
+
+def test_adp_softmin_rule_layer_rejects_nonpositive_kappa() -> None:
+    from highfis.layers import ADPSoftminRuleLayer
+
+    with pytest.raises(ValueError, match="kappa must be > 0"):
+        ADPSoftminRuleLayer(["x1"], [2], kappa=0.0)
+
+
+def test_adp_softmin_rule_layer_rejects_nonpositive_xi() -> None:
+    from highfis.layers import ADPSoftminRuleLayer
+
+    with pytest.raises(ValueError, match="xi must be > 0"):
+        ADPSoftminRuleLayer(["x1"], [2], xi=0.0)
 
 
 def test_adp_softmin_rule_layer_forward_shape() -> None:

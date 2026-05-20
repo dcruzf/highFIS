@@ -126,7 +126,7 @@ def test_dombi_tnorm_rejects_nonpositive_lambda() -> None:
 
 
 def test_adaptive_dombi_tnorm_values() -> None:
-    norm = AdaptiveDombiTNorm(dimension=1000, lower_bound=1.0 / math.e, K=10.0)
+    norm = AdaptiveDombiTNorm(dimension=1000, lower_bound=1.0 / math.e, k=10.0)
     terms = torch.tensor([[0.25, 0.5], [0.4, 0.9]], dtype=torch.float32)
     out = norm(terms, dim=1)
     assert out.shape == torch.Size([2])
@@ -139,8 +139,8 @@ def test_adaptive_dombi_tnorm_rejects_invalid_arguments() -> None:
         AdaptiveDombiTNorm(dimension=1, lower_bound=0.1)
     with pytest.raises(ValueError, match=r"lower_bound must be in \[0, 1\)"):
         AdaptiveDombiTNorm(dimension=1000, lower_bound=1.0)
-    with pytest.raises(ValueError, match="K must be > 1"):
-        AdaptiveDombiTNorm(dimension=1000, lower_bound=0.1, K=1.0)
+    with pytest.raises(ValueError, match="k must be > 1"):
+        AdaptiveDombiTNorm(dimension=1000, lower_bound=0.1, k=1.0)
 
 
 def test_resolve_adaptive_dombi_t_norm_rejects_name() -> None:

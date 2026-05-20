@@ -71,14 +71,14 @@ $$
 
 | Paper concept | highFIS implementation |
 |--------------|------------------------|
-| Geometric-mean antecedent | `HTSKClassifier` / `HTSKRegressor` with `t_norm="gmean"` |
-| Log-domain aggregation | `HTSKClassifier` / `HTSKRegressor` uses `SoftmaxLogDefuzzifier` |
+| Geometric-mean antecedent | `HTSKClassifierModel` / `HTSKRegressorModel` with `t_norm="gmean"` |
+| Log-domain aggregation | `HTSKClassifierModel` / `HTSKRegressorModel` uses `SoftmaxLogDefuzzifier` |
 | Normalized rule weights | `SoftmaxLogDefuzzifier.forward()` |
 | First-order consequent | `ClassificationConsequentLayer` / `RegressionConsequentLayer` |
 
 ## Implementation notes
 
-- `HTSKClassifier` and `HTSKRegressor` default to `t_norm="gmean"` and
+- `HTSKClassifierModel` and `HTSKRegressorModel` default to `t_norm="gmean"` and
   `SoftmaxLogDefuzzifier`.
 - `HTSK` is not the same as `LogTSK`: HTSK averages log-membership values and
   then applies a softmax, while LogTSK uses inverse-log normalisation.
@@ -92,9 +92,9 @@ $$
 
 ### Estimator wrappers
 
-- `HTSKClassifierEstimator` and `HTSKRegressorEstimator` are sklearn-like
+- `HTSKClassifier` and `HTSKRegressor` are sklearn-like
   wrappers around the low-level model classes.
-- They build Gaussian membership functions from `input_configs` or `n_mfs`,
+- They build Gaussian membership functions from `input_configs` or `n_rules`,
   `mf_init`, and `sigma_scale`.
 - The estimators expose the standard hyperparameters used in the paper,
   including `epochs`, `learning_rate`, `batch_size`, `shuffle`, and
@@ -117,14 +117,14 @@ $$
   `BaseTSK.fit()`, which supports mini-batch AdamW, optional early stopping,
   and optional uniform-rule regularization (`ur_weight`, `ur_target`).
 - The default HTSK estimator settings mirror the experimental setup of the
-  paper: `n_mfs=30`, `mf_init="kmeans"`, `sigma_scale=1.0`, `epochs=200`,
+  paper: `n_rules=30`, `mf_init="kmeans"`, `sigma_scale=1.0`, `epochs=200`,
   `learning_rate=1e-2`, `batch_size=512`, and `patience=20`.
 
 ## Alignment with the paper
 
 - The paper introduces HTSK as a high-dimensional variant of TSK that
   avoids softmax saturation by averaging log-domain membership strengths.
-- highFIS implements this directly with `HTSKClassifier`, `HTSKRegressor`,
+- highFIS implements this directly with `HTSKClassifierModel`, `HTSKRegressorModel`,
   and `SoftmaxLogDefuzzifier`.
 - The antecedent remains a Gaussian product structure, but the rule activation
   is computed as a $D$-th root of the product, which is equivalent to the

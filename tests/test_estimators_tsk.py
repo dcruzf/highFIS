@@ -13,10 +13,10 @@ from sklearn.exceptions import NotFittedError
 from highfis.defuzzifiers import InvLogDefuzzifier, SumBasedDefuzzifier
 from highfis.estimators import (
     InputConfig,
-    LogTSKClassifierEstimator,
-    LogTSKRegressorEstimator,
-    TSKClassifierEstimator,
-    TSKRegressorEstimator,
+    LogTSKClassifier,
+    LogTSKRegressor,
+    TSKClassifier,
+    TSKRegressor,
 )
 
 
@@ -35,14 +35,14 @@ def _make_reg_dataset(n_samples: int = 60) -> tuple[np.ndarray, np.ndarray]:
 
 
 # =====================================================================
-# TSKClassifierEstimator
+# TSKClassifier
 # =====================================================================
 
 
 class TestTSKClassifierEstimator:
     def test_fit_predict_score_kmeans(self) -> None:
         x, y = _make_clf_dataset(80)
-        est = TSKClassifierEstimator(
+        est = TSKClassifier(
             n_mfs=2,
             mf_init="kmeans",
             epochs=5,
@@ -62,7 +62,7 @@ class TestTSKClassifierEstimator:
 
     def test_fit_predict_score_fcm(self) -> None:
         x, y = _make_clf_dataset(80)
-        est = TSKClassifierEstimator(
+        est = TSKClassifier(
             n_mfs=2,
             mf_init="fcm",
             epochs=5,
@@ -82,7 +82,7 @@ class TestTSKClassifierEstimator:
 
     def test_fit_predict_grid(self) -> None:
         x, y = _make_clf_dataset(80)
-        est = TSKClassifierEstimator(
+        est = TSKClassifier(
             n_mfs=2,
             mf_init="grid",
             epochs=5,
@@ -96,19 +96,19 @@ class TestTSKClassifierEstimator:
 
     def test_model_uses_sum_based_defuzzifier(self) -> None:
         x, y = _make_clf_dataset(40)
-        est = TSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=16, random_state=0)
+        est = TSKClassifier(n_mfs=2, epochs=1, batch_size=16, random_state=0)
         est.fit(x, y)
         assert isinstance(est.model_.defuzzifier, SumBasedDefuzzifier)
 
     def test_predict_requires_fit(self) -> None:
         x, _ = _make_clf_dataset(10)
-        est = TSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=16)
+        est = TSKClassifier(n_mfs=2, epochs=1, batch_size=16)
         with pytest.raises(NotFittedError):
             est.predict_proba(x)
 
     def test_validates_input_config_length(self) -> None:
         x, y = _make_clf_dataset(20)
-        est = TSKClassifierEstimator(
+        est = TSKClassifier(
             input_configs=[InputConfig(name="x1", n_mfs=2)],
             batch_size=16,
         )
@@ -117,14 +117,14 @@ class TestTSKClassifierEstimator:
 
 
 # =====================================================================
-# TSKRegressorEstimator
+# TSKRegressor
 # =====================================================================
 
 
 class TestTSKRegressorEstimator:
     def test_fit_predict_score_kmeans(self) -> None:
         x, y = _make_reg_dataset(80)
-        est = TSKRegressorEstimator(
+        est = TSKRegressor(
             n_mfs=2,
             mf_init="kmeans",
             epochs=5,
@@ -141,7 +141,7 @@ class TestTSKRegressorEstimator:
 
     def test_fit_predict_score_fcm(self) -> None:
         x, y = _make_reg_dataset(80)
-        est = TSKRegressorEstimator(
+        est = TSKRegressor(
             n_mfs=2,
             mf_init="fcm",
             epochs=5,
@@ -157,7 +157,7 @@ class TestTSKRegressorEstimator:
 
     def test_fit_predict_grid(self) -> None:
         x, y = _make_reg_dataset(80)
-        est = TSKRegressorEstimator(
+        est = TSKRegressor(
             n_mfs=2,
             mf_init="grid",
             epochs=5,
@@ -171,26 +171,26 @@ class TestTSKRegressorEstimator:
 
     def test_model_uses_sum_based_defuzzifier(self) -> None:
         x, y = _make_reg_dataset(40)
-        est = TSKRegressorEstimator(n_mfs=2, epochs=1, batch_size=16, random_state=0)
+        est = TSKRegressor(n_mfs=2, epochs=1, batch_size=16, random_state=0)
         est.fit(x, y)
         assert isinstance(est.model_.defuzzifier, SumBasedDefuzzifier)
 
     def test_predict_requires_fit(self) -> None:
         x, _ = _make_reg_dataset(10)
-        est = TSKRegressorEstimator(n_mfs=2, epochs=1, batch_size=16)
+        est = TSKRegressor(n_mfs=2, epochs=1, batch_size=16)
         with pytest.raises(NotFittedError):
             est.predict(x)
 
 
 # =====================================================================
-# LogTSKClassifierEstimator
+# LogTSKClassifier
 # =====================================================================
 
 
 class TestLogTSKClassifierEstimator:
     def test_fit_predict_score_kmeans(self) -> None:
         x, y = _make_clf_dataset(80)
-        est = LogTSKClassifierEstimator(
+        est = LogTSKClassifier(
             n_mfs=2,
             mf_init="kmeans",
             epochs=5,
@@ -210,7 +210,7 @@ class TestLogTSKClassifierEstimator:
 
     def test_fit_predict_grid(self) -> None:
         x, y = _make_clf_dataset(80)
-        est = LogTSKClassifierEstimator(
+        est = LogTSKClassifier(
             n_mfs=2,
             mf_init="grid",
             epochs=5,
@@ -224,26 +224,26 @@ class TestLogTSKClassifierEstimator:
 
     def test_model_uses_log_sum_defuzzifier(self) -> None:
         x, y = _make_clf_dataset(40)
-        est = LogTSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=16, random_state=0)
+        est = LogTSKClassifier(n_mfs=2, epochs=1, batch_size=16, random_state=0)
         est.fit(x, y)
         assert isinstance(est.model_.defuzzifier, InvLogDefuzzifier)
 
     def test_predict_requires_fit(self) -> None:
         x, _ = _make_clf_dataset(10)
-        est = LogTSKClassifierEstimator(n_mfs=2, epochs=1, batch_size=16)
+        est = LogTSKClassifier(n_mfs=2, epochs=1, batch_size=16)
         with pytest.raises(NotFittedError):
             est.predict_proba(x)
 
 
 # =====================================================================
-# LogTSKRegressorEstimator
+# LogTSKRegressor
 # =====================================================================
 
 
 class TestLogTSKRegressorEstimator:
     def test_fit_predict_score_kmeans(self) -> None:
         x, y = _make_reg_dataset(80)
-        est = LogTSKRegressorEstimator(
+        est = LogTSKRegressor(
             n_mfs=2,
             mf_init="kmeans",
             epochs=5,
@@ -259,7 +259,7 @@ class TestLogTSKRegressorEstimator:
 
     def test_fit_predict_grid(self) -> None:
         x, y = _make_reg_dataset(80)
-        est = LogTSKRegressorEstimator(
+        est = LogTSKRegressor(
             n_mfs=2,
             mf_init="grid",
             epochs=5,
@@ -273,12 +273,12 @@ class TestLogTSKRegressorEstimator:
 
     def test_model_uses_log_sum_defuzzifier(self) -> None:
         x, y = _make_reg_dataset(40)
-        est = LogTSKRegressorEstimator(n_mfs=2, epochs=1, batch_size=16, random_state=0)
+        est = LogTSKRegressor(n_mfs=2, epochs=1, batch_size=16, random_state=0)
         est.fit(x, y)
         assert isinstance(est.model_.defuzzifier, InvLogDefuzzifier)
 
     def test_predict_requires_fit(self) -> None:
         x, _ = _make_reg_dataset(10)
-        est = LogTSKRegressorEstimator(n_mfs=2, epochs=1, batch_size=16)
+        est = LogTSKRegressor(n_mfs=2, epochs=1, batch_size=16)
         with pytest.raises(NotFittedError):
             est.predict(x)

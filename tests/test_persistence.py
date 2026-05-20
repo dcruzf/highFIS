@@ -6,10 +6,11 @@ import numpy as np
 import pytest
 import torch
 
-from highfis.estimators import TSKClassifierEstimator, TSKRegressorEstimator
+from highfis.estimators import InputConfig, TSKClassifier, TSKRegressor
 from highfis.persistence import (
     CHECKPOINT_FORMAT,
-    CHECKPOINT_VERSION,
+    CHECKPOINT_FORMAT_VERSION,
+    deserialize_input_mfs,
     load_checkpoint,
     save_checkpoint,
     validate_checkpoint_payload,
@@ -19,10 +20,10 @@ from highfis.persistence import (
 def _valid_payload() -> dict[str, object]:
     return {
         "format": CHECKPOINT_FORMAT,
-        "format_version": CHECKPOINT_VERSION,
+        "format_version": CHECKPOINT_FORMAT_VERSION,
         "estimator_class": "FakeEstimator",
         "estimator_params": {"n_mfs": 1},
-        "model_init": {"input_mfs": {}, "rule_base": "cartesian"},
+        "model_init": {"input_mfs_config": {}, "rule_base": "cartesian"},
         "model_state_dict": {},
         "fitted_attrs": {"n_features_in": 1, "feature_names_in": ["x1"]},
         "history": None,
@@ -38,7 +39,7 @@ class TestPersistenceIO:
         loaded = load_checkpoint(path)
 
         assert loaded["format"] == CHECKPOINT_FORMAT
-        assert loaded["format_version"] == CHECKPOINT_VERSION
+        assert loaded["format_version"] == CHECKPOINT_FORMAT_VERSION
         assert loaded["estimator_class"] == "FakeEstimator"
         assert loaded["model_init"]["rule_base"] == "cartesian"
 
@@ -58,24 +59,23 @@ class TestPersistenceIO:
         assert path.exists()
         assert load_checkpoint(path) == payload
 
-    def test_load_checkpoint_falls_back_when_weights_only_unsupported(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_load_checkpoint_uses_weights_only_true(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         payload = _valid_payload()
         path = tmp_path / "ckpt.pt"
         torch.save(payload, path)
 
-        sentinel = object()
+        calls: list[dict] = []
 
-        def fake_load(source, map_location, weights_only=sentinel):
-            if weights_only is not sentinel:
-                raise TypeError("weights_only not supported")
-            return payload
+        _original_load = torch.load
 
-        monkeypatch.setattr(torch, "load", fake_load)
-        loaded = load_checkpoint(path)
+        def capturing_load(source, map_location, weights_only):
+            calls.append({"weights_only": weights_only})
+            return _original_load(source, map_location=map_location, weights_only=weights_only)
 
-        assert loaded == payload
+        monkeypatch.setattr(torch, "load", capturing_load)
+        load_checkpoint(path)
+
+        assert calls == [{"weights_only": True}]
 
     @pytest.mark.parametrize(
         "missing_key",
@@ -107,18 +107,23 @@ class TestPersistenceIO:
             validate_checkpoint_payload(payload, expected_estimator_class="FakeEstimator")
 
 
+def test_deserialize_input_mfs_raises_on_unknown_type() -> None:
+    with pytest.raises(ValueError, match="unknown membership function type"):
+        deserialize_input_mfs({"f1": [{"type": "nonexistent_mf_xyz", "params": {}}]})
+
+
 class TestEstimatorPersistence:
     def test_tsk_classifier_save_load_roundtrip(self, tmp_path: Path) -> None:
         x = np.array([[0.0, 0.0], [1.0, 1.0], [0.5, -0.5]], dtype=float)
         y = np.array([0, 1, 0], dtype=int)
 
-        model = TSKClassifierEstimator(epochs=1, n_mfs=2, random_state=0, verbose=False)
+        model = TSKClassifier(epochs=1, n_mfs=2, random_state=0, verbose=False)
         model.fit(x, y)
 
         path = tmp_path / "tsk_classifier.pt"
         model.save(str(path))
 
-        loaded = TSKClassifierEstimator.load(str(path))
+        loaded = TSKClassifier.load(str(path))
         assert loaded.n_features_in_ == model.n_features_in_
         assert np.array_equal(loaded.classes_, model.classes_)
         assert np.array_equal(loaded.feature_names_in_, model.feature_names_in_)
@@ -128,13 +133,45 @@ class TestEstimatorPersistence:
         x = np.array([[0.0], [1.0], [2.0]], dtype=float)
         y = np.array([0.0, 1.0, 2.0], dtype=float)
 
-        model = TSKRegressorEstimator(epochs=1, n_mfs=2, random_state=0, verbose=False)
+        model = TSKRegressor(epochs=1, n_mfs=2, random_state=0, verbose=False)
         model.fit(x, y)
 
         path = tmp_path / "tsk_regressor.pt"
         model.save(str(path))
 
-        loaded = TSKRegressorEstimator.load(str(path))
+        loaded = TSKRegressor.load(str(path))
         assert loaded.n_features_in_ == model.n_features_in_
         assert np.array_equal(loaded.feature_names_in_, model.feature_names_in_)
+        assert np.allclose(loaded.predict(x), model.predict(x), atol=1e-6)
+
+    def test_tsk_classifier_with_input_configs_save_load_roundtrip(self, tmp_path: Path) -> None:
+        rng = np.random.default_rng(0)
+        x = rng.normal(size=(20, 2)).astype(np.float32)
+        y = (x[:, 0] > 0).astype(int)
+        configs = [InputConfig(name="a", n_mfs=2), InputConfig(name="b", n_mfs=2)]
+
+        model = TSKClassifier(input_configs=configs, epochs=1, random_state=0, verbose=False)
+        model.fit(x, y)
+
+        path = tmp_path / "tsk_clf_inputcfg.pt"
+        model.save(str(path))
+
+        loaded = TSKClassifier.load(str(path))
+        assert loaded.n_features_in_ == model.n_features_in_
+        assert np.array_equal(loaded.predict(x), model.predict(x))
+
+    def test_tsk_regressor_with_input_configs_save_load_roundtrip(self, tmp_path: Path) -> None:
+        rng = np.random.default_rng(0)
+        x = rng.normal(size=(20, 1)).astype(np.float32)
+        y = x[:, 0] * 2.0
+        configs = [InputConfig(name="x", n_mfs=2)]
+
+        model = TSKRegressor(input_configs=configs, epochs=1, random_state=0, verbose=False)
+        model.fit(x, y)
+
+        path = tmp_path / "tsk_reg_inputcfg.pt"
+        model.save(str(path))
+
+        loaded = TSKRegressor.load(str(path))
+        assert loaded.n_features_in_ == model.n_features_in_
         assert np.allclose(loaded.predict(x), model.predict(x), atol=1e-6)
