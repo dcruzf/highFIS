@@ -348,6 +348,10 @@ class ADPSoftminRuleLayer(RuleLayer):
         eps: float | None = None,
     ) -> None:
         """Initialize ADP-softmin rule layer."""
+        if kappa <= 0.0:
+            raise ValueError("kappa must be > 0")
+        if xi <= 0.0:
+            raise ValueError("xi must be > 0")
         self.eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else float(eps)
         self.kappa = float(kappa)
         self.xi = float(xi)

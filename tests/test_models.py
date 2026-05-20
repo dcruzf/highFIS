@@ -137,6 +137,24 @@ def test_adptsk_classifier_validates_n_classes() -> None:
         ADPTSKClassifier(_build_input_mfs(), n_classes=1)
 
 
+def test_adptsk_classifier_validates_kappa_xi() -> None:
+    from highfis.models import ADPTSKClassifier
+
+    with pytest.raises(ValueError, match="kappa must be > 0"):
+        ADPTSKClassifier(_build_input_mfs(), n_classes=2, kappa=0.0)
+    with pytest.raises(ValueError, match="xi must be > 0"):
+        ADPTSKClassifier(_build_input_mfs(), n_classes=2, xi=-1.0)
+
+
+def test_adptsk_regressor_validates_kappa_xi() -> None:
+    from highfis.models import ADPTSKRegressor
+
+    with pytest.raises(ValueError, match="kappa must be > 0"):
+        ADPTSKRegressor(_build_input_mfs(), kappa=-5.0)
+    with pytest.raises(ValueError, match="xi must be > 0"):
+        ADPTSKRegressor(_build_input_mfs(), xi=0.0)
+
+
 def test_adptsk_regressor_forward_predict_shape() -> None:
     from highfis.models import ADPTSKRegressor
 

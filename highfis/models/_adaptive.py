@@ -179,6 +179,10 @@ class ADPTSKClassifier(BaseTSKClassifier):
         """Initialise the ADPTSK classifier."""
         if n_classes < 2:
             raise ValueError("n_classes must be >= 2")
+        if kappa <= 0.0:
+            raise ValueError("kappa must be > 0")
+        if xi <= 0.0:
+            raise ValueError("xi must be > 0")
 
         self.n_classes = int(n_classes)
         self.kappa = float(kappa)
@@ -238,6 +242,10 @@ class ADPTSKRegressor(BaseTSKRegressor):
         eps: float | None = None,
     ) -> None:
         """Initialise the ADPTSK regressor."""
+        if kappa <= 0.0:
+            raise ValueError("kappa must be > 0")
+        if xi <= 0.0:
+            raise ValueError("xi must be > 0")
         self.kappa = float(kappa)
         self.xi = float(xi)
         self.eps = eps
