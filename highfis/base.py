@@ -291,9 +291,7 @@ class BaseTSK(nn.Module):
             raise ValueError("ur_target must be in (0, 1] when provided")
 
         has_val = x_val is not None and y_val is not None
-        if has_val:
-            if x_val is None or y_val is None:  # pragma: no cover
-                raise ValueError("x_val and y_val must both be provided")
+        if has_val and x_val is not None and y_val is not None:
             if x_val.ndim != 2 or x_val.shape[1] != self.n_inputs:
                 raise ValueError(f"expected x_val shape (batch, {self.n_inputs}), got {tuple(x_val.shape)}")
             if y_val.ndim != 1:
