@@ -15,8 +15,8 @@ from torch import nn
 
 from highfis.base import BaseTSK
 from highfis.estimators import (
-    AdaTSKClassifier,
-    AdaTSKRegressor,
+    ADATSKClassifier,
+    ADATSKRegressor,
     ADMTSKClassifier,
     ADMTSKRegressor,
     ADPTSKClassifier,
@@ -29,8 +29,8 @@ from highfis.estimators import (
     DGTSKRegressor,
     DombiTSKClassifier,
     DombiTSKRegressor,
-    FSREAdaTSKClassifier,
-    FSREAdaTSKRegressor,
+    FSREADATSKClassifier,
+    FSREADATSKRegressor,
     HDFISMinClassifier,
     HDFISMinRegressor,
     HDFISProdClassifier,
@@ -554,7 +554,7 @@ def test_estimator_grid_init_fit_predict() -> None:
 
 def test_adatsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
     x, y = _make_dataset(80)
-    est = AdaTSKClassifier(
+    est = ADATSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -598,7 +598,7 @@ def test_adptsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
 
 def test_fsre_adatsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
     x, y = _make_dataset(80)
-    est = FSREAdaTSKClassifier(
+    est = FSREADATSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         lambda_init=1.5,
@@ -1533,12 +1533,12 @@ def test_logtsk_regressor_estimator_fit_predict() -> None:
 
 def test_fsre_adatsk_classifier_estimator_rejects_nonpositive_lambda() -> None:
     with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        FSREAdaTSKClassifier(n_mfs=2, mf_init="kmeans", lambda_init=0.0, epochs=1, batch_size=16)
+        FSREADATSKClassifier(n_mfs=2, mf_init="kmeans", lambda_init=0.0, epochs=1, batch_size=16)
 
 
 def test_fsre_adatsk_regressor_estimator_rejects_nonpositive_lambda() -> None:
     with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        FSREAdaTSKRegressor(n_mfs=2, mf_init="kmeans", lambda_init=0.0, epochs=1, batch_size=16)
+        FSREADATSKRegressor(n_mfs=2, mf_init="kmeans", lambda_init=0.0, epochs=1, batch_size=16)
 
 
 def test_estimator_input_configs_length_validator_regressor() -> None:
@@ -2264,7 +2264,7 @@ def test_estimator_inspection_methods_for_mhtsk_classifier() -> None:
 
 def test_adatsk_regressor_estimator_fit_predict() -> None:
     x, y = _make_regression_dataset(80)
-    est = AdaTSKRegressor(
+    est = ADATSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         epochs=5,
@@ -2298,7 +2298,7 @@ def test_adptsk_regressor_estimator_fit_predict() -> None:
 
 def test_fsre_adatsk_regressor_estimator_fit_predict() -> None:
     x, y = _make_regression_dataset(80)
-    est = FSREAdaTSKRegressor(
+    est = FSREADATSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         lambda_init=2.0,

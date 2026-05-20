@@ -13,8 +13,8 @@ from highfis.layers import (
 )
 from highfis.memberships import GaussianMF
 from highfis.models import (
-    AdaTSKClassifierModel,
-    AdaTSKRegressorModel,
+    ADATSKClassifierModel,
+    ADATSKRegressorModel,
     ADMTSKClassifierModel,
     ADMTSKRegressorModel,
     AYATSKClassifierModel,
@@ -23,8 +23,8 @@ from highfis.models import (
     DGALETSKRegressorModel,
     DombiTSKClassifierModel,
     DombiTSKRegressorModel,
-    FSREAdaTSKClassifierModel,
-    FSREAdaTSKRegressorModel,
+    FSREADATSKClassifierModel,
+    FSREADATSKRegressorModel,
     HDFISMinClassifierModel,
     HDFISMinRegressorModel,
     HDFISProdClassifierModel,
@@ -413,7 +413,7 @@ def test_dombitsk_classifier_default_t_norm_fn_branch() -> None:
 
 
 def test_adatsk_classifier_forward_predict_shapes() -> None:
-    model = AdaTSKClassifierModel(_build_input_mfs(), n_classes=3)
+    model = ADATSKClassifierModel(_build_input_mfs(), n_classes=3)
     x = torch.randn(8, 3)
 
     logits = model.forward(x)
@@ -427,7 +427,7 @@ def test_adatsk_classifier_forward_predict_shapes() -> None:
 
 
 def test_adatsk_classifier_forward_antecedents_row_sum_one() -> None:
-    model = AdaTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = ADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(6, 2)
 
     norm_w = model.forward_antecedents(x)
@@ -439,12 +439,12 @@ def test_adatsk_classifier_forward_antecedents_row_sum_one() -> None:
 def test_adatsk_classifier_uses_ada_softmin_rule_layer() -> None:
     from highfis.layers import AdaSoftminRuleLayer
 
-    model = AdaTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = ADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     assert isinstance(model.rule_layer, AdaSoftminRuleLayer)
 
 
 def test_adatsk_regressor_forward_shape() -> None:
-    model = AdaTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = ADATSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(5, 2)
 
     output = model.forward(x)
@@ -454,7 +454,7 @@ def test_adatsk_regressor_forward_shape() -> None:
 
 def test_adatsk_regressor_fit_returns_history() -> None:
     torch.manual_seed(1)
-    model = AdaTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = ADATSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(20, 2)
     y = torch.randn(20)
 
@@ -468,11 +468,11 @@ def test_adatsk_regressor_fit_returns_history() -> None:
 
 def test_adatsk_classifier_rejects_invalid_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
-        AdaTSKClassifierModel(_build_input_mfs(), n_classes=1)
+        ADATSKClassifierModel(_build_input_mfs(), n_classes=1)
 
 
 def test_fsre_adatsk_classifier_helpers() -> None:
-    model = FSREAdaTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(12, 2)
     y = torch.randint(0, 2, (12,), dtype=torch.long)
 
@@ -488,11 +488,11 @@ def test_fsre_adatsk_classifier_helpers() -> None:
 
 def test_fsre_adatsk_classifier_invalid_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
-        FSREAdaTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=1)
+        FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=1)
 
 
 def test_fsre_adatsk_regressor_helpers() -> None:
-    model = FSREAdaTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model = FSREADATSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(12, 2)
     y = torch.randn(12)
 
@@ -844,7 +844,7 @@ def test_dg_aletsk_regressor_convert_to_first_order_preserves_theta_values() -> 
 
 
 def test_adatsk_classifier_consequent_batch_norm() -> None:
-    model = AdaTSKClassifierModel(_build_input_mfs(), n_classes=2, consequent_batch_norm=True)
+    model = ADATSKClassifierModel(_build_input_mfs(), n_classes=2, consequent_batch_norm=True)
     x = torch.randn(8, 3)
     y = torch.randint(0, 2, (8,), dtype=torch.long)
 
@@ -856,7 +856,7 @@ def test_adatsk_classifier_consequent_batch_norm() -> None:
 def test_adatsk_classifier_custom_rule_base_and_rules() -> None:
     input_mfs = _build_input_mfs(n_inputs=2, n_mfs=2)
     custom_rules = [(0, 0), (1, 1)]
-    model = AdaTSKClassifierModel(
+    model = ADATSKClassifierModel(
         input_mfs,
         n_classes=2,
         rule_base="custom",
@@ -870,7 +870,7 @@ def test_adatsk_classifier_custom_rule_base_and_rules() -> None:
 
 
 def test_adatsk_regressor_consequent_batch_norm() -> None:
-    model = AdaTSKRegressorModel(
+    model = ADATSKRegressorModel(
         _build_input_mfs(n_inputs=2, n_mfs=2),
         consequent_batch_norm=True,
     )

@@ -1,4 +1,4 @@
-"""AdaTSK and ADPTSK fuzzy model classes."""
+"""ADATSK and ADPTSK fuzzy model classes."""
 
 from __future__ import annotations
 
@@ -20,8 +20,8 @@ from ._common import (
 )
 
 
-class AdaTSKClassifierModel(BaseTSKClassifierModel):
-    r"""TSK classifier with adaptive softmin antecedent (AdaTSK).
+class ADATSKClassifierModel(BaseTSKClassifierModel):
+    r"""TSK classifier with adaptive softmin antecedent (ADATSK).
 
     The firing strength of each rule is computed with the Ada-softmin operator.
 
@@ -43,7 +43,7 @@ class AdaTSKClassifierModel(BaseTSKClassifierModel):
         consequent_batch_norm: bool = False,
         eps: float | None = None,
     ) -> None:
-        """Initialise the AdaTSK classifier.
+        """Initialise the ADATSK classifier.
 
         Args:
             input_mfs: Mapping from feature name to a sequence of
@@ -92,8 +92,8 @@ class AdaTSKClassifierModel(BaseTSKClassifierModel):
         return nn.CrossEntropyLoss()
 
 
-class AdaTSKRegressorModel(BaseTSKRegressorModel):
-    r"""TSK regressor with adaptive softmin antecedent (AdaTSK).
+class ADATSKRegressorModel(BaseTSKRegressorModel):
+    r"""TSK regressor with adaptive softmin antecedent (ADATSK).
 
     The firing strength of each rule is computed with the Ada-softmin operator.
 
@@ -114,7 +114,7 @@ class AdaTSKRegressorModel(BaseTSKRegressorModel):
         consequent_batch_norm: bool = False,
         eps: float | None = None,
     ) -> None:
-        """Initialise the AdaTSK regressor.
+        """Initialise the ADATSK regressor.
 
         Args:
             input_mfs: Mapping from feature name to a sequence of

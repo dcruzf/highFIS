@@ -4,8 +4,8 @@ All public estimator classes are re-exported from their respective sub-modules.
 """
 
 from ._adaptive import (
-    AdaTSKClassifier,
-    AdaTSKRegressor,
+    ADATSKClassifier,
+    ADATSKRegressor,
     ADPTSKClassifier,
     ADPTSKRegressor,
 )
@@ -28,8 +28,8 @@ from ._dombi import (
     DombiTSKRegressor,
 )
 from ._fsre import (
-    FSREAdaTSKClassifier,
-    FSREAdaTSKRegressor,
+    FSREADATSKClassifier,
+    FSREADATSKRegressor,
 )
 from ._hdfis import (
     HDFISMinClassifier,
@@ -57,22 +57,22 @@ from ._yager import (
 )
 
 __all__: list[str] = [
+    "ADATSKClassifier",
+    "ADATSKRegressor",
     "ADMTSKClassifier",
     "ADMTSKRegressor",
     "ADPTSKClassifier",
     "ADPTSKRegressor",
     "AYATSKClassifier",
     "AYATSKRegressor",
-    "AdaTSKClassifier",
-    "AdaTSKRegressor",
     "DGALETSKClassifier",
     "DGALETSKRegressor",
     "DGTSKClassifier",
     "DGTSKRegressor",
     "DombiTSKClassifier",
     "DombiTSKRegressor",
-    "FSREAdaTSKClassifier",
-    "FSREAdaTSKRegressor",
+    "FSREADATSKClassifier",
+    "FSREADATSKRegressor",
     "HDFISMinClassifier",
     "HDFISMinRegressor",
     "HDFISProdClassifier",

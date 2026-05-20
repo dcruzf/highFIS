@@ -634,7 +634,7 @@ class SparseRegressionConsequentLayer(nn.Module):
 class GatedClassificationConsequentLayer(nn.Module):
     r"""Gated TSK consequent layer for classification logits.
 
-    Supports three training modes to match the FSRE-AdaTSK paper protocol:
+    Supports three training modes to match the FSRE-ADATSK paper protocol:
 
     * ``"fs"``  — only feature gates :math:`M(\\lambda_d)` are active
       (Phase 1, feature selection, eq. 21).
@@ -645,7 +645,7 @@ class GatedClassificationConsequentLayer(nn.Module):
     * ``"both"`` (default) — both gate families applied simultaneously.
 
     When ``shared_lambda=True`` the feature gate vector has shape
-    ``(n_inputs,)`` and is shared across all rules (FSRE-AdaTSK, eq. 21).
+    ``(n_inputs,)`` and is shared across all rules (FSRE-ADATSK, eq. 21).
     When ``shared_lambda=False`` (default) each rule has its own
     ``(n_inputs,)`` gate vector, stored as ``(n_rules, n_inputs)``
     (DG-ALETSK).

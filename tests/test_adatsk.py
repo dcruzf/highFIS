@@ -4,7 +4,7 @@ import torch
 
 from highfis.layers import AdaSoftminRuleLayer
 from highfis.memberships import CompositeGaussianMF
-from highfis.models import AdaTSKClassifierModel, AdaTSKRegressorModel
+from highfis.models import ADATSKClassifierModel, ADATSKRegressorModel
 
 
 def _build_adatsk_input_mfs(n_inputs: int = 3, n_rules: int = 2) -> dict[str, list[CompositeGaussianMF]]:
@@ -25,7 +25,7 @@ def test_composite_gaussian_mf_lower_bound() -> None:
 
 
 def test_adatsk_classifier_forward_predict_shapes() -> None:
-    model = AdaTSKClassifierModel(_build_adatsk_input_mfs(), n_classes=3)
+    model = ADATSKClassifierModel(_build_adatsk_input_mfs(), n_classes=3)
     x = torch.randn(8, 3)
 
     logits = model.forward(x)
@@ -39,7 +39,7 @@ def test_adatsk_classifier_forward_predict_shapes() -> None:
 
 
 def test_adatsk_classifier_forward_antecedents_row_sum_one() -> None:
-    model = AdaTSKClassifierModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2), n_classes=2)
+    model = ADATSKClassifierModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2), n_classes=2)
     x = torch.randn(6, 2)
 
     norm_w = model.forward_antecedents(x)
@@ -49,7 +49,7 @@ def test_adatsk_classifier_forward_antecedents_row_sum_one() -> None:
 
 
 def test_adatsk_regressor_forward_shape() -> None:
-    model = AdaTSKRegressorModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2))
+    model = ADATSKRegressorModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2))
     x = torch.randn(5, 2)
 
     output = model.forward(x)
@@ -59,7 +59,7 @@ def test_adatsk_regressor_forward_shape() -> None:
 
 def test_adatsk_classifier_fit_returns_history() -> None:
     torch.manual_seed(0)
-    model = AdaTSKClassifierModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2), n_classes=2)
+    model = ADATSKClassifierModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2), n_classes=2)
     x = torch.randn(20, 2)
     y = torch.randint(0, 2, (20,), dtype=torch.long)
 
@@ -72,12 +72,12 @@ def test_adatsk_classifier_fit_returns_history() -> None:
 
 
 def test_adatsk_classifier_uses_ada_softmin_rule_layer() -> None:
-    model = AdaTSKClassifierModel(_build_adatsk_input_mfs(), n_classes=2)
+    model = ADATSKClassifierModel(_build_adatsk_input_mfs(), n_classes=2)
 
     assert isinstance(model.rule_layer, AdaSoftminRuleLayer)
 
 
 def test_adatsk_regressor_uses_ada_softmin_rule_layer() -> None:
-    model = AdaTSKRegressorModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2))
+    model = ADATSKRegressorModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2))
 
     assert isinstance(model.rule_layer, AdaSoftminRuleLayer)

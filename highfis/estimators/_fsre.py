@@ -1,4 +1,4 @@
-"""Sklearn-compatible estimators for FSRE-AdaTSK models."""
+"""Sklearn-compatible estimators for FSRE-ADATSK models."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from collections.abc import Mapping, Sequence
 from ..base import BaseTSK
 from ..memberships import MembershipFunction
 from ..models import (
-    FSREAdaTSKClassifierModel,
-    FSREAdaTSKRegressorModel,
+    FSREADATSKClassifierModel,
+    FSREADATSKRegressorModel,
 )
 from ._base import (
     InputConfig,
@@ -17,10 +17,10 @@ from ._base import (
 )
 
 
-class FSREAdaTSKClassifier(_BaseClassifierEstimator):
-    r"""FSRE-AdaTSK classifier with adaptive softmin antecedent and gated consequents.
+class FSREADATSKClassifier(_BaseClassifierEstimator):
+    r"""FSRE-ADATSK classifier with adaptive softmin antecedent and gated consequents.
 
-    FSRE-AdaTSK (Feature Selection and Rule Extraction) extends AdaTSK.
+    FSRE-ADATSK (Feature Selection and Rule Extraction) extends ADATSK.
 
     Reference:
         G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive
@@ -31,9 +31,9 @@ class FSREAdaTSKClassifier(_BaseClassifierEstimator):
 
     Example:
         ```python
-        from highfis import FSREAdaTSKClassifier
+        from highfis import FSREADATSKClassifier
 
-        clf = FSREAdaTSKClassifier()
+        clf = FSREADATSKClassifier()
         clf.fit(X_train, y_train)
         ```
     """
@@ -61,12 +61,12 @@ class FSREAdaTSKClassifier(_BaseClassifierEstimator):
         restore_best: bool = True,
         weight_decay: float = 1e-8,
     ) -> None:
-        """Initialise an FSRE-AdaTSK classifier.
+        """Initialise an FSRE-ADATSK classifier.
 
         Args:
             lambda_init: Initial ALE-softmin parameter ``λ > 0`` inherited
                 by :class:`DGALETSKClassifier`; not used by
-                FSRE-AdaTSK proper (Ada-softmin computes its index from
+                FSRE-ADATSK proper (Ada-softmin computes its index from
                 the current membership values). Default ``1.0``.
             use_en_frb: If ``True``, use the Enhanced FRB (En-FRB) whose
                 size grows linearly with the number of features, allowing
@@ -126,8 +126,8 @@ class FSREAdaTSKClassifier(_BaseClassifierEstimator):
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
-        """Create FSREAdaTSKClassifierModel."""
-        return FSREAdaTSKClassifierModel(
+        """Create FSREADATSKClassifierModel."""
+        return FSREADATSKClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
@@ -136,10 +136,10 @@ class FSREAdaTSKClassifier(_BaseClassifierEstimator):
         )
 
 
-class FSREAdaTSKRegressor(_BaseRegressorEstimator):
-    r"""FSRE-AdaTSK regressor with adaptive softmin antecedent and gated consequents.
+class FSREADATSKRegressor(_BaseRegressorEstimator):
+    r"""FSRE-ADATSK regressor with adaptive softmin antecedent and gated consequents.
 
-    FSRE-AdaTSK (Feature Selection and Rule Extraction) extends AdaTSK.
+    FSRE-ADATSK (Feature Selection and Rule Extraction) extends ADATSK.
 
     Reference:
         G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive
@@ -150,9 +150,9 @@ class FSREAdaTSKRegressor(_BaseRegressorEstimator):
 
     Example:
         ```python
-        from highfis import FSREAdaTSKRegressor
+        from highfis import FSREADATSKRegressor
 
-        reg = FSREAdaTSKRegressor()
+        reg = FSREADATSKRegressor()
         reg.fit(X_train, y_train)
         ```
     """
@@ -180,12 +180,12 @@ class FSREAdaTSKRegressor(_BaseRegressorEstimator):
         restore_best: bool = True,
         weight_decay: float = 1e-8,
     ) -> None:
-        """Initialise an FSRE-AdaTSK regressor.
+        """Initialise an FSRE-ADATSK regressor.
 
         Args:
             lambda_init: Initial ALE-softmin parameter ``λ > 0`` inherited
                 by :class:`DGALETSKRegressor`; not used by
-                FSRE-AdaTSK proper (Ada-softmin computes its index from
+                FSRE-ADATSK proper (Ada-softmin computes its index from
                 the current membership values). Default ``1.0``.
             use_en_frb: If ``True``, use the Enhanced FRB (En-FRB) for rule
                 extraction. Default ``False`` keeps CoCo-FRB.
@@ -242,8 +242,8 @@ class FSREAdaTSKRegressor(_BaseRegressorEstimator):
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
-        """Create FSREAdaTSKRegressorModel."""
-        return FSREAdaTSKRegressorModel(
+        """Create FSREADATSKRegressorModel."""
+        return FSREADATSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),

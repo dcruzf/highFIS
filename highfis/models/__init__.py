@@ -4,8 +4,8 @@ All public model classes are re-exported from their respective sub-modules.
 """
 
 from ._adaptive import (
-    AdaTSKClassifierModel,
-    AdaTSKRegressorModel,
+    ADATSKClassifierModel,
+    ADATSKRegressorModel,
     ADPTSKClassifierModel,
     ADPTSKRegressorModel,
 )
@@ -29,8 +29,8 @@ from ._dombi import (
     DombiTSKRegressorModel,
 )
 from ._fsre import (
-    FSREAdaTSKClassifierModel,
-    FSREAdaTSKRegressorModel,
+    FSREADATSKClassifierModel,
+    FSREADATSKRegressorModel,
 )
 from ._hdfis import (
     HDFISMinClassifierModel,
@@ -58,14 +58,14 @@ from ._yager import (
 )
 
 __all__: list[str] = [
+    "ADATSKClassifierModel",
+    "ADATSKRegressorModel",
     "ADMTSKClassifierModel",
     "ADMTSKRegressorModel",
     "ADPTSKClassifierModel",
     "ADPTSKRegressorModel",
     "AYATSKClassifierModel",
     "AYATSKRegressorModel",
-    "AdaTSKClassifierModel",
-    "AdaTSKRegressorModel",
     "BaseTSKClassifierModel",
     "BaseTSKRegressorModel",
     "DGALETSKClassifierModel",
@@ -74,8 +74,8 @@ __all__: list[str] = [
     "DGTSKRegressorModel",
     "DombiTSKClassifierModel",
     "DombiTSKRegressorModel",
-    "FSREAdaTSKClassifierModel",
-    "FSREAdaTSKRegressorModel",
+    "FSREADATSKClassifierModel",
+    "FSREADATSKRegressorModel",
     "HDFISMinClassifierModel",
     "HDFISMinRegressorModel",
     "HDFISProdClassifierModel",

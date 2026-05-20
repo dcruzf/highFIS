@@ -11,15 +11,15 @@ from ..models import (
     DGALETSKRegressorModel,
 )
 from ._fsre import (
-    FSREAdaTSKClassifier,
-    FSREAdaTSKRegressor,
+    FSREADATSKClassifier,
+    FSREADATSKRegressor,
 )
 
 
-class DGALETSKClassifier(FSREAdaTSKClassifier):
+class DGALETSKClassifier(FSREADATSKClassifier):
     """DG-ALETSK classifier with ALE-softmin antecedent and double-group gates.
 
-    DG-ALETSK extends FSRE-AdaTSK by replacing the adaptive softmin with the
+    DG-ALETSK extends FSRE-ADATSK by replacing the adaptive softmin with the
     *Adaptive Ln-Exp (ALE)* softmin — a smoother variant with improved
     numerical stability.  It also uses a zero-order consequent in the DG
     (data-guided) training phase and optionally converts to first-order
@@ -59,10 +59,10 @@ class DGALETSKClassifier(FSREAdaTSKClassifier):
         )
 
 
-class DGALETSKRegressor(FSREAdaTSKRegressor):
+class DGALETSKRegressor(FSREADATSKRegressor):
     """DG-ALETSK regressor with ALE-softmin antecedent and double-group gates.
 
-    DG-ALETSK extends FSRE-AdaTSK by replacing the adaptive softmin with the
+    DG-ALETSK extends FSRE-ADATSK by replacing the adaptive softmin with the
     *Adaptive Ln-Exp (ALE)* softmin — a smoother variant with improved
     numerical stability.  It also uses a zero-order consequent in the DG
     (data-guided) training phase and optionally converts to first-order

@@ -1,4 +1,4 @@
-"""Sklearn-compatible estimators for AdaTSK and ADPTSK models."""
+"""Sklearn-compatible estimators for ADATSK and ADPTSK models."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from ..memberships import (
     MembershipFunction,
 )
 from ..models import (
-    AdaTSKClassifierModel,
-    AdaTSKRegressorModel,
+    ADATSKClassifierModel,
+    ADATSKRegressorModel,
     ADPTSKClassifierModel,
     ADPTSKRegressorModel,
 )
@@ -275,8 +275,8 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         )
 
 
-class AdaTSKClassifier(_BaseClassifierEstimator):
-    r"""TSK classifier with adaptive softmin antecedent (AdaTSK).
+class ADATSKClassifier(_BaseClassifierEstimator):
+    r"""TSK classifier with adaptive softmin antecedent (ADATSK).
 
     The firing strength of each rule is computed with the Ada-softmin operator.
 
@@ -289,9 +289,9 @@ class AdaTSKClassifier(_BaseClassifierEstimator):
 
     Example:
         ```python
-        from highfis import AdaTSKClassifier
+        from highfis import ADATSKClassifier
 
-        clf = AdaTSKClassifier(n_mfs=30, random_state=0)
+        clf = ADATSKClassifier(n_mfs=30, random_state=0)
         clf.fit(X_train, y_train)
         ```
     """
@@ -317,7 +317,7 @@ class AdaTSKClassifier(_BaseClassifierEstimator):
         restore_best: bool = True,
         weight_decay: float = 1e-8,
     ) -> None:
-        """Initialise an AdaTSK classifier.
+        """Initialise an ADATSK classifier.
 
         Args:
             input_configs: Per-feature :class:`InputConfig` list. Only
@@ -367,8 +367,8 @@ class AdaTSKClassifier(_BaseClassifierEstimator):
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
-        """Create AdaTSKClassifierModel."""
-        return AdaTSKClassifierModel(
+        """Create ADATSKClassifierModel."""
+        return ADATSKClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
@@ -376,8 +376,8 @@ class AdaTSKClassifier(_BaseClassifierEstimator):
         )
 
 
-class AdaTSKRegressor(_BaseRegressorEstimator):
-    r"""TSK regressor with adaptive softmin antecedent (AdaTSK).
+class ADATSKRegressor(_BaseRegressorEstimator):
+    r"""TSK regressor with adaptive softmin antecedent (ADATSK).
 
     The firing strength of each rule is computed with the Ada-softmin operator.
 
@@ -390,9 +390,9 @@ class AdaTSKRegressor(_BaseRegressorEstimator):
 
     Example:
         ```python
-        from highfis import AdaTSKRegressor
+        from highfis import ADATSKRegressor
 
-        reg = AdaTSKRegressor(n_mfs=30, random_state=0)
+        reg = ADATSKRegressor(n_mfs=30, random_state=0)
         reg.fit(X_train, y_train)
         ```
     """
@@ -418,7 +418,7 @@ class AdaTSKRegressor(_BaseRegressorEstimator):
         restore_best: bool = True,
         weight_decay: float = 1e-8,
     ) -> None:
-        """Initialise an AdaTSK regressor.
+        """Initialise an ADATSK regressor.
 
         Args:
             input_configs: Per-feature :class:`InputConfig` list. Only
@@ -467,8 +467,8 @@ class AdaTSKRegressor(_BaseRegressorEstimator):
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
-        """Create AdaTSKRegressorModel."""
-        return AdaTSKRegressorModel(
+        """Create ADATSKRegressorModel."""
+        return ADATSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),

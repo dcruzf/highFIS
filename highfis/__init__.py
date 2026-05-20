@@ -2,8 +2,8 @@
 
 from .base import BaseTSK
 from .estimators import (
-    AdaTSKClassifier,
-    AdaTSKRegressor,
+    ADATSKClassifier,
+    ADATSKRegressor,
     ADMTSKClassifier,
     ADMTSKRegressor,
     ADPTSKClassifier,
@@ -16,8 +16,8 @@ from .estimators import (
     DGTSKRegressor,
     DombiTSKClassifier,
     DombiTSKRegressor,
-    FSREAdaTSKClassifier,
-    FSREAdaTSKRegressor,
+    FSREADATSKClassifier,
+    FSREADATSKRegressor,
     HDFISMinClassifier,
     HDFISMinRegressor,
     HDFISProdClassifier,
@@ -52,8 +52,8 @@ from .memberships import (
 )
 from .metrics import ClassificationMetrics, RegressionMetrics, compute_metrics
 from .models import (
-    AdaTSKClassifierModel,
-    AdaTSKRegressorModel,
+    ADATSKClassifierModel,
+    ADATSKRegressorModel,
     ADMTSKClassifierModel,
     ADMTSKRegressorModel,
     ADPTSKClassifierModel,
@@ -66,8 +66,8 @@ from .models import (
     DGTSKRegressorModel,
     DombiTSKClassifierModel,
     DombiTSKRegressorModel,
-    FSREAdaTSKClassifierModel,
-    FSREAdaTSKRegressorModel,
+    FSREADATSKClassifierModel,
+    FSREADATSKRegressorModel,
     HDFISMinClassifierModel,
     HDFISMinRegressorModel,
     HDFISProdClassifierModel,
@@ -84,6 +84,10 @@ from .models import (
 from .version import __version__
 
 __all__: list[str] = [
+    "ADATSKClassifier",
+    "ADATSKClassifierModel",
+    "ADATSKRegressor",
+    "ADATSKRegressorModel",
     "ADMTSKClassifier",
     "ADMTSKClassifierModel",
     "ADMTSKRegressor",
@@ -96,10 +100,6 @@ __all__: list[str] = [
     "AYATSKClassifierModel",
     "AYATSKRegressor",
     "AYATSKRegressorModel",
-    "AdaTSKClassifier",
-    "AdaTSKClassifierModel",
-    "AdaTSKRegressor",
-    "AdaTSKRegressorModel",
     "BaseTSK",
     "BellMF",
     "ClassificationMetrics",
@@ -119,10 +119,10 @@ __all__: list[str] = [
     "DombiTSKClassifierModel",
     "DombiTSKRegressor",
     "DombiTSKRegressorModel",
-    "FSREAdaTSKClassifier",
-    "FSREAdaTSKClassifierModel",
-    "FSREAdaTSKRegressor",
-    "FSREAdaTSKRegressorModel",
+    "FSREADATSKClassifier",
+    "FSREADATSKClassifierModel",
+    "FSREADATSKRegressor",
+    "FSREADATSKRegressorModel",
     "GaussianMF",
     "GaussianPiMF",
     "HDFISMinClassifier",

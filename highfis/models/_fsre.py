@@ -1,4 +1,4 @@
-"""FSRE-AdaTSK model classes."""
+"""FSRE-ADATSK model classes."""
 
 from __future__ import annotations
 
@@ -20,10 +20,10 @@ from ._common import (
 )
 
 
-class FSREAdaTSKClassifierModel(BaseTSKClassifierModel):
-    r"""FSRE-AdaTSK classifier with adaptive softmin antecedent and gated consequents.
+class FSREADATSKClassifierModel(BaseTSKClassifierModel):
+    r"""FSRE-ADATSK classifier with adaptive softmin antecedent and gated consequents.
 
-    FSRE-AdaTSK (Feature Selection and Rule Extraction) extends AdaTSK.
+    FSRE-ADATSK (Feature Selection and Rule Extraction) extends ADATSK.
 
     Reference:
         G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive
@@ -46,7 +46,7 @@ class FSREAdaTSKClassifierModel(BaseTSKClassifierModel):
         eps: float | None = None,
         use_en_frb: bool = False,
     ) -> None:
-        """Initialise the FSRE-AdaTSK classifier.
+        """Initialise the FSRE-ADATSK classifier.
 
         Args:
             input_mfs: Mapping from feature name to a sequence of
@@ -130,10 +130,10 @@ class FSREAdaTSKClassifierModel(BaseTSKClassifierModel):
         return self.fit(x, y, **kwargs)
 
 
-class FSREAdaTSKRegressorModel(BaseTSKRegressorModel):
-    r"""FSRE-AdaTSK regressor with adaptive softmin antecedent and gated consequents.
+class FSREADATSKRegressorModel(BaseTSKRegressorModel):
+    r"""FSRE-ADATSK regressor with adaptive softmin antecedent and gated consequents.
 
-    FSRE-AdaTSK (Feature Selection and Rule Extraction) extends AdaTSK.
+    FSRE-ADATSK (Feature Selection and Rule Extraction) extends ADATSK.
 
     Reference:
         G. Xue, Q. Chang, J. Wang, K. Zhang and N. R. Pal, "An Adaptive
@@ -155,7 +155,7 @@ class FSREAdaTSKRegressorModel(BaseTSKRegressorModel):
         eps: float | None = None,
         use_en_frb: bool = False,
     ) -> None:
-        """Initialise the FSRE-AdaTSK regressor.
+        """Initialise the FSRE-ADATSK regressor.
 
         Args:
             input_mfs: Mapping from feature name to a sequence of
