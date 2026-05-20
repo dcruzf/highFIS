@@ -24,7 +24,7 @@ Each family comes in a ``*Classifier`` and ``*Regressor`` variant.
 - **TSK / HTSK** — baseline TSK and hierarchical-softmax activation.
   ``TSKClassifier``, ``TSKRegressor``, ``HTSKClassifier``, ``HTSKRegressor``.
 
-- **ADATSK** — adaptive softmin antecedent (Leite et al., 2022).
+- **ADATSK** — adaptive softmin antecedent.
   ``ADATSKClassifier``, ``ADATSKRegressor``.
 
 - **ADPTSK** — adaptive Pareto T-norm antecedent.
@@ -34,7 +34,7 @@ Each family comes in a ``*Classifier`` and ``*Regressor`` variant.
   ``ADMTSKClassifier``, ``ADMTSKRegressor``,
   ``DombiTSKClassifier``, ``DombiTSKRegressor``.
 
-- **DGTSK** — data-driven Gaussian antecedent (De Gregório et al., 2023).
+- **DGTSK** — data-driven Gaussian antecedent.
   ``DGTSKClassifier``, ``DGTSKRegressor``.
 
 - **DGALETSK** — dimension-adaptive extension of DGTSK.
@@ -121,7 +121,6 @@ from .estimators import (
     MHTSKRegressor,
     TSKClassifier,
     TSKRegressor,
-    feature_coverage_rate,
 )
 from .version import __version__
 
@@ -156,5 +155,4 @@ __all__: list[str] = [
     "TSKClassifier",
     "TSKRegressor",
     "__version__",
-    "feature_coverage_rate",
 ]
