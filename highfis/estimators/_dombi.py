@@ -278,7 +278,7 @@ class ADMTSKClassifierEstimator(_BaseClassifierEstimator):
         adaptive: bool = True,
         lambda_: float = 1.0,
         lower_bound: float = 1.0 / math.e,
-        K: float = 10.0,
+        k: float = 10.0,
     ) -> None:
         """Initialize an ADMTSK classifier estimator.
 
@@ -309,7 +309,7 @@ class ADMTSKClassifierEstimator(_BaseClassifierEstimator):
             adaptive: If True, use adaptive lambda selection for Dombi T-norm.
             lambda_: Fixed Dombi parameter when adaptive is False.
             lower_bound: Lower bound used by Composite GMF.
-            K: Heuristic constant used to compute adaptive lambda.
+            k: Heuristic constant used to compute adaptive lambda.
 
         Raises:
             ValueError: If estimator hyperparameters are invalid.
@@ -337,7 +337,7 @@ class ADMTSKClassifierEstimator(_BaseClassifierEstimator):
         self.adaptive = bool(adaptive)
         self.lambda_ = float(lambda_)
         self.lower_bound = float(lower_bound)
-        self.K = float(K)
+        self.k = float(k)
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
@@ -360,7 +360,7 @@ class ADMTSKClassifierEstimator(_BaseClassifierEstimator):
             adaptive=self.adaptive,
             lambda_=self.lambda_,
             lower_bound=self.lower_bound,
-            K=self.K,
+            k=self.k,
             consequent_batch_norm=bool(self.consequent_batch_norm),
         )
 
@@ -410,7 +410,7 @@ class ADMTSKRegressorEstimator(_BaseRegressorEstimator):
         adaptive: bool = True,
         lambda_: float = 1.0,
         lower_bound: float = 1.0 / math.e,
-        K: float = 10.0,
+        k: float = 10.0,
     ) -> None:
         """Initialize an ADMTSK regressor estimator.
 
@@ -440,7 +440,7 @@ class ADMTSKRegressorEstimator(_BaseRegressorEstimator):
             adaptive: If True, use adaptive lambda selection for Dombi T-norm.
             lambda_: Fixed Dombi parameter when adaptive is False.
             lower_bound: Lower bound used by Composite GMF.
-            K: Heuristic constant used to compute adaptive lambda.
+            k: Heuristic constant used to compute adaptive lambda.
 
         Raises:
             ValueError: If estimator hyperparameters are invalid.
@@ -467,7 +467,7 @@ class ADMTSKRegressorEstimator(_BaseRegressorEstimator):
         self.adaptive = bool(adaptive)
         self.lambda_ = float(lambda_)
         self.lower_bound = float(lower_bound)
-        self.K = float(K)
+        self.k = float(k)
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
@@ -489,6 +489,6 @@ class ADMTSKRegressorEstimator(_BaseRegressorEstimator):
             adaptive=self.adaptive,
             lambda_=self.lambda_,
             lower_bound=self.lower_bound,
-            K=self.K,
+            k=self.k,
             consequent_batch_norm=bool(self.consequent_batch_norm),
         )

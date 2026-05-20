@@ -66,7 +66,7 @@ class ADPTSKClassifierEstimator(_BaseClassifierEstimator):
         weight_decay: float = 1e-8,
         kappa: float = 690.0,
         xi: float = 730.0,
-        K: float = 1.0,
+        k: float = 1.0,
         eps: float | None = None,
     ) -> None:
         """Initialise an ADPTSK classifier estimator.
@@ -101,7 +101,7 @@ class ADPTSKClassifierEstimator(_BaseClassifierEstimator):
             kappa: ADPTSK ``κ`` parameter controlling the double-softmin
                 geometry.
             xi: ADPTSK ``ξ`` parameter controlling adaptive softmin sharpness.
-            K: Gaussian PIMF scaling constant used when wrapping the input MFs.
+            k: Gaussian PIMF scaling constant used when wrapping the input MFs.
             eps: Optional lower bound for Gaussian PIMF values.
         """
         super().__init__(
@@ -126,7 +126,7 @@ class ADPTSKClassifierEstimator(_BaseClassifierEstimator):
         )
         self.kappa = float(kappa)
         self.xi = float(xi)
-        self.K = float(K)
+        self.k = float(k)
         self.eps = eps
 
     def _build_model(
@@ -135,7 +135,7 @@ class ADPTSKClassifierEstimator(_BaseClassifierEstimator):
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
-        input_mfs = _wrap_gaussian_pimf_input_mfs(input_mfs, K=self.K, eps=self.eps)
+        input_mfs = _wrap_gaussian_pimf_input_mfs(input_mfs, k=self.k, eps=self.eps)
         return ADPTSKClassifier(
             input_mfs,
             n_classes=n_classes,
@@ -193,7 +193,7 @@ class ADPTSKRegressorEstimator(_BaseRegressorEstimator):
         weight_decay: float = 1e-8,
         kappa: float = 690.0,
         xi: float = 730.0,
-        K: float = 1.0,
+        k: float = 1.0,
         eps: float | None = None,
     ) -> None:
         """Initialise an ADPTSK regressor estimator.
@@ -228,7 +228,7 @@ class ADPTSKRegressorEstimator(_BaseRegressorEstimator):
             kappa: ADPTSK ``κ`` parameter controlling the double-softmin
                 geometry.
             xi: ADPTSK ``ξ`` parameter controlling adaptive softmin sharpness.
-            K: Gaussian PIMF scaling constant used when wrapping the input MFs.
+            k: Gaussian PIMF scaling constant used when wrapping the input MFs.
             eps: Optional lower bound for Gaussian PIMF values.
         """
         super().__init__(
@@ -253,7 +253,7 @@ class ADPTSKRegressorEstimator(_BaseRegressorEstimator):
         )
         self.kappa = float(kappa)
         self.xi = float(xi)
-        self.K = float(K)
+        self.k = float(k)
         self.eps = eps
 
     def _build_regressor_model(
@@ -262,7 +262,7 @@ class ADPTSKRegressorEstimator(_BaseRegressorEstimator):
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
-        input_mfs = _wrap_gaussian_pimf_input_mfs(input_mfs, K=self.K, eps=self.eps)
+        input_mfs = _wrap_gaussian_pimf_input_mfs(input_mfs, k=self.k, eps=self.eps)
         return ADPTSKRegressor(
             input_mfs,
             rule_base=rule_base,

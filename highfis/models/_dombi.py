@@ -182,7 +182,7 @@ class ADMTSKClassifier(BaseTSKClassifier):
         adaptive: bool = True,
         lambda_: float = 1.0,
         lower_bound: float = 1.0 / math.e,
-        K: float = 10.0,
+        k: float = 10.0,
         t_norm_fn: TNormFn | None = None,
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
@@ -201,7 +201,7 @@ class ADMTSKClassifier(BaseTSKClassifier):
                 dimension and membership lower bound.
             lambda_: Fixed Dombi parameter ``λ > 0`` when adaptive is False.
             lower_bound: The lower bound for Composite GMF values.
-            K: Heuristic constant used to compute adaptive lambda.
+            k: Heuristic constant used to compute adaptive lambda.
             t_norm_fn: Optional custom T-norm implementation. Overrides
                 ``adaptive`` and ``lambda_`` when provided.
             rules: Explicit rule antecedent indices for custom rule bases.
@@ -222,14 +222,14 @@ class ADMTSKClassifier(BaseTSKClassifier):
         self.adaptive = bool(adaptive)
         self.lambda_ = float(lambda_)
         self.lower_bound = float(lower_bound)
-        self.K = float(K)
+        self.k = float(k)
 
         if t_norm_fn is None:
             if self.adaptive:
                 t_norm_fn = AdaptiveDombiTNorm(
                     dimension=len(input_mfs),
                     lower_bound=self.lower_bound,
-                    K=self.K,
+                    k=self.k,
                 )
             else:
                 t_norm_fn = DombiTNorm(lambda_=self.lambda_)
@@ -273,7 +273,7 @@ class ADMTSKRegressor(BaseTSKRegressor):
         adaptive: bool = True,
         lambda_: float = 1.0,
         lower_bound: float = 1.0 / math.e,
-        K: float = 10.0,
+        k: float = 10.0,
         t_norm_fn: TNormFn | None = None,
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
@@ -291,7 +291,7 @@ class ADMTSKRegressor(BaseTSKRegressor):
                 dimension and membership lower bound.
             lambda_: Fixed Dombi parameter ``λ > 0`` when adaptive is False.
             lower_bound: The lower bound for Composite GMF values.
-            K: Heuristic constant used to compute adaptive lambda.
+            k: Heuristic constant used to compute adaptive lambda.
             t_norm_fn: Optional custom T-norm implementation. Overrides
                 ``adaptive`` and ``lambda_`` when provided.
             rules: Explicit rule antecedent indices for custom rule bases.
@@ -308,14 +308,14 @@ class ADMTSKRegressor(BaseTSKRegressor):
         self.adaptive = bool(adaptive)
         self.lambda_ = float(lambda_)
         self.lower_bound = float(lower_bound)
-        self.K = float(K)
+        self.k = float(k)
 
         if t_norm_fn is None:
             if self.adaptive:
                 t_norm_fn = AdaptiveDombiTNorm(
                     dimension=len(input_mfs),
                     lower_bound=self.lower_bound,
-                    K=self.K,
+                    k=self.k,
                 )
             else:
                 t_norm_fn = DombiTNorm(lambda_=self.lambda_)

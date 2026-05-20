@@ -656,26 +656,26 @@ class GaussianPIMF(MembershipFunction):
         self,
         mean: float = 0.0,
         sigma: float = 1.0,
-        K: float = 1.0,
+        k: float = 1.0,
         eps: float | None = None,
     ) -> None:
-        """Initialize Gaussian PIMF with center, spread, and infimum control K.
+        """Initialize Gaussian PIMF with center, spread, and infimum control k.
 
         Args:
             mean: Center of the Gaussian.
             sigma: Spread (standard deviation); must be positive.
-            K: Positive infimum control parameter in (0, 745].
-                The membership infimum is exp(-K).
+            k: Positive infimum control parameter in (0, 745].
+                The membership infimum is exp(-k).
             eps: Numerical stability constant.
         """
         super().__init__(eps=eps)
         if sigma <= 0:
             raise ValueError("sigma must be positive")
-        if not (0.0 < K <= 745.0):
-            raise ValueError("K must be in the interval (0, 745]")
+        if not (0.0 < k <= 745.0):
+            raise ValueError("k must be in the interval (0, 745]")
         self.mean = nn.Parameter(torch.tensor(float(mean)))
         self.raw_sigma = nn.Parameter(torch.tensor(_inv_softplus(float(sigma), eps)))
-        self.K = float(K)
+        self.k = float(k)
 
     @property
     def sigma(self) -> Tensor:
@@ -687,14 +687,14 @@ class GaussianPIMF(MembershipFunction):
         x = self._as_tensor(x)
         z_sq = ((x - self.mean) / self.sigma).square()
         inner = 1.0 - torch.exp(-0.5 * z_sq)
-        return torch.exp(-self.K * inner)
+        return torch.exp(-self.k * inner)
 
     def inspect_params(self) -> dict[str, Any]:
         """Return the serializable parameters for this membership function."""
         return {
             "mean": float(self.mean.detach().cpu().item()),
             "sigma": float(self.sigma.detach().cpu().item()),
-            "K": float(self.K),
+            "k": float(self.k),
         }
 
 

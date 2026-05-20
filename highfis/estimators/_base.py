@@ -541,7 +541,7 @@ def _wrap_composite_gaussian_input_mfs(
 
 def _wrap_gaussian_pimf_input_mfs(
     input_mfs: Mapping[str, Sequence[MembershipFunction]],
-    K: float = 1.0,
+    k: float = 1.0,
     eps: float | None = None,
 ) -> dict[str, list[GaussianMF]]:
     return {
@@ -551,7 +551,7 @@ def _wrap_gaussian_pimf_input_mfs(
                 GaussianPIMF(
                     mean=cast(GaussianMF, mf).mean.detach().item(),
                     sigma=cast(GaussianMF, mf).sigma.detach().item(),
-                    K=float(K),
+                    k=float(k),
                     eps=eps if eps is not None else mf.eps,
                 )
                 for mf in mfs

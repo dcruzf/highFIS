@@ -130,7 +130,7 @@ class AdaptiveDombiTNorm(BaseTNorm):
         self,
         dimension: int,
         lower_bound: float = 1.0 / math.e,
-        K: float = 10.0,
+        k: float = 10.0,
         eps: float | None = None,
     ) -> None:
         r"""Initialize the adaptive Dombi T-norm.
@@ -138,7 +138,7 @@ class AdaptiveDombiTNorm(BaseTNorm):
         Args:
             dimension: Number of input features D.
             lower_bound: Positive lower bound of the membership function.
-            K: Heuristic scaling constant used to compute lambda.
+            k: Heuristic scaling constant used to compute lambda.
             eps: Small positive constant for clamping inputs.
 
         Raises:
@@ -149,15 +149,15 @@ class AdaptiveDombiTNorm(BaseTNorm):
             raise ValueError("dimension must be > 1")
         if not 0.0 <= lower_bound < 1.0:
             raise ValueError("lower_bound must be in [0, 1)")
-        if K <= 1.0:
-            raise ValueError("K must be > 1")
+        if k <= 1.0:
+            raise ValueError("k must be > 1")
 
         self.dimension = int(dimension)
         self.lower_bound = float(lower_bound)
-        self.K = float(K)
+        self.k = float(k)
         self.eps = eps
 
-        denom = math.log(self.K - self.lower_bound) - math.log(1.0 - self.lower_bound)
+        denom = math.log(self.k - self.lower_bound) - math.log(1.0 - self.lower_bound)
         if denom <= 0.0:  # pragma: no cover
             raise ValueError("invalid lambda computation for given lower_bound and K")
         lambda_ = math.log(float(self.dimension)) / denom

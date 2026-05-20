@@ -254,16 +254,16 @@ def test_pi_mf_rejects_invalid_bounds() -> None:
 
 def test_gaussian_pimf_rejects_invalid_sigma() -> None:
     with pytest.raises(ValueError, match="sigma must be positive"):
-        GaussianPIMF(mean=0.0, sigma=0.0, K=1.0)
+        GaussianPIMF(mean=0.0, sigma=0.0, k=1.0)
 
 
 def test_gaussian_pimf_rejects_invalid_k() -> None:
-    with pytest.raises(ValueError, match=r"K must be in the interval \(0, 745\]"):
-        GaussianPIMF(mean=0.0, sigma=1.0, K=0.0)
+    with pytest.raises(ValueError, match=r"k must be in the interval \(0, 745\]"):
+        GaussianPIMF(mean=0.0, sigma=1.0, k=0.0)
 
 
 def test_gaussian_pimf_infimum_positive() -> None:
-    mf = GaussianPIMF(mean=0.0, sigma=1.0, K=2.0)
+    mf = GaussianPIMF(mean=0.0, sigma=1.0, k=2.0)
     x = torch.tensor([100.0])
     y = mf(x)
     assert y.shape == x.shape
@@ -305,7 +305,7 @@ def test_gaussian_pimf_infimum_positive() -> None:
         (ZShapedMF(a=0.0, b=1.0), {"a": 0.0, "b": 1.0}),
         (LinZShapedMF(a=0.0, b=1.0), {"a": 0.0, "b": 1.0}),
         (PiMF(a=0.0, b=0.5, c=1.0, d=1.5), {"a": 0.0, "b": 0.5, "c": 1.0, "d": 1.5}),
-        (GaussianPIMF(mean=0.5, sigma=2.0, K=5.0), {"mean": 0.5, "sigma": 2.0, "K": 5.0}),
+        (GaussianPIMF(mean=0.5, sigma=2.0, k=5.0), {"mean": 0.5, "sigma": 2.0, "k": 5.0}),
     ],
 )
 def test_all_membership_functions_expose_inspect_params(mf: Any, expected: dict[str, float]) -> None:
