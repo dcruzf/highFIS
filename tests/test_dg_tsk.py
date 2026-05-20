@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from highfis.estimators import DGTSKClassifierEstimator, DGTSKRegressorEstimator
+from highfis.estimators import DGTSKClassifier, DGTSKRegressor
 from highfis.memberships import GaussianMF
 from highfis.models import DGTSKClassifierModel, DGTSKRegressorModel
 
@@ -47,8 +47,8 @@ def test_dgtsk_classifier_invalid_n_classes() -> None:
 
 
 def test_dgtsk_estimator_instantiation() -> None:
-    clf = DGTSKClassifierEstimator(n_mfs=2, mf_init="kmeans", use_en_frb=True)
-    reg = DGTSKRegressorEstimator(n_mfs=2, mf_init="kmeans", use_en_frb=True)
+    clf = DGTSKClassifier(n_mfs=2, mf_init="kmeans", use_en_frb=True)
+    reg = DGTSKRegressor(n_mfs=2, mf_init="kmeans", use_en_frb=True)
 
     assert clf is not None
     assert reg is not None

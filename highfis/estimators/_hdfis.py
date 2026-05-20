@@ -24,7 +24,7 @@ from ._base import (
 )
 
 
-class HDFISProdClassifierEstimator(_BaseClassifierEstimator):
+class HDFISProdClassifier(_BaseClassifierEstimator):
     r"""HDFIS-prod classifier estimator with dimension-dependent Gaussian MFs.
 
     HDFIS-prod combines the standard product T-norm with a dimension-dependent
@@ -40,9 +40,9 @@ class HDFISProdClassifierEstimator(_BaseClassifierEstimator):
 
     Example:
         ```python
-        from highfis import HDFISProdClassifierEstimator
+        from highfis import HDFISProdClassifier
 
-        clf = HDFISProdClassifierEstimator()
+        clf = HDFISProdClassifier()
         clf.fit(X_train, y_train)
         ```
     """
@@ -149,7 +149,7 @@ class HDFISProdClassifierEstimator(_BaseClassifierEstimator):
         )
 
 
-class HDFISProdRegressorEstimator(_BaseRegressorEstimator):
+class HDFISProdRegressor(_BaseRegressorEstimator):
     r"""HDFIS-prod regressor estimator with dimension-dependent Gaussian MFs.
 
     HDFIS-prod combines the standard product T-norm with a dimension-dependent
@@ -165,9 +165,9 @@ class HDFISProdRegressorEstimator(_BaseRegressorEstimator):
 
     Example:
         ```python
-        from highfis import HDFISProdRegressorEstimator
+        from highfis import HDFISProdRegressor
 
-        reg = HDFISProdRegressorEstimator()
+        reg = HDFISProdRegressor()
         reg.fit(X_train, y_train)
         ```
     """
@@ -269,7 +269,7 @@ class HDFISProdRegressorEstimator(_BaseRegressorEstimator):
         )
 
 
-class HDFISMinClassifierEstimator(_BaseClassifierEstimator):
+class HDFISMinClassifier(_BaseClassifierEstimator):
     r"""HDFIS-min classifier estimator with minimum T-norm antecedents.
 
     HDFIS-min freezes antecedent membership parameters and uses a minimum
@@ -286,9 +286,9 @@ class HDFISMinClassifierEstimator(_BaseClassifierEstimator):
 
     Example:
         ```python
-        from highfis import HDFISMinClassifierEstimator
+        from highfis import HDFISMinClassifier
 
-        clf = HDFISMinClassifierEstimator()
+        clf = HDFISMinClassifier()
         clf.fit(X_train, y_train)
         preds = clf.predict(X_test)
         ```
@@ -352,7 +352,7 @@ class HDFISMinClassifierEstimator(_BaseClassifierEstimator):
         )
 
 
-class HDFISMinRegressorEstimator(_BaseRegressorEstimator):
+class HDFISMinRegressor(_BaseRegressorEstimator):
     r"""HDFIS-min regressor estimator with minimum T-norm antecedents.
 
     HDFIS-min freezes antecedent membership parameters and uses a minimum
@@ -368,9 +368,9 @@ class HDFISMinRegressorEstimator(_BaseRegressorEstimator):
 
     Example:
         ```python
-        from highfis import HDFISMinRegressorEstimator
+        from highfis import HDFISMinRegressor
 
-        reg = HDFISMinRegressorEstimator()
+        reg = HDFISMinRegressor()
         reg.fit(X_train, y_train)
         preds = reg.predict(X_test)
         ```

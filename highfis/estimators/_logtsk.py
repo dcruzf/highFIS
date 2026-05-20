@@ -19,7 +19,7 @@ from ._base import (
 )
 
 
-class LogTSKClassifierEstimator(_BaseClassifierEstimator):
+class LogTSKClassifier(_BaseClassifierEstimator):
     r"""LogTSK classifier with inverse-log rule normalization.
 
     LogTSK uses product antecedent aggregation and inverse-log
@@ -37,9 +37,9 @@ class LogTSKClassifierEstimator(_BaseClassifierEstimator):
 
     Example:
         ```python
-        from highfis import LogTSKClassifierEstimator
+        from highfis import LogTSKClassifier
 
-        clf = LogTSKClassifierEstimator()
+        clf = LogTSKClassifier()
         clf.fit(X_train, y_train)
         ```
     """
@@ -123,7 +123,7 @@ class LogTSKClassifierEstimator(_BaseClassifierEstimator):
         )
 
 
-class LogTSKRegressorEstimator(_BaseRegressorEstimator):
+class LogTSKRegressor(_BaseRegressorEstimator):
     r"""LogTSK regressor with inverse-log rule normalization.
 
     LogTSK uses product antecedent aggregation and inverse-log
@@ -141,9 +141,9 @@ class LogTSKRegressorEstimator(_BaseRegressorEstimator):
 
     Example:
         ```python
-        from highfis import LogTSKRegressorEstimator
+        from highfis import LogTSKRegressor
 
-        reg = LogTSKRegressorEstimator()
+        reg = LogTSKRegressor()
         reg.fit(X_train, y_train)
         ```
     """

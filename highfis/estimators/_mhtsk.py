@@ -28,7 +28,7 @@ from ._base import (
 )
 
 
-class MHTSKClassifierEstimator(_BaseClassifierEstimator):
+class MHTSKClassifier(_BaseClassifierEstimator):
     """Estimator for the multihead Takagi-Sugeno-Kang fuzzy system.
 
     This estimator supports paper-derived automatic scale parameter resolution
@@ -46,9 +46,9 @@ class MHTSKClassifierEstimator(_BaseClassifierEstimator):
 
     Example:
         ```python
-        from highfis import MHTSKClassifierEstimator
+        from highfis import MHTSKClassifier
 
-        clf = MHTSKClassifierEstimator()
+        clf = MHTSKClassifier()
         clf.fit(X_train, y_train)
         ```
     """
@@ -261,7 +261,7 @@ class MHTSKClassifierEstimator(_BaseClassifierEstimator):
         return self
 
 
-class MHTSKRegressorEstimator(_BaseRegressorEstimator):
+class MHTSKRegressor(_BaseRegressorEstimator):
     """Estimator for the multihead Takagi-Sugeno-Kang fuzzy system.
 
     The regressor uses the same MHTSK head construction and scale parameter
@@ -280,9 +280,9 @@ class MHTSKRegressorEstimator(_BaseRegressorEstimator):
 
     Example:
         ```python
-        from highfis import MHTSKRegressorEstimator
+        from highfis import MHTSKRegressor
 
-        reg = MHTSKRegressorEstimator()
+        reg = MHTSKRegressor()
         reg.fit(X_train, y_train)
         ```
     """

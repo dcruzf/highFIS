@@ -19,7 +19,7 @@ from ._base import (
 )
 
 
-class AYATSKClassifierEstimator(_BaseClassifierEstimator):
+class AYATSKClassifier(_BaseClassifierEstimator):
     """TSK classifier with an adaptive Yager T-norm in the antecedent.
 
     AYATSK extends TSK by using an adaptive Yager T-norm aggregation and
@@ -34,9 +34,9 @@ class AYATSKClassifierEstimator(_BaseClassifierEstimator):
 
     Example:
         ```python
-        from highfis import AYATSKClassifierEstimator
+        from highfis import AYATSKClassifier
 
-        clf = AYATSKClassifierEstimator(n_mfs=30, random_state=0)
+        clf = AYATSKClassifier(n_mfs=30, random_state=0)
         clf.fit(X_train, y_train)
         ```
     """
@@ -127,7 +127,7 @@ class AYATSKClassifierEstimator(_BaseClassifierEstimator):
         )
 
 
-class AYATSKRegressorEstimator(_BaseRegressorEstimator):
+class AYATSKRegressor(_BaseRegressorEstimator):
     """TSK regressor with an adaptive Yager T-norm in the antecedent.
 
     AYATSK extends TSK by using an adaptive Yager T-norm aggregation and
@@ -142,9 +142,9 @@ class AYATSKRegressorEstimator(_BaseRegressorEstimator):
 
     Example:
         ```python
-        from highfis import AYATSKRegressorEstimator
+        from highfis import AYATSKRegressor
 
-        reg = AYATSKRegressorEstimator(n_mfs=30, random_state=0)
+        reg = AYATSKRegressor(n_mfs=30, random_state=0)
         reg.fit(X_train, y_train)
         ```
     """

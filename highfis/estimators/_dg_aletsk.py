@@ -11,12 +11,12 @@ from ..models import (
     DGALETSKRegressorModel,
 )
 from ._fsre import (
-    FSREAdaTSKClassifierEstimator,
-    FSREAdaTSKRegressorEstimator,
+    FSREAdaTSKClassifier,
+    FSREAdaTSKRegressor,
 )
 
 
-class DGALETSKClassifierEstimator(FSREAdaTSKClassifierEstimator):
+class DGALETSKClassifier(FSREAdaTSKClassifier):
     """DG-ALETSK classifier with ALE-softmin antecedent and double-group gates.
 
     DG-ALETSK extends FSRE-AdaTSK by replacing the adaptive softmin with the
@@ -33,9 +33,9 @@ class DGALETSKClassifierEstimator(FSREAdaTSKClassifierEstimator):
 
     Example:
         ```python
-        from highfis import DGALETSKClassifierEstimator
+        from highfis import DGALETSKClassifier
 
-        clf = DGALETSKClassifierEstimator(
+        clf = DGALETSKClassifier(
             n_mfs=30, lambda_init=1.0, use_en_frb=False, random_state=0
         )
         clf.fit(X_train, y_train)
@@ -59,7 +59,7 @@ class DGALETSKClassifierEstimator(FSREAdaTSKClassifierEstimator):
         )
 
 
-class DGALETSKRegressorEstimator(FSREAdaTSKRegressorEstimator):
+class DGALETSKRegressor(FSREAdaTSKRegressor):
     """DG-ALETSK regressor with ALE-softmin antecedent and double-group gates.
 
     DG-ALETSK extends FSRE-AdaTSK by replacing the adaptive softmin with the
@@ -76,9 +76,9 @@ class DGALETSKRegressorEstimator(FSREAdaTSKRegressorEstimator):
 
     Example:
         ```python
-        from highfis import DGALETSKRegressorEstimator
+        from highfis import DGALETSKRegressor
 
-        reg = DGALETSKRegressorEstimator(
+        reg = DGALETSKRegressor(
             n_mfs=30, lambda_init=1.0, use_en_frb=False, random_state=0
         )
         reg.fit(X_train, y_train)

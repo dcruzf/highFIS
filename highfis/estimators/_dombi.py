@@ -25,7 +25,7 @@ from ._base import (
 )
 
 
-class DombiTSKClassifierEstimator(_BaseClassifierEstimator):
+class DombiTSKClassifier(_BaseClassifierEstimator):
     r"""TSK classifier with a fixed Dombi T-norm in the antecedent.
 
     DombiTSK extends TSK fuzzy inference by using a Dombi t-norm
@@ -41,9 +41,9 @@ class DombiTSKClassifierEstimator(_BaseClassifierEstimator):
 
     Example:
         ```python
-        from highfis import DombiTSKClassifierEstimator
+        from highfis import DombiTSKClassifier
 
-        clf = DombiTSKClassifierEstimator(n_mfs=30, random_state=0)
+        clf = DombiTSKClassifier(n_mfs=30, random_state=0)
         clf.fit(X_train, y_train)
         ```
     """
@@ -133,7 +133,7 @@ class DombiTSKClassifierEstimator(_BaseClassifierEstimator):
         )
 
 
-class DombiTSKRegressorEstimator(_BaseRegressorEstimator):
+class DombiTSKRegressor(_BaseRegressorEstimator):
     r"""TSK regressor with a fixed Dombi T-norm in the antecedent.
 
     DombiTSK extends TSK fuzzy inference by using a Dombi t-norm
@@ -149,9 +149,9 @@ class DombiTSKRegressorEstimator(_BaseRegressorEstimator):
 
     Example:
         ```python
-        from highfis import DombiTSKRegressorEstimator
+        from highfis import DombiTSKRegressor
 
-        reg = DombiTSKRegressorEstimator(n_mfs=30, random_state=0)
+        reg = DombiTSKRegressor(n_mfs=30, random_state=0)
         reg.fit(X_train, y_train)
         ```
     """
@@ -234,7 +234,7 @@ class DombiTSKRegressorEstimator(_BaseRegressorEstimator):
         )
 
 
-class ADMTSKClassifierEstimator(_BaseClassifierEstimator):
+class ADMTSKClassifier(_BaseClassifierEstimator):
     r"""ADMTSK classifier estimator with Composite GMF and adaptive Dombi lambda.
 
     ADMTSK is an adaptive Dombi TSK fuzzy system designed for high-dimensional inference.
@@ -249,9 +249,9 @@ class ADMTSKClassifierEstimator(_BaseClassifierEstimator):
 
     Example:
         ```python
-        from highfis import ADMTSKClassifierEstimator
+        from highfis import ADMTSKClassifier
 
-        clf = ADMTSKClassifierEstimator()
+        clf = ADMTSKClassifier()
         clf.fit(X_train, y_train)
         ```
     """
@@ -367,7 +367,7 @@ class ADMTSKClassifierEstimator(_BaseClassifierEstimator):
         )
 
 
-class ADMTSKRegressorEstimator(_BaseRegressorEstimator):
+class ADMTSKRegressor(_BaseRegressorEstimator):
     r"""ADMTSK regressor estimator with Composite GMF and adaptive Dombi lambda.
 
     ADMTSK is an adaptive Dombi TSK fuzzy system designed for high-dimensional inference.
@@ -382,9 +382,9 @@ class ADMTSKRegressorEstimator(_BaseRegressorEstimator):
 
     Example:
         ```python
-        from highfis import ADMTSKRegressorEstimator
+        from highfis import ADMTSKRegressor
 
-        reg = ADMTSKRegressorEstimator()
+        reg = ADMTSKRegressor()
         reg.fit(X_train, y_train)
         ```
     """

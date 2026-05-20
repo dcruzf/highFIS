@@ -22,7 +22,7 @@ from ._base import (
 )
 
 
-class ADPTSKClassifierEstimator(_BaseClassifierEstimator):
+class ADPTSKClassifier(_BaseClassifierEstimator):
     r"""TSK classifier with ADP-softmin antecedent and Gaussian PIMF.
 
     The firing strengths of each rule are computed with the ADP-softmin
@@ -38,9 +38,9 @@ class ADPTSKClassifierEstimator(_BaseClassifierEstimator):
 
     Example:
         ```python
-        from highfis import ADPTSKClassifierEstimator
+        from highfis import ADPTSKClassifier
 
-        clf = ADPTSKClassifierEstimator()
+        clf = ADPTSKClassifier()
         clf.fit(X_train, y_train)
         ```
     """
@@ -149,7 +149,7 @@ class ADPTSKClassifierEstimator(_BaseClassifierEstimator):
         )
 
 
-class ADPTSKRegressorEstimator(_BaseRegressorEstimator):
+class ADPTSKRegressor(_BaseRegressorEstimator):
     r"""TSK regressor with ADP-softmin antecedent and Gaussian PIMF.
 
     The firing strengths of each rule are computed with the ADP-softmin
@@ -165,9 +165,9 @@ class ADPTSKRegressorEstimator(_BaseRegressorEstimator):
 
     Example:
         ```python
-        from highfis import ADPTSKRegressorEstimator
+        from highfis import ADPTSKRegressor
 
-        reg = ADPTSKRegressorEstimator()
+        reg = ADPTSKRegressor()
         reg.fit(X_train, y_train)
         ```
     """
@@ -275,7 +275,7 @@ class ADPTSKRegressorEstimator(_BaseRegressorEstimator):
         )
 
 
-class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
+class AdaTSKClassifier(_BaseClassifierEstimator):
     r"""TSK classifier with adaptive softmin antecedent (AdaTSK).
 
     The firing strength of each rule is computed with the Ada-softmin operator.
@@ -289,9 +289,9 @@ class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
 
     Example:
         ```python
-        from highfis import AdaTSKClassifierEstimator
+        from highfis import AdaTSKClassifier
 
-        clf = AdaTSKClassifierEstimator(n_mfs=30, random_state=0)
+        clf = AdaTSKClassifier(n_mfs=30, random_state=0)
         clf.fit(X_train, y_train)
         ```
     """
@@ -376,7 +376,7 @@ class AdaTSKClassifierEstimator(_BaseClassifierEstimator):
         )
 
 
-class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
+class AdaTSKRegressor(_BaseRegressorEstimator):
     r"""TSK regressor with adaptive softmin antecedent (AdaTSK).
 
     The firing strength of each rule is computed with the Ada-softmin operator.
@@ -390,9 +390,9 @@ class AdaTSKRegressorEstimator(_BaseRegressorEstimator):
 
     Example:
         ```python
-        from highfis import AdaTSKRegressorEstimator
+        from highfis import AdaTSKRegressor
 
-        reg = AdaTSKRegressorEstimator(n_mfs=30, random_state=0)
+        reg = AdaTSKRegressor(n_mfs=30, random_state=0)
         reg.fit(X_train, y_train)
         ```
     """

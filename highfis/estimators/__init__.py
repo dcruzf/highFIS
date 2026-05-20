@@ -4,87 +4,87 @@ All public estimator classes are re-exported from their respective sub-modules.
 """
 
 from ._adaptive import (
-    AdaTSKClassifierEstimator,
-    AdaTSKRegressorEstimator,
-    ADPTSKClassifierEstimator,
-    ADPTSKRegressorEstimator,
+    AdaTSKClassifier,
+    AdaTSKRegressor,
+    ADPTSKClassifier,
+    ADPTSKRegressor,
 )
 from ._base import (
     InputConfig,
     feature_coverage_rate,
 )
 from ._dg_aletsk import (
-    DGALETSKClassifierEstimator,
-    DGALETSKRegressorEstimator,
+    DGALETSKClassifier,
+    DGALETSKRegressor,
 )
 from ._dg_tsk import (
-    DGTSKClassifierEstimator,
-    DGTSKRegressorEstimator,
+    DGTSKClassifier,
+    DGTSKRegressor,
 )
 from ._dombi import (
-    ADMTSKClassifierEstimator,
-    ADMTSKRegressorEstimator,
-    DombiTSKClassifierEstimator,
-    DombiTSKRegressorEstimator,
+    ADMTSKClassifier,
+    ADMTSKRegressor,
+    DombiTSKClassifier,
+    DombiTSKRegressor,
 )
 from ._fsre import (
-    FSREAdaTSKClassifierEstimator,
-    FSREAdaTSKRegressorEstimator,
+    FSREAdaTSKClassifier,
+    FSREAdaTSKRegressor,
 )
 from ._hdfis import (
-    HDFISMinClassifierEstimator,
-    HDFISMinRegressorEstimator,
-    HDFISProdClassifierEstimator,
-    HDFISProdRegressorEstimator,
+    HDFISMinClassifier,
+    HDFISMinRegressor,
+    HDFISProdClassifier,
+    HDFISProdRegressor,
 )
 from ._htsk import (
-    HTSKClassifierEstimator,
-    HTSKRegressorEstimator,
-    TSKClassifierEstimator,
-    TSKRegressorEstimator,
+    HTSKClassifier,
+    HTSKRegressor,
+    TSKClassifier,
+    TSKRegressor,
 )
 from ._logtsk import (
-    LogTSKClassifierEstimator,
-    LogTSKRegressorEstimator,
+    LogTSKClassifier,
+    LogTSKRegressor,
 )
 from ._mhtsk import (
-    MHTSKClassifierEstimator,
-    MHTSKRegressorEstimator,
+    MHTSKClassifier,
+    MHTSKRegressor,
 )
 from ._yager import (
-    AYATSKClassifierEstimator,
-    AYATSKRegressorEstimator,
+    AYATSKClassifier,
+    AYATSKRegressor,
 )
 
 __all__: list[str] = [
-    "ADMTSKClassifierEstimator",
-    "ADMTSKRegressorEstimator",
-    "ADPTSKClassifierEstimator",
-    "ADPTSKRegressorEstimator",
-    "AYATSKClassifierEstimator",
-    "AYATSKRegressorEstimator",
-    "AdaTSKClassifierEstimator",
-    "AdaTSKRegressorEstimator",
-    "DGALETSKClassifierEstimator",
-    "DGALETSKRegressorEstimator",
-    "DGTSKClassifierEstimator",
-    "DGTSKRegressorEstimator",
-    "DombiTSKClassifierEstimator",
-    "DombiTSKRegressorEstimator",
-    "FSREAdaTSKClassifierEstimator",
-    "FSREAdaTSKRegressorEstimator",
-    "HDFISMinClassifierEstimator",
-    "HDFISMinRegressorEstimator",
-    "HDFISProdClassifierEstimator",
-    "HDFISProdRegressorEstimator",
-    "HTSKClassifierEstimator",
-    "HTSKRegressorEstimator",
+    "ADMTSKClassifier",
+    "ADMTSKRegressor",
+    "ADPTSKClassifier",
+    "ADPTSKRegressor",
+    "AYATSKClassifier",
+    "AYATSKRegressor",
+    "AdaTSKClassifier",
+    "AdaTSKRegressor",
+    "DGALETSKClassifier",
+    "DGALETSKRegressor",
+    "DGTSKClassifier",
+    "DGTSKRegressor",
+    "DombiTSKClassifier",
+    "DombiTSKRegressor",
+    "FSREAdaTSKClassifier",
+    "FSREAdaTSKRegressor",
+    "HDFISMinClassifier",
+    "HDFISMinRegressor",
+    "HDFISProdClassifier",
+    "HDFISProdRegressor",
+    "HTSKClassifier",
+    "HTSKRegressor",
     "InputConfig",
-    "LogTSKClassifierEstimator",
-    "LogTSKRegressorEstimator",
-    "MHTSKClassifierEstimator",
-    "MHTSKRegressorEstimator",
-    "TSKClassifierEstimator",
-    "TSKRegressorEstimator",
+    "LogTSKClassifier",
+    "LogTSKRegressor",
+    "MHTSKClassifier",
+    "MHTSKRegressor",
+    "TSKClassifier",
+    "TSKRegressor",
     "feature_coverage_rate",
 ]

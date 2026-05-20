@@ -17,7 +17,7 @@ from ._base import (
 )
 
 
-class DGTSKClassifierEstimator(_BaseClassifierEstimator):
+class DGTSKClassifier(_BaseClassifierEstimator):
     """DG-TSK classifier with M-gate antecedent and point-based FRB (P-FRB).
 
     DG-TSK uses a data-guided M-gate function to automatically select
@@ -32,9 +32,9 @@ class DGTSKClassifierEstimator(_BaseClassifierEstimator):
 
     Example:
         ```python
-        from highfis import DGTSKClassifierEstimator
+        from highfis import DGTSKClassifier
 
-        clf = DGTSKClassifierEstimator(n_mfs=30, use_en_frb=False, random_state=0)
+        clf = DGTSKClassifier(n_mfs=30, use_en_frb=False, random_state=0)
         clf.fit(X_train, y_train)
         ```
     """
@@ -126,7 +126,7 @@ class DGTSKClassifierEstimator(_BaseClassifierEstimator):
         )
 
 
-class DGTSKRegressorEstimator(_BaseRegressorEstimator):
+class DGTSKRegressor(_BaseRegressorEstimator):
     """DG-TSK regressor with M-gate antecedent and point-based FRB (P-FRB).
 
     DG-TSK uses a data-guided M-gate function to automatically select
@@ -141,9 +141,9 @@ class DGTSKRegressorEstimator(_BaseRegressorEstimator):
 
     Example:
         ```python
-        from highfis import DGTSKRegressorEstimator
+        from highfis import DGTSKRegressor
 
-        reg = DGTSKRegressorEstimator(n_mfs=30, use_en_frb=False, random_state=0)
+        reg = DGTSKRegressor(n_mfs=30, use_en_frb=False, random_state=0)
         reg.fit(X_train, y_train)
         ```
     """

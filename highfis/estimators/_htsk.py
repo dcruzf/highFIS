@@ -21,7 +21,7 @@ from ._base import (
 )
 
 
-class HTSKClassifierEstimator(_BaseClassifierEstimator):
+class HTSKClassifier(_BaseClassifierEstimator):
     r"""HTSK classifier for high-dimensional TSK inference.
 
     HTSK replaces the standard product t-norm with a geometric mean over
@@ -35,9 +35,9 @@ class HTSKClassifierEstimator(_BaseClassifierEstimator):
 
     Example:
         ```python
-        from highfis import HTSKClassifierEstimator
+        from highfis import HTSKClassifier
 
-        clf = HTSKClassifierEstimator()
+        clf = HTSKClassifier()
         clf.fit(X_train, y_train)
         ```
     """
@@ -125,7 +125,7 @@ class HTSKClassifierEstimator(_BaseClassifierEstimator):
         )
 
 
-class HTSKRegressorEstimator(_BaseRegressorEstimator):
+class HTSKRegressor(_BaseRegressorEstimator):
     r"""HTSK regressor for high-dimensional TSK inference.
 
     HTSK replaces the standard product t-norm with a geometric mean over
@@ -139,9 +139,9 @@ class HTSKRegressorEstimator(_BaseRegressorEstimator):
 
     Example:
         ```python
-        from highfis import HTSKRegressorEstimator
+        from highfis import HTSKRegressor
 
-        reg = HTSKRegressorEstimator()
+        reg = HTSKRegressor()
         reg.fit(X_train, y_train)
         ```
     """
@@ -233,7 +233,7 @@ class HTSKRegressorEstimator(_BaseRegressorEstimator):
 # =====================================================================
 
 
-class TSKClassifierEstimator(_BaseClassifierEstimator):
+class TSKClassifier(_BaseClassifierEstimator):
     r"""Vanilla TSK classifier with sum-based rule normalization.
 
     The vanilla Takagi-Sugeno-Kang inference computes rule firing strengths
@@ -248,9 +248,9 @@ class TSKClassifierEstimator(_BaseClassifierEstimator):
 
     Example:
         ```python
-        from highfis import TSKClassifierEstimator
+        from highfis import TSKClassifier
 
-        clf = TSKClassifierEstimator(n_mfs=5, random_state=0)
+        clf = TSKClassifier(n_mfs=5, random_state=0)
         clf.fit(X_train, y_train)
         ```
     """
@@ -341,7 +341,7 @@ class TSKClassifierEstimator(_BaseClassifierEstimator):
         )
 
 
-class TSKRegressorEstimator(_BaseRegressorEstimator):
+class TSKRegressor(_BaseRegressorEstimator):
     r"""Vanilla TSK regressor with sum-based rule normalization.
 
     The vanilla Takagi-Sugeno-Kang inference computes rule firing strengths
@@ -356,9 +356,9 @@ class TSKRegressorEstimator(_BaseRegressorEstimator):
 
     Example:
         ```python
-        from highfis import TSKRegressorEstimator
+        from highfis import TSKRegressor
 
-        reg = TSKRegressorEstimator(n_mfs=30, random_state=0)
+        reg = TSKRegressor(n_mfs=30, random_state=0)
         reg.fit(X_train, y_train)
         ```
     """

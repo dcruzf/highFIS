@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 import torch
 
-from highfis.estimators import InputConfig, TSKClassifierEstimator, TSKRegressorEstimator
+from highfis.estimators import InputConfig, TSKClassifier, TSKRegressor
 from highfis.persistence import (
     CHECKPOINT_FORMAT,
     CHECKPOINT_FORMAT_VERSION,
@@ -117,13 +117,13 @@ class TestEstimatorPersistence:
         x = np.array([[0.0, 0.0], [1.0, 1.0], [0.5, -0.5]], dtype=float)
         y = np.array([0, 1, 0], dtype=int)
 
-        model = TSKClassifierEstimator(epochs=1, n_mfs=2, random_state=0, verbose=False)
+        model = TSKClassifier(epochs=1, n_mfs=2, random_state=0, verbose=False)
         model.fit(x, y)
 
         path = tmp_path / "tsk_classifier.pt"
         model.save(str(path))
 
-        loaded = TSKClassifierEstimator.load(str(path))
+        loaded = TSKClassifier.load(str(path))
         assert loaded.n_features_in_ == model.n_features_in_
         assert np.array_equal(loaded.classes_, model.classes_)
         assert np.array_equal(loaded.feature_names_in_, model.feature_names_in_)
@@ -133,13 +133,13 @@ class TestEstimatorPersistence:
         x = np.array([[0.0], [1.0], [2.0]], dtype=float)
         y = np.array([0.0, 1.0, 2.0], dtype=float)
 
-        model = TSKRegressorEstimator(epochs=1, n_mfs=2, random_state=0, verbose=False)
+        model = TSKRegressor(epochs=1, n_mfs=2, random_state=0, verbose=False)
         model.fit(x, y)
 
         path = tmp_path / "tsk_regressor.pt"
         model.save(str(path))
 
-        loaded = TSKRegressorEstimator.load(str(path))
+        loaded = TSKRegressor.load(str(path))
         assert loaded.n_features_in_ == model.n_features_in_
         assert np.array_equal(loaded.feature_names_in_, model.feature_names_in_)
         assert np.allclose(loaded.predict(x), model.predict(x), atol=1e-6)
@@ -150,13 +150,13 @@ class TestEstimatorPersistence:
         y = (x[:, 0] > 0).astype(int)
         configs = [InputConfig(name="a", n_mfs=2), InputConfig(name="b", n_mfs=2)]
 
-        model = TSKClassifierEstimator(input_configs=configs, epochs=1, random_state=0, verbose=False)
+        model = TSKClassifier(input_configs=configs, epochs=1, random_state=0, verbose=False)
         model.fit(x, y)
 
         path = tmp_path / "tsk_clf_inputcfg.pt"
         model.save(str(path))
 
-        loaded = TSKClassifierEstimator.load(str(path))
+        loaded = TSKClassifier.load(str(path))
         assert loaded.n_features_in_ == model.n_features_in_
         assert np.array_equal(loaded.predict(x), model.predict(x))
 
@@ -166,12 +166,12 @@ class TestEstimatorPersistence:
         y = x[:, 0] * 2.0
         configs = [InputConfig(name="x", n_mfs=2)]
 
-        model = TSKRegressorEstimator(input_configs=configs, epochs=1, random_state=0, verbose=False)
+        model = TSKRegressor(input_configs=configs, epochs=1, random_state=0, verbose=False)
         model.fit(x, y)
 
         path = tmp_path / "tsk_reg_inputcfg.pt"
         model.save(str(path))
 
-        loaded = TSKRegressorEstimator.load(str(path))
+        loaded = TSKRegressor.load(str(path))
         assert loaded.n_features_in_ == model.n_features_in_
         assert np.allclose(loaded.predict(x), model.predict(x), atol=1e-6)

@@ -17,7 +17,7 @@ from ._base import (
 )
 
 
-class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
+class FSREAdaTSKClassifier(_BaseClassifierEstimator):
     r"""FSRE-AdaTSK classifier with adaptive softmin antecedent and gated consequents.
 
     FSRE-AdaTSK (Feature Selection and Rule Extraction) extends AdaTSK.
@@ -31,9 +31,9 @@ class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
 
     Example:
         ```python
-        from highfis import FSREAdaTSKClassifierEstimator
+        from highfis import FSREAdaTSKClassifier
 
-        clf = FSREAdaTSKClassifierEstimator()
+        clf = FSREAdaTSKClassifier()
         clf.fit(X_train, y_train)
         ```
     """
@@ -65,7 +65,7 @@ class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
 
         Args:
             lambda_init: Initial ALE-softmin parameter ``λ > 0`` inherited
-                by :class:`DGALETSKClassifierEstimator`; not used by
+                by :class:`DGALETSKClassifier`; not used by
                 FSRE-AdaTSK proper (Ada-softmin computes its index from
                 the current membership values). Default ``1.0``.
             use_en_frb: If ``True``, use the Enhanced FRB (En-FRB) whose
@@ -136,7 +136,7 @@ class FSREAdaTSKClassifierEstimator(_BaseClassifierEstimator):
         )
 
 
-class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
+class FSREAdaTSKRegressor(_BaseRegressorEstimator):
     r"""FSRE-AdaTSK regressor with adaptive softmin antecedent and gated consequents.
 
     FSRE-AdaTSK (Feature Selection and Rule Extraction) extends AdaTSK.
@@ -150,9 +150,9 @@ class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
 
     Example:
         ```python
-        from highfis import FSREAdaTSKRegressorEstimator
+        from highfis import FSREAdaTSKRegressor
 
-        reg = FSREAdaTSKRegressorEstimator()
+        reg = FSREAdaTSKRegressor()
         reg.fit(X_train, y_train)
         ```
     """
@@ -184,7 +184,7 @@ class FSREAdaTSKRegressorEstimator(_BaseRegressorEstimator):
 
         Args:
             lambda_init: Initial ALE-softmin parameter ``λ > 0`` inherited
-                by :class:`DGALETSKRegressorEstimator`; not used by
+                by :class:`DGALETSKRegressor`; not used by
                 FSRE-AdaTSK proper (Ada-softmin computes its index from
                 the current membership values). Default ``1.0``.
             use_en_frb: If ``True``, use the Enhanced FRB (En-FRB) for rule

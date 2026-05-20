@@ -26,9 +26,7 @@ Checkpoint schema keys:
 Examples:
     >>> from highfis.persistence import load_checkpoint, validate_checkpoint_payload
     >>> ckpt = load_checkpoint("artifacts/clf.pt")
-    >>> validate_checkpoint_payload(
-    ...     ckpt, expected_estimator_class="HTSKClassifierEstimator"
-    ... )
+    >>> validate_checkpoint_payload(ckpt, expected_estimator_class="HTSKClassifier")
 """
 
 from __future__ import annotations
