@@ -16,17 +16,21 @@ from ._common import (
     _threshold_from_zeta,  # noqa: F401
     build_rule_feature_mask,
 )
+from ._dg_aletsk import (
+    DGALETSKClassifier,
+    DGALETSKRegressor,
+)
+from ._dg_tsk import (
+    DGTSKClassifier,
+    DGTSKRegressor,
+)
 from ._dombi import (
     ADMTSKClassifier,
     ADMTSKRegressor,
     DombiTSKClassifier,
     DombiTSKRegressor,
 )
-from ._gated import (
-    DGALETSKClassifier,
-    DGALETSKRegressor,
-    DGTSKClassifier,
-    DGTSKRegressor,
+from ._fsre import (
     FSREAdaTSKClassifier,
     FSREAdaTSKRegressor,
 )

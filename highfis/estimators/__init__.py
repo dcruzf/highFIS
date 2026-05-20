@@ -24,17 +24,21 @@ from ._base import (
     _select_rule_indices,  # noqa: F401
     feature_coverage_rate,
 )
+from ._dg_aletsk import (
+    DGALETSKClassifierEstimator,
+    DGALETSKRegressorEstimator,
+)
+from ._dg_tsk import (
+    DGTSKClassifierEstimator,
+    DGTSKRegressorEstimator,
+)
 from ._dombi import (
     ADMTSKClassifierEstimator,
     ADMTSKRegressorEstimator,
     DombiTSKClassifierEstimator,
     DombiTSKRegressorEstimator,
 )
-from ._gated import (
-    DGALETSKClassifierEstimator,
-    DGALETSKRegressorEstimator,
-    DGTSKClassifierEstimator,
-    DGTSKRegressorEstimator,
+from ._fsre import (
     FSREAdaTSKClassifierEstimator,
     FSREAdaTSKRegressorEstimator,
 )
