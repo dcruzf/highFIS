@@ -432,6 +432,20 @@ def test_adp_softmin_rule_layer_missing_membership_output_raises() -> None:
         layer({"x1": torch.rand(2, 2)})
 
 
+def test_adp_softmin_rule_layer_rejects_nonpositive_kappa() -> None:
+    from highfis.layers import ADPSoftminRuleLayer
+
+    with pytest.raises(ValueError, match="kappa must be > 0"):
+        ADPSoftminRuleLayer(["x1"], [2], kappa=0.0)
+
+
+def test_adp_softmin_rule_layer_rejects_nonpositive_xi() -> None:
+    from highfis.layers import ADPSoftminRuleLayer
+
+    with pytest.raises(ValueError, match="xi must be > 0"):
+        ADPSoftminRuleLayer(["x1"], [2], xi=0.0)
+
+
 def test_adp_softmin_rule_layer_forward_shape() -> None:
     from highfis.layers import ADPSoftminRuleLayer
 

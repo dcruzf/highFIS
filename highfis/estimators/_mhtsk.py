@@ -207,6 +207,13 @@ class MHTSKClassifierEstimator(_BaseClassifierEstimator):
         self.model_ = self._build_model(input_mfs, len(self.classes_), self.rule_base_)
 
     def fit(self, x: Any, y: Any, *, x_val: Any | None = None, y_val: Any | None = None) -> Self:
+        """Train the MHTSK classifier and optionally extract rules.
+
+        After the base training step, if ``rule_extraction`` is enabled, the
+        firing-strength matrix is used to select a compact rule subset via the
+        CRCR criterion.  When ``retrain_after_extraction`` is also set, a
+        second training pass is performed on the reduced model.
+        """
         x_arr, y_arr = check_X_y(x, y)
         super().fit(x, y, x_val=x_val, y_val=y_val)
 
@@ -421,6 +428,13 @@ class MHTSKRegressorEstimator(_BaseRegressorEstimator):
         self.model_ = self._build_regressor_model(input_mfs, self.rule_base_, None)
 
     def fit(self, x: Any, y: Any, *, x_val: Any | None = None, y_val: Any | None = None) -> Self:
+        """Train the MHTSK regressor and optionally extract rules.
+
+        After the base training step, if ``rule_extraction`` is enabled, rules
+        are selected via the unsupervised CRCR criterion on the firing-strength
+        matrix.  When ``retrain_after_extraction`` is also set, a second
+        training pass is performed on the reduced model.
+        """
         x_arr, y_arr = check_X_y(x, y)
         super().fit(x, y, x_val=x_val, y_val=y_val)
 

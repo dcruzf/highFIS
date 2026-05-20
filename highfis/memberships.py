@@ -122,6 +122,7 @@ class ConstantMF(MembershipFunction):
         return torch.full_like(x, fill_value=self.value)
 
     def inspect_params(self) -> dict[str, Any]:
+        """Return the serializable parameters for this membership function."""
         return {"value": self.value}
 
 
@@ -213,6 +214,7 @@ class DimensionDependentGaussianMF(GaussianMF):
         return torch.exp(-(x - self.mean).square() / denom)
 
     def inspect_params(self) -> dict[str, Any]:
+        """Return the serializable parameters for this membership function."""
         return {
             "mean": float(self.mean.detach().cpu().item()),
             "sigma": float(self.sigma.detach().cpu().item()),

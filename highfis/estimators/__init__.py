@@ -11,17 +11,6 @@ from ._adaptive import (
 )
 from ._base import (
     InputConfig,
-    _build_fuzzy_c_means_input_mfs,  # noqa: F401
-    _build_gaussian_input_mfs,  # noqa: F401
-    _build_kmeans_input_mfs,  # noqa: F401
-    _build_mhtsk_input_mfs,  # noqa: F401
-    _build_pfrb_input_mfs,  # noqa: F401
-    _extract_mhtsk_rule_indices,  # noqa: F401
-    _mann_whitney_p_value,  # noqa: F401
-    _normalize_importance,  # noqa: F401
-    _rankdata,  # noqa: F401
-    _resolve_mhtsk_scale_parameters,  # noqa: F401
-    _select_rule_indices,  # noqa: F401
     feature_coverage_rate,
 )
 from ._dg_aletsk import (

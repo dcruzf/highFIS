@@ -6,10 +6,11 @@ import numpy as np
 import pytest
 import torch
 
-from highfis.estimators import TSKClassifierEstimator, TSKRegressorEstimator
+from highfis.estimators import InputConfig, TSKClassifierEstimator, TSKRegressorEstimator
 from highfis.persistence import (
     CHECKPOINT_FORMAT,
     CHECKPOINT_FORMAT_VERSION,
+    deserialize_input_mfs,
     load_checkpoint,
     save_checkpoint,
     validate_checkpoint_payload,
@@ -106,6 +107,11 @@ class TestPersistenceIO:
             validate_checkpoint_payload(payload, expected_estimator_class="FakeEstimator")
 
 
+def test_deserialize_input_mfs_raises_on_unknown_type() -> None:
+    with pytest.raises(ValueError, match="unknown membership function type"):
+        deserialize_input_mfs({"f1": [{"type": "nonexistent_mf_xyz", "params": {}}]})
+
+
 class TestEstimatorPersistence:
     def test_tsk_classifier_save_load_roundtrip(self, tmp_path: Path) -> None:
         x = np.array([[0.0, 0.0], [1.0, 1.0], [0.5, -0.5]], dtype=float)
@@ -136,4 +142,36 @@ class TestEstimatorPersistence:
         loaded = TSKRegressorEstimator.load(str(path))
         assert loaded.n_features_in_ == model.n_features_in_
         assert np.array_equal(loaded.feature_names_in_, model.feature_names_in_)
+        assert np.allclose(loaded.predict(x), model.predict(x), atol=1e-6)
+
+    def test_tsk_classifier_with_input_configs_save_load_roundtrip(self, tmp_path: Path) -> None:
+        rng = np.random.default_rng(0)
+        x = rng.normal(size=(20, 2)).astype(np.float32)
+        y = (x[:, 0] > 0).astype(int)
+        configs = [InputConfig(name="a", n_mfs=2), InputConfig(name="b", n_mfs=2)]
+
+        model = TSKClassifierEstimator(input_configs=configs, epochs=1, random_state=0, verbose=False)
+        model.fit(x, y)
+
+        path = tmp_path / "tsk_clf_inputcfg.pt"
+        model.save(str(path))
+
+        loaded = TSKClassifierEstimator.load(str(path))
+        assert loaded.n_features_in_ == model.n_features_in_
+        assert np.array_equal(loaded.predict(x), model.predict(x))
+
+    def test_tsk_regressor_with_input_configs_save_load_roundtrip(self, tmp_path: Path) -> None:
+        rng = np.random.default_rng(0)
+        x = rng.normal(size=(20, 1)).astype(np.float32)
+        y = x[:, 0] * 2.0
+        configs = [InputConfig(name="x", n_mfs=2)]
+
+        model = TSKRegressorEstimator(input_configs=configs, epochs=1, random_state=0, verbose=False)
+        model.fit(x, y)
+
+        path = tmp_path / "tsk_reg_inputcfg.pt"
+        model.save(str(path))
+
+        loaded = TSKRegressorEstimator.load(str(path))
+        assert loaded.n_features_in_ == model.n_features_in_
         assert np.allclose(loaded.predict(x), model.predict(x), atol=1e-6)

@@ -12,8 +12,6 @@ from ._adaptive import (
 from ._common import (
     BaseTSKClassifier,
     BaseTSKRegressor,
-    _build_first_order_design_matrix,  # noqa: F401
-    _threshold_from_zeta,  # noqa: F401
     build_rule_feature_mask,
 )
 from ._dg_aletsk import (

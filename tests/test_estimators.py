@@ -44,6 +44,9 @@ from highfis.estimators import (
     MHTSKRegressorEstimator,
     TSKClassifierEstimator,
     TSKRegressorEstimator,
+    feature_coverage_rate,
+)
+from highfis.estimators._base import (
     _build_fuzzy_c_means_input_mfs,
     _build_gaussian_input_mfs,
     _build_kmeans_input_mfs,
@@ -55,7 +58,6 @@ from highfis.estimators import (
     _rankdata,
     _resolve_mhtsk_scale_parameters,
     _select_rule_indices,
-    feature_coverage_rate,
 )
 from highfis.memberships import CompositeGMF, DimensionDependentGaussianMF, GaussianMF, MembershipFunction
 from highfis.models import HDFISMinClassifier, HDFISMinRegressor, TSKRegressor

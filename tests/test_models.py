@@ -36,9 +36,11 @@ from highfis.models import (
     MHTSKRegressor,
     TSKClassifier,
     TSKRegressor,
+    build_rule_feature_mask,
+)
+from highfis.models._common import (
     _build_first_order_design_matrix,
     _threshold_from_zeta,
-    build_rule_feature_mask,
 )
 from highfis.t_norms import DombiTNorm
 

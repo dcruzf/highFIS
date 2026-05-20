@@ -71,6 +71,34 @@ class HDFISProdClassifierEstimator(_BaseClassifierEstimator):
         xi: float = 745.0,
         rho: float | None = None,
     ) -> None:
+        r"""Initialise an HDFIS-prod classifier estimator.
+
+        Args:
+            input_configs: Per-feature :class:`InputConfig` list.
+            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
+            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            sigma_scale: Sigma scale factor. ``1.0`` recommended.
+            random_state: Seed for reproducibility.
+            epochs: Maximum training epochs (default ``10``).
+            learning_rate: Adam learning rate (default ``0.01``).
+            verbose: Print per-epoch progress.
+            rule_base: ``"coco"`` or ``"cartesian"``.
+            batch_size: Mini-batch size (default ``512``).
+            shuffle: Reshuffle each epoch.
+            ur_weight: Uncertainty regularisation weight.
+            ur_target: Uncertainty regularisation target.
+            consequent_batch_norm: Batch normalisation on consequent layers.
+            pfrb_max_rules: Maximum number of point-based FRB rules when
+                ``rule_base='pfrb'``. ``None`` uses all training samples.
+            patience: Early-stopping patience (default ``20``).
+                Set to ``None`` to disable early stopping.
+            restore_best: Restore best validation weights after training.
+            weight_decay: L2 weight decay for consequent parameters.
+            xi: Precision constant used to compute the DMF scale exponent
+                $\rho$ when *rho* is ``None``. Must be greater than 1.
+            rho: Scale exponent for the dimension-dependent Gaussian MF.
+                When ``None``, computed as ``1 - log(xi) / log(D)``.
+        """
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -167,6 +195,32 @@ class HDFISProdRegressorEstimator(_BaseRegressorEstimator):
         xi: float = 745.0,
         rho: float | None = None,
     ) -> None:
+        r"""Initialise an HDFIS-prod regressor estimator.
+
+        Args:
+            input_configs: Per-feature :class:`InputConfig` list.
+            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
+            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            sigma_scale: Sigma scale factor. ``1.0`` recommended.
+            random_state: Seed for reproducibility.
+            epochs: Maximum training epochs (default ``10``).
+            learning_rate: Adam learning rate (default ``0.01``).
+            verbose: Print per-epoch progress.
+            rule_base: ``"coco"`` or ``"cartesian"``.
+            batch_size: Mini-batch size (default ``512``).
+            shuffle: Reshuffle each epoch.
+            ur_weight: Uncertainty regularisation weight.
+            ur_target: Uncertainty regularisation target.
+            consequent_batch_norm: Batch normalisation on consequent layers.
+            patience: Early-stopping patience (default ``20``).
+                Set to ``None`` to disable early stopping.
+            restore_best: Restore best validation weights after training.
+            weight_decay: L2 weight decay for consequent parameters.
+            xi: Precision constant used to compute the DMF scale exponent
+                $\rho$ when *rho* is ``None``. Must be greater than 1.
+            rho: Scale exponent for the dimension-dependent Gaussian MF.
+                When ``None``, computed as ``1 - log(xi) / log(D)``.
+        """
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
