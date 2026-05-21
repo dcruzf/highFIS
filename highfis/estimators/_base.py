@@ -829,7 +829,8 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         if x_val is not None and y_val is not None:
             x_v_arr, y_v_arr = check_X_y(x_val, y_val)
             x_val_t = self._as_tensor_x(x_v_arr)
-            y_val_t = torch.as_tensor(np.asarray(y_v_arr, dtype=np.int64), dtype=torch.long)
+            y_val_idx = le.transform(np.asarray(y_v_arr))
+            y_val_t = torch.as_tensor(y_val_idx, dtype=torch.long)
 
         self.history_ = self.model_.fit(
             self._as_tensor_x(x_arr),

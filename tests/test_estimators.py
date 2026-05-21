@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 import torch
 from sklearn.exceptions import NotFittedError
+from sklearn.model_selection import KFold, StratifiedKFold, cross_val_score
 from sklearn.pipeline import Pipeline
 from torch import nn
 
@@ -636,6 +637,30 @@ def test_estimator_fit_accepts_validation_data_in_fit() -> None:
     assert "train" in est.history_
     assert "val" in est.history_
     assert est.model_ is not None
+
+
+def test_estimator_fit_encodes_negative_validation_labels() -> None:
+    x, y = _make_dataset(40)
+    x_val, y_val = _make_dataset(10)
+    y = np.where(y == 0, -1, 1)
+    y_val = np.where(y_val == 0, -1, 1)
+
+    est = HTSKClassifier(n_mfs=2, epochs=1, batch_size=16, random_state=0)
+    est.fit(x, y, x_val=x_val, y_val=y_val)
+
+    assert np.array_equal(est.classes_, np.array([-1, 1]))
+
+
+def test_estimator_fit_encodes_string_validation_labels() -> None:
+    x, y = _make_dataset(40)
+    x_val, y_val = _make_dataset(10)
+    y = np.where(y == 0, "neg", "pos")
+    y_val = np.where(y_val == 0, "neg", "pos")
+
+    est = HTSKClassifier(n_mfs=2, epochs=1, batch_size=16, random_state=0)
+    est.fit(x, y, x_val=x_val, y_val=y_val)
+
+    assert np.array_equal(est.classes_, np.array(["neg", "pos"], dtype=object))
 
 
 def test_estimator_validates_input_config_length() -> None:
@@ -1588,6 +1613,46 @@ def test_dgaletsk_classifier_estimator_pipeline_integration() -> None:
     pred = pipe.predict(x[:10])
 
     assert pred.shape == (10,)
+
+
+def test_estimators_are_compatible_with_sklearn_cross_val_score_default_scoring() -> None:
+    x_clf, y_clf = _make_dataset(45)
+    clf = HTSKClassifier(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=1,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+
+    clf_scores = cross_val_score(
+        clf,
+        x_clf,
+        y_clf,
+        cv=StratifiedKFold(n_splits=3, shuffle=True, random_state=0),
+    )
+    assert clf_scores.shape == (3,)
+    assert np.all(np.isfinite(clf_scores))
+
+    x_reg, y_reg = _make_regression_dataset(45)
+    reg = HTSKRegressor(
+        n_mfs=2,
+        mf_init="kmeans",
+        epochs=1,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+    )
+
+    reg_scores = cross_val_score(
+        reg,
+        x_reg,
+        y_reg,
+        cv=KFold(n_splits=3, shuffle=True, random_state=0),
+    )
+    assert reg_scores.shape == (3,)
+    assert np.all(np.isfinite(reg_scores))
 
 
 def test_tsk_classifier_estimator_save_load_roundtrip() -> None:
