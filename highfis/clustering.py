@@ -84,8 +84,8 @@ class KMeans:
     def __init__(
         self,
         n_clusters: int = 8,
-        n_init: int = 10,
-        max_iter: int = 300,
+        n_init: int = 1,
+        max_iter: int = 100,
         tol: float = 1e-4,
         random_state: int | None = None,
     ) -> None:
@@ -187,6 +187,73 @@ class KMeans:
         if self.labels_ is None:
             raise RuntimeError("KMeans did not produce labels")
         return self.labels_
+
+
+class MiniBatchKMeans:
+    """PyTorch implementation of Mini-Batch K-Means clustering.
+
+    Processes random mini-batches at each iteration instead of the full
+    dataset, making it significantly faster than standard K-Means for large
+    datasets while producing similar cluster quality.
+    """
+
+    def __init__(
+        self,
+        n_clusters: int = 8,
+        batch_size: int = 1024,
+        max_iter: int = 100,
+        tol: float = 0.0,
+        random_state: int | None = None,
+    ) -> None:
+        """Initialise a :class:`MiniBatchKMeans` instance."""
+        self.n_clusters = int(n_clusters)
+        self.batch_size = int(batch_size)
+        self.max_iter = int(max_iter)
+        self.tol = float(tol)
+        self.random_state = random_state
+
+        self.cluster_centers_: Tensor | None = None
+        self.labels_: Tensor | None = None
+
+    def fit(self, x: Any) -> MiniBatchKMeans:
+        """Fit the Mini-Batch K-Means model to the input data."""
+        x_t = _as_tensor(x)
+        n_samples = x_t.shape[0]
+        generator = _build_generator(x_t.device, self.random_state)
+        centers = _initialize_centroids(x_t, self.n_clusters, generator)
+
+        # Running counts for online centroid updates
+        counts = torch.zeros(self.n_clusters, device=x_t.device, dtype=x_t.dtype)
+        batch_size = min(self.batch_size, n_samples)
+
+        for _ in range(self.max_iter):
+            idx = torch.randperm(n_samples, generator=generator, device=x_t.device)[:batch_size]
+            batch = x_t[idx]
+
+            dists = torch.cdist(batch, centers, p=2)
+            labels = dists.argmin(dim=1)
+
+            for k in range(self.n_clusters):
+                mask = labels == k
+                if not mask.any():
+                    continue
+                n_k = mask.sum()
+                counts[k] += n_k
+                lr = n_k.float() / counts[k]
+                centers[k] += lr * (batch[mask].mean(dim=0) - centers[k])
+
+        # Assign all points to final centers
+        dists = torch.cdist(x_t, centers, p=2)
+        self.labels_ = dists.argmin(dim=1)
+        self.cluster_centers_ = centers
+        return self
+
+    def predict(self, x: Any) -> Tensor:
+        """Predict cluster labels for new samples."""
+        if self.cluster_centers_ is None:
+            raise RuntimeError("MiniBatchKMeans instance is not fitted yet")
+        x_t = _as_tensor(x)
+        return torch.cdist(x_t, self.cluster_centers_, p=2).argmin(dim=1)
 
 
 class FuzzyCMeans:
