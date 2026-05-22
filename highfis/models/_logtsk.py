@@ -37,7 +37,7 @@ class LogTSKClassifierModel(BaseTSKClassifierModel):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str = "cartesian",
-        t_norm: str | TNormFn = "prod",
+        t_norm: str | TNormFn = "gmean",
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -52,7 +52,10 @@ class LogTSKClassifierModel(BaseTSKClassifierModel):
                 (default, all MF combinations), ``"coco"`` (same-index
                 compact), ``"en"`` (enhanced FRB), or ``"custom"``
                 (explicit rules via *rules*).
-            t_norm: Antecedent aggregation operator (default ``"prod"``).
+            t_norm: Antecedent aggregation operator (default ``"gmean"``).  The
+                geometric-mean t-norm avoids float32 underflow in high-dimensional
+                inputs while preserving the correct L1-normalised inverse-log
+                weights (the dimension factor D cancels in normalisation).
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to
                 :class:`~highfis.defuzzifiers.InvLogDefuzzifier`.
@@ -99,7 +102,7 @@ class LogTSKRegressorModel(BaseTSKRegressorModel):
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str = "cartesian",
-        t_norm: str | TNormFn = "prod",
+        t_norm: str | TNormFn = "gmean",
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -113,7 +116,9 @@ class LogTSKRegressorModel(BaseTSKRegressorModel):
                 (default, all MF combinations), ``"coco"`` (same-index
                 compact), ``"en"`` (enhanced FRB), or ``"custom"``
                 (explicit rules via *rules*).
-            t_norm: Antecedent aggregation operator (default ``"prod"``.
+            t_norm: Antecedent aggregation operator (default ``"gmean"``).  The
+                geometric-mean t-norm avoids float32 underflow in high-dimensional
+                inputs while preserving correct LogTSK weights after normalisation.
             rules: Explicit rule antecedent indices.
             defuzzifier: Custom defuzzifier.  Defaults to
                 :class:`~highfis.defuzzifiers.InvLogDefuzzifier`.

@@ -131,6 +131,29 @@ class TestLogTSKClassifierMath:
         expected = torch.tensor([[2.0 / 3.0, 1.0 / 3.0]])
         assert torch.allclose(out, expected, atol=1e-5)
 
+    def test_high_dimensional_pipeline_no_underflow(self) -> None:
+        """LogTSKClassifierModel must not collapse to uniform weights for D=784.
+
+        Regression test for the prod-t-norm underflow bug: the product of 784
+        Gaussian MF values underflows to 0.0 in float32, making ALL raw firing
+        levels exactly zero (raw_zero_fraction == 1). The gmean t-norm avoids
+        this by computing exp(mean(log(mu))) instead of product(mu).
+        """
+        torch.manual_seed(0)
+        D, N, R = 784, 30, 5
+        # Spread MF centers widely so rules have distinct firing levels
+        input_mfs = {f"x{i}": [GaussianMF(mean=float(j - 2), sigma=0.5) for j in range(R)] for i in range(D)}
+        model = LogTSKClassifierModel(input_mfs, n_classes=2, rule_base="coco")
+
+        x = torch.randn(N, D)
+        raw_w = model.rule_layer(model.membership_layer(x))  # (N, R), before defuzz
+
+        # With gmean (the fix), raw firing levels must not all be exactly 0
+        zero_frac = (raw_w == 0.0).float().mean().item()
+        assert zero_frac == 0.0, (
+            f"LogTSK raw firing levels are {zero_frac * 100:.1f}% zero — underflow not fixed (prod t-norm still used?)"
+        )
+
 
 class TestLogTSKClassifierFit:
     def test_fit_returns_history(self) -> None:
