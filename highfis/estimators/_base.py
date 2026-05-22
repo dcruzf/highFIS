@@ -17,8 +17,7 @@ from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
 from torch import Tensor
 
 from ..base import BaseTSK
-from ..clustering import FuzzyCMeans
-from ..clustering import KMeans as TorchKMeans
+from ..clustering import FuzzyCMeans, KMeans, MiniBatchKMeans
 from ..memberships import (
     ConstantMF,
     DimensionDependentGaussianMF,
@@ -110,7 +109,7 @@ def _build_gaussian_input_mfs(
 
 def _build_kmeans_input_mfs(
     x: np.ndarray,
-    n_clusters: int,
+    clusterer: KMeans | MiniBatchKMeans,
     sigma_scale: float,
     feature_names: list[str],
     random_state: int | None,
@@ -125,17 +124,17 @@ def _build_kmeans_input_mfs(
     base sigma falls back to half the gap to the nearest neighbouring
     centroid in that feature dimension.
     """
-    km = TorchKMeans(n_clusters=n_clusters, random_state=random_state)
-    km.fit(x)
-    if km.cluster_centers_ is None:
+    clusterer.fit(x)
+    if clusterer.cluster_centers_ is None:
         raise RuntimeError("KMeans did not compute cluster centers")
 
-    if hasattr(km.cluster_centers_, "cpu"):
-        centers = km.cluster_centers_.cpu().numpy()
+    if hasattr(clusterer.cluster_centers_, "cpu"):
+        centers = clusterer.cluster_centers_.cpu().numpy()
     else:
-        centers = np.asarray(km.cluster_centers_)
+        centers = np.asarray(clusterer.cluster_centers_)
 
-    labels: np.ndarray = np.asarray(km.labels_)
+    labels: np.ndarray = np.asarray(clusterer.labels_)
+    n_clusters = int(clusterer.n_clusters)
     rng = np.random.default_rng(random_state)
 
     input_mfs: dict[str, list[GaussianMF]] = {}
@@ -161,8 +160,7 @@ def _build_kmeans_input_mfs(
 
 def _build_fuzzy_c_means_input_mfs(
     x: np.ndarray,
-    n_clusters: int,
-    m: float,
+    clusterer: FuzzyCMeans,
     sigma_scale: float,
     feature_names: list[str],
     random_state: int | None,
@@ -173,17 +171,13 @@ def _build_fuzzy_c_means_input_mfs(
     from ``N(h, 0.2)`` where ``h`` is the cluster-specific, feature-wise
     spread scaled by ``sigma_scale``.
     """
-    model = FuzzyCMeans(
-        n_clusters=n_clusters,
-        m=m,
-        random_state=random_state,
-    )
-    model.fit(x)
-    if model.cluster_centers_ is None or model.membership_ is None:
+    clusterer.fit(x)
+    if clusterer.cluster_centers_ is None or clusterer.membership_ is None:
         raise RuntimeError("FuzzyCMeans did not converge to a valid solution")
 
-    centers: np.ndarray = model.cluster_centers_.cpu().numpy()
-    membership: np.ndarray = model.membership_.cpu().numpy()
+    centers: np.ndarray = clusterer.cluster_centers_.cpu().numpy()
+    membership: np.ndarray = clusterer.membership_.cpu().numpy()
+    n_clusters = int(clusterer.n_clusters)
     input_mfs: dict[str, list[GaussianMF]] = {}
     rng = np.random.default_rng(random_state)
 
@@ -193,7 +187,7 @@ def _build_fuzzy_c_means_input_mfs(
         mfs: list[GaussianMF] = []
         for r in range(n_clusters):
             c = float(center_col[r])
-            weights = membership[:, r] ** float(model.m)
+            weights = membership[:, r] ** float(clusterer.m)
             total_weight = float(np.sum(weights))
             if total_weight > 0.0:
                 variance = float(np.sum(weights * (col - c) ** 2) / total_weight)
@@ -211,6 +205,38 @@ def _build_fuzzy_c_means_input_mfs(
         input_mfs[name] = mfs
 
     return input_mfs
+
+
+def _resolve_clusterer(
+    mf_init: str | KMeans | MiniBatchKMeans | FuzzyCMeans,
+    n_clusters: int,
+    random_state: int | None,
+) -> KMeans | MiniBatchKMeans | FuzzyCMeans:
+    """Resolve *mf_init* to a configured clustering object.
+
+    When *mf_init* is already a clustering instance its ``n_clusters`` and
+    ``random_state`` are overridden with the estimator values so that the
+    number of rules and reproducibility are always controlled by the
+    estimator's own parameters.
+    """
+    import copy
+
+    if isinstance(mf_init, (KMeans, MiniBatchKMeans, FuzzyCMeans)):
+        c = copy.copy(mf_init)
+        c.n_clusters = n_clusters
+        c.random_state = random_state
+        return c
+    init_str = str(mf_init).lower()
+    if init_str == "kmeans":
+        return KMeans(n_clusters=n_clusters, n_init=1, max_iter=100, random_state=random_state)
+    if init_str == "minibatch_kmeans":
+        return MiniBatchKMeans(n_clusters=n_clusters, random_state=random_state)
+    if init_str == "fcm":
+        return FuzzyCMeans(n_clusters=n_clusters, random_state=random_state)
+    raise ValueError(
+        f"mf_init must be 'kmeans', 'minibatch_kmeans', 'fcm', 'grid', "
+        f"or a KMeans/MiniBatchKMeans/FuzzyCMeans instance; got {mf_init!r}"
+    )
 
 
 def _build_mhtsk_input_mfs(
@@ -590,7 +616,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         *,
         input_configs: list[InputConfig] | None = None,
         n_mfs: int = 5,
-        mf_init: str = "kmeans",
+        mf_init: str | KMeans | MiniBatchKMeans | FuzzyCMeans = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         epochs: int = 10,
@@ -722,45 +748,8 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         """Build MFs and resolve rule_base from the initialization mode."""
-        init = str(self.mf_init).lower()
-        if init not in {"kmeans", "fcm", "grid"}:
-            raise ValueError(f"mf_init must be 'kmeans', 'fcm' or 'grid', got '{self.mf_init}'")
-
-        if init in {"kmeans", "fcm"}:
-            feature_names = self._resolve_feature_names(x_arr)
-            if isinstance(self.sigma_scale, str) and self.sigma_scale.lower() == "auto":
-                effective_sigma_scale = math.sqrt(float(x_arr.shape[1]))
-            else:
-                effective_sigma_scale = float(self.sigma_scale)
-            if self.rule_base == "pfrb":
-                input_mfs = _build_pfrb_input_mfs(
-                    x_arr,
-                    feature_names,
-                    max_rules=self.pfrb_max_rules,
-                    sigma_scale=effective_sigma_scale,
-                    random_state=self.random_state,
-                )
-                effective_rule_base = "coco"
-            else:
-                if init == "kmeans":
-                    input_mfs = _build_kmeans_input_mfs(
-                        x_arr,
-                        n_clusters=int(self.n_mfs),
-                        sigma_scale=effective_sigma_scale,
-                        feature_names=feature_names,
-                        random_state=self.random_state,
-                    )
-                else:
-                    input_mfs = _build_fuzzy_c_means_input_mfs(
-                        x_arr,
-                        n_clusters=int(self.n_mfs),
-                        m=2.0,
-                        sigma_scale=effective_sigma_scale,
-                        feature_names=feature_names,
-                        random_state=self.random_state,
-                    )
-                effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
-        else:
+        # ---- grid initialisation ----
+        if isinstance(self.mf_init, str) and self.mf_init.lower() == "grid":
             input_configs = self._resolve_input_configs(x_arr)
             feature_names = [cfg.name for cfg in input_configs]
             if self.rule_base == "pfrb":
@@ -775,6 +764,35 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
             else:
                 input_mfs = _build_gaussian_input_mfs(x_arr, input_configs)
                 effective_rule_base = self.rule_base if self.rule_base is not None else "cartesian"
+            return input_mfs, feature_names, effective_rule_base
+
+        # ---- clustering-based initialisation ----
+        feature_names = self._resolve_feature_names(x_arr)
+        if isinstance(self.sigma_scale, str) and self.sigma_scale.lower() == "auto":
+            effective_sigma_scale = math.sqrt(float(x_arr.shape[1]))
+        else:
+            effective_sigma_scale = float(self.sigma_scale)
+
+        if self.rule_base == "pfrb":
+            input_mfs = _build_pfrb_input_mfs(
+                x_arr,
+                feature_names,
+                max_rules=self.pfrb_max_rules,
+                sigma_scale=effective_sigma_scale,
+                random_state=self.random_state,
+            )
+            effective_rule_base = "coco"
+        else:
+            clusterer = _resolve_clusterer(self.mf_init, int(self.n_mfs), self.random_state)
+            if isinstance(clusterer, FuzzyCMeans):
+                input_mfs = _build_fuzzy_c_means_input_mfs(
+                    x_arr, clusterer, effective_sigma_scale, feature_names, self.random_state
+                )
+            else:
+                input_mfs = _build_kmeans_input_mfs(
+                    x_arr, clusterer, effective_sigma_scale, feature_names, self.random_state
+                )
+            effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
 
         return input_mfs, feature_names, effective_rule_base
 
@@ -829,7 +847,8 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         if x_val is not None and y_val is not None:
             x_v_arr, y_v_arr = check_X_y(x_val, y_val)
             x_val_t = self._as_tensor_x(x_v_arr)
-            y_val_t = torch.as_tensor(np.asarray(y_v_arr, dtype=np.int64), dtype=torch.long)
+            y_val_idx = le.transform(np.asarray(y_v_arr))
+            y_val_t = torch.as_tensor(y_val_idx, dtype=torch.long)
 
         self.history_ = self.model_.fit(
             self._as_tensor_x(x_arr),
@@ -1044,7 +1063,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         *,
         input_configs: list[InputConfig] | None = None,
         n_mfs: int = 5,
-        mf_init: str = "kmeans",
+        mf_init: str | KMeans | MiniBatchKMeans | FuzzyCMeans = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         epochs: int = 10,
@@ -1172,45 +1191,8 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         """Build MFs and resolve rule_base from the initialization mode."""
-        init = str(self.mf_init).lower()
-        if init not in {"kmeans", "fcm", "grid"}:
-            raise ValueError(f"mf_init must be 'kmeans', 'fcm' or 'grid', got '{self.mf_init}'")
-
-        if init in {"kmeans", "fcm"}:
-            feature_names = self._resolve_feature_names(x_arr)
-            if isinstance(self.sigma_scale, str) and self.sigma_scale.lower() == "auto":
-                effective_sigma_scale = math.sqrt(float(x_arr.shape[1]))
-            else:
-                effective_sigma_scale = float(self.sigma_scale)
-            if self.rule_base == "pfrb":
-                input_mfs = _build_pfrb_input_mfs(
-                    x_arr,
-                    feature_names,
-                    max_rules=self.pfrb_max_rules,
-                    sigma_scale=effective_sigma_scale,
-                    random_state=self.random_state,
-                )
-                effective_rule_base = "coco"
-            else:
-                if init == "kmeans":
-                    input_mfs = _build_kmeans_input_mfs(
-                        x_arr,
-                        n_clusters=int(self.n_mfs),
-                        sigma_scale=effective_sigma_scale,
-                        feature_names=feature_names,
-                        random_state=self.random_state,
-                    )
-                else:
-                    input_mfs = _build_fuzzy_c_means_input_mfs(
-                        x_arr,
-                        n_clusters=int(self.n_mfs),
-                        m=2.0,
-                        sigma_scale=effective_sigma_scale,
-                        feature_names=feature_names,
-                        random_state=self.random_state,
-                    )
-                effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
-        else:
+        # ---- grid initialisation ----
+        if isinstance(self.mf_init, str) and self.mf_init.lower() == "grid":
             input_configs = self._resolve_input_configs(x_arr)
             feature_names = [cfg.name for cfg in input_configs]
             if self.rule_base == "pfrb":
@@ -1225,6 +1207,35 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
             else:
                 input_mfs = _build_gaussian_input_mfs(x_arr, input_configs)
                 effective_rule_base = self.rule_base if self.rule_base is not None else "cartesian"
+            return input_mfs, feature_names, effective_rule_base
+
+        # ---- clustering-based initialisation ----
+        feature_names = self._resolve_feature_names(x_arr)
+        if isinstance(self.sigma_scale, str) and self.sigma_scale.lower() == "auto":
+            effective_sigma_scale = math.sqrt(float(x_arr.shape[1]))
+        else:
+            effective_sigma_scale = float(self.sigma_scale)
+
+        if self.rule_base == "pfrb":
+            input_mfs = _build_pfrb_input_mfs(
+                x_arr,
+                feature_names,
+                max_rules=self.pfrb_max_rules,
+                sigma_scale=effective_sigma_scale,
+                random_state=self.random_state,
+            )
+            effective_rule_base = "coco"
+        else:
+            clusterer = _resolve_clusterer(self.mf_init, int(self.n_mfs), self.random_state)
+            if isinstance(clusterer, FuzzyCMeans):
+                input_mfs = _build_fuzzy_c_means_input_mfs(
+                    x_arr, clusterer, effective_sigma_scale, feature_names, self.random_state
+                )
+            else:
+                input_mfs = _build_kmeans_input_mfs(
+                    x_arr, clusterer, effective_sigma_scale, feature_names, self.random_state
+                )
+            effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
 
         return input_mfs, feature_names, effective_rule_base
 
