@@ -5,7 +5,8 @@ from typing import Any
 import pytest
 import torch
 
-from highfis.clustering import FuzzyCMeans, KMeans
+from highfis.clustering import FuzzyCMeans, KMeans, MiniBatchKMeans
+from highfis.estimators._base import _resolve_clusterer
 
 
 def test_kmeans_class_methods_consistent() -> None:
@@ -111,6 +112,50 @@ def test_kmeans_predict_before_fit_raises() -> None:
     model = KMeans(n_clusters=2)
     with pytest.raises(RuntimeError, match="KMeans instance is not fitted yet"):
         model.predict(torch.randn(2, 2))
+
+
+def test_minibatch_kmeans_class_methods_consistent_and_empty_cluster_branch() -> None:
+    x = torch.tensor([[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]], dtype=torch.float32)
+    model = MiniBatchKMeans(n_clusters=3, batch_size=1, max_iter=5, random_state=0)
+    model.fit(x)
+    assert model.labels_ is not None
+    assert model.cluster_centers_ is not None
+    assert model.cluster_centers_.shape == (3, 2)
+    predictions = model.predict(x)
+    assert predictions.shape == (3,)
+    assert torch.equal(model.labels_, predictions)
+
+
+def test_minibatch_kmeans_predict_before_fit_raises() -> None:
+    model = MiniBatchKMeans(n_clusters=2)
+    with pytest.raises(RuntimeError, match="MiniBatchKMeans instance is not fitted yet"):
+        model.predict(torch.randn(2, 2))
+
+
+def test_resolve_clusterer_supports_minibatch_kmeans_and_fcm() -> None:
+    model = _resolve_clusterer("minibatch_kmeans", n_clusters=2, random_state=7)
+    assert isinstance(model, MiniBatchKMeans)
+    assert model.n_clusters == 2
+    assert model.random_state == 7
+
+    model = _resolve_clusterer("fcm", n_clusters=3, random_state=8)
+    assert isinstance(model, FuzzyCMeans)
+    assert model.n_clusters == 3
+    assert model.random_state == 8
+
+
+def test_resolve_clusterer_overrides_instance_parameters() -> None:
+    clusterer = MiniBatchKMeans(n_clusters=1, random_state=123)
+    resolved = _resolve_clusterer(clusterer, n_clusters=4, random_state=456)
+    assert isinstance(resolved, MiniBatchKMeans)
+    assert resolved is not clusterer
+    assert resolved.n_clusters == 4
+    assert resolved.random_state == 456
+
+
+def test_resolve_clusterer_rejects_invalid_string() -> None:
+    with pytest.raises(ValueError, match="mf_init must be 'kmeans'"):
+        _resolve_clusterer("bogus", n_clusters=2, random_state=None)
 
 
 def test_fcm_predict_before_fit_raises() -> None:
