@@ -69,7 +69,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
                 extraction (P-FRB). Default ``False`` keeps CoCo-FRB.
             input_configs: Per-feature :class:`InputConfig` list.
             n_mfs: Number of k-means clusters / grid MFs (default ``5``).
-            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for reproducibility.
             epochs: Maximum training epochs (default ``10``).
@@ -178,7 +178,7 @@ class DGTSKRegressor(_BaseRegressorEstimator):
                 extraction (P-FRB). Default ``False`` keeps CoCo-FRB.
             input_configs: Per-feature :class:`InputConfig` list.
             n_mfs: Number of k-means clusters / grid MFs (default ``5``).
-            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for reproducibility.
             epochs: Maximum training epochs (default ``10``).

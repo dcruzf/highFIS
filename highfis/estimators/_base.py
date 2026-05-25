@@ -632,6 +632,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
+        device: str = "cpu",
     ) -> None:
         """Initialise shared hyperparameters for TSK classifier estimators.
 
@@ -642,14 +643,17 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
                 ``name`` field is used; centres and sigmas are computed from
                 cluster statistics.
             n_mfs: Number of MFs per feature when ``mf_init="grid"``, or
-                number of k-means clusters when ``mf_init="kmeans"``. Cui
-                et al. (IJCNN 2021) used ``R=30`` for all datasets.
+                number of k-means clusters when ``mf_init="kmeans"`` /
+                ``"minibatch_kmeans"`` / ``"fcm"``. Cui et al. (IJCNN 2021)
+                used ``R=30`` for all datasets.
             mf_init: MF initialisation strategy. ``"kmeans"`` (default)
                 derives MF centres from k-means cluster centroids following
-                Cui et al. (IJCNN 2021). ``"fcm"`` derives MF centres from
-                fuzzy C-means cluster centroids and computes sigmas from the
-                resulting fuzzy memberships. ``"grid"`` places centres on a
-                regular grid controlled by :class:`InputConfig`.
+                Cui et al. (IJCNN 2021). ``"minibatch_kmeans"`` is a faster
+                variant recommended for large datasets (n > 20 k).
+                ``"fcm"`` derives MF centres from fuzzy C-means cluster
+                centroids and computes sigmas from the resulting fuzzy
+                memberships. ``"grid"`` places centres on a regular grid
+                controlled by :class:`InputConfig`.
             sigma_scale: Scale factor for sigma initialisation when
                 ``mf_init="kmeans"``. Each sigma is drawn from
                 ``N(h, 0.2)`` where ``h = sigma_scale * within_cluster_std``
@@ -699,6 +703,13 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
                 early stopping and held-out performance monitoring.
             weight_decay: L2 weight-decay coefficient applied to consequent
                 layer parameters by the Adam optimiser.
+            device: PyTorch device string on which the model and all tensors
+                are placed during training and inference. Examples:
+                ``"cpu"`` (default), ``"cuda"``, ``"cuda:0"``,
+                ``"mps"`` (Apple Silicon). When ``"cuda"`` is requested but
+                no CUDA device is available PyTorch will raise an error at
+                fit time; use ``torch.cuda.is_available()`` to check
+                availability before setting this parameter.
         """
         self.input_configs = input_configs
         self.n_mfs = n_mfs
@@ -718,6 +729,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         self.patience = patience
         self.restore_best = restore_best
         self.weight_decay = weight_decay
+        self.device = device
 
     # -- helpers ----------------------------------------------------------
 
@@ -742,9 +754,17 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         return [f"x{i + 1}" for i in range(x.shape[1])]
 
     @staticmethod
-    def _as_tensor_x(x: np.ndarray) -> torch.Tensor:
-        """Convert numpy array to float32 tensor."""
-        return torch.as_tensor(x, dtype=torch.float32)
+    def _as_tensor_x(x: np.ndarray, device: torch.device | str | None = None) -> torch.Tensor:
+        """Convert numpy array to a float32 tensor on *device*.
+
+        Args:
+            x: Input array to convert.
+            device: Target PyTorch device. ``None`` uses the PyTorch default
+                (CPU). Pass the resolved ``torch.device`` from :meth:`fit`
+                or inference methods to keep all tensors on the same device
+                as the model.
+        """
+        return torch.as_tensor(x, dtype=torch.float32, device=device)
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         """Build MFs and resolve rule_base from the initialization mode."""
@@ -835,9 +855,10 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         self.classes_ = le.classes_
         self._label_encoder_ = le
 
-        self.model_ = self._build_model(input_mfs, len(self.classes_), effective_rule_base)
+        _device = torch.device(str(self.device))
+        self.model_ = self._build_model(input_mfs, len(self.classes_), effective_rule_base).to(_device)
 
-        y_t = torch.as_tensor(y_idx, dtype=torch.long)
+        y_t = torch.as_tensor(y_idx, dtype=torch.long, device=_device)
 
         # Prepare validation tensors if provided via fit.
         x_val_t: torch.Tensor | None = None
@@ -846,12 +867,12 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
             raise ValueError("x_val and y_val must be provided together")
         if x_val is not None and y_val is not None:
             x_v_arr, y_v_arr = check_X_y(x_val, y_val)
-            x_val_t = self._as_tensor_x(x_v_arr)
+            x_val_t = self._as_tensor_x(x_v_arr, _device)
             y_val_idx = le.transform(np.asarray(y_v_arr))
-            y_val_t = torch.as_tensor(y_val_idx, dtype=torch.long)
+            y_val_t = torch.as_tensor(y_val_idx, dtype=torch.long, device=_device)
 
         self.history_ = self.model_.fit(
-            self._as_tensor_x(x_arr),
+            self._as_tensor_x(x_arr, _device),
             y_t,
             epochs=int(self.epochs),
             learning_rate=float(self.learning_rate),
@@ -927,6 +948,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
             str(model_init["rule_base"]),
         )
         estimator.model_.load_state_dict(checkpoint["model_state_dict"])
+        estimator.model_.to(torch.device(str(estimator.device)))
 
         fitted = checkpoint["fitted_attrs"]
         estimator.n_features_in_ = int(fitted["n_features_in"])
@@ -944,7 +966,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         x_arr = check_array(x)
         if x_arr.shape[1] != self.n_features_in_:
             raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
-        probs = cast(Any, self.model_).predict_proba(self._as_tensor_x(x_arr))
+        probs = cast(Any, self.model_).predict_proba(self._as_tensor_x(x_arr, torch.device(str(self.device))))
         return probs.detach().cpu().numpy()
 
     def predict(self, x: Any) -> np.ndarray:
@@ -993,7 +1015,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         try:
             self.model_.eval()
             with torch.no_grad():
-                norm_w = self.model_.forward_antecedents(self._as_tensor_x(x_arr))
+                norm_w = self.model_.forward_antecedents(self._as_tensor_x(x_arr, torch.device(str(self.device))))
         finally:
             self.model_.train(was_training)
 
@@ -1079,6 +1101,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
+        device: str = "cpu",
     ) -> None:
         """Initialise shared hyperparameters for TSK regressor estimators.
 
@@ -1089,14 +1112,17 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
                 ``name`` field is used; centres and sigmas are computed from
                 cluster statistics.
             n_mfs: Number of MFs per feature when ``mf_init="grid"``, or
-                number of k-means clusters when ``mf_init="kmeans"``. Cui
-                et al. (IJCNN 2021) used ``R=30`` for all datasets.
+                number of k-means clusters when ``mf_init="kmeans"`` /
+                ``"minibatch_kmeans"`` / ``"fcm"``. Cui et al. (IJCNN 2021)
+                used ``R=30`` for all datasets.
             mf_init: MF initialisation strategy. ``"kmeans"`` (default)
                 derives MF centres from k-means cluster centroids following
-                Cui et al. (IJCNN 2021). ``"fcm"`` derives MF centres from
-                fuzzy C-means cluster centroids and computes sigmas from the
-                resulting fuzzy memberships. ``"grid"`` places centres on a
-                regular grid controlled by :class:`InputConfig`.
+                Cui et al. (IJCNN 2021). ``"minibatch_kmeans"`` is a faster
+                variant recommended for large datasets (n > 20 k).
+                ``"fcm"`` derives MF centres from fuzzy C-means cluster
+                centroids and computes sigmas from the resulting fuzzy
+                memberships. ``"grid"`` places centres on a regular grid
+                controlled by :class:`InputConfig`.
             sigma_scale: Scale factor for sigma initialisation when
                 ``mf_init="kmeans"``. Each sigma is drawn from
                 ``N(h, 0.2)`` where ``h = sigma_scale * within_cluster_std``
@@ -1142,6 +1168,13 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
                 model weights after training.
             weight_decay: L2 weight-decay coefficient applied to consequent
                 layer parameters by the Adam optimiser.
+            device: PyTorch device string on which the model and all tensors
+                are placed during training and inference. Examples:
+                ``"cpu"`` (default), ``"cuda"``, ``"cuda:0"``,
+                ``"mps"`` (Apple Silicon). When ``"cuda"`` is requested but
+                no CUDA device is available PyTorch will raise an error at
+                fit time; use ``torch.cuda.is_available()`` to check
+                availability before setting this parameter.
         """
         self.input_configs = input_configs
         self.n_mfs = n_mfs
@@ -1161,6 +1194,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         self.patience = patience
         self.restore_best = restore_best
         self.weight_decay = weight_decay
+        self.device = device
 
     # -- helpers ----------------------------------------------------------
 
@@ -1185,9 +1219,17 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         return [f"x{i + 1}" for i in range(x.shape[1])]
 
     @staticmethod
-    def _as_tensor_x(x: np.ndarray) -> torch.Tensor:
-        """Convert numpy array to float32 tensor."""
-        return torch.as_tensor(x, dtype=torch.float32)
+    def _as_tensor_x(x: np.ndarray, device: torch.device | str | None = None) -> torch.Tensor:
+        """Convert numpy array to a float32 tensor on *device*.
+
+        Args:
+            x: Input array to convert.
+            device: Target PyTorch device. ``None`` uses the PyTorch default
+                (CPU). Pass the resolved ``torch.device`` from :meth:`fit`
+                or inference methods to keep all tensors on the same device
+                as the model.
+        """
+        return torch.as_tensor(x, dtype=torch.float32, device=device)
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         """Build MFs and resolve rule_base from the initialization mode."""
@@ -1273,9 +1315,10 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         self.n_features_in_ = x_arr.shape[1]
         self.feature_names_in_ = np.asarray(feature_names, dtype=object)
 
-        self.model_ = self._build_regressor_model(input_mfs, effective_rule_base)
+        _device = torch.device(str(self.device))
+        self.model_ = self._build_regressor_model(input_mfs, effective_rule_base).to(_device)
 
-        y_t = torch.as_tensor(np.asarray(y_arr, dtype=np.float32), dtype=torch.float32)
+        y_t = torch.as_tensor(np.asarray(y_arr, dtype=np.float32), dtype=torch.float32, device=_device)
 
         # Prepare validation tensors if provided via fit.
         x_val_t: torch.Tensor | None = None
@@ -1284,11 +1327,11 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
             raise ValueError("x_val and y_val must be provided together")
         if x_val is not None and y_val is not None:
             x_v_arr, y_v_arr = check_X_y(x_val, y_val)
-            x_val_t = self._as_tensor_x(x_v_arr)
-            y_val_t = torch.as_tensor(np.asarray(y_v_arr, dtype=np.float32), dtype=torch.float32)
+            x_val_t = self._as_tensor_x(x_v_arr, _device)
+            y_val_t = torch.as_tensor(np.asarray(y_v_arr, dtype=np.float32), dtype=torch.float32, device=_device)
 
         self.history_ = self.model_.fit(
-            self._as_tensor_x(x_arr),
+            self._as_tensor_x(x_arr, _device),
             y_t,
             epochs=int(self.epochs),
             learning_rate=float(self.learning_rate),
@@ -1361,6 +1404,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
             str(model_init["rule_base"]),
         )
         estimator.model_.load_state_dict(checkpoint["model_state_dict"])
+        estimator.model_.to(torch.device(str(estimator.device)))
 
         fitted = checkpoint["fitted_attrs"]
         estimator.n_features_in_ = int(fitted["n_features_in"])
@@ -1374,7 +1418,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         x_arr = check_array(x)
         if x_arr.shape[1] != self.n_features_in_:
             raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
-        preds = cast(Any, self.model_).predict(self._as_tensor_x(x_arr))
+        preds = cast(Any, self.model_).predict(self._as_tensor_x(x_arr, torch.device(str(self.device))))
         return preds.detach().cpu().numpy()
 
     def evaluate(
@@ -1411,7 +1455,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         try:
             self.model_.eval()
             with torch.no_grad():
-                norm_w = self.model_.forward_antecedents(self._as_tensor_x(x_arr))
+                norm_w = self.model_.forward_antecedents(self._as_tensor_x(x_arr, torch.device(str(self.device))))
         finally:
             self.model_.train(was_training)
 

@@ -79,8 +79,9 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
                 ``mf_init="kmeans"``.
             n_mfs: Number of membership functions per feature or k-means
                 clusters.
-            mf_init: Membership-function initialization strategy.
-                ``"kmeans"`` or ``"grid"``.
+            mf_init: Membership-function initialization strategy:
+                ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``,
+                or ``"grid"``.
             sigma_scale: Scale factor for Gaussian MF sigma initialization.
             random_state: Seed for k-means and PyTorch weight initialization.
             epochs: Maximum number of training epochs.
@@ -206,8 +207,9 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
                 ``mf_init="kmeans"``.
             n_mfs: Number of membership functions per feature or k-means
                 clusters.
-            mf_init: Membership-function initialization strategy.
-                ``"kmeans"`` or ``"grid"``.
+            mf_init: Membership-function initialization strategy:
+                ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``,
+                or ``"grid"``.
             sigma_scale: Scale factor for Gaussian MF sigma initialization.
             random_state: Seed for k-means and PyTorch weight initialization.
             epochs: Maximum number of training epochs.
@@ -323,7 +325,7 @@ class ADATSKClassifier(_BaseClassifierEstimator):
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
             n_mfs: Number of k-means clusters / grid MFs (default ``5``).
-            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended; Ada-softmin
                 handles high-dimensional stability.
             random_state: Seed for k-means and weight initialisation.
@@ -424,7 +426,7 @@ class ADATSKRegressor(_BaseRegressorEstimator):
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
             n_mfs: Number of k-means clusters / grid MFs (default ``5``).
-            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for k-means and weight initialisation.
             epochs: Maximum training epochs (default ``10``).
