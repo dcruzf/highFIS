@@ -108,6 +108,7 @@ class KMeans:
         self.labels_: Tensor | None = None
         self.inertia_: float | None = None
 
+    @torch.no_grad()
     def fit(self, x: Any) -> KMeans:
         """Fit the KMeans model to the input data.
 
@@ -159,6 +160,7 @@ class KMeans:
         self.inertia_ = best_inertia
         return self
 
+    @torch.no_grad()
     def predict(self, x: Any) -> Tensor:
         """Predict cluster labels for new samples.
 
@@ -174,6 +176,7 @@ class KMeans:
         distances = torch.cdist(x_t, self.cluster_centers_, p=2)
         return distances.argmin(dim=1)
 
+    @torch.no_grad()
     def fit_predict(self, x: Any) -> Tensor:
         """Fit the model and return the predicted labels.
 
@@ -215,6 +218,7 @@ class MiniBatchKMeans:
         self.cluster_centers_: Tensor | None = None
         self.labels_: Tensor | None = None
 
+    @torch.no_grad()
     def fit(self, x: Any) -> MiniBatchKMeans:
         """Fit the Mini-Batch K-Means model to the input data."""
         x_t = _as_tensor(x)
@@ -248,6 +252,7 @@ class MiniBatchKMeans:
         self.cluster_centers_ = centers
         return self
 
+    @torch.no_grad()
     def predict(self, x: Any) -> Tensor:
         """Predict cluster labels for new samples."""
         if self.cluster_centers_ is None:
@@ -292,6 +297,7 @@ class FuzzyCMeans:
         self.cluster_centers_: Tensor | None = None
         self.membership_: Tensor | None = None
 
+    @torch.no_grad()
     def fit(self, x: Any) -> FuzzyCMeans:
         """Fit the Fuzzy C-Means model to the input data.
 
@@ -338,6 +344,7 @@ class FuzzyCMeans:
         self.membership_ = u
         return self
 
+    @torch.no_grad()
     def predict(self, x: Any) -> Tensor:
         """Predict cluster labels for new samples.
 
@@ -356,6 +363,7 @@ class FuzzyCMeans:
         u = inv / inv.sum(dim=1, keepdim=True)
         return u.argmax(dim=1)
 
+    @torch.no_grad()
     def fit_predict(self, x: Any) -> Tensor:
         """Fit the model and return the predicted labels.
 
