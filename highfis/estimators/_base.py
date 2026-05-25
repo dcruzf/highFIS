@@ -643,14 +643,17 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
                 ``name`` field is used; centres and sigmas are computed from
                 cluster statistics.
             n_mfs: Number of MFs per feature when ``mf_init="grid"``, or
-                number of k-means clusters when ``mf_init="kmeans"``. Cui
-                et al. (IJCNN 2021) used ``R=30`` for all datasets.
+                number of k-means clusters when ``mf_init="kmeans"`` /
+                ``"minibatch_kmeans"`` / ``"fcm"``. Cui et al. (IJCNN 2021)
+                used ``R=30`` for all datasets.
             mf_init: MF initialisation strategy. ``"kmeans"`` (default)
                 derives MF centres from k-means cluster centroids following
-                Cui et al. (IJCNN 2021). ``"fcm"`` derives MF centres from
-                fuzzy C-means cluster centroids and computes sigmas from the
-                resulting fuzzy memberships. ``"grid"`` places centres on a
-                regular grid controlled by :class:`InputConfig`.
+                Cui et al. (IJCNN 2021). ``"minibatch_kmeans"`` is a faster
+                variant recommended for large datasets (n > 20 k).
+                ``"fcm"`` derives MF centres from fuzzy C-means cluster
+                centroids and computes sigmas from the resulting fuzzy
+                memberships. ``"grid"`` places centres on a regular grid
+                controlled by :class:`InputConfig`.
             sigma_scale: Scale factor for sigma initialisation when
                 ``mf_init="kmeans"``. Each sigma is drawn from
                 ``N(h, 0.2)`` where ``h = sigma_scale * within_cluster_std``
@@ -1109,14 +1112,17 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
                 ``name`` field is used; centres and sigmas are computed from
                 cluster statistics.
             n_mfs: Number of MFs per feature when ``mf_init="grid"``, or
-                number of k-means clusters when ``mf_init="kmeans"``. Cui
-                et al. (IJCNN 2021) used ``R=30`` for all datasets.
+                number of k-means clusters when ``mf_init="kmeans"`` /
+                ``"minibatch_kmeans"`` / ``"fcm"``. Cui et al. (IJCNN 2021)
+                used ``R=30`` for all datasets.
             mf_init: MF initialisation strategy. ``"kmeans"`` (default)
                 derives MF centres from k-means cluster centroids following
-                Cui et al. (IJCNN 2021). ``"fcm"`` derives MF centres from
-                fuzzy C-means cluster centroids and computes sigmas from the
-                resulting fuzzy memberships. ``"grid"`` places centres on a
-                regular grid controlled by :class:`InputConfig`.
+                Cui et al. (IJCNN 2021). ``"minibatch_kmeans"`` is a faster
+                variant recommended for large datasets (n > 20 k).
+                ``"fcm"`` derives MF centres from fuzzy C-means cluster
+                centroids and computes sigmas from the resulting fuzzy
+                memberships. ``"grid"`` places centres on a regular grid
+                controlled by :class:`InputConfig`.
             sigma_scale: Scale factor for sigma initialisation when
                 ``mf_init="kmeans"``. Each sigma is drawn from
                 ``N(h, 0.2)`` where ``h = sigma_scale * within_cluster_std``

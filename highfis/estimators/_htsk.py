@@ -70,7 +70,7 @@ class HTSKClassifier(_BaseClassifierEstimator):
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
             n_mfs: Number of k-means clusters / grid MFs.
-            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` is recommended for HTSK.
             random_state: Seed for k-means and weight initialisation.
             epochs: Maximum training epochs (default ``10``).
@@ -174,7 +174,7 @@ class HTSKRegressor(_BaseRegressorEstimator):
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
             n_mfs: Number of k-means clusters / grid MFs.
-            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
             sigma_scale: Scale factor for sigma initialisation when
                 ``mf_init="kmeans"``. ``1.0`` is recommended for HTSK.
             random_state: Seed for k-means and weight initialisation.
@@ -283,7 +283,7 @@ class TSKClassifier(_BaseClassifierEstimator):
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
             n_mfs: Number of k-means clusters / grid MFs (default ``5``).
-            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
             sigma_scale: Sigma scale factor. Use ``"auto"`` (= ``sqrt(D)``)
                 for high-dimensional data to mitigate softmax saturation
                 (Cui et al., IJCNN 2021). ``1.0`` is appropriate for low-
@@ -390,7 +390,7 @@ class TSKRegressor(_BaseRegressorEstimator):
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
             n_mfs: Number of k-means clusters / grid MFs (default ``5``).
-            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
             sigma_scale: Sigma scale factor. Use ``"auto"`` (= ``sqrt(D)``)
                 to mitigate softmax saturation on high-dimensional data.
                 ``1.0`` is appropriate for low-to-medium-dimensional problems.

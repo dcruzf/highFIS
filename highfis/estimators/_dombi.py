@@ -76,7 +76,7 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
             n_mfs: Number of k-means clusters / grid MFs (default ``5``).
-            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended; the Dombi
                 T-norm handles high-dimensional stability without inflating
                 sigma.
@@ -183,7 +183,7 @@ class DombiTSKRegressor(_BaseRegressorEstimator):
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
             n_mfs: Number of k-means clusters / grid MFs (default ``5``).
-            mf_init: ``"kmeans"`` (default) or ``"grid"``.
+            mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for k-means and weight initialisation.
             epochs: Maximum training epochs (default ``10``).
@@ -287,9 +287,9 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
         Args:
             input_configs: Optional list of per-feature input configurations.
             n_mfs: Number of membership functions per input when using
-                ``mf_init="kmeans"`` or ``mf_init="grid"``.
-            mf_init: Initialisation strategy for MFs, either ``"kmeans"``
-                or ``"grid"``.
+                ``mf_init="kmeans"``, ``"minibatch_kmeans"``, or ``"grid"``.
+            mf_init: Initialisation strategy for MFs: ``"kmeans"`` (default),
+                ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
             sigma_scale: Scale factor used to initialise Gaussian MF sigma
                 values.
             random_state: Random seed for MF initialisation and weights.
@@ -419,9 +419,9 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
         Args:
             input_configs: Optional list of per-feature input configurations.
             n_mfs: Number of membership functions per input when using
-                ``mf_init="kmeans"`` or ``mf_init="grid"``.
-            mf_init: Initialisation strategy for MFs, either ``"kmeans"``
-                or ``"grid"``.
+                ``mf_init="kmeans"``, ``"minibatch_kmeans"``, or ``"grid"``.
+            mf_init: Initialisation strategy for MFs: ``"kmeans"`` (default),
+                ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
             sigma_scale: Scale factor used to initialise Gaussian MF sigma
                 values.
             random_state: Random seed for MF initialisation and weights.
