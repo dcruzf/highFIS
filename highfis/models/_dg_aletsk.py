@@ -10,7 +10,6 @@ import torch
 from torch import Tensor, nn
 
 from ..defuzzifiers import SoftmaxLogDefuzzifier
-from ..gates import _gate_activation
 from ..layers import (
     DGALETSKRuleLayer,
     GatedClassificationConsequentLayer,
@@ -134,12 +133,12 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
     def get_feature_gate_values(self) -> Tensor:
         """Return normalized antecedent feature gate values for the DG phase."""
         rule_layer = self.rule_layer
-        return _gate_activation(rule_layer.lambda_gates)
+        return rule_layer.gate_fn(rule_layer.lambda_gates)
 
     def get_rule_gate_values(self) -> Tensor:
         """Return normalized consequent rule gate values for the DG phase."""
         consequent = self.consequent_layer
-        return _gate_activation(consequent.theta_gates)
+        return consequent.gate_fn(consequent.theta_gates)
 
     def compute_thresholds(self, zeta_lambda: float, zeta_theta: float) -> tuple[float, float]:
         """Compute feature and rule thresholds from gate values and coefficient pairs."""
@@ -172,7 +171,7 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
             norm_w = self.forward_antecedents(x)
             consequent = cast(GatedClassificationConsequentLayer, self.consequent_layer)
             feature_gates = torch.ones(self.n_rules, self.n_inputs, dtype=x.dtype, device=x.device)
-            rule_gates = _gate_activation(consequent.theta_gates)
+            rule_gates = consequent.gate_fn(consequent.theta_gates)
             design = _build_first_order_design_matrix(norm_w, x, feature_gates, rule_gates)
 
             target = torch.zeros((x.shape[0], self.n_classes), dtype=x.dtype, device=x.device)
@@ -392,12 +391,12 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
     def get_feature_gate_values(self) -> Tensor:
         """Return normalized antecedent feature gate values for the DG phase."""
         rule_layer = self.rule_layer
-        return _gate_activation(rule_layer.lambda_gates)
+        return rule_layer.gate_fn(rule_layer.lambda_gates)
 
     def get_rule_gate_values(self) -> Tensor:
         """Return normalized consequent rule gate values for the DG phase."""
         consequent = self.consequent_layer
-        return _gate_activation(consequent.theta_gates)
+        return consequent.gate_fn(consequent.theta_gates)
 
     def compute_thresholds(self, zeta_lambda: float, zeta_theta: float) -> tuple[float, float]:
         """Compute feature and rule thresholds from gate values and coefficient pairs."""
@@ -430,7 +429,7 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
             norm_w = self.forward_antecedents(x)
             consequent = cast(GatedRegressionConsequentLayer, self.consequent_layer)
             feature_gates = torch.ones(self.n_rules, self.n_inputs, dtype=x.dtype, device=x.device)
-            rule_gates = _gate_activation(consequent.theta_gates)
+            rule_gates = consequent.gate_fn(consequent.theta_gates)
             design = _build_first_order_design_matrix(norm_w, x, feature_gates, rule_gates)
 
             target = y.unsqueeze(1)

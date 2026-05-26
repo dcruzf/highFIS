@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 import torch
 
+from highfis.gates import ExpGate
 from highfis.layers import (
     AdaptiveDombiRuleLayer,
     ClassificationConsequentLayer,
@@ -543,7 +544,9 @@ def test_gate_functions_and_resolver() -> None:
     assert torch.allclose(gate4(x), x * torch.sqrt(torch.exp(1.0 - x.pow(2))))
     assert torch.allclose(gate_m(x), x.pow(2) * torch.exp(1.0 - x.pow(2)))
     assert resolve_gate_fn("gate1") is gate1
-    assert resolve_gate_fn(None) is gate4
+    default = resolve_gate_fn(None)
+    assert isinstance(default, ExpGate)
+    assert default.k == 10.0
     assert resolve_gate_fn(torch.sigmoid) is torch.sigmoid
     with pytest.raises(ValueError, match="unsupported gate function"):
         resolve_gate_fn("invalid")

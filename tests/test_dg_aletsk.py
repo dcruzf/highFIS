@@ -75,8 +75,13 @@ def test_dgaletsk_thresholds_and_pruning() -> None:
     model.consequent_layer.theta_gates.data[0] = 1.0
 
     tau_lambda, tau_theta = model.compute_thresholds(0.5, 0.5)
-    assert torch.isclose(torch.tensor(tau_lambda), torch.tensor(0.5))
-    assert torch.isclose(torch.tensor(tau_theta), torch.tensor(0.5))
+    # tau = max_gate - 0.5 * (max_gate - min_gate)
+    fv = model.get_feature_gate_values().detach()
+    rv = model.get_rule_gate_values().detach()
+    expected_tau_lambda = float(fv.max()) - 0.5 * float(fv.max() - fv.min())
+    expected_tau_theta = float(rv.max()) - 0.5 * float(rv.max() - rv.min())
+    assert abs(tau_lambda - expected_tau_lambda) < 1e-5
+    assert abs(tau_theta - expected_tau_theta) < 1e-5
 
     model.apply_thresholds(tau_lambda, tau_theta)
     assert model.rule_layer.lambda_gates.data[0] == 1.0
