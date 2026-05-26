@@ -395,13 +395,6 @@ def test_classification_consequent_layer_rejects_bad_normw_shape() -> None:
         layer(x, torch.randn(5, 3))
 
 
-def test_dga_ltsk_rule_layer_invalid_alpha_init_raises() -> None:
-    from highfis.layers import DGALETSKRuleLayer
-
-    with pytest.raises(ValueError, match="alpha_init must be > 0"):
-        DGALETSKRuleLayer(["x1", "x2"], [2, 2], alpha_init=0.0)
-
-
 def test_dga_ltsk_rule_layer_missing_membership_output_raises() -> None:
     from highfis.layers import DGALETSKRuleLayer
 

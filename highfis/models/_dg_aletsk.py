@@ -51,7 +51,6 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str = "coco",
-        lambda_init: float = 1.0,
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -68,8 +67,6 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
                 (default, same-index compact), ``"cartesian"`` (all MF
                 combinations), ``"en"`` (enhanced FRB; see also
                 *use_en_frb*), or ``"custom"`` (explicit rules via *rules*).
-            lambda_init: Initial ALE-softmin parameter ``alpha > 0``
-                (default ``1.0``).
             rules: Explicit rule antecedent indices; ignored when
                 ``use_en_frb=True``.
             defuzzifier: Custom defuzzifier.  Defaults to
@@ -79,15 +76,12 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
             use_en_frb: Start directly from the Enhanced FRB (En-FRB).
 
         Raises:
-            ValueError: If ``n_classes < 2`` or ``lambda_init <= 0``.
+            ValueError: If ``n_classes < 2``.
         """
         if n_classes < 2:
             raise ValueError("n_classes must be >= 2")
-        if lambda_init <= 0.0:
-            raise ValueError("lambda_init must be > 0")
 
         self.n_classes = int(n_classes)
-        self.lambda_init = float(lambda_init)
         self.eps = eps
         self.use_en_frb = bool(use_en_frb)
 
@@ -105,7 +99,6 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
             [len(input_mfs[name]) for name in self.input_names],
             rules=rules if not self.use_en_frb else None,
             rule_base="en" if self.use_en_frb else rule_base,
-            alpha_init=self.lambda_init,
             eps=self.eps,
         )
         self.n_rules = self.rule_layer.n_rules
@@ -313,7 +306,6 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str = "coco",
-        lambda_init: float = 1.0,
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -329,8 +321,6 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
                 (default, same-index compact), ``"cartesian"`` (all MF
                 combinations), ``"en"`` (enhanced FRB; see also
                 *use_en_frb*), or ``"custom"`` (explicit rules via *rules*).
-            lambda_init: Initial ALE-softmin parameter ``alpha > 0``
-                (default ``1.0``).
             rules: Explicit rule antecedent indices; ignored when
                 ``use_en_frb=True``.
             defuzzifier: Custom defuzzifier.  Defaults to
@@ -338,14 +328,7 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
             consequent_batch_norm: Batch normalisation on consequent inputs.
             eps: Numerical stability epsilon for the ALE-softmin operator.
             use_en_frb: Start directly from the Enhanced FRB (En-FRB).
-
-        Raises:
-            ValueError: If ``lambda_init <= 0``.
         """
-        if lambda_init <= 0.0:
-            raise ValueError("lambda_init must be > 0")
-
-        self.lambda_init = float(lambda_init)
         self.eps = eps
         self.use_en_frb = bool(use_en_frb)
 
@@ -363,7 +346,6 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
             [len(input_mfs[name]) for name in self.input_names],
             rules=rules if not self.use_en_frb else None,
             rule_base="en" if self.use_en_frb else rule_base,
-            alpha_init=self.lambda_init,
             eps=self.eps,
         )
         self.n_rules = self.rule_layer.n_rules

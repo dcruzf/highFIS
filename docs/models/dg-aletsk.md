@@ -52,24 +52,21 @@ so the feature contributes nothing to the softmin).
 
 ### Adaptive Ln-Exp softmin
 
-DG-ALETSK replaces the standard product T-norm with an adaptive Ln-Exp softmin.
-In highFIS the firing strength of rule $r$ is computed as:
+DG-ALETSK replaces the standard product T-norm with the Adaptive Ln-Exp (ALE)
+softmin.  The firing strength of rule $r$ is computed directly from paper eq. 22:
 
 $$
-w_r(\mathbf{x}) = -\frac{1}{\alpha} \log \left( \sum_{d=1}^{D} \exp\left(-\alpha \, \tilde{\mu}_{r,d}(x_d)\right) \right)
+f_r(\mathbf{x}) = \frac{1}{\hat{q}} \log \left( \sum_{d=1}^{D} \exp\!\left(\hat{q}\,\tilde{\mu}_{r,d}(x_d)\right) \right),
+\qquad \hat{q} = -\frac{700}{\max_d \tilde{\mu}_{r,d}(\mathbf{x})}
 $$
 
-where $\alpha > 0$ is a learned softness parameter. As $\alpha \to \infty$
-this converges to $\min_d \tilde{\mu}_{r,d}$. In the implementation,
-$\alpha$ is stored as `raw_alpha` and activated with `softplus` to keep it
-strictly positive.
-
-!!! note
-    The paper (eq. 22) computes $\hat{q}$ adaptively from the current
-    membership values as $\hat{q} = -700 / \max_d\{\mu_{r,d}\}$.
-    highFIS instead learns $\alpha = -q$ via gradient descent, which avoids
-    the per-forward-pass adaptive computation while preserving the softmin
-    semantics.
+The adaptive exponent $\hat{q}$ is recomputed on every forward pass: it is
+not a learned parameter.  Choosing $\xi = 700$ guarantees
+$\exp(\hat{q}\cdot\max_d\tilde{\mu}) = e^{-700} > 0$ in IEEE 754 double
+precision (underflow boundary $\approx e^{-745}$), preventing numerical
+underflow while driving the softmin to closely approximate
+$\min_d \tilde{\mu}_{r,d}$.  Because $\hat{q} \le -700$ and $\tilde{\mu} \in (0,1]$,
+the output satisfies $f_r \in (0, 1]$ by construction.
 
 ### Rule gates and consequents
 
@@ -87,13 +84,13 @@ For regression, the same gate multiplies a scalar rule output.
 Normalized rule strengths are computed as:
 
 $$
-\bar{w}_r(\mathbf{x}) = \frac{w_r(\mathbf{x})}{\sum_{i=1}^{R} w_i(\mathbf{x})}
+\bar{f}_r(\mathbf{x}) = \frac{f_r(\mathbf{x})}{\sum_{i=1}^{R} f_i(\mathbf{x})}
 $$
 
 The final model output is the weighted sum of gated rule consequents:
 
 $$
-\hat{y}^c(\mathbf{x}) = \sum_{r=1}^{R} \bar{w}_r(\mathbf{x}) \, \hat{y}_{r}^{c}(\mathbf{x})
+\hat{y}^c(\mathbf{x}) = \sum_{r=1}^{R} \bar{f}_r(\mathbf{x}) \, \hat{y}_{r}^{c}(\mathbf{x})
 $$
 
 ### Threshold search and pruning
@@ -115,7 +112,7 @@ Features and rules with gate values below these thresholds are pruned.
 
 | Concept | highFIS class / method | Notes |
 |---|---|---|
-| Adaptive Ln-Exp softmin antecedent | `DGALETSKRuleLayer` | Implements ALE softmin (paper eq. 22) with learned $\alpha$ and numerically stable log-sum-exp |
+| Adaptive Ln-Exp softmin antecedent | `DGALETSKRuleLayer` | Implements ALE softmin (paper eq. 22) with adaptive $\hat{q}=-700/\max_d\tilde{\mu}_{r,d}$ |
 | Feature gates | `DGALETSKRuleLayer.lambda_gates` + `ExpGate(k=10)` | $\mu^{M(\lambda_d)}$ exponential gating (paper eqs. 12, 24) |
 | Rule gates | `GatedClassificationZeroOrderConsequentLayer.theta_gates`, `GatedRegressionZeroOrderConsequentLayer.theta_gates` | Gated zero-order consequents during DG training |
 | Zero-order DG phase | `fit_dg_phase()` | Jointly optimizes antecedent, feature gates, rule gates, and zero-order consequents |
@@ -162,14 +159,15 @@ Features and rules with gate values below these thresholds are pruned.
 ## Example
 
 ```python
-from highfis import DGALETSKClassifier, GaussianMF
+from highfis.models import DGALETSKClassifierModel
+from highfis import GaussianMF
 
 input_mfs = {
     "x1": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
     "x2": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
 }
 
-model = DGALETSKClassifier(
+model = DGALETSKClassifierModel(
     input_mfs,
     n_classes=2,
     use_en_frb=False,

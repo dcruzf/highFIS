@@ -506,18 +506,13 @@ def test_fsre_adatsk_regressor_helpers() -> None:
     assert history_ft["stopped_epoch"] == 2
 
 
-def test_dg_aletsk_classifier_invalid_lambda_init() -> None:
-    with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=0.0)
-
-
 def test_dg_aletsk_classifier_invalid_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
-        DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=1, lambda_init=1.0)
+        DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=1)
 
 
 def test_dg_aletsk_classifier_thresholds_and_convert() -> None:
-    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     assert isinstance(model.consequent_layer, GatedClassificationZeroOrderConsequentLayer)
 
     model.convert_to_first_order()
@@ -535,7 +530,7 @@ def test_dg_aletsk_classifier_thresholds_and_convert() -> None:
 
 def test_dg_aletsk_classifier_search_thresholds_inplace_false() -> None:
     torch.manual_seed(0)
-    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(16, 2)
     y = torch.randint(0, 2, (16,), dtype=torch.long)
 
@@ -549,7 +544,7 @@ def test_dg_aletsk_classifier_search_thresholds_inplace_false() -> None:
 
 def test_dg_aletsk_classifier_search_thresholds_inplace_true_converts_zero_order_self() -> None:
     torch.manual_seed(0)
-    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(16, 2)
     y = torch.randint(0, 2, (16,), dtype=torch.long)
 
@@ -561,20 +556,15 @@ def test_dg_aletsk_classifier_search_thresholds_inplace_true_converts_zero_order
 
 
 def test_dg_aletsk_classifier_convert_to_first_order_idempotent() -> None:
-    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     model.convert_to_first_order()
     model.convert_to_first_order()
     assert isinstance(model.consequent_layer, GatedClassificationConsequentLayer)
 
 
-def test_dg_aletsk_regressor_invalid_lambda_init() -> None:
-    with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=0.0)
-
-
 def test_dg_aletsk_regressor_thresholds_apply_and_search() -> None:
     torch.manual_seed(0)
-    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(16, 2)
     y = x[:, 0] - x[:, 1]
 
@@ -587,7 +577,7 @@ def test_dg_aletsk_regressor_thresholds_apply_and_search() -> None:
 
 def test_dg_aletsk_regressor_search_thresholds_inplace_true_and_verbose() -> None:
     torch.manual_seed(0)
-    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     model.convert_to_first_order()
     x = torch.randn(16, 2)
     y = x[:, 0] - x[:, 1]
@@ -598,7 +588,7 @@ def test_dg_aletsk_regressor_search_thresholds_inplace_true_and_verbose() -> Non
 
 def test_dg_aletsk_regressor_search_thresholds_inplace_true_converts_zero_order_self() -> None:
     torch.manual_seed(0)
-    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(16, 2)
     y = x[:, 0] - x[:, 1]
 
@@ -610,7 +600,7 @@ def test_dg_aletsk_regressor_search_thresholds_inplace_true_converts_zero_order_
 
 
 def test_dg_aletsk_regressor_convert_to_first_order_idempotent() -> None:
-    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     model.convert_to_first_order()
     model.convert_to_first_order()
     assert isinstance(model.consequent_layer, GatedRegressionConsequentLayer)
@@ -742,32 +732,32 @@ def test_log_tsk_regressor_default_criterion() -> None:
 
 
 def test_dg_aletsk_classifier_convert_to_first_order_preserves_theta() -> None:
-    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     assert isinstance(model.consequent_layer, GatedClassificationZeroOrderConsequentLayer)
     model.convert_to_first_order()
     assert isinstance(model.consequent_layer, GatedClassificationConsequentLayer)
 
 
 def test_dg_aletsk_regressor_convert_to_first_order_preserves_theta() -> None:
-    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     assert isinstance(model.consequent_layer, GatedRegressionZeroOrderConsequentLayer)
     model.convert_to_first_order()
     assert isinstance(model.consequent_layer, GatedRegressionConsequentLayer)
 
 
 def test_dg_aletsk_classifier_default_criterion() -> None:
-    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     assert isinstance(model._default_criterion(), nn.CrossEntropyLoss)
 
 
 def test_dg_aletsk_regressor_default_criterion() -> None:
-    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     assert isinstance(model._default_criterion(), nn.MSELoss)
 
 
 def test_dg_aletsk_regressor_search_thresholds_verbose() -> None:
     torch.manual_seed(0)
-    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(16, 2)
     y = x[:, 0] - x[:, 1]
 
@@ -777,7 +767,7 @@ def test_dg_aletsk_regressor_search_thresholds_verbose() -> None:
 
 def test_dg_aletsk_regressor_search_thresholds_use_lse_false() -> None:
     torch.manual_seed(0)
-    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(16, 2)
     y = x[:, 0] - x[:, 1]
 
@@ -786,7 +776,7 @@ def test_dg_aletsk_regressor_search_thresholds_use_lse_false() -> None:
 
 
 def test_dg_aletsk_classifier_fit_dg_phase_and_finetune() -> None:
-    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(16, 2)
     y = torch.randint(0, 2, (16,), dtype=torch.long)
 
@@ -798,7 +788,7 @@ def test_dg_aletsk_classifier_fit_dg_phase_and_finetune() -> None:
 
 
 def test_dg_aletsk_classifier_search_thresholds_no_candidates_raises() -> None:
-    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(8, 2)
     y = torch.randint(0, 2, (8,), dtype=torch.long)
 
@@ -807,7 +797,7 @@ def test_dg_aletsk_classifier_search_thresholds_no_candidates_raises() -> None:
 
 
 def test_dg_aletsk_regressor_fit_dg_phase_and_finetune() -> None:
-    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(16, 2)
     y = torch.randn(16)
 
@@ -819,7 +809,7 @@ def test_dg_aletsk_regressor_fit_dg_phase_and_finetune() -> None:
 
 
 def test_dg_aletsk_regressor_search_thresholds_no_candidates_raises() -> None:
-    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(8, 2)
     y = torch.randn(8)
 
@@ -828,7 +818,7 @@ def test_dg_aletsk_regressor_search_thresholds_no_candidates_raises() -> None:
 
 
 def test_dg_aletsk_classifier_convert_to_first_order_preserves_theta_values() -> None:
-    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     theta_before = model.consequent_layer.theta_gates.detach().clone()
 
     model.convert_to_first_order()
@@ -836,7 +826,7 @@ def test_dg_aletsk_classifier_convert_to_first_order_preserves_theta_values() ->
 
 
 def test_dg_aletsk_regressor_convert_to_first_order_preserves_theta_values() -> None:
-    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     theta_before = model.consequent_layer.theta_gates.detach().clone()
 
     model.convert_to_first_order()
@@ -958,7 +948,7 @@ def test_dombitsk_classifier_rejects_invalid_n_classes() -> None:
 
 
 def test_dg_aletsk_classifier_fit_first_order_consequents_requires_conversion() -> None:
-    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(8, 2)
     y = torch.randint(0, 2, (8,), dtype=torch.long)
 
@@ -968,7 +958,7 @@ def test_dg_aletsk_classifier_fit_first_order_consequents_requires_conversion() 
 
 def test_dg_aletsk_classifier_search_thresholds_inplace_true_loads_state() -> None:
     torch.manual_seed(0)
-    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_init=1.0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     model.convert_to_first_order()
     x = torch.randn(16, 2)
     y = torch.randint(0, 2, (16,), dtype=torch.long)
@@ -981,7 +971,7 @@ def test_dg_aletsk_classifier_search_thresholds_inplace_true_loads_state() -> No
 
 def test_dg_aletsk_regressor_convert_to_first_order_and_search_inplace_true() -> None:
     torch.manual_seed(0)
-    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(16, 2)
     y = x[:, 0] - x[:, 1]
 
@@ -993,7 +983,7 @@ def test_dg_aletsk_regressor_convert_to_first_order_and_search_inplace_true() ->
 
 
 def test_dg_aletsk_regressor_fit_first_order_consequents_requires_conversion() -> None:
-    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=1.0)
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(8, 2)
     y = torch.randn(8)
 
