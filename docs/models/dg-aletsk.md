@@ -33,23 +33,22 @@ with learned antecedent centers $m_{r,d}$ and spreads $\sigma_{r,d}>0$.
 ### Feature gating
 
 DG-ALETSK embeds one gate per input feature in the antecedent.
-HighFIS implements the paper's gate activation as:
+The paper's enhanced gate function (eq. 24) with $k=10$ is used:
 
 $$
-M(\lambda) = \lambda \sqrt{e^{1 - \lambda^2}}
+M(\lambda) = 1 - e^{-10\lambda^2}
 $$
 
-The feature gate values are:
+The gated membership term is computed by raising the base membership
+value to the power of the gate value (paper eq. 12):
 
 $$
-\gamma_d = M(\lambda_d)
+\tilde{\mu}_{r,d}(x_d) = \mu_{r,d}(x_d)^{\,M(\lambda_d)}
 $$
 
-and the gated membership terms become:
-
-$$
-\tilde{\mu}_{r,d}(x_d) = \gamma_d \, \mu_{r,d}(x_d)
-$$
+When $M(\lambda_d)=1$ the gate is fully open (membership unchanged);
+when $M(\lambda_d)=0$ the gate is closed ($\tilde{\mu}_{r,d}=1$,
+so the feature contributes nothing to the softmin).
 
 ### Adaptive Ln-Exp softmin
 
@@ -57,12 +56,20 @@ DG-ALETSK replaces the standard product T-norm with an adaptive Ln-Exp softmin.
 In highFIS the firing strength of rule $r$ is computed as:
 
 $$
-w_r(\mathbf{x}) = \frac{1}{\alpha} \log \left( \sum_{d=1}^{D} \exp\left(-\alpha \, \tilde{\mu}_{r,d}(x_d)\right) \right)
+w_r(\mathbf{x}) = -\frac{1}{\alpha} \log \left( \sum_{d=1}^{D} \exp\left(-\alpha \, \tilde{\mu}_{r,d}(x_d)\right) \right)
 $$
 
-where $\alpha > 0$ is a learned softness parameter. In the implementation,
+where $\alpha > 0$ is a learned softness parameter. As $\alpha \to \infty$
+this converges to $\min_d \tilde{\mu}_{r,d}$. In the implementation,
 $\alpha$ is stored as `raw_alpha` and activated with `softplus` to keep it
 strictly positive.
+
+!!! note
+    The paper (eq. 22) computes $\hat{q}$ adaptively from the current
+    membership values as $\hat{q} = -700 / \max_d\{\mu_{r,d}\}$.
+    highFIS instead learns $\alpha = -q$ via gradient descent, which avoids
+    the per-forward-pass adaptive computation while preserving the softmin
+    semantics.
 
 ### Rule gates and consequents
 
@@ -108,8 +115,8 @@ Features and rules with gate values below these thresholds are pruned.
 
 | Concept | highFIS class / method | Notes |
 |---|---|---|
-| Adaptive Ln-Exp softmin antecedent | `DGALETSKRuleLayer` | Implements paper's ALE softmin with a stable log-sum-exp form |
-| Feature gates | `DGALETSKRuleLayer.lambda_gates` + `gate4` | Gate values are applied multiplicatively to each membership |
+| Adaptive Ln-Exp softmin antecedent | `DGALETSKRuleLayer` | Implements ALE softmin (paper eq. 22) with learned $\alpha$ and numerically stable log-sum-exp |
+| Feature gates | `DGALETSKRuleLayer.lambda_gates` + `ExpGate(k=10)` | $\mu^{M(\lambda_d)}$ exponential gating (paper eqs. 12, 24) |
 | Rule gates | `GatedClassificationZeroOrderConsequentLayer.theta_gates`, `GatedRegressionZeroOrderConsequentLayer.theta_gates` | Gated zero-order consequents during DG training |
 | Zero-order DG phase | `fit_dg_phase()` | Jointly optimizes antecedent, feature gates, rule gates, and zero-order consequents |
 | First-order conversion | `convert_to_first_order()` | Preserves learned rule gates and switches consequent form |
@@ -132,13 +139,10 @@ Features and rules with gate values below these thresholds are pruned.
 - `DGALETSKClassifier` and `DGALETSKRegressor` train a zero-order model in
   `fit_dg_phase()` and then rely on `convert_to_first_order()` plus
   `fit_finetune()` for first-order refinement.
-- The feature gate activation is fixed to the paper's DG-ALETSK gate
-  function `gate4` in the implementation.
-- Although the gate function matches the paper exactly, highFIS applies it
-  multiplicatively to the antecedent membership values (`μ ← μ · M(λ)`) rather
-  than using the paper's more symbolic gate embedding notation (for example,
-  `μ^{M(λ)}`). This preserves the gate shape while remaining a practical
-  implementation choice.
+- The feature gate uses `ExpGate(k=10)` ($M(\lambda)=1-e^{-10\lambda^2}$,
+  paper eq. 24), the enhanced gate function introduced in DG-ALETSK.
+  Gate values are applied to antecedent memberships as $\mu^{M(\lambda_d)}$
+  (paper eq. 12), i.e., exponential gating.
 - Threshold search is implemented by deep-copying the current model,
   pruning candidate copies, optionally refitting first-order consequents via
   least squares, and selecting the best validation score.

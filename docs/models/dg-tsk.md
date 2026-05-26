@@ -34,13 +34,19 @@ This function satisfies:
 
 ### Antecedent gating
 
-In the paper, DG-TSK embeds feature gates in the antecedents so that feature importance modifies the rule activation. In highFIS, the current implementation uses multiplicative gating over the membership values:
+DG-TSK embeds feature gates in the antecedents. The gate value raises the
+base membership to a power, following the general gating mechanism described
+in section 2.2 of the paper ($\mu^{M(\lambda)}$):
 
 $$
-\tilde{\mu}_{r,d}(x_d) = M(\lambda_d) \, \mu_{r,d}(x_d)
+\tilde{\mu}_{r,d}(x_d) = \mu_{r,d}(x_d)^{\,M(\lambda_d)}
 $$
 
-and computes rule firing strengths with a product T-norm:
+When $M(\lambda_d)=1$ the gate is fully open (membership unchanged);
+when $M(\lambda_d)=0$ the gate is closed ($\tilde{\mu}_{r,d}=1$, so
+the feature does not suppress the product T-norm).
+
+Rule firing strengths are then computed with a product T-norm:
 
 $$
 w_r(\mathbf{x}) = \prod_{d=1}^{D} \tilde{\mu}_{r,d}(x_d)
@@ -90,7 +96,7 @@ The paper describes DG-TSK as a single training phase in which feature gates, ru
 |---|---|---|
 | Gaussian membership | `highfis.memberships.GaussianMF` | antecedent MFs |
 | M-gate | `highfis.layers.gate_m` | paper's M-shaped gate |
-| Antecedent gating | `DGTSKRuleLayer.forward()` | multiplies membership by `M(\lambda_d)` |
+| Antecedent gating | `DGTSKRuleLayer.forward()` | raises membership to power `M(\lambda_d)`: $\mu^{M(\lambda_d)}$ |
 | Rule gating | `GatedClassificationZeroOrderConsequentLayer`, `GatedRegressionZeroOrderConsequentLayer` | gated consequents |
 | Rule base | `RuleLayer(rule_base='en')` | `en` FRB; approximates richer candidate set |
 | DG phase | `fit_dg_phase()` | zero-order training of gates and consequents |
@@ -102,7 +108,7 @@ The paper describes DG-TSK as a single training phase in which feature gates, ru
 
 - The paper's P-FRB is not implemented verbatim in highFIS. The `en` FRB is the closest available richer candidate rule base.
 - `gate_m` is the default M-gate in highFIS and matches the paper's M-shaped gate function.
-- In highFIS, DG-TSK feature gating is implemented as multiplicative gating on membership values rather than exponentiation of memberships.
+- DG-TSK feature gating is implemented as exponential gating: each membership value is raised to the power of its gate value ($\mu^{M(\lambda_d)}$), matching the general antecedent gating mechanism described in the paper.
 - The DG phase is implemented as zero-order consequent training, followed by first-order conversion and fine tuning.
 - `DGTSKClassifier` and `DGTSKRegressor` support both classification and regression in the same DG-TSK style.
 
