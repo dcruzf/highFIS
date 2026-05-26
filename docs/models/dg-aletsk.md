@@ -143,6 +143,14 @@ Features and rules with gate values below these thresholds are pruned.
       first-order consequents via least squares in one step. The LSE result is
       the final model — **do not call `fit_finetune`** afterwards, as it would
       reset the LSE-fitted weights and retrain from zero.
+- `fit_finetune` freezes **all MF parameters** (centres and spreads) and the
+  **feature-selection gates** (λ) during gradient fine-tuning, retaining only
+  the consequent layer as trainable. This implements paper §3.3:
+  *"we fix the first group of gates and the membership functions."*
+- **Loss function**: the paper uses MSE throughout, including for classification
+  (applied to one-hot targets). highFIS uses **cross-entropy** for classification
+  and **MSE** for regression. Cross-entropy is more appropriate for discrete class
+  outputs and is used in both `fit_dg_phase` and `fit_finetune`.
 - The feature gate uses `ExpGate(k=10)` ($M(\lambda)=1-e^{-10\lambda^2}$,
   paper eq. 24), the enhanced gate function introduced in DG-ALETSK.
   Gate values are applied to antecedent memberships as $\mu^{M(\lambda_d)}$
