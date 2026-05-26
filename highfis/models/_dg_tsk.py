@@ -242,13 +242,20 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
         for zeta_l in zeta_lambda:
             for zeta_t in zeta_theta:
                 candidate = copy.deepcopy(self)
-                if isinstance(candidate.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
-                    candidate.convert_to_first_order()
-
-                tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
-                candidate.apply_thresholds(tau_l, tau_t)
                 if use_lse:
+                    # LSE path: convert to first-order, apply thresholds, fit LSE,
+                    # then evaluate accuracy on validation set.
+                    if isinstance(candidate.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
+                        candidate.convert_to_first_order()
+                    tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
+                    candidate.apply_thresholds(tau_l, tau_t)
                     candidate._fit_first_order_consequents_lse(x, y)
+                else:
+                    # Non-LSE path: evaluate the zero-order model directly after
+                    # pruning.  Conversion to first-order happens only in the
+                    # inplace step (or is done by the caller).
+                    tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
+                    candidate.apply_thresholds(tau_l, tau_t)
 
                 score = candidate._evaluate_threshold_score(x_eval, y_eval)
                 if verbose:
@@ -256,13 +263,15 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
 
                 if score > best_score:
                     best_score = score
-                    best_state = copy.deepcopy(candidate.state_dict())
+                    # Store the candidate's raw threshold parameters (not state_dict)
+                    # so they can be replayed correctly in both LSE and non-LSE paths.
+                    best_state = copy.deepcopy(candidate.state_dict()) if use_lse else None
                     best_tau_lambda = tau_l
                     best_tau_theta = tau_t
                     best_zeta_lambda = zeta_l
                     best_zeta_theta = zeta_t
 
-        if best_state is None:
+        if best_score == float("-inf"):
             raise RuntimeError("threshold search did not yield a valid candidate")
 
         result = {
@@ -274,19 +283,88 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
         }
 
         if inplace:
-            if isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
-                self.convert_to_first_order()
-            self.load_state_dict(best_state)
+            if use_lse:
+                # best_state holds the already-converted, pruned, LSE-fitted model.
+                if isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
+                    self.convert_to_first_order()
+                if best_state is None:  # pragma: no cover
+                    raise RuntimeError("best_state is None despite use_lse=True")
+                self.load_state_dict(best_state)
+            else:
+                # Non-LSE path: apply the best thresholds to the zero-order model.
+                # The caller is responsible for converting to first-order afterwards
+                # (e.g. via fit_finetune which also resets and retrains consequents).
+                self.apply_thresholds(best_tau_lambda, best_tau_theta)
 
         return result
 
+    def init_consequents_from_labels(self, y: Tensor) -> None:
+        """Initialise zero-order consequent biases with one-hot encoded labels (P-FRB paper eq. 24).
+
+        Sets ``consequent_layer.bias[r, c] = 1`` when sample *r* belongs to class *c*,
+        exactly as in Xue et al. (2023) eq. (24): $p^0_{r,c} = y_{r,c}$.
+        Should be called before :meth:`fit_dg_phase` when using P-FRB.
+
+        Args:
+            y: Integer class labels of shape ``(N,)`` for the *N* training samples
+               used to build the P-FRB.  Only the first ``n_rules`` labels are used.
+
+        Raises:
+            ValueError: If the model is not in zero-order consequent mode.
+        """
+        if not isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
+            raise ValueError(
+                "init_consequents_from_labels() requires a zero-order consequent layer; "
+                "call before convert_to_first_order()"
+            )
+        n = min(len(y), self.n_rules)
+        dtype = self.consequent_layer.bias.dtype
+        device = self.consequent_layer.bias.device
+        one_hot = torch.zeros(self.n_rules, self.n_classes, dtype=dtype, device=device)
+        one_hot[:n].scatter_(1, y[:n].to(device=device).unsqueeze(1), 1.0)
+        self.consequent_layer.bias.data.copy_(one_hot)
+
     def fit_dg_phase(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Train the DG-TSK zero-order phase before first-order conversion."""
-        return self.fit(x, y, **kwargs)
+        """Train the DG-TSK zero-order phase with antecedent parameters frozen (paper §3.3).
+
+        Gate parameters (λ, θ) and zero-order consequent parameters are optimised.
+        Antecedent parameters (MF centres and spreads) are held fixed, as stated
+        in Xue et al. (2023): *"Note that the antecedent parameters are not included."*
+        """
+        for p in self.membership_layer.parameters():
+            p.requires_grad_(False)
+        try:
+            return self.fit(x, y, **kwargs)
+        finally:
+            for p in self.membership_layer.parameters():
+                p.requires_grad_(True)
 
     def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Fine-tune the DG-TSK classifier after conversion to first-order consequents."""
-        return self.fit(x, y, **kwargs)
+        """Fine-tune the DG-TSK classifier after conversion to first-order consequents.
+
+        Consequent weights and biases are reset to zero before retraining, as stated
+        in Xue et al. (2023): *"Before the training for fine tuning, all the consequent
+        parameters are set to zero in our experiments."*
+
+        Antecedent parameters (MF centres/spreads) and feature-selection gates
+        (λ) are frozen during fine-tuning, per paper §3.3: *"we fix the first
+        group of gates and the membership functions."*
+        """
+        # Ensure first-order mode (convert if search_thresholds used use_lse=False).
+        if isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
+            self.convert_to_first_order()
+        if isinstance(self.consequent_layer, GatedClassificationConsequentLayer):
+            nn.init.zeros_(self.consequent_layer.weight)
+            nn.init.zeros_(self.consequent_layer.bias)
+        frozen: list[nn.Parameter] = list(self.membership_layer.parameters())
+        frozen.append(self.rule_layer.lambda_gates)  # type: ignore[arg-type]
+        for p in frozen:
+            p.requires_grad_(False)
+        try:
+            return self.fit(x, y, **kwargs)
+        finally:
+            for p in frozen:
+                p.requires_grad_(True)
 
 
 class DGTSKRegressorModel(BaseTSKRegressorModel):
@@ -482,13 +560,20 @@ class DGTSKRegressorModel(BaseTSKRegressorModel):
         for zeta_l in zeta_lambda:
             for zeta_t in zeta_theta:
                 candidate = copy.deepcopy(self)
-                if isinstance(candidate.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
-                    candidate.convert_to_first_order()
-
-                tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
-                candidate.apply_thresholds(tau_l, tau_t)
                 if use_lse:
+                    # LSE path: convert to first-order, apply thresholds, fit LSE,
+                    # then evaluate negative MSE on validation set.
+                    if isinstance(candidate.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
+                        candidate.convert_to_first_order()
+                    tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
+                    candidate.apply_thresholds(tau_l, tau_t)
                     candidate._fit_first_order_consequents_lse(x, y)
+                else:
+                    # Non-LSE path: evaluate the zero-order model directly after
+                    # pruning.  Conversion to first-order happens only in the
+                    # inplace step (or is done by the caller).
+                    tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
+                    candidate.apply_thresholds(tau_l, tau_t)
 
                 score = candidate._evaluate_threshold_score(x_eval, y_eval)
                 if verbose:
@@ -496,13 +581,13 @@ class DGTSKRegressorModel(BaseTSKRegressorModel):
 
                 if score > best_score:
                     best_score = score
-                    best_state = copy.deepcopy(candidate.state_dict())
+                    best_state = copy.deepcopy(candidate.state_dict()) if use_lse else None
                     best_tau_lambda = tau_l
                     best_tau_theta = tau_t
                     best_zeta_lambda = zeta_l
                     best_zeta_theta = zeta_t
 
-        if best_state is None:
+        if best_score == float("-inf"):
             raise RuntimeError("threshold search did not yield a valid candidate")
 
         result = {
@@ -514,16 +599,59 @@ class DGTSKRegressorModel(BaseTSKRegressorModel):
         }
 
         if inplace:
-            if isinstance(self.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
-                self.convert_to_first_order()
-            self.load_state_dict(best_state)
+            if use_lse:
+                # best_state holds the already-converted, pruned, LSE-fitted model.
+                if isinstance(self.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
+                    self.convert_to_first_order()
+                if best_state is None:  # pragma: no cover
+                    raise RuntimeError("best_state is None despite use_lse=True")
+                self.load_state_dict(best_state)
+            else:
+                # Non-LSE path: apply the best thresholds to the zero-order model.
+                # The caller is responsible for converting to first-order afterwards
+                # (e.g. via fit_finetune which also resets and retrains consequents).
+                self.apply_thresholds(best_tau_lambda, best_tau_theta)
 
         return result
 
     def fit_dg_phase(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Train the DG-TSK regression zero-order phase before first-order conversion."""
-        return self.fit(x, y, **kwargs)
+        """Train the DG-TSK regression zero-order phase with antecedent parameters frozen (paper §3.3).
+
+        Gate parameters (λ, θ) and zero-order consequent parameters are optimised.
+        Antecedent parameters (MF centres and spreads) are held fixed, as stated
+        in Xue et al. (2023): *"Note that the antecedent parameters are not included."*
+        """
+        for p in self.membership_layer.parameters():
+            p.requires_grad_(False)
+        try:
+            return self.fit(x, y, **kwargs)
+        finally:
+            for p in self.membership_layer.parameters():
+                p.requires_grad_(True)
 
     def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Fine-tune the DG-TSK regression model after converting to first order."""
-        return self.fit(x, y, **kwargs)
+        """Fine-tune the DG-TSK regression model after converting to first order.
+
+        Consequent weights and biases are reset to zero before retraining, as stated
+        in Xue et al. (2023): *"Before the training for fine tuning, all the consequent
+        parameters are set to zero in our experiments."*
+
+        Antecedent parameters (MF centres/spreads) and feature-selection gates
+        (λ) are frozen during fine-tuning, per paper §3.3: *"we fix the first
+        group of gates and the membership functions."*
+        """
+        # Ensure first-order mode (convert if search_thresholds used use_lse=False).
+        if isinstance(self.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
+            self.convert_to_first_order()
+        if isinstance(self.consequent_layer, GatedRegressionConsequentLayer):
+            nn.init.zeros_(self.consequent_layer.weight)
+            nn.init.zeros_(self.consequent_layer.bias)
+        frozen: list[nn.Parameter] = list(self.membership_layer.parameters())
+        frozen.append(self.rule_layer.lambda_gates)  # type: ignore[arg-type]
+        for p in frozen:
+            p.requires_grad_(False)
+        try:
+            return self.fit(x, y, **kwargs)
+        finally:
+            for p in frozen:
+                p.requires_grad_(True)

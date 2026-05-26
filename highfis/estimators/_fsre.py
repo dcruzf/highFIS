@@ -64,10 +64,11 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         """Initialise an FSRE-ADATSK classifier.
 
         Args:
-            lambda_init: Initial ALE-softmin parameter ``λ > 0`` inherited
-                by :class:`DGALETSKClassifier`; not used by
-                FSRE-ADATSK proper (Ada-softmin computes its index from
-                the current membership values). Default ``1.0``.
+            lambda_init: Accepted for API compatibility but not used by
+                FSRE-ADATSK or DG-ALETSK.  FSRE-ADATSK computes its
+                adaptive softmin index directly from membership values;
+                DG-ALETSK uses the fixed exponent ``ξ = 700`` per
+                paper eq. 22.  Default ``1.0``.
             use_en_frb: If ``True``, use the Enhanced FRB (En-FRB) whose
                 size grows linearly with the number of features, allowing
                 more candidate rules for the RE phase. Xue et al. (2023)
@@ -183,10 +184,11 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
         """Initialise an FSRE-ADATSK regressor.
 
         Args:
-            lambda_init: Initial ALE-softmin parameter ``λ > 0`` inherited
-                by :class:`DGALETSKRegressor`; not used by
-                FSRE-ADATSK proper (Ada-softmin computes its index from
-                the current membership values). Default ``1.0``.
+            lambda_init: Accepted for API compatibility but not used by
+                FSRE-ADATSK or DG-ALETSK.  FSRE-ADATSK computes its
+                adaptive softmin index directly from membership values;
+                DG-ALETSK uses the fixed exponent ``ξ = 700`` per
+                paper eq. 22.  Default ``1.0``.
             use_en_frb: If ``True``, use the Enhanced FRB (En-FRB) for rule
                 extraction. Default ``False`` keeps CoCo-FRB.
             input_configs: Per-feature :class:`InputConfig` list. Only

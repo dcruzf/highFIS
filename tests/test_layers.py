@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import pytest
 import torch
+import torch.nn as nn
 
+from highfis.gates import BaseGate, ExpGate
 from highfis.layers import (
     AdaptiveDombiRuleLayer,
     ClassificationConsequentLayer,
@@ -393,13 +395,6 @@ def test_classification_consequent_layer_rejects_bad_normw_shape() -> None:
         layer(x, torch.randn(5, 3))
 
 
-def test_dga_ltsk_rule_layer_invalid_alpha_init_raises() -> None:
-    from highfis.layers import DGALETSKRuleLayer
-
-    with pytest.raises(ValueError, match="alpha_init must be > 0"):
-        DGALETSKRuleLayer(["x1", "x2"], [2, 2], alpha_init=0.0)
-
-
 def test_dga_ltsk_rule_layer_missing_membership_output_raises() -> None:
     from highfis.layers import DGALETSKRuleLayer
 
@@ -543,7 +538,9 @@ def test_gate_functions_and_resolver() -> None:
     assert torch.allclose(gate4(x), x * torch.sqrt(torch.exp(1.0 - x.pow(2))))
     assert torch.allclose(gate_m(x), x.pow(2) * torch.exp(1.0 - x.pow(2)))
     assert resolve_gate_fn("gate1") is gate1
-    assert resolve_gate_fn(None) is gate4
+    default = resolve_gate_fn(None)
+    assert isinstance(default, ExpGate)
+    assert default.k == 10.0
     assert resolve_gate_fn(torch.sigmoid) is torch.sigmoid
     with pytest.raises(ValueError, match="unsupported gate function"):
         resolve_gate_fn("invalid")
@@ -626,3 +623,70 @@ def test_gated_consequent_layer_invalid_init_args() -> None:
         GatedRegressionZeroOrderConsequentLayer(n_rules=0, n_inputs=2)
     with pytest.raises(ValueError, match="n_rules and n_inputs must be positive"):
         GatedRegressionConsequentLayer(n_rules=0, n_inputs=2)
+
+
+# ---------------------------------------------------------------------------
+# Coverage: non-BaseGate callable gate_fn (else branches) + BaseGate base init
+# ---------------------------------------------------------------------------
+
+
+def test_base_gate_default_init_params() -> None:
+    """BaseGate.init_params_ base implementation is used by subclasses that
+    don't override it (line 58 of gates.py)."""
+
+    class MinimalGate(BaseGate):
+        def forward(self, u: torch.Tensor) -> torch.Tensor:
+            return torch.sigmoid(u)
+
+    gate = MinimalGate()
+    param = nn.Parameter(torch.zeros(8))
+    gate.init_params_(param)
+    data = param.detach()
+    assert data.min() >= 0.01
+    assert data.max() <= 0.1
+
+
+def test_dgaletsk_rule_layer_custom_callable_gate_fea() -> None:
+    """DGALETSKRuleLayer with a plain callable gate_fea hits the else branch."""
+    from highfis.layers import DGALETSKRuleLayer
+
+    layer = DGALETSKRuleLayer(["x1", "x2"], [2, 2], gate_fea=torch.sigmoid)
+    # else branch: lambda_gates initialised with uniform_(0.001, 0.01)
+    assert layer.lambda_gates.min().detach() >= 0.001
+    assert layer.lambda_gates.max().detach() <= 0.01
+
+
+def test_dgtsk_rule_layer_custom_callable_gate_fea() -> None:
+    """DGTSKRuleLayer with a plain callable gate_fea hits the else branch."""
+    from highfis.layers import DGTSKRuleLayer
+
+    layer = DGTSKRuleLayer(["x1", "x2"], [2, 2], gate_fea=torch.sigmoid)
+    # else branch: lambda_gates initialised with uniform_(0.01, 0.1)
+    assert layer.lambda_gates.min().detach() >= 0.01
+    assert layer.lambda_gates.max().detach() <= 0.1
+
+
+def test_gated_layers_custom_callable_gate_fn_init() -> None:
+    """All four gated consequent layers with a plain callable hit their else branches."""
+    x = torch.randn(5, 2)
+    norm_w = torch.softmax(torch.randn(5, 4), dim=1)
+
+    cl = GatedClassificationConsequentLayer(n_rules=4, n_inputs=2, n_classes=2, gate_fn=torch.sigmoid)
+    assert cl.lambda_gates.min().detach() >= 0.01
+    out = cl(x, norm_w)
+    assert out.shape == (5, 2)
+
+    czl = GatedClassificationZeroOrderConsequentLayer(n_rules=4, n_inputs=2, n_classes=2, gate_fn=torch.sigmoid)
+    assert czl.theta_gates.min().detach() >= 0.01
+    out = czl(x, norm_w)
+    assert out.shape == (5, 2)
+
+    rl = GatedRegressionConsequentLayer(n_rules=4, n_inputs=2, gate_fn=torch.sigmoid)
+    assert rl.theta_gates.min().detach() >= 0.01
+    out = rl(x, norm_w)
+    assert out.shape == (5, 1)
+
+    rzl = GatedRegressionZeroOrderConsequentLayer(n_rules=4, n_inputs=2, gate_fn=torch.sigmoid)
+    assert rzl.theta_gates.min().detach().detach() >= 0.01
+    out = rzl(x, norm_w)
+    assert out.shape == (5, 1)

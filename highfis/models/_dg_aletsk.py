@@ -10,7 +10,6 @@ import torch
 from torch import Tensor, nn
 
 from ..defuzzifiers import SoftmaxLogDefuzzifier
-from ..gates import _gate_activation
 from ..layers import (
     DGALETSKRuleLayer,
     GatedClassificationConsequentLayer,
@@ -52,7 +51,6 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str = "coco",
-        lambda_init: float = 1.0,
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -69,8 +67,6 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
                 (default, same-index compact), ``"cartesian"`` (all MF
                 combinations), ``"en"`` (enhanced FRB; see also
                 *use_en_frb*), or ``"custom"`` (explicit rules via *rules*).
-            lambda_init: Initial ALE-softmin parameter ``alpha > 0``
-                (default ``1.0``).
             rules: Explicit rule antecedent indices; ignored when
                 ``use_en_frb=True``.
             defuzzifier: Custom defuzzifier.  Defaults to
@@ -80,15 +76,12 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
             use_en_frb: Start directly from the Enhanced FRB (En-FRB).
 
         Raises:
-            ValueError: If ``n_classes < 2`` or ``lambda_init <= 0``.
+            ValueError: If ``n_classes < 2``.
         """
         if n_classes < 2:
             raise ValueError("n_classes must be >= 2")
-        if lambda_init <= 0.0:
-            raise ValueError("lambda_init must be > 0")
 
         self.n_classes = int(n_classes)
-        self.lambda_init = float(lambda_init)
         self.eps = eps
         self.use_en_frb = bool(use_en_frb)
 
@@ -106,7 +99,6 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
             [len(input_mfs[name]) for name in self.input_names],
             rules=rules if not self.use_en_frb else None,
             rule_base="en" if self.use_en_frb else rule_base,
-            alpha_init=self.lambda_init,
             eps=self.eps,
         )
         self.n_rules = self.rule_layer.n_rules
@@ -134,12 +126,12 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
     def get_feature_gate_values(self) -> Tensor:
         """Return normalized antecedent feature gate values for the DG phase."""
         rule_layer = self.rule_layer
-        return _gate_activation(rule_layer.lambda_gates)
+        return rule_layer.gate_fn(rule_layer.lambda_gates)
 
     def get_rule_gate_values(self) -> Tensor:
         """Return normalized consequent rule gate values for the DG phase."""
         consequent = self.consequent_layer
-        return _gate_activation(consequent.theta_gates)
+        return consequent.gate_fn(consequent.theta_gates)
 
     def compute_thresholds(self, zeta_lambda: float, zeta_theta: float) -> tuple[float, float]:
         """Compute feature and rule thresholds from gate values and coefficient pairs."""
@@ -172,7 +164,7 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
             norm_w = self.forward_antecedents(x)
             consequent = cast(GatedClassificationConsequentLayer, self.consequent_layer)
             feature_gates = torch.ones(self.n_rules, self.n_inputs, dtype=x.dtype, device=x.device)
-            rule_gates = _gate_activation(consequent.theta_gates)
+            rule_gates = consequent.gate_fn(consequent.theta_gates)
             design = _build_first_order_design_matrix(norm_w, x, feature_gates, rule_gates)
 
             target = torch.zeros((x.shape[0], self.n_classes), dtype=x.dtype, device=x.device)
@@ -244,13 +236,15 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
         for zeta_l in zeta_lambda:
             for zeta_t in zeta_theta:
                 candidate = copy.deepcopy(self)
-                if isinstance(candidate.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
-                    candidate.convert_to_first_order()
-
-                tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
-                candidate.apply_thresholds(tau_l, tau_t)
                 if use_lse:
+                    if isinstance(candidate.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
+                        candidate.convert_to_first_order()
+                    tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
+                    candidate.apply_thresholds(tau_l, tau_t)
                     candidate._fit_first_order_consequents_lse(x, y)
+                else:
+                    tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
+                    candidate.apply_thresholds(tau_l, tau_t)
 
                 score = candidate._evaluate_threshold_score(x_eval, y_eval)
                 if verbose:
@@ -258,13 +252,13 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
 
                 if score > best_score:
                     best_score = score
-                    best_state = copy.deepcopy(candidate.state_dict())
+                    best_state = copy.deepcopy(candidate.state_dict()) if use_lse else None
                     best_tau_lambda = tau_l
                     best_tau_theta = tau_t
                     best_zeta_lambda = zeta_l
                     best_zeta_theta = zeta_t
 
-        if best_state is None:
+        if best_score == float("-inf"):
             raise RuntimeError("threshold search did not yield a valid candidate")
 
         result = {
@@ -276,9 +270,14 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
         }
 
         if inplace:
-            if isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
-                self.convert_to_first_order()
-            self.load_state_dict(best_state)
+            if use_lse:
+                if isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
+                    self.convert_to_first_order()
+                if best_state is None:  # pragma: no cover
+                    raise RuntimeError("best_state is None despite use_lse=True")
+                self.load_state_dict(best_state)
+            else:
+                self.apply_thresholds(best_tau_lambda, best_tau_theta)
 
         return result
 
@@ -287,8 +286,25 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
         return self.fit(x, y, **kwargs)
 
     def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Fine-tune the DG-ALETSK model after converting to first-order TSK."""
-        return self.fit(x, y, **kwargs)
+        """Fine-tune the DG-ALETSK classifier after converting to first-order.
+
+        Consequent weights are reset to zero, antecedent parameters (MFs) and
+        feature-selection gates (λ) are frozen per paper §3.3.
+        """
+        if isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
+            self.convert_to_first_order()
+        if isinstance(self.consequent_layer, GatedClassificationConsequentLayer):
+            nn.init.zeros_(self.consequent_layer.weight)
+            nn.init.zeros_(self.consequent_layer.bias)
+        frozen: list[nn.Parameter] = list(self.membership_layer.parameters())
+        frozen.append(self.rule_layer.lambda_gates)  # type: ignore[arg-type]
+        for p in frozen:
+            p.requires_grad_(False)
+        try:
+            return self.fit(x, y, **kwargs)
+        finally:
+            for p in frozen:
+                p.requires_grad_(True)
 
 
 class DGALETSKRegressorModel(BaseTSKRegressorModel):
@@ -314,7 +330,6 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str = "coco",
-        lambda_init: float = 1.0,
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
@@ -330,8 +345,6 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
                 (default, same-index compact), ``"cartesian"`` (all MF
                 combinations), ``"en"`` (enhanced FRB; see also
                 *use_en_frb*), or ``"custom"`` (explicit rules via *rules*).
-            lambda_init: Initial ALE-softmin parameter ``alpha > 0``
-                (default ``1.0``).
             rules: Explicit rule antecedent indices; ignored when
                 ``use_en_frb=True``.
             defuzzifier: Custom defuzzifier.  Defaults to
@@ -339,14 +352,7 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
             consequent_batch_norm: Batch normalisation on consequent inputs.
             eps: Numerical stability epsilon for the ALE-softmin operator.
             use_en_frb: Start directly from the Enhanced FRB (En-FRB).
-
-        Raises:
-            ValueError: If ``lambda_init <= 0``.
         """
-        if lambda_init <= 0.0:
-            raise ValueError("lambda_init must be > 0")
-
-        self.lambda_init = float(lambda_init)
         self.eps = eps
         self.use_en_frb = bool(use_en_frb)
 
@@ -364,7 +370,6 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
             [len(input_mfs[name]) for name in self.input_names],
             rules=rules if not self.use_en_frb else None,
             rule_base="en" if self.use_en_frb else rule_base,
-            alpha_init=self.lambda_init,
             eps=self.eps,
         )
         self.n_rules = self.rule_layer.n_rules
@@ -392,12 +397,12 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
     def get_feature_gate_values(self) -> Tensor:
         """Return normalized antecedent feature gate values for the DG phase."""
         rule_layer = self.rule_layer
-        return _gate_activation(rule_layer.lambda_gates)
+        return rule_layer.gate_fn(rule_layer.lambda_gates)
 
     def get_rule_gate_values(self) -> Tensor:
         """Return normalized consequent rule gate values for the DG phase."""
         consequent = self.consequent_layer
-        return _gate_activation(consequent.theta_gates)
+        return consequent.gate_fn(consequent.theta_gates)
 
     def compute_thresholds(self, zeta_lambda: float, zeta_theta: float) -> tuple[float, float]:
         """Compute feature and rule thresholds from gate values and coefficient pairs."""
@@ -430,7 +435,7 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
             norm_w = self.forward_antecedents(x)
             consequent = cast(GatedRegressionConsequentLayer, self.consequent_layer)
             feature_gates = torch.ones(self.n_rules, self.n_inputs, dtype=x.dtype, device=x.device)
-            rule_gates = _gate_activation(consequent.theta_gates)
+            rule_gates = consequent.gate_fn(consequent.theta_gates)
             design = _build_first_order_design_matrix(norm_w, x, feature_gates, rule_gates)
 
             target = y.unsqueeze(1)
@@ -494,13 +499,15 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
         for zeta_l in zeta_lambda:
             for zeta_t in zeta_theta:
                 candidate = copy.deepcopy(self)
-                if isinstance(candidate.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
-                    candidate.convert_to_first_order()
-
-                tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
-                candidate.apply_thresholds(tau_l, tau_t)
                 if use_lse:
+                    if isinstance(candidate.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
+                        candidate.convert_to_first_order()
+                    tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
+                    candidate.apply_thresholds(tau_l, tau_t)
                     candidate._fit_first_order_consequents_lse(x, y)
+                else:
+                    tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
+                    candidate.apply_thresholds(tau_l, tau_t)
 
                 score = candidate._evaluate_threshold_score(x_eval, y_eval)
                 if verbose:
@@ -508,13 +515,13 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
 
                 if score > best_score:
                     best_score = score
-                    best_state = copy.deepcopy(candidate.state_dict())
+                    best_state = copy.deepcopy(candidate.state_dict()) if use_lse else None
                     best_tau_lambda = tau_l
                     best_tau_theta = tau_t
                     best_zeta_lambda = zeta_l
                     best_zeta_theta = zeta_t
 
-        if best_state is None:
+        if best_score == float("-inf"):
             raise RuntimeError("threshold search did not yield a valid candidate")
 
         result = {
@@ -526,9 +533,14 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
         }
 
         if inplace:
-            if isinstance(self.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
-                self.convert_to_first_order()
-            self.load_state_dict(best_state)
+            if use_lse:
+                if isinstance(self.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
+                    self.convert_to_first_order()
+                if best_state is None:  # pragma: no cover
+                    raise RuntimeError("best_state is None despite use_lse=True")
+                self.load_state_dict(best_state)
+            else:
+                self.apply_thresholds(best_tau_lambda, best_tau_theta)
 
         return result
 
@@ -537,5 +549,22 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
         return self.fit(x, y, **kwargs)
 
     def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Fine-tune the DG-ALETSK model after converting to first-order TSK."""
-        return self.fit(x, y, **kwargs)
+        """Fine-tune the DG-ALETSK regressor after converting to first-order.
+
+        Consequent weights are reset to zero, antecedent parameters (MFs) and
+        feature-selection gates (λ) are frozen per paper §3.3.
+        """
+        if isinstance(self.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
+            self.convert_to_first_order()
+        if isinstance(self.consequent_layer, GatedRegressionConsequentLayer):
+            nn.init.zeros_(self.consequent_layer.weight)
+            nn.init.zeros_(self.consequent_layer.bias)
+        frozen: list[nn.Parameter] = list(self.membership_layer.parameters())
+        frozen.append(self.rule_layer.lambda_gates)  # type: ignore[arg-type]
+        for p in frozen:
+            p.requires_grad_(False)
+        try:
+            return self.fit(x, y, **kwargs)
+        finally:
+            for p in frozen:
+                p.requires_grad_(True)

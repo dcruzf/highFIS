@@ -4,6 +4,7 @@ import pytest
 import torch
 
 from highfis.estimators import DGTSKClassifier, DGTSKRegressor
+from highfis.layers import GatedClassificationConsequentLayer, GatedRegressionConsequentLayer
 from highfis.memberships import GaussianMF
 from highfis.models import DGTSKClassifierModel, DGTSKRegressorModel
 
@@ -307,3 +308,138 @@ def test_dgtsk_regressor_first_order_consequent_mode_is_re() -> None:
     model = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     model.convert_to_first_order()
     assert model.consequent_layer.mode == "re"
+
+
+# ---------------------------------------------------------------------------
+# Paper-faithful DG phase: antecedents frozen (paper §3.3)
+# ---------------------------------------------------------------------------
+
+
+def test_dgtsk_classifier_fit_dg_phase_freezes_antecedents() -> None:
+    """Antecedent MF parameters must not change during fit_dg_phase (paper §3.3)."""
+    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    x = torch.randn(16, 3)
+    y = torch.randint(0, 2, (16,))
+
+    snapshot = {name: p.detach().clone() for name, p in model.membership_layer.named_parameters()}
+    model.fit_dg_phase(x, y, epochs=2, learning_rate=1e-2, batch_size=8, shuffle=False)
+
+    for name, p in model.membership_layer.named_parameters():
+        assert torch.allclose(p.detach(), snapshot[name]), f"antecedent param '{name}' changed during fit_dg_phase"
+
+
+def test_dgtsk_regressor_fit_dg_phase_freezes_antecedents() -> None:
+    """Antecedent MF parameters must not change during fit_dg_phase (paper §3.3)."""
+    model = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    x = torch.randn(16, 2)
+    y = torch.randn(16)
+
+    snapshot = {name: p.detach().clone() for name, p in model.membership_layer.named_parameters()}
+    model.fit_dg_phase(x, y, epochs=2, learning_rate=1e-2, batch_size=8, shuffle=False)
+
+    for name, p in model.membership_layer.named_parameters():
+        assert torch.allclose(p.detach(), snapshot[name]), f"antecedent param '{name}' changed during fit_dg_phase"
+
+
+def test_dgtsk_fit_dg_phase_restores_requires_grad_after_exception() -> None:
+    """requires_grad must be restored even when fit() raises an exception."""
+    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
+
+    # Pass x with wrong number of features to provoke a runtime error
+    with pytest.raises(Exception):  # noqa: B017
+        model.fit_dg_phase(torch.randn(4, 99), torch.randint(0, 2, (4,)), epochs=1)
+
+    for p in model.membership_layer.parameters():
+        assert p.requires_grad, "requires_grad not restored after exception in fit_dg_phase"
+
+
+# ---------------------------------------------------------------------------
+# Paper-faithful finetune: consequents reset to zero (paper §3.3)
+# ---------------------------------------------------------------------------
+
+
+def test_dgtsk_classifier_fit_finetune_resets_consequents() -> None:
+    """Consequent weight and bias must be zeroed before finetuning (paper §3.3)."""
+    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    model.convert_to_first_order()
+    assert isinstance(model.consequent_layer, GatedClassificationConsequentLayer)
+
+    # Force non-zero values to confirm they are overwritten
+    torch.nn.init.constant_(model.consequent_layer.weight, 99.0)
+    torch.nn.init.constant_(model.consequent_layer.bias, 99.0)
+
+    x = torch.randn(8, 3)
+    y = torch.randint(0, 2, (8,))
+    model.fit_finetune(x, y, epochs=0)
+
+    assert isinstance(model.consequent_layer, GatedClassificationConsequentLayer)
+    assert model.consequent_layer.weight.abs().max().item() == 0.0
+    assert model.consequent_layer.bias.abs().max().item() == 0.0
+
+
+def test_dgtsk_regressor_fit_finetune_resets_consequents() -> None:
+    """Consequent weight and bias must be zeroed before finetuning (paper §3.3)."""
+    model = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model.convert_to_first_order()
+    assert isinstance(model.consequent_layer, GatedRegressionConsequentLayer)
+
+    torch.nn.init.constant_(model.consequent_layer.weight, 99.0)
+    torch.nn.init.constant_(model.consequent_layer.bias, 99.0)
+
+    x = torch.randn(8, 2)
+    y = torch.randn(8)
+    model.fit_finetune(x, y, epochs=0)
+
+    assert isinstance(model.consequent_layer, GatedRegressionConsequentLayer)
+    assert model.consequent_layer.weight.abs().max().item() == 0.0
+    assert model.consequent_layer.bias.abs().max().item() == 0.0
+
+
+def test_dgtsk_classifier_fit_finetune_skips_reset_on_zero_order() -> None:
+    """fit_finetune on a zero-order model must not raise and must not reset anything."""
+    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    # model is still zero-order — fit_finetune should just call fit without resetting
+    x = torch.randn(8, 3)
+    y = torch.randint(0, 2, (8,))
+    history = model.fit_finetune(x, y, epochs=1, batch_size=8, shuffle=False)
+    assert "train" in history
+
+
+# ---------------------------------------------------------------------------
+# P-FRB one-hot initialisation (paper eq. 24)
+# ---------------------------------------------------------------------------
+
+
+def test_dgtsk_classifier_init_consequents_from_labels() -> None:
+    """bias must equal one-hot encoding of y (paper eq. 24)."""
+    mfs = {f"x{i}": [GaussianMF(mean=float(j), sigma=1.0) for j in range(2)] for i in range(2)}
+    model = DGTSKClassifierModel(mfs, n_classes=4, rule_base="coco")
+    # coco with 2 MFs per input gives 2 rules; use 2 labels
+    n_rules = model.n_rules
+    y = torch.arange(min(n_rules, 4), dtype=torch.long)
+
+    model.init_consequents_from_labels(y)
+
+    expected = torch.zeros(n_rules, 4)
+    n = min(len(y), n_rules)
+    expected[:n].scatter_(1, y[:n].unsqueeze(1), 1.0)
+    assert torch.allclose(model.consequent_layer.bias.data, expected)
+
+
+def test_dgtsk_classifier_init_consequents_from_labels_partial_fill() -> None:
+    """When n_samples < n_rules, remaining rows stay zero."""
+    model = DGTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=3), n_classes=2)
+    # provide only 1 label (fewer than n_rules)
+    model.init_consequents_from_labels(torch.tensor([1], dtype=torch.long))
+
+    assert model.consequent_layer.bias.data[0, 1].item() == 1.0
+    assert model.consequent_layer.bias.data[1:].abs().sum().item() == 0.0
+
+
+def test_dgtsk_classifier_init_consequents_from_labels_raises_on_first_order() -> None:
+    """Calling init_consequents_from_labels after convert_to_first_order must raise."""
+    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    model.convert_to_first_order()
+
+    with pytest.raises(ValueError, match="zero-order consequent layer"):
+        model.init_consequents_from_labels(torch.zeros(2, dtype=torch.long))
