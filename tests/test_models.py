@@ -586,7 +586,7 @@ def test_dg_aletsk_regressor_search_thresholds_inplace_true_and_verbose() -> Non
     assert set(result.keys()) >= {"best_score", "best_zeta_lambda", "best_zeta_theta", "tau_lambda", "tau_theta"}
 
 
-def test_dg_aletsk_regressor_search_thresholds_inplace_true_converts_zero_order_self() -> None:
+def test_dg_aletsk_regressor_search_thresholds_inplace_true_keeps_zero_order_when_no_lse() -> None:
     torch.manual_seed(0)
     model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(16, 2)
@@ -595,7 +595,8 @@ def test_dg_aletsk_regressor_search_thresholds_inplace_true_converts_zero_order_
     assert isinstance(model.consequent_layer, GatedRegressionZeroOrderConsequentLayer)
     result = model.search_thresholds(x, y, x_val=x, y_val=y, use_lse=False, inplace=True, verbose=False)
 
-    assert isinstance(model.consequent_layer, GatedRegressionConsequentLayer)
+    # Non-LSE path leaves model in zero-order mode; conversion happens in fit_finetune.
+    assert isinstance(model.consequent_layer, GatedRegressionZeroOrderConsequentLayer)
     assert set(result.keys()) >= {"best_score", "best_zeta_lambda", "best_zeta_theta", "tau_lambda", "tau_theta"}
 
 
