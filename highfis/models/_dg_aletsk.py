@@ -236,13 +236,15 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
         for zeta_l in zeta_lambda:
             for zeta_t in zeta_theta:
                 candidate = copy.deepcopy(self)
-                if isinstance(candidate.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
-                    candidate.convert_to_first_order()
-
-                tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
-                candidate.apply_thresholds(tau_l, tau_t)
                 if use_lse:
+                    if isinstance(candidate.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
+                        candidate.convert_to_first_order()
+                    tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
+                    candidate.apply_thresholds(tau_l, tau_t)
                     candidate._fit_first_order_consequents_lse(x, y)
+                else:
+                    tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
+                    candidate.apply_thresholds(tau_l, tau_t)
 
                 score = candidate._evaluate_threshold_score(x_eval, y_eval)
                 if verbose:
@@ -250,13 +252,13 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
 
                 if score > best_score:
                     best_score = score
-                    best_state = copy.deepcopy(candidate.state_dict())
+                    best_state = copy.deepcopy(candidate.state_dict()) if use_lse else None
                     best_tau_lambda = tau_l
                     best_tau_theta = tau_t
                     best_zeta_lambda = zeta_l
                     best_zeta_theta = zeta_t
 
-        if best_state is None:
+        if best_score == float("-inf"):
             raise RuntimeError("threshold search did not yield a valid candidate")
 
         result = {
@@ -268,9 +270,14 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
         }
 
         if inplace:
-            if isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
-                self.convert_to_first_order()
-            self.load_state_dict(best_state)
+            if use_lse:
+                if isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
+                    self.convert_to_first_order()
+                if best_state is None:  # pragma: no cover
+                    raise RuntimeError("best_state is None despite use_lse=True")
+                self.load_state_dict(best_state)
+            else:
+                self.apply_thresholds(best_tau_lambda, best_tau_theta)
 
         return result
 
@@ -279,8 +286,25 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
         return self.fit(x, y, **kwargs)
 
     def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Fine-tune the DG-ALETSK model after converting to first-order TSK."""
-        return self.fit(x, y, **kwargs)
+        """Fine-tune the DG-ALETSK classifier after converting to first-order.
+
+        Consequent weights are reset to zero, antecedent parameters (MFs) and
+        feature-selection gates (λ) are frozen per paper §3.3.
+        """
+        if isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
+            self.convert_to_first_order()
+        if isinstance(self.consequent_layer, GatedClassificationConsequentLayer):
+            nn.init.zeros_(self.consequent_layer.weight)
+            nn.init.zeros_(self.consequent_layer.bias)
+        frozen: list[nn.Parameter] = list(self.membership_layer.parameters())
+        frozen.append(self.rule_layer.lambda_gates)  # type: ignore[arg-type]
+        for p in frozen:
+            p.requires_grad_(False)
+        try:
+            return self.fit(x, y, **kwargs)
+        finally:
+            for p in frozen:
+                p.requires_grad_(True)
 
 
 class DGALETSKRegressorModel(BaseTSKRegressorModel):
@@ -475,13 +499,15 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
         for zeta_l in zeta_lambda:
             for zeta_t in zeta_theta:
                 candidate = copy.deepcopy(self)
-                if isinstance(candidate.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
-                    candidate.convert_to_first_order()
-
-                tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
-                candidate.apply_thresholds(tau_l, tau_t)
                 if use_lse:
+                    if isinstance(candidate.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
+                        candidate.convert_to_first_order()
+                    tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
+                    candidate.apply_thresholds(tau_l, tau_t)
                     candidate._fit_first_order_consequents_lse(x, y)
+                else:
+                    tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
+                    candidate.apply_thresholds(tau_l, tau_t)
 
                 score = candidate._evaluate_threshold_score(x_eval, y_eval)
                 if verbose:
@@ -489,13 +515,13 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
 
                 if score > best_score:
                     best_score = score
-                    best_state = copy.deepcopy(candidate.state_dict())
+                    best_state = copy.deepcopy(candidate.state_dict()) if use_lse else None
                     best_tau_lambda = tau_l
                     best_tau_theta = tau_t
                     best_zeta_lambda = zeta_l
                     best_zeta_theta = zeta_t
 
-        if best_state is None:
+        if best_score == float("-inf"):
             raise RuntimeError("threshold search did not yield a valid candidate")
 
         result = {
@@ -507,9 +533,14 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
         }
 
         if inplace:
-            if isinstance(self.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
-                self.convert_to_first_order()
-            self.load_state_dict(best_state)
+            if use_lse:
+                if isinstance(self.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
+                    self.convert_to_first_order()
+                if best_state is None:  # pragma: no cover
+                    raise RuntimeError("best_state is None despite use_lse=True")
+                self.load_state_dict(best_state)
+            else:
+                self.apply_thresholds(best_tau_lambda, best_tau_theta)
 
         return result
 
@@ -518,5 +549,22 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
         return self.fit(x, y, **kwargs)
 
     def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Fine-tune the DG-ALETSK model after converting to first-order TSK."""
-        return self.fit(x, y, **kwargs)
+        """Fine-tune the DG-ALETSK regressor after converting to first-order.
+
+        Consequent weights are reset to zero, antecedent parameters (MFs) and
+        feature-selection gates (λ) are frozen per paper §3.3.
+        """
+        if isinstance(self.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
+            self.convert_to_first_order()
+        if isinstance(self.consequent_layer, GatedRegressionConsequentLayer):
+            nn.init.zeros_(self.consequent_layer.weight)
+            nn.init.zeros_(self.consequent_layer.bias)
+        frozen: list[nn.Parameter] = list(self.membership_layer.parameters())
+        frozen.append(self.rule_layer.lambda_gates)  # type: ignore[arg-type]
+        for p in frozen:
+            p.requires_grad_(False)
+        try:
+            return self.fit(x, y, **kwargs)
+        finally:
+            for p in frozen:
+                p.requires_grad_(True)
