@@ -716,13 +716,41 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#example" class="md-nav__link">
+  <a href="#examples" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Example
+        Examples
       </span>
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#classification" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Classification
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#regression" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Regression
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -885,6 +913,8 @@
   
     
     
+      
+        
       
         
       
@@ -1201,6 +1231,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../../api/gates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Gates
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../api/persistence/" class="md-nav__link">
         
   
@@ -1460,13 +1517,41 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#example" class="md-nav__link">
+  <a href="#examples" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Example
+        Examples
       </span>
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#classification" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Classification
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#regression" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Regression
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1591,27 +1676,32 @@
 <p>with learned antecedent centers <span class="arithmatex">\(m_{r,d}\)</span> and spreads <span class="arithmatex">\(\sigma_{r,d}&gt;0\)</span>.</p>
 <h3 id="feature-gating">Feature gating</h3>
 <p>DG-ALETSK embeds one gate per input feature in the antecedent.
-HighFIS implements the paper's gate activation as:</p>
+The paper's enhanced gate function (eq. 24) with <span class="arithmatex">\(k=10\)</span> is used:</p>
 <div class="arithmatex">\[
-M(\lambda) = \lambda \sqrt{e^{1 - \lambda^2}}
+M(\lambda) = 1 - e^{-10\lambda^2}
 \]</div>
-<p>The feature gate values are:</p>
+<p>The gated membership term is computed by raising the base membership
+value to the power of the gate value (paper eq. 12):</p>
 <div class="arithmatex">\[
-\gamma_d = M(\lambda_d)
+\tilde{\mu}_{r,d}(x_d) = \mu_{r,d}(x_d)^{\,M(\lambda_d)}
 \]</div>
-<p>and the gated membership terms become:</p>
-<div class="arithmatex">\[
-\tilde{\mu}_{r,d}(x_d) = \gamma_d \, \mu_{r,d}(x_d)
-\]</div>
+<p>When <span class="arithmatex">\(M(\lambda_d)=1\)</span> the gate is fully open (membership unchanged);
+when <span class="arithmatex">\(M(\lambda_d)=0\)</span> the gate is closed (<span class="arithmatex">\(\tilde{\mu}_{r,d}=1\)</span>,
+so the feature contributes nothing to the softmin).</p>
 <h3 id="adaptive-ln-exp-softmin">Adaptive Ln-Exp softmin</h3>
-<p>DG-ALETSK replaces the standard product T-norm with an adaptive Ln-Exp softmin.
-In highFIS the firing strength of rule <span class="arithmatex">\(r\)</span> is computed as:</p>
+<p>DG-ALETSK replaces the standard product T-norm with the Adaptive Ln-Exp (ALE)
+softmin.  The firing strength of rule <span class="arithmatex">\(r\)</span> is computed directly from paper eq. 22:</p>
 <div class="arithmatex">\[
-w_r(\mathbf{x}) = \frac{1}{\alpha} \log \left( \sum_{d=1}^{D} \exp\left(-\alpha \, \tilde{\mu}_{r,d}(x_d)\right) \right)
+f_r(\mathbf{x}) = \frac{1}{\hat{q}} \log \left( \sum_{d=1}^{D} \exp\!\left(\hat{q}\,\tilde{\mu}_{r,d}(x_d)\right) \right),
+\qquad \hat{q} = -\frac{700}{\max_d \tilde{\mu}_{r,d}(\mathbf{x})}
 \]</div>
-<p>where <span class="arithmatex">\(\alpha &gt; 0\)</span> is a learned softness parameter. In the implementation,
-<span class="arithmatex">\(\alpha\)</span> is stored as <code>raw_alpha</code> and activated with <code>softplus</code> to keep it
-strictly positive.</p>
+<p>The adaptive exponent <span class="arithmatex">\(\hat{q}\)</span> is recomputed on every forward pass: it is
+not a learned parameter.  Choosing <span class="arithmatex">\(\xi = 700\)</span> guarantees
+<span class="arithmatex">\(\exp(\hat{q}\cdot\max_d\tilde{\mu}) = e^{-700} &gt; 0\)</span> in IEEE 754 double
+precision (underflow boundary <span class="arithmatex">\(\approx e^{-745}\)</span>), preventing numerical
+underflow while driving the softmin to closely approximate
+<span class="arithmatex">\(\min_d \tilde{\mu}_{r,d}\)</span>.  Because <span class="arithmatex">\(\hat{q} \le -700\)</span> and <span class="arithmatex">\(\tilde{\mu} \in (0,1]\)</span>,
+the output satisfies <span class="arithmatex">\(f_r \in (0, 1]\)</span> by construction.</p>
 <h3 id="rule-gates-and-consequents">Rule gates and consequents</h3>
 <p>DG-ALETSK also embeds one gate per rule in the consequent.
 For zero-order classification, each rule <span class="arithmatex">\(r\)</span> produces gated class logits:</p>
@@ -1622,11 +1712,11 @@ For zero-order classification, each rule <span class="arithmatex">\(r\)</span> p
 <h3 id="output-aggregation">Output aggregation</h3>
 <p>Normalized rule strengths are computed as:</p>
 <div class="arithmatex">\[
-\bar{w}_r(\mathbf{x}) = \frac{w_r(\mathbf{x})}{\sum_{i=1}^{R} w_i(\mathbf{x})}
+\bar{f}_r(\mathbf{x}) = \frac{f_r(\mathbf{x})}{\sum_{i=1}^{R} f_i(\mathbf{x})}
 \]</div>
 <p>The final model output is the weighted sum of gated rule consequents:</p>
 <div class="arithmatex">\[
-\hat{y}^c(\mathbf{x}) = \sum_{r=1}^{R} \bar{w}_r(\mathbf{x}) \, \hat{y}_{r}^{c}(\mathbf{x})
+\hat{y}^c(\mathbf{x}) = \sum_{r=1}^{R} \bar{f}_r(\mathbf{x}) \, \hat{y}_{r}^{c}(\mathbf{x})
 \]</div>
 <h3 id="threshold-search-and-pruning">Threshold search and pruning</h3>
 <p>Gate thresholds are computed from the learned gate values and two
@@ -1651,12 +1741,12 @@ coefficients <span class="arithmatex">\(\zeta_{\lambda}\)</span> and <span class
 <tr>
 <td>Adaptive Ln-Exp softmin antecedent</td>
 <td><code>DGALETSKRuleLayer</code></td>
-<td>Implements paper's ALE softmin with a stable log-sum-exp form</td>
+<td>Implements ALE softmin (paper eq. 22) with adaptive <span class="arithmatex">\(\hat{q}=-700/\max_d\tilde{\mu}_{r,d}\)</span></td>
 </tr>
 <tr>
 <td>Feature gates</td>
-<td><code>DGALETSKRuleLayer.lambda_gates</code> + <code>gate4</code></td>
-<td>Gate values are applied multiplicatively to each membership</td>
+<td><code>DGALETSKRuleLayer.lambda_gates</code> + <code>ExpGate(k=10)</code></td>
+<td><span class="arithmatex">\(\mu^{M(\lambda_d)}\)</span> exponential gating (paper eqs. 12, 24)</td>
 </tr>
 <tr>
 <td>Rule gates</td>
@@ -1703,15 +1793,29 @@ coefficients <span class="arithmatex">\(\zeta_{\lambda}\)</span> and <span class
   resulting sample-centered Gaussian MFs. Use <code>pfrb_max_rules</code> to cap the
   number of sample-based rules when the training set is large.</li>
 <li><code>DGALETSKClassifier</code> and <code>DGALETSKRegressor</code> train a zero-order model in
-  <code>fit_dg_phase()</code> and then rely on <code>convert_to_first_order()</code> plus
-  <code>fit_finetune()</code> for first-order refinement.</li>
-<li>The feature gate activation is fixed to the paper's DG-ALETSK gate
-  function <code>gate4</code> in the implementation.</li>
-<li>Although the gate function matches the paper exactly, highFIS applies it
-  multiplicatively to the antecedent membership values (<code>μ ← μ · M(λ)</code>) rather
-  than using the paper's more symbolic gate embedding notation (for example,
-  <code>μ^{M(λ)}</code>). This preserves the gate shape while remaining a practical
-  implementation choice.</li>
+  <code>fit_dg_phase()</code>. The recommended Phase 2 workflow differs by task:<ul>
+<li><strong>Classification</strong> (<code>use_lse=False</code>): <code>search_thresholds</code> evaluates the
+  zero-order model on the validation set directly. Call <code>fit_finetune</code>
+  afterwards to convert to first-order and retrain consequents with MFs
+  and λ-gates frozen (paper §3.3).</li>
+<li><strong>Regression</strong> (<code>use_lse=True</code>): <code>search_thresholds</code> prunes gates and fits
+  first-order consequents via least squares in one step. The LSE result is
+  the final model — <strong>do not call <code>fit_finetune</code></strong> afterwards, as it would
+  reset the LSE-fitted weights and retrain from zero.</li>
+</ul>
+</li>
+<li><code>fit_finetune</code> freezes <strong>all MF parameters</strong> (centres and spreads) and the
+  <strong>feature-selection gates</strong> (λ) during gradient fine-tuning, retaining only
+  the consequent layer as trainable. This implements paper §3.3:
+  <em>"we fix the first group of gates and the membership functions."</em></li>
+<li><strong>Loss function</strong>: the paper uses MSE throughout, including for classification
+  (applied to one-hot targets). highFIS uses <strong>cross-entropy</strong> for classification
+  and <strong>MSE</strong> for regression. Cross-entropy is more appropriate for discrete class
+  outputs and is used in both <code>fit_dg_phase</code> and <code>fit_finetune</code>.</li>
+<li>The feature gate uses <code>ExpGate(k=10)</code> (<span class="arithmatex">\(M(\lambda)=1-e^{-10\lambda^2}\)</span>,
+  paper eq. 24), the enhanced gate function introduced in DG-ALETSK.
+  Gate values are applied to antecedent memberships as <span class="arithmatex">\(\mu^{M(\lambda_d)}\)</span>
+  (paper eq. 12), i.e., exponential gating.</li>
 <li>Threshold search is implemented by deep-copying the current model,
   pruning candidate copies, optionally refitting first-order consequents via
   least squares, and selecting the best validation score.</li>
@@ -1724,39 +1828,80 @@ coefficients <span class="arithmatex">\(\zeta_{\lambda}\)</span> and <span class
 <li><code>compute_thresholds(zeta_lambda, zeta_theta)</code> — compute pruning thresholds
   from current gate activations.</li>
 <li><code>apply_thresholds(tau_lambda, tau_theta)</code> — prune low-value gates.</li>
-<li><code>search_thresholds(...)</code> — search best gate thresholds and optionally apply
-  them to the model.</li>
-<li><code>fit_finetune(x, y, **kwargs)</code> — fine-tune the first-order DG-ALETSK model.</li>
+<li><code>search_thresholds(x, y, *, zeta_lambda, zeta_theta, x_val, y_val, use_lse, inplace, ...)</code> — grid-search over <code>(zeta_lambda, zeta_theta)</code> pairs and select the best gate thresholds by validation score. When <code>use_lse=True</code>, each candidate also fits first-order consequents via least squares before scoring (recommended for <strong>regression</strong>). When <code>use_lse=False</code>, the zero-order model is scored directly (recommended for <strong>classification</strong>). With <code>inplace=True</code>, the winning thresholds are applied to <code>self</code>.</li>
+<li><code>fit_finetune(x, y, **kwargs)</code> — convert the pruned zero-order model to first-order, reset consequent weights to zero, and retrain with MFs and λ-gates frozen. <strong>Call this only after <code>search_thresholds(use_lse=False)</code></strong> (classification path). Do not call it after <code>search_thresholds(use_lse=True)</code>, which already produces final first-order consequents via LSE.</li>
 </ul>
-<h2 id="example">Example</h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">DGALETSKClassifier</span><span class="p">,</span> <span class="n">GaussianMF</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">input_mfs</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="s2">&quot;x1&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="s2">&quot;x2&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="p">}</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="n">model</span> <span class="o">=</span> <span class="n">DGALETSKClassifier</span><span class="p">(</span>
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">input_mfs</span><span class="p">,</span>
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">n_classes</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">use_en_frb</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="p">)</span>
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="n">history</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit_dg_phase</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
-</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
-</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="n">result</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">search_thresholds</span><span class="p">(</span>
-</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="n">X_train</span><span class="p">,</span>
-</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="n">y_train</span><span class="p">,</span>
-</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="n">zeta_lambda</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
-</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    <span class="n">zeta_theta</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
-</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    <span class="n">x_val</span><span class="o">=</span><span class="n">X_val</span><span class="p">,</span>
-</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    <span class="n">y_val</span><span class="o">=</span><span class="n">y_val</span><span class="p">,</span>
-</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    <span class="n">use_lse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="p">)</span>
-</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
-</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>
-</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="n">model</span><span class="o">.</span><span class="n">fit_finetune</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">)</span>
+<h2 id="examples">Examples</h2>
+<h3 id="classification">Classification</h3>
+<p>For classification, Phase 2 uses <code>use_lse=False</code> so that threshold candidates are
+ranked by the zero-order model's accuracy on the validation set.  After selecting
+the best thresholds, <code>fit_finetune</code> converts the model to first-order and retrains
+consequents with MFs and feature gates frozen.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">DGALETSKClassifierModel</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianMF</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">input_mfs</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="s2">&quot;x1&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="s2">&quot;x2&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">}</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="n">model</span> <span class="o">=</span> <span class="n">DGALETSKClassifierModel</span><span class="p">(</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">input_mfs</span><span class="p">,</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">n_classes</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="n">use_en_frb</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="p">)</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="n">history</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit_dg_phase</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a><span class="c1"># Phase 2a: select thresholds by evaluating the zero-order model.</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a><span class="n">result</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">search_thresholds</span><span class="p">(</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="n">X_train</span><span class="p">,</span>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    <span class="n">y_train</span><span class="p">,</span>
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    <span class="n">zeta_lambda</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    <span class="n">zeta_theta</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span>
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    <span class="n">x_val</span><span class="o">=</span><span class="n">X_val</span><span class="p">,</span>
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    <span class="n">y_val</span><span class="o">=</span><span class="n">y_val</span><span class="p">,</span>
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    <span class="n">use_lse</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>   <span class="c1"># evaluate zero-order quality; do not fit first-order here</span>
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>    <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="p">)</span>
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="c1"># Phase 2b: convert to first-order and fine-tune (MFs and λ-gates frozen).</span>
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="n">model</span><span class="o">.</span><span class="n">fit_finetune</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
+</span></code></pre></div>
+<h3 id="regression">Regression</h3>
+<p>For regression, Phase 2 uses <code>use_lse=True</code> so that each threshold candidate is
+evaluated after fitting first-order consequents via least squares.  The best
+candidate's LSE-fitted model is the final result — <strong>do not call <code>fit_finetune</code></strong>,
+which would reset those weights.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">DGALETSKRegressorModel</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianMF</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">input_mfs</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="s2">&quot;x1&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="s2">&quot;x2&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=-</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">GaussianMF</span><span class="p">(</span><span class="n">mean</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">}</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="n">model</span> <span class="o">=</span> <span class="n">DGALETSKRegressorModel</span><span class="p">(</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">input_mfs</span><span class="p">,</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    <span class="n">use_en_frb</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="p">)</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="n">history</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">fit_dg_phase</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="c1"># Phase 2: select thresholds and fit first-order consequents via LSE in one step.</span>
+</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="n">result</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">search_thresholds</span><span class="p">(</span>
+</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>    <span class="n">X_train</span><span class="p">,</span>
+</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>    <span class="n">y_train</span><span class="p">,</span>
+</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    <span class="n">zeta_lambda</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>    <span class="n">zeta_theta</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span>
+</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>    <span class="n">x_val</span><span class="o">=</span><span class="n">X_val</span><span class="p">,</span>
+</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>    <span class="n">y_val</span><span class="o">=</span><span class="n">y_val</span><span class="p">,</span>
+</span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>    <span class="n">use_lse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>    <span class="c1"># fit first-order via LSE; this IS the final model</span>
+</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a>    <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="p">)</span>
+</span><span id="__span-1-27"><a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+</span><span id="__span-1-28"><a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a><span class="c1"># No fit_finetune here — LSE consequents are already optimal.</span>
 </span></code></pre></div>
 
 
