@@ -99,27 +99,28 @@ The paper describes DG-TSK as a single training phase in which feature gates, ru
 | Antecedent gating | `DGTSKRuleLayer.forward()` | raises membership to power `M(\lambda_d)`: $\mu^{M(\lambda_d)}$ |
 | Rule gating | `GatedClassificationZeroOrderConsequentLayer`, `GatedRegressionZeroOrderConsequentLayer` | gated consequents |
 | Rule base | `RuleLayer(rule_base='en')` | `en` FRB; approximates richer candidate set |
-| DG phase | `fit_dg_phase()` | zero-order training of gates and consequents |
+| DG phase | `fit_dg_phase()` | antecedent parameters are **frozen** during this phase; only gate params (λ, θ) and zero-order consequents are optimised (paper §3.3) |
 | First-order conversion | `convert_to_first_order()` | switch to first-order consequents |
 | Threshold search | `search_thresholds(...)` | search over `zeta_lambda`, `zeta_theta` |
 | Pruning | `compute_thresholds()`, `apply_thresholds()` | gate-based feature/rule pruning |
 
 ## Implementation notes
 
-- The paper's P-FRB is not implemented verbatim in highFIS. The `en` FRB is the closest available richer candidate rule base.
+- The paper's P-FRB is not implemented verbatim in highFIS. The `en` FRB is the closest available richer candidate rule base. When using `rule_base='pfrb'` via the estimator, call `model_.init_consequents_from_labels(y_t)` before `fit_dg_phase()` to apply the paper-faithful one-hot bias initialisation (paper eq. 24).
 - `gate_m` is the default M-gate in highFIS and matches the paper's M-shaped gate function.
 - DG-TSK feature gating is implemented as exponential gating: each membership value is raised to the power of its gate value ($\mu^{M(\lambda_d)}$), matching the general antecedent gating mechanism described in the paper.
-- The DG phase is implemented as zero-order consequent training, followed by first-order conversion and fine tuning.
+- The DG phase freezes antecedent parameters and trains only gate params and zero-order consequents (paper §3.3). After threshold search, the model is converted to first-order and fine-tuned with consequents reset to zero (paper §3.3).
 - `DGTSKClassifier` and `DGTSKRegressor` support both classification and regression in the same DG-TSK style.
 
 ## highFIS API summary
 
-- `fit_dg_phase(x, y, **kwargs)` — train DG-TSK with zero-order consequents.
+- `init_consequents_from_labels(y)` — (classifier only) initialise zero-order consequent biases with one-hot encoded labels (paper eq. 24 / P-FRB). Call before `fit_dg_phase()`.
+- `fit_dg_phase(x, y, **kwargs)` — train DG-TSK with zero-order consequents; antecedent MF parameters are frozen (paper §3.3).
 - `convert_to_first_order()` — convert the model to first-order consequents while preserving rule gates.
 - `compute_thresholds(zeta_lambda, zeta_theta)` — compute pruning thresholds from gate activations.
 - `apply_thresholds(tau_lambda, tau_theta)` — prune features and rules by zeroing gates.
 - `search_thresholds(...)` — evaluate threshold candidates and select the best gate thresholds.
-- `fit_finetune(x, y, **kwargs)` — fine tune the model after first-order conversion.
+- `fit_finetune(x, y, **kwargs)` — fine tune the model after first-order conversion; consequent weights and biases are reset to zero before training (paper §3.3).
 
 ## Usage example
 
@@ -138,6 +139,10 @@ model = DGTSKClassifier(
     gate_rule="gate_m",
     use_en_frb=True,
 )
+
+# Optional: P-FRB one-hot initialisation (paper eq. 24).
+# Requires that the number of training samples >= n_rules.
+model.model_.init_consequents_from_labels(y_train_t)
 
 history = model.fit_dg_phase(X_train, y_train, epochs=100, learning_rate=1e-3)
 

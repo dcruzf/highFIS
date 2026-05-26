@@ -280,12 +280,57 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
 
         return result
 
+    def init_consequents_from_labels(self, y: Tensor) -> None:
+        """Initialise zero-order consequent biases with one-hot encoded labels (P-FRB paper eq. 24).
+
+        Sets ``consequent_layer.bias[r, c] = 1`` when sample *r* belongs to class *c*,
+        exactly as in Xue et al. (2023) eq. (24): $p^0_{r,c} = y_{r,c}$.
+        Should be called before :meth:`fit_dg_phase` when using P-FRB.
+
+        Args:
+            y: Integer class labels of shape ``(N,)`` for the *N* training samples
+               used to build the P-FRB.  Only the first ``n_rules`` labels are used.
+
+        Raises:
+            ValueError: If the model is not in zero-order consequent mode.
+        """
+        if not isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
+            raise ValueError(
+                "init_consequents_from_labels() requires a zero-order consequent layer; "
+                "call before convert_to_first_order()"
+            )
+        n = min(len(y), self.n_rules)
+        dtype = self.consequent_layer.bias.dtype
+        device = self.consequent_layer.bias.device
+        one_hot = torch.zeros(self.n_rules, self.n_classes, dtype=dtype, device=device)
+        one_hot[:n].scatter_(1, y[:n].to(device=device).unsqueeze(1), 1.0)
+        self.consequent_layer.bias.data.copy_(one_hot)
+
     def fit_dg_phase(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Train the DG-TSK zero-order phase before first-order conversion."""
-        return self.fit(x, y, **kwargs)
+        """Train the DG-TSK zero-order phase with antecedent parameters frozen (paper §3.3).
+
+        Gate parameters (λ, θ) and zero-order consequent parameters are optimised.
+        Antecedent parameters (MF centres and spreads) are held fixed, as stated
+        in Xue et al. (2023): *"Note that the antecedent parameters are not included."*
+        """
+        for p in self.membership_layer.parameters():
+            p.requires_grad_(False)
+        try:
+            return self.fit(x, y, **kwargs)
+        finally:
+            for p in self.membership_layer.parameters():
+                p.requires_grad_(True)
 
     def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Fine-tune the DG-TSK classifier after conversion to first-order consequents."""
+        """Fine-tune the DG-TSK classifier after conversion to first-order consequents.
+
+        Consequent weights and biases are reset to zero before retraining, as stated
+        in Xue et al. (2023): *"Before the training for fine tuning, all the consequent
+        parameters are set to zero in our experiments."*
+        """
+        if isinstance(self.consequent_layer, GatedClassificationConsequentLayer):
+            nn.init.zeros_(self.consequent_layer.weight)
+            nn.init.zeros_(self.consequent_layer.bias)
         return self.fit(x, y, **kwargs)
 
 
@@ -521,9 +566,28 @@ class DGTSKRegressorModel(BaseTSKRegressorModel):
         return result
 
     def fit_dg_phase(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Train the DG-TSK regression zero-order phase before first-order conversion."""
-        return self.fit(x, y, **kwargs)
+        """Train the DG-TSK regression zero-order phase with antecedent parameters frozen (paper §3.3).
+
+        Gate parameters (λ, θ) and zero-order consequent parameters are optimised.
+        Antecedent parameters (MF centres and spreads) are held fixed, as stated
+        in Xue et al. (2023): *"Note that the antecedent parameters are not included."*
+        """
+        for p in self.membership_layer.parameters():
+            p.requires_grad_(False)
+        try:
+            return self.fit(x, y, **kwargs)
+        finally:
+            for p in self.membership_layer.parameters():
+                p.requires_grad_(True)
 
     def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Fine-tune the DG-TSK regression model after converting to first order."""
+        """Fine-tune the DG-TSK regression model after converting to first order.
+
+        Consequent weights and biases are reset to zero before retraining, as stated
+        in Xue et al. (2023): *"Before the training for fine tuning, all the consequent
+        parameters are set to zero in our experiments."*
+        """
+        if isinstance(self.consequent_layer, GatedRegressionConsequentLayer):
+            nn.init.zeros_(self.consequent_layer.weight)
+            nn.init.zeros_(self.consequent_layer.bias)
         return self.fit(x, y, **kwargs)
