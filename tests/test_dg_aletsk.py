@@ -45,7 +45,6 @@ def test_dgaletsk_classifier_architecture() -> None:
 
     assert isinstance(model.rule_layer, DGALETSKRuleLayer)
     assert isinstance(model.consequent_layer, GatedClassificationZeroOrderConsequentLayer)
-    assert model.rule_layer.alpha.item() > 0.0
 
     theta_before = model.consequent_layer.theta_gates.detach().clone()
     model.convert_to_first_order()
@@ -75,8 +74,13 @@ def test_dgaletsk_thresholds_and_pruning() -> None:
     model.consequent_layer.theta_gates.data[0] = 1.0
 
     tau_lambda, tau_theta = model.compute_thresholds(0.5, 0.5)
-    assert torch.isclose(torch.tensor(tau_lambda), torch.tensor(0.5))
-    assert torch.isclose(torch.tensor(tau_theta), torch.tensor(0.5))
+    # tau = max_gate - 0.5 * (max_gate - min_gate)
+    fv = model.get_feature_gate_values().detach()
+    rv = model.get_rule_gate_values().detach()
+    expected_tau_lambda = float(fv.max()) - 0.5 * float(fv.max() - fv.min())
+    expected_tau_theta = float(rv.max()) - 0.5 * float(rv.max() - rv.min())
+    assert abs(tau_lambda - expected_tau_lambda) < 1e-5
+    assert abs(tau_theta - expected_tau_theta) < 1e-5
 
     model.apply_thresholds(tau_lambda, tau_theta)
     assert model.rule_layer.lambda_gates.data[0] == 1.0
@@ -170,11 +174,6 @@ def test_dgaletsk_classifier_rejects_invalid_n_classes() -> None:
         DGALETSKClassifierModel(_build_input_mfs(), n_classes=1)
 
 
-def test_dgaletsk_regressor_rejects_nonpositive_lambda() -> None:
-    with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_init=0.0)
-
-
 def test_dgaletsk_rule_layer_lambda_gates_shape_is_per_feature() -> None:
     """lambda_gates must be (n_inputs,) — shared across all rules per the DG-ALETSK paper."""
     model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=4, n_mfs=2), n_classes=2)
@@ -202,7 +201,7 @@ def test_dgaletsk_regressor_first_order_consequent_mode_is_re() -> None:
 
 
 def test_dgaletsk_rule_layer_firing_strengths_in_unit_interval() -> None:
-    """ALE softmin with large alpha converges to min(mu_d) per paper eq. (22)."""
+    """ALE softmin converges to min(mu_d) per paper eq. (22) with adaptive q̂."""
 
     from highfis.layers import DGALETSKRuleLayer
 
@@ -210,15 +209,9 @@ def test_dgaletsk_rule_layer_firing_strengths_in_unit_interval() -> None:
         input_names=["x1", "x2", "x3"],
         mf_per_input=[2, 2, 2],
         rule_base="coco",
-        alpha_init=1.0,
     )
     # gate4(1.0) = 1.0 * sqrt(exp(0)) = 1.0 — feature gates exactly 1
     layer.lambda_gates.data.fill_(1.0)
-    # Set alpha to a very large value so ALE softmin converges to the minimum
-    with torch.no_grad():
-        large_alpha = 1000.0
-        # raw_alpha s.t. softplus(raw_alpha) + eps ≈ 1000
-        layer.raw_alpha.data.fill_(large_alpha)
 
     # CoCo-FRB with 2 MFs creates 2 rules; 3 inputs
     # Rule 0 activations: mu = [0.8, 0.5, 0.3]  → min = 0.3

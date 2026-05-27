@@ -71,6 +71,7 @@ nav = [
         "api/metrics.md",
         "api/clustering.md",
         "api/base.md",
+        "api/gates.md",
         "api/persistence.md",
         "api/protocols.md",
      ] },

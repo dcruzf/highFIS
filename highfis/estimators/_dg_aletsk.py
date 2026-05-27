@@ -35,9 +35,7 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         ```python
         from highfis import DGALETSKClassifier
 
-        clf = DGALETSKClassifier(
-            n_mfs=30, lambda_init=1.0, use_en_frb=False, random_state=0
-        )
+        clf = DGALETSKClassifier(n_mfs=30, use_en_frb=False, random_state=0)
         clf.fit(X_train, y_train)
         ```
     """
@@ -53,7 +51,6 @@ class DGALETSKClassifier(FSREADATSKClassifier):
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
-            lambda_init=self.lambda_init,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             use_en_frb=self.use_en_frb,
         )
@@ -78,9 +75,7 @@ class DGALETSKRegressor(FSREADATSKRegressor):
         ```python
         from highfis import DGALETSKRegressor
 
-        reg = DGALETSKRegressor(
-            n_mfs=30, lambda_init=1.0, use_en_frb=False, random_state=0
-        )
+        reg = DGALETSKRegressor(n_mfs=30, use_en_frb=False, random_state=0)
         reg.fit(X_train, y_train)
         ```
     """
@@ -95,7 +90,6 @@ class DGALETSKRegressor(FSREADATSKRegressor):
         return DGALETSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
-            lambda_init=self.lambda_init,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             use_en_frb=self.use_en_frb,
         )
