@@ -10,6 +10,7 @@ from ..models import (
     FSREADATSKClassifierModel,
     FSREADATSKRegressorModel,
 )
+from ..optim._base import BaseTrainer
 from ._base import (
     InputConfig,
     _BaseClassifierEstimator,
@@ -60,6 +61,7 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
+        trainer: BaseTrainer | None = None,
     ) -> None:
         """Initialise an FSRE-ADATSK classifier.
 
@@ -93,6 +95,10 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
             weight_decay: L2 weight decay for consequent parameters.
+            trainer: Optional custom :class:`~highfis.optim.BaseTrainer`.
+                When ``None`` (default) a
+                :class:`~highfis.optim.GradientTrainer` is built automatically
+                from this estimator's hyperparameters.
 
         Raises:
             ValueError: If ``lambda_init <= 0``.
@@ -119,6 +125,7 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            trainer=trainer,
         )
 
     def _build_model(
@@ -180,6 +187,7 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
+        trainer: BaseTrainer | None = None,
     ) -> None:
         """Initialise an FSRE-ADATSK regressor.
 
@@ -210,6 +218,10 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
             weight_decay: L2 weight decay for consequent parameters.
+            trainer: Optional custom :class:`~highfis.optim.BaseTrainer`.
+                When ``None`` (default) a
+                :class:`~highfis.optim.GradientTrainer` is built automatically
+                from this estimator's hyperparameters.
 
         Raises:
             ValueError: If ``lambda_init <= 0``.
@@ -236,6 +248,7 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            trainer=trainer,
         )
 
     def _build_regressor_model(

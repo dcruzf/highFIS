@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pytest
 import torch
 
@@ -443,3 +444,83 @@ def test_dgtsk_classifier_init_consequents_from_labels_raises_on_first_order() -
 
     with pytest.raises(ValueError, match="zero-order consequent layer"):
         model.init_consequents_from_labels(torch.zeros(2, dtype=torch.long))
+
+
+# ---------------------------------------------------------------------------
+# Estimator-level tests
+# ---------------------------------------------------------------------------
+
+
+def test_dgtsk_classifier_estimator_fit_three_phase_history() -> None:
+    """DGTSKClassifier.fit() must produce history_ with dg/threshold/finetune keys."""
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal((40, 3)).astype(np.float32)
+    y = (rng.random(40) > 0.5).astype(int)
+    clf = DGTSKClassifier(
+        n_mfs=2,
+        dg_epochs=2,
+        finetune_epochs=3,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        random_state=0,
+    )
+    clf.fit(X, y)
+    assert isinstance(clf.history_, dict)
+    assert set(clf.history_) >= {"dg", "threshold", "finetune"}
+
+
+def test_dgtsk_regressor_estimator_fit_three_phase_history() -> None:
+    """DGTSKRegressor.fit() must produce history_ with dg/threshold/finetune keys."""
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal((40, 3)).astype(np.float32)
+    y = rng.standard_normal(40).astype(np.float32)
+    reg = DGTSKRegressor(
+        n_mfs=2,
+        dg_epochs=2,
+        finetune_epochs=3,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        random_state=0,
+    )
+    reg.fit(X, y)
+    assert isinstance(reg.history_, dict)
+    assert set(reg.history_) >= {"dg", "threshold", "finetune"}
+
+
+def test_dgtsk_classifier_estimator_with_gradient_trainer() -> None:
+    """Passing GradientTrainer overrides 3-phase training (flat history dict)."""
+    from highfis import GradientTrainer
+
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal((20, 3)).astype(np.float32)
+    y = (rng.random(20) > 0.5).astype(int)
+    clf = DGTSKClassifier(n_mfs=2, dg_epochs=2, trainer=GradientTrainer(epochs=3), random_state=0)
+    clf.fit(X, y)
+    assert isinstance(clf.history_, dict)
+    assert "dg" not in clf.history_
+
+
+def test_dgtsk_classifier_new_params_in_get_params() -> None:
+    clf = DGTSKClassifier(n_mfs=3, dg_epochs=15, finetune_epochs=50, use_lse=False)
+    params = clf.get_params()
+    assert params["dg_epochs"] == 15
+    assert params["finetune_epochs"] == 50
+    assert params["use_lse"] is False
+
+
+def test_dgtsk_classifier_pfrb_pre_train_hook() -> None:
+    """With rule_base='pfrb', _pre_train_hook initializes consequents from labels."""
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal((20, 3)).astype(np.float32)
+    y = (rng.random(20) > 0.5).astype(int)
+    clf = DGTSKClassifier(
+        n_mfs=2,
+        rule_base="pfrb",
+        dg_epochs=2,
+        finetune_epochs=2,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        random_state=0,
+    )
+    clf.fit(X, y)
+    assert clf.rule_base_ == "coco"

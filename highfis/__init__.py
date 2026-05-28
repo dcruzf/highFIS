@@ -122,6 +122,7 @@ from .estimators import (
     TSKClassifier,
     TSKRegressor,
 )
+from .optim import BaseTrainer, DGTrainer, GradientTrainer
 from .version import __version__
 
 __all__: list[str] = [
@@ -133,14 +134,17 @@ __all__: list[str] = [
     "ADPTSKRegressor",
     "AYATSKClassifier",
     "AYATSKRegressor",
+    "BaseTrainer",
     "DGALETSKClassifier",
     "DGALETSKRegressor",
     "DGTSKClassifier",
     "DGTSKRegressor",
+    "DGTrainer",
     "DombiTSKClassifier",
     "DombiTSKRegressor",
     "FSREADATSKClassifier",
     "FSREADATSKRegressor",
+    "GradientTrainer",
     "HDFISMinClassifier",
     "HDFISMinRegressor",
     "HDFISProdClassifier",

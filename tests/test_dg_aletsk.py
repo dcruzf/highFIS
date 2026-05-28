@@ -227,3 +227,62 @@ def test_dgaletsk_rule_layer_firing_strengths_in_unit_interval() -> None:
     assert f.shape == (1, 2)
     assert torch.allclose(f[0, 0], torch.tensor(0.3), atol=0.01), f"expected ≈0.3, got {f[0, 0].item():.4f}"
     assert torch.allclose(f[0, 1], torch.tensor(0.6), atol=0.01), f"expected ≈0.6, got {f[0, 1].item():.4f}"
+
+
+# ---------------------------------------------------------------------------
+# Estimator-level tests
+# ---------------------------------------------------------------------------
+
+
+def test_dgaletsk_classifier_estimator_fit_three_phase_history() -> None:
+    """DGALETSKClassifier.fit() must produce history_ with dg/threshold/finetune keys."""
+    import numpy as np
+
+    from highfis import DGALETSKClassifier
+
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal((40, 3)).astype(np.float32)
+    y = (rng.random(40) > 0.5).astype(int)
+    clf = DGALETSKClassifier(
+        n_mfs=2,
+        dg_epochs=2,
+        finetune_epochs=3,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        random_state=0,
+    )
+    clf.fit(X, y)
+    assert isinstance(clf.history_, dict)
+    assert set(clf.history_) >= {"dg", "threshold", "finetune"}
+
+
+def test_dgaletsk_regressor_estimator_fit_three_phase_history() -> None:
+    """DGALETSKRegressor.fit() must produce history_ with dg/threshold/finetune keys."""
+    import numpy as np
+
+    from highfis import DGALETSKRegressor
+
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal((40, 3)).astype(np.float32)
+    y = rng.standard_normal(40).astype(np.float32)
+    reg = DGALETSKRegressor(
+        n_mfs=2,
+        dg_epochs=2,
+        finetune_epochs=3,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        random_state=0,
+    )
+    reg.fit(X, y)
+    assert isinstance(reg.history_, dict)
+    assert set(reg.history_) >= {"dg", "threshold", "finetune"}
+
+
+def test_dgaletsk_classifier_new_params_in_get_params() -> None:
+    from highfis import DGALETSKClassifier
+
+    clf = DGALETSKClassifier(n_mfs=3, dg_epochs=15, finetune_epochs=50, use_lse=False)
+    params = clf.get_params()
+    assert params["dg_epochs"] == 15
+    assert params["finetune_epochs"] == 50
+    assert params["use_lse"] is False
