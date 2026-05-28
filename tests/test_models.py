@@ -748,7 +748,7 @@ def test_dg_aletsk_regressor_convert_to_first_order_preserves_theta() -> None:
 
 def test_dg_aletsk_classifier_default_criterion() -> None:
     model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
-    assert isinstance(model._default_criterion(), nn.CrossEntropyLoss)
+    assert isinstance(model._default_criterion(), nn.MSELoss)
 
 
 def test_dg_aletsk_regressor_default_criterion() -> None:

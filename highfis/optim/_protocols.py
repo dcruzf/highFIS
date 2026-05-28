@@ -37,6 +37,7 @@ class DGModelProtocol(Protocol):
         use_lse: bool = True,
         inplace: bool = True,
         verbose: bool = False,
+        structural: bool = True,
     ) -> dict[str, Any]:
         """Search pruning thresholds and optionally apply the best candidate."""
         ...
@@ -45,6 +46,8 @@ class DGModelProtocol(Protocol):
         self,
         x: Tensor,
         y: Tensor,
+        *,
+        freeze_antecedents: bool = True,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Execute phase-3 (fine-tune) training."""

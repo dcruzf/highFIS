@@ -77,6 +77,9 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         zeta_theta: list[float] | None = None,
         use_lse: bool = True,
         trainer: BaseTrainer | None = None,
+        optimizer_type: str = "sgd",
+        structural_pruning: bool = True,
+        freeze_antecedents_finetune: bool = True,
     ) -> None:
         """Initialise a DG-ALETSK classifier.
 
@@ -110,12 +113,21 @@ class DGALETSKClassifier(FSREADATSKClassifier):
             trainer: Optional custom :class:`~highfis.optim.BaseTrainer`.
                 When ``None`` (default) a :class:`~highfis.optim.DGTrainer`
                 is built from this estimator's hyperparameters.
+            optimizer_type: Optimizer type.  ``"sgd"`` (default, paper) or
+                ``"adamw"``.
+            structural_pruning: If ``True`` (default), apply hard structural
+                pruning after threshold search.
+            freeze_antecedents_finetune: If ``True`` (default), freeze MF
+                parameters and feature gates during fine-tuning.
         """
         self.dg_epochs = int(dg_epochs)
         self.finetune_epochs = int(finetune_epochs)
         self.zeta_lambda = zeta_lambda
         self.zeta_theta = zeta_theta
         self.use_lse = bool(use_lse)
+        self.optimizer_type = str(optimizer_type)
+        self.structural_pruning = bool(structural_pruning)
+        self.freeze_antecedents_finetune = bool(freeze_antecedents_finetune)
         super().__init__(
             lambda_init=lambda_init,
             use_en_frb=use_en_frb,
@@ -152,6 +164,7 @@ class DGALETSKClassifier(FSREADATSKClassifier):
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             use_en_frb=self.use_en_frb,
+            optimizer_type=self.optimizer_type,
         )
 
     def _get_trainer(self) -> DGTrainer:
@@ -178,6 +191,9 @@ class DGALETSKClassifier(FSREADATSKClassifier):
             finetune_ur_weight=float(self.ur_weight),
             finetune_ur_target=self.ur_target,
             verbose=self.verbose,
+            optimizer_type=self.optimizer_type,
+            structural_pruning=bool(self.structural_pruning),
+            finetune_freeze_antecedents=bool(self.freeze_antecedents_finetune),
         )
 
 
@@ -232,6 +248,9 @@ class DGALETSKRegressor(FSREADATSKRegressor):
         zeta_theta: list[float] | None = None,
         use_lse: bool = True,
         trainer: BaseTrainer | None = None,
+        optimizer_type: str = "sgd",
+        structural_pruning: bool = True,
+        freeze_antecedents_finetune: bool = True,
     ) -> None:
         """Initialise a DG-ALETSK regressor.
 
@@ -265,12 +284,21 @@ class DGALETSKRegressor(FSREADATSKRegressor):
             trainer: Optional custom :class:`~highfis.optim.BaseTrainer`.
                 When ``None`` (default) a :class:`~highfis.optim.DGTrainer`
                 is built from this estimator's hyperparameters.
+            optimizer_type: Optimizer type.  ``"sgd"`` (default, paper) or
+                ``"adamw"``.
+            structural_pruning: If ``True`` (default), apply hard structural
+                pruning after threshold search.
+            freeze_antecedents_finetune: If ``True`` (default), freeze MF
+                parameters and feature gates during fine-tuning.
         """
         self.dg_epochs = int(dg_epochs)
         self.finetune_epochs = int(finetune_epochs)
         self.zeta_lambda = zeta_lambda
         self.zeta_theta = zeta_theta
         self.use_lse = bool(use_lse)
+        self.optimizer_type = str(optimizer_type)
+        self.structural_pruning = bool(structural_pruning)
+        self.freeze_antecedents_finetune = bool(freeze_antecedents_finetune)
         super().__init__(
             lambda_init=lambda_init,
             use_en_frb=use_en_frb,
@@ -306,6 +334,7 @@ class DGALETSKRegressor(FSREADATSKRegressor):
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             use_en_frb=self.use_en_frb,
+            optimizer_type=self.optimizer_type,
         )
 
     def _get_trainer(self) -> DGTrainer:
@@ -332,4 +361,7 @@ class DGALETSKRegressor(FSREADATSKRegressor):
             finetune_ur_weight=float(self.ur_weight),
             finetune_ur_target=self.ur_target,
             verbose=self.verbose,
+            optimizer_type=self.optimizer_type,
+            structural_pruning=bool(self.structural_pruning),
+            finetune_freeze_antecedents=bool(self.freeze_antecedents_finetune),
         )

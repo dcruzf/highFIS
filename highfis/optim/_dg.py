@@ -80,12 +80,16 @@ class DGTrainer(BaseTrainer):
         # ── Shared ────────────────────────────────────────────────────────
         verbose: bool | int = False,
         loss: Callable[..., Any] | None = None,
+        # ── Paper-conformance options ─────────────────────────────────────
+        optimizer_type: str = "sgd",
+        structural_pruning: bool = True,
+        finetune_freeze_antecedents: bool = True,
     ) -> None:
         """Initialise a DG trainer.
 
         Args:
             dg_epochs: Epochs for the DG phase (phase 1).
-            dg_learning_rate: Adam learning rate for the DG phase.
+            dg_learning_rate: SGD learning rate for the DG phase.
             dg_batch_size: Mini-batch size for the DG phase.
             dg_shuffle: Reshuffle samples each epoch in the DG phase.
             dg_patience: Early-stopping patience for the DG phase.
@@ -110,6 +114,14 @@ class DGTrainer(BaseTrainer):
             verbose: Verbosity level forwarded to all three phases.
             loss: Custom loss function ``f(output, target) -> scalar``.
                 ``None`` uses the model's built-in criterion.
+            optimizer_type: Optimiser type used in all three phases.  ``"sgd"``
+                (paper default) or ``"adamw"`` (AdamW with weight decay).
+            structural_pruning: If ``True`` (paper default), hard-prune the
+                model architecture after threshold search.  If ``False``, only
+                soft-prune (zero out gate parameters).
+            finetune_freeze_antecedents: If ``True`` (paper default), freeze MF
+                parameters and feature-selection gates during fine-tuning.  If
+                ``False``, only feature gates are frozen (MFs train freely).
         """
         self.dg_epochs = dg_epochs
         self.dg_learning_rate = dg_learning_rate
@@ -133,6 +145,9 @@ class DGTrainer(BaseTrainer):
         self.finetune_ur_target = finetune_ur_target
         self.verbose = verbose
         self.loss = loss
+        self.optimizer_type = optimizer_type
+        self.structural_pruning = structural_pruning
+        self.finetune_freeze_antecedents = finetune_freeze_antecedents
 
     def fit(
         self,
@@ -204,12 +219,22 @@ class DGTrainer(BaseTrainer):
             use_lse=bool(self.use_lse),
             inplace=True,
             verbose=bool(self.verbose),
+            structural=bool(self.structural_pruning),
         )
+
+        # Slice x to surviving features when structural pruning was applied.
+        sf = threshold_result.get("surviving_feature_indices")
+        if self.structural_pruning and sf is not None and len(sf) < x.shape[1]:
+            x_ft: Tensor = x[:, sf]
+            x_val_ft: Tensor | None = x_val[:, sf] if x_val is not None else None
+        else:
+            x_ft, x_val_ft = x, x_val
 
         # ── Phase 3: Fine-tune ────────────────────────────────────────────
         finetune_history: dict[str, Any] = dg_model.fit_finetune(
-            x,
+            x_ft,
             y,
+            freeze_antecedents=bool(self.finetune_freeze_antecedents),
             epochs=int(self.finetune_epochs),
             learning_rate=float(self.finetune_learning_rate),
             criterion=self.loss,
@@ -218,7 +243,7 @@ class DGTrainer(BaseTrainer):
             ur_weight=float(self.finetune_ur_weight),
             ur_target=self.finetune_ur_target,
             verbose=self.verbose,
-            x_val=x_val,
+            x_val=x_val_ft,
             y_val=y_val,
             patience=self.finetune_patience,
             restore_best=bool(self.finetune_restore_best),

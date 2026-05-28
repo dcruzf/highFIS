@@ -90,6 +90,9 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         zeta_theta: list[float] | None = None,
         use_lse: bool = True,
         trainer: BaseTrainer | None = None,
+        optimizer_type: str = "sgd",
+        structural_pruning: bool = True,
+        freeze_antecedents_finetune: bool = True,
     ) -> None:
         """Initialise a DG-TSK classifier.
 
@@ -133,6 +136,12 @@ class DGTSKClassifier(_BaseClassifierEstimator):
                 is built from this estimator's hyperparameters.  Pass a
                 :class:`~highfis.optim.GradientTrainer` to use single-phase
                 training instead.
+            optimizer_type: Optimizer type.  ``"sgd"`` (default, paper) or
+                ``"adamw"``.
+            structural_pruning: If ``True`` (default), apply hard structural
+                pruning after threshold search.
+            freeze_antecedents_finetune: If ``True`` (default), freeze MF
+                parameters and feature gates during fine-tuning.
         """
         self.use_en_frb = bool(use_en_frb)
         self.dg_epochs = int(dg_epochs)
@@ -140,6 +149,9 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         self.zeta_lambda = zeta_lambda
         self.zeta_theta = zeta_theta
         self.use_lse = bool(use_lse)
+        self.optimizer_type = str(optimizer_type)
+        self.structural_pruning = bool(structural_pruning)
+        self.freeze_antecedents_finetune = bool(freeze_antecedents_finetune)
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -175,6 +187,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             use_en_frb=self.use_en_frb,
+            optimizer_type=self.optimizer_type,
         )
 
     def _get_trainer(self) -> DGTrainer:
@@ -201,6 +214,9 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             finetune_ur_weight=float(self.ur_weight),
             finetune_ur_target=self.ur_target,
             verbose=self.verbose,
+            optimizer_type=self.optimizer_type,
+            structural_pruning=bool(self.structural_pruning),
+            finetune_freeze_antecedents=bool(self.freeze_antecedents_finetune),
         )
 
     def _pre_train_hook(self, model: BaseTSK, x_t: Tensor, y_t: Tensor) -> None:
@@ -317,6 +333,9 @@ class DGTSKRegressor(_BaseRegressorEstimator):
         zeta_theta: list[float] | None = None,
         use_lse: bool = True,
         trainer: BaseTrainer | None = None,
+        optimizer_type: str = "sgd",
+        structural_pruning: bool = True,
+        freeze_antecedents_finetune: bool = True,
     ) -> None:
         """Initialise a DG-TSK regressor.
 
@@ -354,6 +373,12 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             trainer: Optional custom :class:`~highfis.optim.BaseTrainer`.
                 When ``None`` (default) a :class:`~highfis.optim.DGTrainer`
                 is built from this estimator's hyperparameters.
+            optimizer_type: Optimizer type.  ``"sgd"`` (default, paper) or
+                ``"adamw"``.
+            structural_pruning: If ``True`` (default), apply hard structural
+                pruning after threshold search.
+            freeze_antecedents_finetune: If ``True`` (default), freeze MF
+                parameters and feature gates during fine-tuning.
         """
         self.use_en_frb = bool(use_en_frb)
         self.dg_epochs = int(dg_epochs)
@@ -361,6 +386,9 @@ class DGTSKRegressor(_BaseRegressorEstimator):
         self.zeta_lambda = zeta_lambda
         self.zeta_theta = zeta_theta
         self.use_lse = bool(use_lse)
+        self.optimizer_type = str(optimizer_type)
+        self.structural_pruning = bool(structural_pruning)
+        self.freeze_antecedents_finetune = bool(freeze_antecedents_finetune)
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -395,6 +423,7 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             use_en_frb=self.use_en_frb,
+            optimizer_type=self.optimizer_type,
         )
 
     def _get_trainer(self) -> DGTrainer:
@@ -421,6 +450,9 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             finetune_ur_weight=float(self.ur_weight),
             finetune_ur_target=self.ur_target,
             verbose=self.verbose,
+            optimizer_type=self.optimizer_type,
+            structural_pruning=bool(self.structural_pruning),
+            finetune_freeze_antecedents=bool(self.freeze_antecedents_finetune),
         )
 
     def _pre_train_hook(self, model: BaseTSK, x_t: Tensor, y_t: Tensor) -> None:
