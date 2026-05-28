@@ -431,7 +431,7 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
         """
         if isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
             self.convert_to_first_order()
-        if isinstance(self.consequent_layer, GatedClassificationConsequentLayer):
+        if isinstance(self.consequent_layer, GatedClassificationConsequentLayer):  # pragma: no branch
             nn.init.zeros_(self.consequent_layer.weight)
             nn.init.zeros_(self.consequent_layer.bias)
             if not freeze_antecedents:
@@ -829,7 +829,7 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
         """
         if isinstance(self.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
             self.convert_to_first_order()
-        if isinstance(self.consequent_layer, GatedRegressionConsequentLayer):
+        if isinstance(self.consequent_layer, GatedRegressionConsequentLayer):  # pragma: no branch
             nn.init.zeros_(self.consequent_layer.weight)
             nn.init.zeros_(self.consequent_layer.bias)
             if not freeze_antecedents:

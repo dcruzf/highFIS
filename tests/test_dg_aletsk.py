@@ -286,3 +286,201 @@ def test_dgaletsk_classifier_new_params_in_get_params() -> None:
     assert params["dg_epochs"] == 15
     assert params["finetune_epochs"] == 50
     assert params["use_lse"] is False
+
+
+# ---------------------------------------------------------------------------
+# _build_optimizer: custom passthrough and adamw fallback
+# ---------------------------------------------------------------------------
+
+
+def test_dgaletsk_classifier_build_optimizer_passthrough() -> None:
+    model = DGALETSKClassifierModel(_build_input_mfs(), n_classes=2)
+    custom_opt = torch.optim.Adam(model.parameters(), lr=1e-3)
+    result = model._build_optimizer(custom_opt, 1e-3, 0.0)
+    assert result is custom_opt
+
+
+def test_dgaletsk_classifier_build_optimizer_adamw_fallback() -> None:
+    model = DGALETSKClassifierModel(_build_input_mfs(), n_classes=2, optimizer_type="adamw")
+    result = model._build_optimizer(None, 1e-3, 1e-4)
+    assert isinstance(result, torch.optim.AdamW)
+
+
+def test_dgaletsk_regressor_build_optimizer_passthrough() -> None:
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    custom_opt = torch.optim.Adam(model.parameters(), lr=1e-3)
+    result = model._build_optimizer(custom_opt, 1e-3, 0.0)
+    assert result is custom_opt
+
+
+def test_dgaletsk_regressor_build_optimizer_adamw_fallback() -> None:
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), optimizer_type="adamw")
+    result = model._build_optimizer(None, 1e-3, 1e-4)
+    assert isinstance(result, torch.optim.AdamW)
+
+
+# ---------------------------------------------------------------------------
+# prune_structure: input validation
+# ---------------------------------------------------------------------------
+
+
+def test_dgaletsk_classifier_prune_structure_empty_features_raises() -> None:
+    model = DGALETSKClassifierModel(_build_input_mfs(), n_classes=2)
+    with pytest.raises(ValueError, match="surviving_features must not be empty"):
+        model.prune_structure([], [0])
+
+
+def test_dgaletsk_classifier_prune_structure_empty_rules_raises() -> None:
+    model = DGALETSKClassifierModel(_build_input_mfs(), n_classes=2)
+    with pytest.raises(ValueError, match="surviving_rules must not be empty"):
+        model.prune_structure([0], [])
+
+
+def test_dgaletsk_regressor_prune_structure_empty_features_raises() -> None:
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    with pytest.raises(ValueError, match="surviving_features must not be empty"):
+        model.prune_structure([], [0])
+
+
+def test_dgaletsk_regressor_prune_structure_empty_rules_raises() -> None:
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    with pytest.raises(ValueError, match="surviving_rules must not be empty"):
+        model.prune_structure([0], [])
+
+
+# ---------------------------------------------------------------------------
+# search_thresholds: inplace=True, structural=False
+# ---------------------------------------------------------------------------
+
+
+def test_dgaletsk_classifier_search_thresholds_non_structural_lse() -> None:
+    """inplace=True, structural=False, use_lse=True: restore best LSE state."""
+    model = DGALETSKClassifierModel(_build_input_mfs(), n_classes=2)
+    x = torch.randn(16, 3)
+    y = torch.randint(0, 2, (16,))
+    model.fit_dg_phase(x, y, epochs=2, learning_rate=1e-2, batch_size=8, shuffle=False)
+
+    result = model.search_thresholds(
+        x,
+        y,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        inplace=True,
+        structural=False,
+        use_lse=True,
+    )
+    assert isinstance(model.consequent_layer, GatedClassificationConsequentLayer)
+    assert set(result) >= {"best_score", "best_zeta_lambda", "best_zeta_theta"}
+
+
+def test_dgaletsk_classifier_search_thresholds_non_structural_no_lse() -> None:
+    """inplace=True, structural=False, use_lse=False: apply thresholds in-place."""
+    model = DGALETSKClassifierModel(_build_input_mfs(), n_classes=2)
+    x = torch.randn(16, 3)
+    y = torch.randint(0, 2, (16,))
+    model.fit_dg_phase(x, y, epochs=2, learning_rate=1e-2, batch_size=8, shuffle=False)
+
+    result = model.search_thresholds(
+        x,
+        y,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        inplace=True,
+        structural=False,
+        use_lse=False,
+    )
+    assert set(result) >= {"best_score", "best_zeta_lambda", "best_zeta_theta"}
+
+
+def test_dgaletsk_regressor_search_thresholds_non_structural_lse() -> None:
+    """inplace=True, structural=False, use_lse=True for regressor."""
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    x = torch.randn(20, 2)
+    y = torch.randn(20)
+    model.fit_dg_phase(x, y, epochs=2, learning_rate=1e-2, batch_size=8, shuffle=False)
+
+    result = model.search_thresholds(
+        x,
+        y,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        inplace=True,
+        structural=False,
+        use_lse=True,
+    )
+    assert isinstance(model.consequent_layer, GatedRegressionConsequentLayer)
+    assert set(result) >= {"best_score", "best_zeta_lambda", "best_zeta_theta"}
+
+
+def test_dgaletsk_regressor_search_thresholds_non_structural_no_lse() -> None:
+    """inplace=True, structural=False, use_lse=False for regressor."""
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    x = torch.randn(20, 2)
+    y = torch.randn(20)
+    model.fit_dg_phase(x, y, epochs=2, learning_rate=1e-2, batch_size=8, shuffle=False)
+
+    result = model.search_thresholds(
+        x,
+        y,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        inplace=True,
+        structural=False,
+        use_lse=False,
+    )
+    assert set(result) >= {"best_score", "best_zeta_lambda", "best_zeta_theta"}
+
+
+# ---------------------------------------------------------------------------
+# search_thresholds: sf/sr non-empty (no fallback) for structural path
+# ---------------------------------------------------------------------------
+
+
+def test_dgaletsk_regressor_search_thresholds_sf_non_empty_no_fallback() -> None:
+    """Feature 0 gate > tau → sf=[0] non-empty, no sf-fallback taken."""
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model.rule_layer.lambda_gates.data = torch.tensor([1.0, 0.0])
+    model.consequent_layer.theta_gates.data.fill_(1.0)
+    x = torch.randn(16, 2)
+    y = torch.randn(16)
+
+    # zeta=1.0 → tau=min_gate=0 → gate 0 > 0 → sf=[0], no fallback
+    result = model.search_thresholds(
+        x,
+        y,
+        zeta_lambda=[1.0],
+        zeta_theta=[1.0],
+        inplace=True,
+        structural=True,
+        use_lse=False,
+    )
+    assert result["surviving_feature_indices"] == [0]
+
+
+# ---------------------------------------------------------------------------
+# fit_finetune: freeze_antecedents=False
+# ---------------------------------------------------------------------------
+
+
+def test_dgaletsk_classifier_fit_finetune_unfreeze_antecedents() -> None:
+    """freeze_antecedents=False sets consequent mode to 'finetune' during training."""
+    model = DGALETSKClassifierModel(_build_input_mfs(), n_classes=2)
+    model.convert_to_first_order()
+    x = torch.randn(8, 3)
+    y = torch.randint(0, 2, (8,))
+
+    history = model.fit_finetune(x, y, epochs=1, batch_size=8, shuffle=False, freeze_antecedents=False)
+    assert isinstance(history, dict)
+    assert isinstance(model.consequent_layer, GatedClassificationConsequentLayer)
+
+
+def test_dgaletsk_regressor_fit_finetune_unfreeze_antecedents() -> None:
+    """freeze_antecedents=False sets consequent mode to 'finetune' during training."""
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model.convert_to_first_order()
+    x = torch.randn(8, 2)
+    y = torch.randn(8)
+
+    history = model.fit_finetune(x, y, epochs=1, batch_size=8, shuffle=False, freeze_antecedents=False)
+    assert isinstance(history, dict)
+    assert isinstance(model.consequent_layer, GatedRegressionConsequentLayer)

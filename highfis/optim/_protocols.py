@@ -24,7 +24,7 @@ class DGModelProtocol(Protocol):
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Execute phase-1 (data-guided) training."""
-        ...
+        ...  # pragma: no cover
 
     def search_thresholds(
         self,
@@ -40,7 +40,7 @@ class DGModelProtocol(Protocol):
         structural: bool = True,
     ) -> dict[str, Any]:
         """Search pruning thresholds and optionally apply the best candidate."""
-        ...
+        ...  # pragma: no cover
 
     def fit_finetune(
         self,
@@ -51,7 +51,7 @@ class DGModelProtocol(Protocol):
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Execute phase-3 (fine-tune) training."""
-        ...
+        ...  # pragma: no cover
 
 
 class PFRBModelProtocol(Protocol):
@@ -59,7 +59,7 @@ class PFRBModelProtocol(Protocol):
 
     def init_consequents_from_labels(self, y: Tensor) -> None:
         """Initialise zero-order consequents from class labels (paper eq. 24)."""
-        ...
+        ...  # pragma: no cover
 
 
 class FirstOrderModelProtocol(Protocol):
@@ -67,7 +67,7 @@ class FirstOrderModelProtocol(Protocol):
 
     def convert_to_first_order(self) -> None:
         """Replace zero-order consequent layer with a first-order one."""
-        ...
+        ...  # pragma: no cover
 
 
 __all__: list[str] = [
