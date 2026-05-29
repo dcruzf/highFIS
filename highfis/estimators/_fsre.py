@@ -25,7 +25,7 @@ from ._base import (
 
 
 class FSREADATSKClassifier(_BaseClassifierEstimator):
-    r"""FSRE-ADATSK classifier with adaptive softmin antecedent and gated consequents.
+    """FSRE-ADATSK classifier with adaptive softmin antecedent and gated consequents.
 
     FSRE-ADATSK (Feature Selection and Rule Extraction) extends ADATSK.
 
@@ -37,12 +37,10 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         July 2023, doi: 10.1109/TFUZZ.2022.3220950.
 
     Example:
-        ```python
         from highfis import FSREADATSKClassifier
 
         clf = FSREADATSKClassifier()
         clf.fit(X_train, y_train)
-        ```
     """
 
     def __init__(
@@ -87,7 +85,7 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
                 more candidate rules for the RE phase. Xue et al. (2023)
                 activate En-FRB after the FS phase; set ``False`` (default)
                 to keep the compact CoCo-FRB.
-            input_configs: Per-feature :class:`InputConfig` list. Only
+            input_configs: Per-feature InputConfig list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
             n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
@@ -114,9 +112,8 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
                 Larger values retain more rules.  Default ``0.3``.
             structural_pruning: If ``True`` (default), hard-prune the model
                 architecture after each threshold step.
-            trainer: Optional custom :class:`~highfis.optim.BaseTrainer`.
-                When ``None`` (default) a
-                :class:`~highfis.optim.FSRETrainer` is built automatically
+            trainer: Optional custom BaseTrainer.
+                When ``None`` (default) an FSRETrainer is built automatically
                 from this estimator's hyperparameters.
 
         Raises:
@@ -169,9 +166,9 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         )
 
     def predict_proba(self, x: Any) -> np.ndarray:
-        """Predict class probabilities, applying structural feature selection if trained with FSRETrainer.
+        """Predict class probabilities, applying structural feature selection.
 
-        When structural pruning was applied during :meth:`fit`, the original
+        When structural pruning was applied during fit(), the original
         feature matrix is automatically sliced to the surviving features before
         being passed to the pruned model.
 
@@ -191,7 +188,7 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         return probs.detach().cpu().numpy()
 
     def _get_trainer(self) -> BaseTrainer:
-        """Return an :class:`~highfis.optim.FSRETrainer` built from this estimator's params."""
+        """Return an FSRETrainer built from this estimator's parameters."""
         return FSRETrainer(
             fs_epochs=self.fs_epochs,
             fs_learning_rate=float(self.learning_rate),
@@ -226,7 +223,7 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
 
 
 class FSREADATSKRegressor(_BaseRegressorEstimator):
-    r"""FSRE-ADATSK regressor with adaptive softmin antecedent and gated consequents.
+    """FSRE-ADATSK regressor with adaptive softmin antecedent and gated consequents.
 
     FSRE-ADATSK (Feature Selection and Rule Extraction) extends ADATSK.
 
@@ -238,12 +235,10 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
         July 2023, doi: 10.1109/TFUZZ.2022.3220950.
 
     Example:
-        ```python
         from highfis import FSREADATSKRegressor
 
         reg = FSREADATSKRegressor()
         reg.fit(X_train, y_train)
-        ```
     """
 
     def __init__(
@@ -285,7 +280,7 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
                 paper eq. 22.  Default ``1.0``.
             use_en_frb: If ``True``, use the Enhanced FRB (En-FRB) for rule
                 extraction. Default ``False`` keeps CoCo-FRB.
-            input_configs: Per-feature :class:`InputConfig` list. Only
+            input_configs: Per-feature InputConfig list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
             n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
@@ -312,9 +307,8 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
                 Larger values retain more rules.  Default ``0.3``.
             structural_pruning: If ``True`` (default), hard-prune the model
                 architecture after each threshold step.
-            trainer: Optional custom :class:`~highfis.optim.BaseTrainer`.
-                When ``None`` (default) a
-                :class:`~highfis.optim.FSRETrainer` is built automatically
+            trainer: Optional custom BaseTrainer.
+                When ``None`` (default) an FSRETrainer is built automatically
                 from this estimator's hyperparameters.
 
         Raises:
@@ -366,9 +360,9 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
         )
 
     def predict(self, x: Any) -> np.ndarray:
-        """Predict continuous targets, applying structural feature selection if trained with FSRETrainer.
+        """Predict continuous targets, applying structural feature selection.
 
-        When structural pruning was applied during :meth:`fit`, the original
+        When structural pruning was applied during fit(), the original
         feature matrix is automatically sliced to the surviving features before
         being passed to the pruned model.
 
@@ -388,7 +382,7 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
         return preds.detach().cpu().numpy()
 
     def _get_trainer(self) -> BaseTrainer:
-        """Return an :class:`~highfis.optim.FSRETrainer` built from this estimator's params."""
+        """Return an FSRETrainer built from this estimator's parameters."""
         return FSRETrainer(
             fs_epochs=self.fs_epochs,
             fs_learning_rate=float(self.learning_rate),

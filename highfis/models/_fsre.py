@@ -22,7 +22,7 @@ from ._common import (
 
 
 class FSREADATSKClassifierModel(BaseTSKClassifierModel):
-    r"""FSRE-ADATSK classifier with adaptive softmin antecedent and gated consequents.
+    """FSRE-ADATSK classifier with adaptive softmin antecedent and gated consequents.
 
     FSRE-ADATSK (Feature Selection and Rule Extraction) extends ADATSK.
 
@@ -51,7 +51,7 @@ class FSREADATSKClassifierModel(BaseTSKClassifierModel):
 
         Args:
             input_mfs: Mapping from feature name to a sequence of
-                :class:`~highfis.memberships.MembershipFunction` objects.
+                MembershipFunction objects.
             n_classes: Number of output classes (must be ≥ 2).
             rule_base: Rule-base construction strategy.  ``"coco"``
                 (default, same-index compact), ``"cartesian"`` (all MF
@@ -59,8 +59,8 @@ class FSREADATSKClassifierModel(BaseTSKClassifierModel):
                 *use_en_frb*), or ``"custom"`` (explicit rules via *rules*).
             rules: Explicit rule antecedent indices; ignored when
                 ``use_en_frb=True``.
-            defuzzifier: Custom defuzzifier.  Defaults to
-                :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`.
+            defuzzifier: Custom defuzzifier. Defaults to
+                SoftmaxLogDefuzzifier.
             consequent_batch_norm: Batch normalisation on consequent inputs.
             eps: Numerical stability epsilon for the Ada-softmin operator.
             use_en_frb: Start directly from the Enhanced FRB (En-FRB)
@@ -151,11 +151,11 @@ class FSREADATSKClassifierModel(BaseTSKClassifierModel):
     def prune_to_features(self, surviving_features: list[int]) -> None:
         """Structurally prune the model to the given feature subset (paper step 2).
 
-        Updates :attr:`input_names`, :attr:`input_mfs`, :attr:`n_inputs`,
-        :attr:`membership_layer`, and optionally :attr:`consequent_bn` in-place.
+        Updates input_names, input_mfs, n_inputs, membership_layer, and
+        optionally consequent_bn in-place.
         The rule layer and consequent layer are intentionally left unchanged
         here; they will be rebuilt from the updated feature set when
-        :meth:`fit_re` calls :meth:`expand_to_en_frb`.
+        fit_re() calls expand_to_en_frb().
 
         Args:
             surviving_features: Indices of features to retain.
@@ -177,7 +177,7 @@ class FSREADATSKClassifierModel(BaseTSKClassifierModel):
     def prune_to_rules(self, surviving_rules: list[int]) -> None:
         """Structurally prune the model to the given rule subset (paper step 4).
 
-        Rebuilds :attr:`rule_layer` and :attr:`consequent_layer` in-place,
+        Rebuilds rule_layer and consequent_layer in-place,
         retaining only the specified rules.  Consequent weights, bias, and
         gate parameters for the surviving rules are copied from the current
         layers.  The new consequent layer is set to ``mode="finetune"``
@@ -214,7 +214,7 @@ class FSREADATSKClassifierModel(BaseTSKClassifierModel):
 
 
 class FSREADATSKRegressorModel(BaseTSKRegressorModel):
-    r"""FSRE-ADATSK regressor with adaptive softmin antecedent and gated consequents.
+    """FSRE-ADATSK regressor with adaptive softmin antecedent and gated consequents.
 
     FSRE-ADATSK (Feature Selection and Rule Extraction) extends ADATSK.
 
@@ -242,15 +242,15 @@ class FSREADATSKRegressorModel(BaseTSKRegressorModel):
 
         Args:
             input_mfs: Mapping from feature name to a sequence of
-                :class:`~highfis.memberships.MembershipFunction` objects.
+                MembershipFunction objects.
             rule_base: Rule-base construction strategy.  ``"coco"``
                 (default, same-index compact), ``"cartesian"`` (all MF
                 combinations), ``"en"`` (enhanced FRB; see also
                 *use_en_frb*), or ``"custom"`` (explicit rules via *rules*).
             rules: Explicit rule antecedent indices; ignored when
                 ``use_en_frb=True``.
-            defuzzifier: Custom defuzzifier.  Defaults to
-                :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`.
+            defuzzifier: Custom defuzzifier. Defaults to
+                SoftmaxLogDefuzzifier.
             consequent_batch_norm: Batch normalisation on consequent inputs.
             eps: Numerical stability epsilon for the Ada-softmin operator.
             use_en_frb: Start directly from the Enhanced FRB (En-FRB).
@@ -333,11 +333,11 @@ class FSREADATSKRegressorModel(BaseTSKRegressorModel):
     def prune_to_features(self, surviving_features: list[int]) -> None:
         """Structurally prune the model to the given feature subset (paper step 2).
 
-        Updates :attr:`input_names`, :attr:`input_mfs`, :attr:`n_inputs`,
-        :attr:`membership_layer`, and optionally :attr:`consequent_bn` in-place.
+        Updates input_names, input_mfs, n_inputs, membership_layer, and
+        optionally consequent_bn in-place.
         The rule layer and consequent layer are intentionally left unchanged
         here; they will be rebuilt from the updated feature set when
-        :meth:`fit_re` calls :meth:`expand_to_en_frb`.
+        fit_re() calls expand_to_en_frb().
 
         Args:
             surviving_features: Indices of features to retain.
@@ -359,7 +359,7 @@ class FSREADATSKRegressorModel(BaseTSKRegressorModel):
     def prune_to_rules(self, surviving_rules: list[int]) -> None:
         """Structurally prune the model to the given rule subset (paper step 4).
 
-        Rebuilds :attr:`rule_layer` and :attr:`consequent_layer` in-place,
+        Rebuilds rule_layer and consequent_layer in-place,
         retaining only the specified rules.  Consequent weights, bias, and
         gate parameters for the surviving rules are copied from the current
         layers.  The new consequent layer is set to ``mode="finetune"``

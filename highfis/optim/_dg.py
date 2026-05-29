@@ -31,24 +31,17 @@ class DGTrainer(BaseTrainer):
        and retrain with antecedent MFs and feature gates (λ) **frozen**.
 
     Each phase is delegated to the corresponding method on the model:
-    :meth:`~highfis.models.DGTSKClassifierModel.fit_dg_phase`,
-    :meth:`~highfis.models.DGTSKClassifierModel.search_thresholds`, and
-    :meth:`~highfis.models.DGTSKClassifierModel.fit_finetune`.
+    fit_dg_phase(), search_thresholds(), and fit_finetune().
 
-    References:
-        * Xue et al., *Fuzzy Sets and Systems*, 2023 (DG-TSK).
-          https://doi.org/10.1016/j.fss.2023.108627
-        * Xue et al., *IEEE Trans. Fuzzy Systems*, 2023 (DG-ALETSK).
-          https://doi.org/10.1109/TFUZZ.2023.3270445
-
-    Example::
-
+    Example:
+        ```python
         from highfis import DGTSKClassifier
         from highfis.optim import DGTrainer
 
         trainer = DGTrainer(dg_epochs=20, finetune_epochs=100, use_lse=True)
         clf = DGTSKClassifier(trainer=trainer)
         clf.fit(X_train, y_train, x_val=X_val, y_val=y_val)
+        ```
     """
 
     def __init__(
@@ -161,11 +154,9 @@ class DGTrainer(BaseTrainer):
         """Execute the three-phase DG training procedure.
 
         Args:
-            model: A DG-TSK or DG-ALETSK model instance
-                (:class:`~highfis.models.DGTSKClassifierModel`,
-                :class:`~highfis.models.DGTSKRegressorModel`,
-                :class:`~highfis.models.DGALETSKClassifierModel`, or
-                :class:`~highfis.models.DGALETSKRegressorModel`).
+            model: A DG-TSK or DG-ALETSK model instance, such as
+                DGTSKClassifierModel, DGTSKRegressorModel,
+                DGALETSKClassifierModel, or DGALETSKRegressorModel.
             x: Training inputs of shape ``(N, D)``.
             y: Training targets.
             x_val: Validation inputs (used for threshold-search scoring).
@@ -176,8 +167,7 @@ class DGTrainer(BaseTrainer):
             Dictionary with keys:
 
             - ``"dg"`` — history dict from phase 1 (DG phase).
-            - ``"threshold"`` — result dict from
-              :meth:`~highfis.models.DGTSKClassifierModel.search_thresholds`.
+                        - ``"threshold"`` — result dict from search_thresholds().
             - ``"finetune"`` — history dict from phase 3 (fine-tune phase).
         """
         zeta_lambda = self.zeta_lambda if self.zeta_lambda is not None else _DEFAULT_ZETA

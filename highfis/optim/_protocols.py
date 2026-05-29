@@ -11,10 +11,8 @@ from torch import Tensor
 class DGModelProtocol(Protocol):
     """Structural protocol for models that support three-phase DG training.
 
-    Satisfied by :class:`~highfis.models.DGTSKClassifierModel`,
-    :class:`~highfis.models.DGTSKRegressorModel`,
-    :class:`~highfis.models.DGALETSKClassifierModel`, and
-    :class:`~highfis.models.DGALETSKRegressorModel`.
+    Satisfied by DGTSKClassifierModel, DGTSKRegressorModel,
+    DGALETSKClassifierModel, and DGALETSKRegressorModel.
     """
 
     def fit_dg_phase(
@@ -73,8 +71,7 @@ class FirstOrderModelProtocol(Protocol):
 class FSREModelProtocol(Protocol):
     """Structural protocol for models that support three-phase FSRE training.
 
-    Satisfied by :class:`~highfis.models.FSREADATSKClassifierModel` and
-    :class:`~highfis.models.FSREADATSKRegressorModel`.
+    Satisfied by FSREADATSKClassifierModel and FSREADATSKRegressorModel.
     """
 
     def get_feature_gate_values(self) -> Tensor:

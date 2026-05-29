@@ -14,15 +14,16 @@ from ._base import BaseTrainer
 class GradientTrainer(BaseTrainer):
     """Single-phase mini-batch gradient descent trainer.
 
-    Wraps :meth:`~highfis.base.BaseTSK.fit` with an explicit parameter set.
+    Wraps `BaseTSK.fit` with an explicit parameter set.
     This is the default trainer used by all standard highFIS estimators.
 
     Example::
-
+        ```python
         from highfis.optim import GradientTrainer
 
         trainer = GradientTrainer(epochs=200, learning_rate=1e-3)
         history = trainer.fit(model, x_train, y_train)
+        ```
     """
 
     def __init__(

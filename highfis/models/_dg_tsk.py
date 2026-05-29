@@ -430,7 +430,7 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
 
         Args:
             y: Integer class labels of shape ``(N,)`` for the *N* training samples
-               used to build the P-FRB.  Only the first ``n_rules`` labels are used.
+                used to build the P-FRB. Only the first ``n_rules`` labels are used.
 
         Raises:
             ValueError: If the model is not in zero-order consequent mode.

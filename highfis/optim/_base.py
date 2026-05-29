@@ -18,13 +18,6 @@ class BaseTrainer(ABC):
     sklearn estimator.  Concrete subclasses implement the full training
     protocol — e.g., single-phase gradient descent, three-phase DG training,
     or hybrid LSE / gradient procedures.
-
-    Usage::
-
-        from highfis.optim import GradientTrainer
-
-        trainer = GradientTrainer(epochs=100, learning_rate=1e-3)
-        history = trainer.fit(model, x_train, y_train, x_val=x_val, y_val=y_val)
     """
 
     @abstractmethod
@@ -40,7 +33,7 @@ class BaseTrainer(ABC):
         """Train *model* on *(x, y)* and return a history dictionary.
 
         Args:
-            model: The :class:`~highfis.base.BaseTSK` model to train.
+            model: The BaseTSK model to train.
             x: Training input tensor of shape ``(n_samples, n_features)``.
             y: Training target tensor.
             x_val: Optional validation input tensor.
@@ -48,8 +41,8 @@ class BaseTrainer(ABC):
 
         Returns:
             A dictionary with training history.  Keys depend on the concrete
-            implementation.  :class:`GradientTrainer` returns the history
-            dict from :meth:`~highfis.base.BaseTSK.fit`.  :class:`DGTrainer`
+            implementation. GradientTrainer returns the history
+            dict from BaseTSK.fit(). DGTrainer
             returns a dict with keys ``"dg"``, ``"threshold"``, and
             ``"finetune"``.
         """

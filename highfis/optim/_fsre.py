@@ -1,4 +1,4 @@
-r"""Three-phase FSRE trainer for FSRE-ADATSK models."""
+"""Three-phase FSRE trainer for FSRE-ADATSK models."""
 
 from __future__ import annotations
 
@@ -18,9 +18,9 @@ _DEFAULT_ZETA_THETA: float = 0.3
 
 
 class FSRETrainer(BaseTrainer):
-    r"""Three-phase trainer for FSRE-ADATSK classifier and regressor models.
+    """Three-phase trainer for FSRE-ADATSK classifier and regressor models.
 
-    Implements Algorithm 1 from Xue et al. (2023), which consists of three
+    Implements FSRE Algorithm, which consists of three
     sequential phases:
 
     1. **FS phase** — Train with CoCo-FRB and feature gates M(λ_d) active
@@ -32,23 +32,10 @@ class FSRETrainer(BaseTrainer):
        rules are kept.
     3. **Fine-tune phase** — Train the pruned model without gates (paper eq. 5).
 
-    Thresholds are computed directly from scalar zeta coefficients (paper
-    eqs. 28-29):
+    Thresholds are computed directly from scalar zeta coefficients.
 
-    .. math::
-
-        \\tau_\\lambda = \\max_d M(\\lambda_d)
-            - \\zeta_\\lambda [\\max_d M(\\lambda_d) - \\min_d M(\\lambda_d)]
-
-        \\tau_\\theta = \\max_r M(\\theta_r)
-            - \\zeta_\\theta [\\max_r M(\\theta_r) - \\min_r M(\\theta_r)]
-
-    References:
-        * Xue et al., *IEEE Trans. Fuzzy Systems*, 2023 (FSRE-AdaTSK).
-          https://doi.org/10.1109/TFUZZ.2022.3220950
-
-    Example::
-
+    Example:
+        ```python
         from highfis import FSREADATSKClassifier
         from highfis.optim import FSRETrainer
 
@@ -61,6 +48,7 @@ class FSRETrainer(BaseTrainer):
         )
         clf = FSREADATSKClassifier(trainer=trainer)
         clf.fit(X_train, y_train)
+        ```
     """
 
     def __init__(
@@ -196,9 +184,8 @@ class FSRETrainer(BaseTrainer):
         """Execute the three-phase FSRE training procedure (Algorithm 1).
 
         Args:
-            model: An FSRE-ADATSK model instance
-                (:class:`~highfis.models.FSREADATSKClassifierModel` or
-                :class:`~highfis.models.FSREADATSKRegressorModel`).
+            model: An FSRE-ADATSK model instance, such as
+                FSREADATSKClassifierModel or FSREADATSKRegressorModel.
             x: Training inputs of shape ``(N, D)``.
             y: Training targets.
             x_val: Validation inputs (used for early stopping).
@@ -211,10 +198,10 @@ class FSRETrainer(BaseTrainer):
             - ``"fs"`` — history dict from phase 1 (FS phase).
             - ``"re"`` — history dict from phase 2 (RE phase).
             - ``"finetune"`` — history dict from phase 3 (fine-tune phase).
-            - ``"surviving_feature_indices"`` — list of retained feature
-              indices (relative to the input ``x`` columns).
-            - ``"surviving_rule_indices"`` — list of retained rule indices
-              (relative to the En-FRB rule count after phase 2).
+                        - ``"surviving_feature_indices"`` — list of retained feature indices
+                            relative to the input ``x`` columns.
+                        - ``"surviving_rule_indices"`` — list of retained rule indices
+                            relative to the En-FRB rule count after phase 2.
             - ``"tau_lambda"`` — applied feature-selection threshold.
             - ``"tau_theta"`` — applied rule-extraction threshold.
         """
