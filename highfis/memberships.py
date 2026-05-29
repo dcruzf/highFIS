@@ -160,6 +160,20 @@ class GaussianMF(MembershipFunction):
         return torch.exp(-0.5 * z.square())
 
 
+class ADATSKGaussianMF(GaussianMF):
+    """ADATSK paper-style Gaussian membership.
+
+    Uses ``exp(-((x-c)^2)/(sigma^2))`` so that with ``sigma=1`` it matches
+    the simplified paper form ``exp(-(x-c)^2)``.
+    """
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Compute ADATSK paper-style Gaussian membership values."""
+        x = self._as_tensor(x)
+        z = (x - self.mean) / self.sigma
+        return torch.exp(-z.square())
+
+
 class DimensionDependentGaussianMF(GaussianMF):
     """Dimension-dependent Gaussian membership function for HDFIS-prod."""
 
@@ -717,6 +731,7 @@ class GaussianPiMF(MembershipFunction):
 
 
 __all__: list[str] = [
+    "ADATSKGaussianMF",
     "BellMF",
     "CompositeExponentialMF",
     "CompositeGaussianMF",

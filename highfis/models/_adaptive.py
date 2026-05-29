@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
+import torch
 from torch import nn
 
 from ..defuzzifiers import SumBasedDefuzzifier
@@ -42,6 +43,7 @@ class ADATSKClassifierModel(BaseTSKClassifierModel):
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
         eps: float | None = None,
+        paper_zero_consequent_init: bool = True,
     ) -> None:
         """Initialise the ADATSK classifier.
 
@@ -58,6 +60,9 @@ class ADATSKClassifierModel(BaseTSKClassifierModel):
                 :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
             consequent_batch_norm: Batch normalisation on consequent inputs.
             eps: Numerical stability epsilon for the Ada-softmin operator.
+            paper_zero_consequent_init: If ``True`` (default), initialize
+                consequent weights and biases to zeros to match the paper
+                protocol.
 
         Raises:
             ValueError: If ``n_classes < 2``.
@@ -67,6 +72,7 @@ class ADATSKClassifierModel(BaseTSKClassifierModel):
 
         self.n_classes = int(n_classes)
         self.eps = eps
+        self.paper_zero_consequent_init = bool(paper_zero_consequent_init)
 
         super().__init__(
             input_mfs,
@@ -84,12 +90,46 @@ class ADATSKClassifierModel(BaseTSKClassifierModel):
             rule_base=rule_base,
             eps=self.eps,
         )
+        if self.paper_zero_consequent_init:
+            self._zero_initialize_consequents()
+
+    def _zero_initialize_consequents(self) -> None:
+        """Zero-initialize consequent parameters for paper-strict protocol."""
+        weight = getattr(self.consequent_layer, "weight", None)
+        if isinstance(weight, torch.Tensor):
+            nn.init.zeros_(weight)
+        bias = getattr(self.consequent_layer, "bias", None)
+        if isinstance(bias, torch.Tensor):
+            nn.init.zeros_(bias)
 
     def _build_consequent_layer(self) -> nn.Module:
         return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
 
     def _default_criterion(self) -> nn.Module:
-        return nn.CrossEntropyLoss()
+        return nn.MSELoss()
+
+    def _build_optimizer(
+        self,
+        optimizer: torch.optim.Optimizer | None,
+        learning_rate: float,
+        weight_decay: float,
+    ) -> torch.optim.Optimizer:
+        """Return *optimizer* unchanged, or build a paper-style SGD optimizer."""
+        if optimizer is not None:
+            return optimizer
+        ante_params = list(self.membership_layer.parameters())
+        rule_params = list(self.rule_layer.parameters())
+        cons_params = list(self.consequent_layer.parameters())
+        if self.consequent_bn is not None:
+            cons_params.extend(self.consequent_bn.parameters())
+        return torch.optim.SGD(
+            [
+                {"params": ante_params},
+                {"params": rule_params},
+                {"params": cons_params},
+            ],
+            lr=learning_rate,
+        )
 
 
 class ADATSKRegressorModel(BaseTSKRegressorModel):
@@ -153,6 +193,29 @@ class ADATSKRegressorModel(BaseTSKRegressorModel):
 
     def _default_criterion(self) -> nn.Module:
         return nn.MSELoss()
+
+    def _build_optimizer(
+        self,
+        optimizer: torch.optim.Optimizer | None,
+        learning_rate: float,
+        weight_decay: float,
+    ) -> torch.optim.Optimizer:
+        """Return *optimizer* unchanged, or build a paper-style SGD optimizer."""
+        if optimizer is not None:
+            return optimizer
+        ante_params = list(self.membership_layer.parameters())
+        rule_params = list(self.rule_layer.parameters())
+        cons_params = list(self.consequent_layer.parameters())
+        if self.consequent_bn is not None:
+            cons_params.extend(self.consequent_bn.parameters())
+        return torch.optim.SGD(
+            [
+                {"params": ante_params},
+                {"params": rule_params},
+                {"params": cons_params},
+            ],
+            lr=learning_rate,
+        )
 
 
 class ADPTSKClassifierModel(BaseTSKClassifierModel):
