@@ -598,6 +598,36 @@ def test_adptsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
     assert 0.0 <= score <= 1.0
 
 
+def test_adptsk_classifier_default_estimator_uses_paper_rule_base_and_rule_count() -> None:
+    x, y = _make_dataset(80)
+    est = ADPTSKClassifier(epochs=1, random_state=7)
+    est.fit(x, y)
+
+    assert est.rule_base_ == "coco"
+    assert est.model_.n_rules == 3
+
+
+def test_adptsk_classifier_default_estimator_uses_paper_centers_and_sigma() -> None:
+    x, y = _make_dataset(80)
+    est = ADPTSKClassifier(epochs=1, random_state=7)
+    est.fit(x, y)
+
+    mfs = est.model_.input_mfs["x1"]
+    assert len(mfs) == 3
+    assert isinstance(mfs[0], GaussianPiMF)
+    means = [float(cast(Tensor, cast(GaussianPiMF, mf).mean).detach().item()) for mf in mfs]
+    sigmas = [float(cast(GaussianPiMF, mf).sigma.detach().item()) for mf in mfs]
+    assert means == pytest.approx([0.0, 0.5, 1.0], abs=1e-8)
+    assert sigmas == pytest.approx([1.0, 1.0, 1.0], abs=1e-8)
+
+
+def test_adptsk_default_batch_size_policy() -> None:
+    est = ADPTSKClassifier()
+
+    assert est._resolve_default_batch_size(499) is None
+    assert est._resolve_default_batch_size(500) == 100
+
+
 def test_fsre_adatsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
     x, y = _make_dataset(80)
     est = FSREADATSKClassifier(
@@ -2401,6 +2431,36 @@ def test_adptsk_regressor_estimator_fit_predict() -> None:
     pred = est.predict(x)
 
     assert pred.shape == (x.shape[0],)
+
+
+def test_adptsk_regressor_default_estimator_uses_paper_rule_base_and_rule_count() -> None:
+    x, y = _make_regression_dataset(80)
+    est = ADPTSKRegressor(epochs=1, random_state=7)
+    est.fit(x, y)
+
+    assert est.rule_base_ == "coco"
+    assert est.model_.n_rules == 3
+
+
+def test_adptsk_regressor_default_estimator_uses_paper_centers_and_sigma() -> None:
+    x, y = _make_regression_dataset(80)
+    est = ADPTSKRegressor(epochs=1, random_state=7)
+    est.fit(x, y)
+
+    mfs = est.model_.input_mfs["x1"]
+    assert len(mfs) == 3
+    assert isinstance(mfs[0], GaussianPiMF)
+    means = [float(cast(Tensor, cast(GaussianPiMF, mf).mean).detach().item()) for mf in mfs]
+    sigmas = [float(cast(GaussianPiMF, mf).sigma.detach().item()) for mf in mfs]
+    assert means == pytest.approx([0.0, 0.5, 1.0], abs=1e-8)
+    assert sigmas == pytest.approx([1.0, 1.0, 1.0], abs=1e-8)
+
+
+def test_adptsk_regressor_default_batch_size_policy() -> None:
+    est = ADPTSKRegressor()
+
+    assert est._resolve_default_batch_size(499) is None
+    assert est._resolve_default_batch_size(500) == 100
 
 
 def test_fsre_adatsk_regressor_estimator_fit_predict() -> None:

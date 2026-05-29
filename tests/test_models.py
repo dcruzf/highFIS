@@ -170,6 +170,84 @@ def test_adptsk_regressor_forward_predict_shape() -> None:
     assert pred.shape == (6,)
 
 
+def test_adptsk_classifier_default_criterion_is_mse() -> None:
+    from highfis.models import ADPTSKClassifierModel
+
+    model = ADPTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    assert isinstance(model._default_criterion(), nn.MSELoss)
+
+
+def test_adptsk_classifier_default_optimizer_is_adam() -> None:
+    from highfis.models import ADPTSKClassifierModel
+
+    model = ADPTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    optimizer = model._build_optimizer(None, learning_rate=1e-3, weight_decay=0.0)
+    assert isinstance(optimizer, torch.optim.Adam)
+
+
+def test_adptsk_classifier_optimizer_passthrough() -> None:
+    from highfis.models import ADPTSKClassifierModel
+
+    model = ADPTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    provided = torch.optim.SGD(model.parameters(), lr=1e-2)
+    optimizer = model._build_optimizer(provided, learning_rate=1e-3, weight_decay=0.0)
+    assert optimizer is provided
+
+
+def test_adptsk_classifier_optimizer_with_consequent_batch_norm_uses_adam() -> None:
+    from highfis.models import ADPTSKClassifierModel
+
+    model = ADPTSKClassifierModel(_build_input_mfs(), n_classes=2, consequent_batch_norm=True)
+    optimizer = model._build_optimizer(None, learning_rate=1e-3, weight_decay=0.0)
+    assert isinstance(optimizer, torch.optim.Adam)
+
+
+def test_adptsk_regressor_default_optimizer_is_adam() -> None:
+    from highfis.models import ADPTSKRegressorModel
+
+    model = ADPTSKRegressorModel(_build_input_mfs(), rule_base="coco")
+    optimizer = model._build_optimizer(None, learning_rate=1e-3, weight_decay=0.0)
+    assert isinstance(optimizer, torch.optim.Adam)
+
+
+def test_adptsk_regressor_optimizer_passthrough() -> None:
+    from highfis.models import ADPTSKRegressorModel
+
+    model = ADPTSKRegressorModel(_build_input_mfs(), rule_base="coco")
+    provided = torch.optim.SGD(model.parameters(), lr=1e-2)
+    optimizer = model._build_optimizer(provided, learning_rate=1e-3, weight_decay=0.0)
+    assert optimizer is provided
+
+
+def test_adptsk_regressor_optimizer_with_consequent_batch_norm_uses_adam() -> None:
+    from highfis.models import ADPTSKRegressorModel
+
+    model = ADPTSKRegressorModel(_build_input_mfs(), rule_base="coco", consequent_batch_norm=True)
+    optimizer = model._build_optimizer(None, learning_rate=1e-3, weight_decay=0.0)
+    assert isinstance(optimizer, torch.optim.Adam)
+
+
+def test_adptsk_classifier_zero_initializes_consequents_by_default() -> None:
+    from highfis.models import ADPTSKClassifierModel
+
+    model = ADPTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    weight = getattr(model.consequent_layer, "weight", None)
+    bias = getattr(model.consequent_layer, "bias", None)
+    assert isinstance(weight, torch.Tensor)
+    assert isinstance(bias, torch.Tensor)
+    assert torch.allclose(weight, torch.zeros_like(weight))
+    assert torch.allclose(bias, torch.zeros_like(bias))
+
+
+def test_adptsk_classifier_can_disable_zero_consequent_init() -> None:
+    from highfis.models import ADPTSKClassifierModel
+
+    model = ADPTSKClassifierModel(_build_input_mfs(), n_classes=2, zero_consequent_init=False)
+    weight = getattr(model.consequent_layer, "weight", None)
+    assert isinstance(weight, torch.Tensor)
+    assert not torch.allclose(weight, torch.zeros_like(weight))
+
+
 def test_htsk_classifier_fit_returns_history() -> None:
     torch.manual_seed(1)
     model = HTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
