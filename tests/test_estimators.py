@@ -356,6 +356,36 @@ def test_ayatsk_regressor_estimator_fit_predict() -> None:
     assert pred.shape == (x.shape[0],)
 
 
+def test_ayatsk_classifier_default_setup_is_paper_style() -> None:
+    x, y = _make_dataset(80)
+    est = AYATSKClassifier(epochs=1, random_state=7)
+    est.fit(x, y)
+
+    assert est.rule_base_ == "coco"
+    assert est.model_.n_rules == 3
+    assert est.model_._default_criterion().__class__.__name__ == "MSELoss"
+    assert est._resolve_default_batch_size(80) is None
+    assert est._resolve_default_batch_size(500) == 50
+
+    mfs = est.model_.input_mfs["x1"]
+    assert len(mfs) == 3
+    assert type(mfs[0]).__name__ == "CompositeExponentialMF"
+    assert float(cast(Any, est.model_).lambda_) > 0.0
+
+
+def test_ayatsk_regressor_default_setup_is_paper_style() -> None:
+    x = np.random.default_rng(123).normal(size=(40, 3)).astype(np.float32)
+    y = x[:, 0] + 0.5 * x[:, 1]
+    est = AYATSKRegressor(epochs=1, random_state=7)
+    est.fit(x, y)
+
+    assert est.rule_base_ == "coco"
+    assert est.model_._default_criterion().__class__.__name__ == "MSELoss"
+    assert est._resolve_default_batch_size(80) is None
+    assert est._resolve_default_batch_size(500) == 50
+    assert float(cast(Any, est.model_).lambda_) > 0.0
+
+
 def test_dgaletsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
     x, y = _make_dataset(80)
     est = DGALETSKClassifier(

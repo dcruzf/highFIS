@@ -4,8 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
+import numpy as np
+
 from ..base import BaseTSK
 from ..memberships import (
+    CompositeExponentialMF,
     MembershipFunction,
 )
 from ..models import (
@@ -17,6 +20,25 @@ from ._base import (
     _BaseClassifierEstimator,
     _BaseRegressorEstimator,
 )
+
+
+def _build_ayatsk_default_input_mfs(feature_names: Sequence[str]) -> dict[str, list[CompositeExponentialMF]]:
+    """Build the paper-style AYATSK default CEMFs.
+
+    The paper initializes three fuzzy sets per feature with centers
+    0.0, 0.5, and 1.0, spread 1.0, and a positive lower bound.
+    """
+    centers = [0.0, 0.5, 1.0]
+    return {
+        name: [CompositeExponentialMF(center=center, sigma=1.0, k=10.0) for center in centers] for name in feature_names
+    }
+
+
+def _resolve_ayatsk_default_batch_size(n_samples: int) -> int | None:
+    """Resolve the paper-style AYATSK batch size for a dataset."""
+    if n_samples < 500:
+        return None
+    return max(1, round(0.1 * float(n_samples)))
 
 
 class AYATSKClassifier(_BaseClassifierEstimator):
@@ -45,15 +67,15 @@ class AYATSKClassifier(_BaseClassifierEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 5,
-        mf_init: str = "kmeans",
+        n_mfs: int = 3,
+        mf_init: str = "grid",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 10,
-        learning_rate: float = 1e-2,
+        epochs: int = 200,
+        learning_rate: float = 1e-3,
         verbose: bool | int = False,
-        rule_base: str | None = None,
-        batch_size: int | None = 512,
+        rule_base: str | None = "coco",
+        batch_size: int | None = None,
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -61,25 +83,24 @@ class AYATSKClassifier(_BaseClassifierEstimator):
         pfrb_max_rules: int | None = None,
         patience: int | None = 20,
         restore_best: bool = True,
-        weight_decay: float = 1e-8,
+        weight_decay: float = 0.0,
     ) -> None:
         """Initialise an AYATSK classifier.
 
         Args:
             input_configs: Per-feature :class:`InputConfig` list. Only
-                ``name`` is used when ``mf_init="kmeans"``.
-            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
-            mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
-            sigma_scale: Sigma scale factor for k-means initialisation.
-                ``1.0`` is recommended; the adaptive Yager T-norm handles
-                high-dimensional stability internally.
-            random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``10``).
-            learning_rate: Adam learning rate (default ``0.01``).
+                ``name`` is used when ``mf_init`` falls back to clustering.
+            n_mfs: Number of fuzzy sets per feature (default ``3``).
+            mf_init: Membership-function initialization strategy.  Defaults
+                to ``"grid"`` for the paper-style CEMF initialization.
+            sigma_scale: Sigma scale factor for non-default initialisation.
+            random_state: Seed for clustering and weight initialisation.
+            epochs: Maximum training epochs (default ``200``).
+            learning_rate: Adam learning rate (default ``0.001``).
             verbose: Print per-epoch progress.
-            rule_base: ``"coco"`` or ``"cartesian"``. Defaults to
-                ``"coco"`` for kmeans and ``"cartesian"`` for grid.
-            batch_size: Mini-batch size (default ``512``).
+            rule_base: Rule-base strategy. Defaults to ``"coco"``.
+            batch_size: Mini-batch size. ``None`` applies the paper policy:
+                full-batch when ``N < 500`` and ``0.1 * N`` otherwise.
             shuffle: Reshuffle each epoch.
             ur_weight: Uncertainty regularisation weight.
             ur_target: Uncertainty regularisation target.
@@ -111,6 +132,42 @@ class AYATSKClassifier(_BaseClassifierEstimator):
             restore_best=restore_best,
             weight_decay=weight_decay,
         )
+
+    def _build_input_mfs(
+        self,
+        x_arr: np.ndarray,
+    ) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
+        if (
+            self.input_configs is None
+            and isinstance(self.mf_init, str)
+            and self.mf_init.lower() == "grid"
+            and int(self.n_mfs) == 3
+        ):
+            input_configs = self._resolve_input_configs(x_arr)
+            feature_names = [cfg.name for cfg in input_configs]
+            input_mfs = _build_ayatsk_default_input_mfs(feature_names)
+            return input_mfs, feature_names, self.rule_base if self.rule_base is not None else "coco"
+        return super()._build_input_mfs(x_arr)
+
+    def _resolve_default_batch_size(self, n_samples: int) -> int | None:
+        return _resolve_ayatsk_default_batch_size(n_samples)
+
+    def fit(
+        self,
+        x: object,
+        y: object,
+        *,
+        x_val: object | None = None,
+        y_val: object | None = None,
+    ) -> AYATSKClassifier:
+        original_batch_size = self.batch_size
+        try:
+            n_samples = int(np.asarray(y).shape[0])
+            if original_batch_size is None:
+                self.batch_size = self._resolve_default_batch_size(n_samples)
+            return super().fit(x, y, x_val=x_val, y_val=y_val)
+        finally:
+            self.batch_size = original_batch_size
 
     def _build_model(
         self,
@@ -153,37 +210,39 @@ class AYATSKRegressor(_BaseRegressorEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 5,
-        mf_init: str = "kmeans",
+        n_mfs: int = 3,
+        mf_init: str = "grid",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 10,
-        learning_rate: float = 1e-2,
+        epochs: int = 200,
+        learning_rate: float = 1e-3,
         verbose: bool | int = False,
-        rule_base: str | None = None,
-        batch_size: int | None = 512,
+        rule_base: str | None = "coco",
+        batch_size: int | None = None,
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
         consequent_batch_norm: bool = False,
         patience: int | None = 20,
         restore_best: bool = True,
-        weight_decay: float = 1e-8,
+        weight_decay: float = 0.0,
     ) -> None:
         """Initialise an AYATSK regressor.
 
         Args:
             input_configs: Per-feature :class:`InputConfig` list. Only
-                ``name`` is used when ``mf_init="kmeans"``.
-            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
-            mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
-            sigma_scale: Sigma scale factor. ``1.0`` recommended.
-            random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``10``).
-            learning_rate: Adam learning rate (default ``0.01``).
+                ``name`` is used when ``mf_init`` falls back to clustering.
+            n_mfs: Number of fuzzy sets per feature (default ``3``).
+            mf_init: Membership-function initialization strategy.  Defaults
+                to ``"grid"`` for the paper-style CEMF initialization.
+            sigma_scale: Sigma scale factor for non-default initialisation.
+            random_state: Seed for clustering and weight initialisation.
+            epochs: Maximum training epochs (default ``200``).
+            learning_rate: Adam learning rate (default ``0.001``).
             verbose: Print per-epoch progress.
-            rule_base: ``"coco"`` or ``"cartesian"``.
-            batch_size: Mini-batch size (default ``512``).
+            rule_base: Rule-base strategy. Defaults to ``"coco"``.
+            batch_size: Mini-batch size. ``None`` applies the paper policy:
+                full-batch when ``N < 500`` and ``0.1 * N`` otherwise.
             shuffle: Reshuffle each epoch.
             ur_weight: Uncertainty regularisation weight.
             ur_target: Uncertainty regularisation target.
@@ -212,6 +271,42 @@ class AYATSKRegressor(_BaseRegressorEstimator):
             restore_best=restore_best,
             weight_decay=weight_decay,
         )
+
+    def _build_input_mfs(
+        self,
+        x_arr: np.ndarray,
+    ) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
+        if (
+            self.input_configs is None
+            and isinstance(self.mf_init, str)
+            and self.mf_init.lower() == "grid"
+            and int(self.n_mfs) == 3
+        ):
+            input_configs = self._resolve_input_configs(x_arr)
+            feature_names = [cfg.name for cfg in input_configs]
+            input_mfs = _build_ayatsk_default_input_mfs(feature_names)
+            return input_mfs, feature_names, self.rule_base if self.rule_base is not None else "coco"
+        return super()._build_input_mfs(x_arr)
+
+    def _resolve_default_batch_size(self, n_samples: int) -> int | None:
+        return _resolve_ayatsk_default_batch_size(n_samples)
+
+    def fit(
+        self,
+        x: object,
+        y: object,
+        *,
+        x_val: object | None = None,
+        y_val: object | None = None,
+    ) -> AYATSKRegressor:
+        original_batch_size = self.batch_size
+        try:
+            n_samples = int(np.asarray(y).shape[0])
+            if original_batch_size is None:
+                self.batch_size = self._resolve_default_batch_size(n_samples)
+            return super().fit(x, y, x_val=x_val, y_val=y_val)
+        finally:
+            self.batch_size = original_batch_size
 
     def _build_regressor_model(
         self,

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
 
+import torch
 from torch import nn
 
 from ..defuzzifiers import SumBasedDefuzzifier
@@ -12,11 +14,38 @@ from ..layers import (
     RegressionConsequentLayer,
 )
 from ..memberships import MembershipFunction
-from ..t_norms import TNormFn
+from ..t_norms import TNormFn, YagerTNorm
 from ._common import (
     BaseTSKClassifierModel,
     BaseTSKRegressorModel,
 )
+
+
+def _adaptive_yager_lambda(dimension: int, lower_bound: float) -> float:
+    if dimension <= 1:
+        raise ValueError("dimension must be > 1")
+    if not 0.0 < lower_bound < 1.0:
+        raise ValueError("lower_bound must be in (0, 1)")
+    return -math.log(float(dimension)) / math.log(1.0 - float(lower_bound))
+
+
+def _infer_lower_bound(input_mfs: Mapping[str, Sequence[MembershipFunction]]) -> float:
+    lower_bounds: list[float] = []
+    for mfs in input_mfs.values():
+        for mf in mfs:
+            k = getattr(mf, "k", None)
+            if k is not None:
+                lower_bounds.append(1.0 / float(k))
+    return min(lower_bounds) if lower_bounds else 1.0 / math.e
+
+
+def _zero_initialize_consequents(consequent_layer: nn.Module) -> None:
+    weight = getattr(consequent_layer, "weight", None)
+    if isinstance(weight, torch.Tensor):
+        nn.init.zeros_(weight)
+    bias = getattr(consequent_layer, "bias", None)
+    if isinstance(bias, torch.Tensor):
+        nn.init.zeros_(bias)
 
 
 class AYATSKClassifierModel(BaseTSKClassifierModel):
@@ -65,20 +94,46 @@ class AYATSKClassifierModel(BaseTSKClassifierModel):
         if n_classes < 2:
             raise ValueError("n_classes must be >= 2")
         self.n_classes = int(n_classes)
+        self.lower_bound_ = _infer_lower_bound(input_mfs)
+        self.lambda_ = _adaptive_yager_lambda(len(input_mfs), self.lower_bound_)
         super().__init__(
             input_mfs,
             rule_base=rule_base,
-            t_norm=t_norm,
+            t_norm=YagerTNorm(lambda_=self.lambda_) if t_norm == "yager" else t_norm,
             rules=rules,
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
         )
+        _zero_initialize_consequents(self.consequent_layer)
 
     def _build_consequent_layer(self) -> nn.Module:
         return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
 
     def _default_criterion(self) -> nn.Module:
-        return nn.CrossEntropyLoss()
+        return nn.MSELoss()
+
+    def _build_optimizer(
+        self,
+        optimizer: torch.optim.Optimizer | None,
+        learning_rate: float,
+        weight_decay: float,
+    ) -> torch.optim.Optimizer:
+        if optimizer is not None:
+            return optimizer
+        ante_params = list(self.membership_layer.parameters())
+        rule_params = list(self.rule_layer.parameters())
+        cons_params = list(self.consequent_layer.parameters())
+        if self.consequent_bn is not None:
+            cons_params.extend(self.consequent_bn.parameters())
+        return torch.optim.Adam(
+            [
+                {"params": ante_params},
+                {"params": rule_params},
+                {"params": cons_params},
+            ],
+            lr=learning_rate,
+            weight_decay=weight_decay,
+        )
 
 
 class AYATSKRegressorModel(BaseTSKRegressorModel):
@@ -119,17 +174,43 @@ class AYATSKRegressorModel(BaseTSKRegressorModel):
                 :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
             consequent_batch_norm: Batch normalisation on consequent inputs.
         """
+        self.lower_bound_ = _infer_lower_bound(input_mfs)
+        self.lambda_ = _adaptive_yager_lambda(len(input_mfs), self.lower_bound_)
         super().__init__(
             input_mfs,
             rule_base=rule_base,
-            t_norm=t_norm,
+            t_norm=YagerTNorm(lambda_=self.lambda_) if t_norm == "yager" else t_norm,
             rules=rules,
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
         )
+        _zero_initialize_consequents(self.consequent_layer)
 
     def _build_consequent_layer(self) -> nn.Module:
         return RegressionConsequentLayer(self.n_rules, self.n_inputs)
 
     def _default_criterion(self) -> nn.Module:
         return nn.MSELoss()
+
+    def _build_optimizer(
+        self,
+        optimizer: torch.optim.Optimizer | None,
+        learning_rate: float,
+        weight_decay: float,
+    ) -> torch.optim.Optimizer:
+        if optimizer is not None:
+            return optimizer
+        ante_params = list(self.membership_layer.parameters())
+        rule_params = list(self.rule_layer.parameters())
+        cons_params = list(self.consequent_layer.parameters())
+        if self.consequent_bn is not None:
+            cons_params.extend(self.consequent_bn.parameters())
+        return torch.optim.Adam(
+            [
+                {"params": ante_params},
+                {"params": rule_params},
+                {"params": cons_params},
+            ],
+            lr=learning_rate,
+            weight_decay=weight_decay,
+        )

@@ -116,6 +116,49 @@ def test_ayatsk_regressor_default_criterion() -> None:
     assert isinstance(model._default_criterion(), nn.MSELoss)
 
 
+def test_ayatsk_classifier_default_criterion_is_mse() -> None:
+    model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3)
+    assert isinstance(model._default_criterion(), nn.MSELoss)
+
+
+def test_ayatsk_classifier_default_optimizer_is_adam() -> None:
+    model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3)
+    optimizer = model._build_optimizer(None, learning_rate=1e-3, weight_decay=0.0)
+    assert isinstance(optimizer, torch.optim.Adam)
+
+
+def test_ayatsk_classifier_zero_initializes_consequents() -> None:
+    model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3)
+    weight = getattr(model.consequent_layer, "weight", None)
+    bias = getattr(model.consequent_layer, "bias", None)
+    assert isinstance(weight, torch.Tensor)
+    assert isinstance(bias, torch.Tensor)
+    assert torch.allclose(weight, torch.zeros_like(weight))
+    assert torch.allclose(bias, torch.zeros_like(bias))
+
+
+def test_ayatsk_classifier_uses_adaptive_yager_lambda() -> None:
+    model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3)
+    assert model.lambda_ > 0.0
+    assert model.lower_bound_ > 0.0
+
+
+def test_ayatsk_regressor_default_optimizer_is_adam() -> None:
+    model = AYATSKRegressorModel(_build_input_mfs(), rule_base="coco")
+    optimizer = model._build_optimizer(None, learning_rate=1e-3, weight_decay=0.0)
+    assert isinstance(optimizer, torch.optim.Adam)
+
+
+def test_ayatsk_regressor_zero_initializes_consequents() -> None:
+    model = AYATSKRegressorModel(_build_input_mfs(), rule_base="coco")
+    weight = getattr(model.consequent_layer, "weight", None)
+    bias = getattr(model.consequent_layer, "bias", None)
+    assert isinstance(weight, torch.Tensor)
+    assert isinstance(bias, torch.Tensor)
+    assert torch.allclose(weight, torch.zeros_like(weight))
+    assert torch.allclose(bias, torch.zeros_like(bias))
+
+
 def test_adptsk_classifier_forward_predict_shapes() -> None:
     from highfis.models import ADPTSKClassifierModel
 
