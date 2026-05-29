@@ -344,6 +344,53 @@ def test_admtsk_classifier_forward_predict_shapes() -> None:
     assert torch.allclose(proba.sum(dim=1), torch.ones(8), atol=1e-6)
 
 
+def test_admtsk_classifier_default_criterion_is_mse() -> None:
+    model = ADMTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    assert isinstance(model._default_criterion(), nn.MSELoss)
+
+
+def test_admtsk_classifier_default_optimizer_is_adam() -> None:
+    model = ADMTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    optimizer = model._build_optimizer(None, learning_rate=1e-2, weight_decay=0.0)
+    assert isinstance(optimizer, torch.optim.Adam)
+
+
+def test_admtsk_classifier_optimizer_returns_custom_optimizer() -> None:
+    model = ADMTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    custom = torch.optim.SGD(model.parameters(), lr=1e-2)
+    optimizer = model._build_optimizer(custom, learning_rate=1e-2, weight_decay=0.0)
+    assert optimizer is custom
+
+
+def test_admtsk_classifier_optimizer_includes_bn_params_when_enabled() -> None:
+    model = ADMTSKClassifierModel(_build_input_mfs(), n_classes=2, consequent_batch_norm=True)
+    optimizer = model._build_optimizer(None, learning_rate=1e-2, weight_decay=0.0)
+    cons_only = len(list(model.consequent_layer.parameters()))
+    cons_group = optimizer.param_groups[2]["params"]
+    assert len(cons_group) > cons_only
+
+
+def test_admtsk_classifier_zero_initializes_consequents_by_default() -> None:
+    model = ADMTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    weight = getattr(model.consequent_layer, "weight", None)
+    bias = getattr(model.consequent_layer, "bias", None)
+    assert isinstance(weight, torch.Tensor)
+    assert isinstance(bias, torch.Tensor)
+    assert torch.allclose(weight, torch.zeros_like(weight))
+    assert torch.allclose(bias, torch.zeros_like(bias))
+
+
+def test_admtsk_classifier_can_disable_zero_consequent_init() -> None:
+    model = ADMTSKClassifierModel(
+        _build_input_mfs(),
+        n_classes=2,
+        paper_zero_consequent_init=False,
+    )
+    weight = getattr(model.consequent_layer, "weight", None)
+    assert isinstance(weight, torch.Tensor)
+    assert not torch.allclose(weight, torch.zeros_like(weight))
+
+
 def test_admtsk_regressor_forward_shape() -> None:
     model = ADMTSKRegressorModel(_build_input_mfs(), rule_base="coco")
     x = torch.randn(5, 3)
@@ -353,6 +400,38 @@ def test_admtsk_regressor_forward_shape() -> None:
 
     assert output.shape == (5, 1)
     assert pred.shape == (5,)
+
+
+def test_admtsk_regressor_default_optimizer_is_adam() -> None:
+    model = ADMTSKRegressorModel(_build_input_mfs(), rule_base="coco")
+    optimizer = model._build_optimizer(None, learning_rate=1e-2, weight_decay=0.0)
+    assert isinstance(optimizer, torch.optim.Adam)
+
+
+def test_admtsk_regressor_optimizer_returns_custom_optimizer() -> None:
+    model = ADMTSKRegressorModel(_build_input_mfs(), rule_base="coco")
+    custom = torch.optim.SGD(model.parameters(), lr=1e-2)
+    optimizer = model._build_optimizer(custom, learning_rate=1e-2, weight_decay=0.0)
+    assert optimizer is custom
+
+
+def test_admtsk_regressor_optimizer_includes_bn_params_when_enabled() -> None:
+    model = ADMTSKRegressorModel(_build_input_mfs(), rule_base="coco", consequent_batch_norm=True)
+    optimizer = model._build_optimizer(None, learning_rate=1e-2, weight_decay=0.0)
+    cons_only = len(list(model.consequent_layer.parameters()))
+    cons_group = optimizer.param_groups[2]["params"]
+    assert len(cons_group) > cons_only
+
+
+def test_admtsk_regressor_can_disable_zero_consequent_init() -> None:
+    model = ADMTSKRegressorModel(
+        _build_input_mfs(),
+        rule_base="coco",
+        paper_zero_consequent_init=False,
+    )
+    weight = getattr(model.consequent_layer, "weight", None)
+    assert isinstance(weight, torch.Tensor)
+    assert not torch.allclose(weight, torch.zeros_like(weight))
 
 
 def test_admtsk_classifier_fixed_lambda_branch() -> None:

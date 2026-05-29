@@ -9,6 +9,7 @@ import numpy as np
 
 from ..base import BaseTSK
 from ..memberships import (
+    GaussianMF,
     MembershipFunction,
 )
 from ..models import (
@@ -23,6 +24,16 @@ from ._base import (
     _BaseRegressorEstimator,
     _wrap_composite_gaussian_input_mfs,
 )
+
+
+def _build_admtsk_paper_input_mfs(n_features: int) -> dict[str, list[GaussianMF]]:
+    """Build paper-strict ADMTSK Gaussian MFs before CGMF wrapping.
+
+    Uses three MFs per feature with centers [0.0, 0.5, 1.0] and sigma=1.0.
+    """
+    centers = [0.0, 0.5, 1.0]
+    sigma = 1.0
+    return {f"x{i + 1}": [GaussianMF(mean=center, sigma=sigma) for center in centers] for i in range(n_features)}
 
 
 class DombiTSKClassifier(_BaseClassifierEstimator):
@@ -260,15 +271,15 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 5,
-        mf_init: str = "kmeans",
+        n_mfs: int = 3,
+        mf_init: str = "grid",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 10,
+        epochs: int = 50,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
-        rule_base: str | None = None,
-        batch_size: int | None = 512,
+        rule_base: str | None = "coco",
+        batch_size: int | None = None,
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -276,11 +287,12 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
         pfrb_max_rules: int | None = None,
         patience: int | None = 20,
         restore_best: bool = True,
-        weight_decay: float = 1e-8,
+        weight_decay: float = 0.0,
         adaptive: bool = True,
         lambda_: float = 1.0,
         lower_bound: float = 1.0 / math.e,
         k: float = 10.0,
+        paper_zero_consequent_init: bool = True,
     ) -> None:
         """Initialize an ADMTSK classifier estimator.
 
@@ -312,6 +324,8 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
             lambda_: Fixed Dombi parameter when adaptive is False.
             lower_bound: Lower bound used by Composite GMF.
             k: Heuristic constant used to compute adaptive lambda.
+            paper_zero_consequent_init: If True (default), initialize
+                consequent parameters to zero to match the paper protocol.
 
         Raises:
             ValueError: If estimator hyperparameters are invalid.
@@ -340,8 +354,25 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
         self.lambda_ = float(lambda_)
         self.lower_bound = float(lower_bound)
         self.k = float(k)
+        self.paper_zero_consequent_init = bool(paper_zero_consequent_init)
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
+        use_paper_default = (
+            self.input_configs is None
+            and isinstance(self.mf_init, str)
+            and self.mf_init.lower() == "grid"
+            and int(self.n_mfs) == 3
+        )
+        if use_paper_default:
+            feature_names = [f"x{i + 1}" for i in range(x_arr.shape[1])]
+            input_mfs = _build_admtsk_paper_input_mfs(x_arr.shape[1])
+            effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
+            return (
+                _wrap_composite_gaussian_input_mfs(input_mfs),
+                feature_names,
+                effective_rule_base,
+            )
+
         input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
         return (
             _wrap_composite_gaussian_input_mfs(input_mfs),
@@ -364,6 +395,7 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
             lower_bound=self.lower_bound,
             k=self.k,
             consequent_batch_norm=bool(self.consequent_batch_norm),
+            paper_zero_consequent_init=self.paper_zero_consequent_init,
         )
 
 
@@ -393,26 +425,27 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 5,
-        mf_init: str = "kmeans",
+        n_mfs: int = 3,
+        mf_init: str = "grid",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 10,
+        epochs: int = 50,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
-        rule_base: str | None = None,
-        batch_size: int | None = 512,
+        rule_base: str | None = "coco",
+        batch_size: int | None = None,
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
         consequent_batch_norm: bool = False,
         patience: int | None = 20,
         restore_best: bool = True,
-        weight_decay: float = 1e-8,
+        weight_decay: float = 0.0,
         adaptive: bool = True,
         lambda_: float = 1.0,
         lower_bound: float = 1.0 / math.e,
         k: float = 10.0,
+        paper_zero_consequent_init: bool = True,
     ) -> None:
         """Initialize an ADMTSK regressor estimator.
 
@@ -443,6 +476,8 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
             lambda_: Fixed Dombi parameter when adaptive is False.
             lower_bound: Lower bound used by Composite GMF.
             k: Heuristic constant used to compute adaptive lambda.
+            paper_zero_consequent_init: If True (default), initialize
+                consequent parameters to zero to match the paper protocol.
 
         Raises:
             ValueError: If estimator hyperparameters are invalid.
@@ -470,8 +505,25 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
         self.lambda_ = float(lambda_)
         self.lower_bound = float(lower_bound)
         self.k = float(k)
+        self.paper_zero_consequent_init = bool(paper_zero_consequent_init)
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
+        use_paper_default = (
+            self.input_configs is None
+            and isinstance(self.mf_init, str)
+            and self.mf_init.lower() == "grid"
+            and int(self.n_mfs) == 3
+        )
+        if use_paper_default:
+            feature_names = [f"x{i + 1}" for i in range(x_arr.shape[1])]
+            input_mfs = _build_admtsk_paper_input_mfs(x_arr.shape[1])
+            effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
+            return (
+                _wrap_composite_gaussian_input_mfs(input_mfs),
+                feature_names,
+                effective_rule_base,
+            )
+
         input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
         return (
             _wrap_composite_gaussian_input_mfs(input_mfs),
@@ -493,4 +545,5 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
             lower_bound=self.lower_bound,
             k=self.k,
             consequent_batch_norm=bool(self.consequent_batch_norm),
+            paper_zero_consequent_init=self.paper_zero_consequent_init,
         )

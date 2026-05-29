@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping, Sequence
 
+import torch
 from torch import nn
 
 from ..defuzzifiers import SumBasedDefuzzifier
@@ -189,6 +190,7 @@ class ADMTSKClassifierModel(BaseTSKClassifierModel):
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
+        paper_zero_consequent_init: bool = True,
     ) -> None:
         """Initialize the ADMTSK classifier.
 
@@ -212,6 +214,9 @@ class ADMTSKClassifierModel(BaseTSKClassifierModel):
             defuzzifier: Optional defuzzifier module.
             consequent_batch_norm: If True, apply batch normalization to
                 consequent inputs.
+            paper_zero_consequent_init: If ``True`` (default), initialize
+                consequent weights and biases to zero following the paper
+                protocol.
 
         Raises:
             ValueError: If ``n_classes < 2`` or if ``lambda_`` is invalid
@@ -227,6 +232,7 @@ class ADMTSKClassifierModel(BaseTSKClassifierModel):
         self.lambda_ = float(lambda_)
         self.lower_bound = float(lower_bound)
         self.k = float(k)
+        self.paper_zero_consequent_init = bool(paper_zero_consequent_init)
 
         if not callable(t_norm):
             if self.adaptive:
@@ -246,12 +252,46 @@ class ADMTSKClassifierModel(BaseTSKClassifierModel):
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
         )
+        if self.paper_zero_consequent_init:
+            self._zero_initialize_consequents()
+
+    def _zero_initialize_consequents(self) -> None:
+        """Zero-initialize consequent parameters for paper-strict defaults."""
+        weight = getattr(self.consequent_layer, "weight", None)
+        if isinstance(weight, torch.Tensor):
+            nn.init.zeros_(weight)
+        bias = getattr(self.consequent_layer, "bias", None)
+        if isinstance(bias, torch.Tensor):
+            nn.init.zeros_(bias)
 
     def _build_consequent_layer(self) -> nn.Module:
         return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
 
     def _default_criterion(self) -> nn.Module:
-        return nn.CrossEntropyLoss()
+        return nn.MSELoss()
+
+    def _build_optimizer(
+        self,
+        optimizer: torch.optim.Optimizer | None,
+        learning_rate: float,
+        weight_decay: float,
+    ) -> torch.optim.Optimizer:
+        """Return *optimizer* unchanged, or build a paper-style Adam optimizer."""
+        if optimizer is not None:
+            return optimizer
+        ante_params = list(self.membership_layer.parameters())
+        rule_params = list(self.rule_layer.parameters())
+        cons_params = list(self.consequent_layer.parameters())
+        if self.consequent_bn is not None:
+            cons_params.extend(self.consequent_bn.parameters())
+        return torch.optim.Adam(
+            [
+                {"params": ante_params},
+                {"params": rule_params},
+                {"params": cons_params},
+            ],
+            lr=learning_rate,
+        )
 
 
 class ADMTSKRegressorModel(BaseTSKRegressorModel):
@@ -280,6 +320,7 @@ class ADMTSKRegressorModel(BaseTSKRegressorModel):
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
+        paper_zero_consequent_init: bool = True,
     ) -> None:
         """Initialize the ADMTSK regressor.
 
@@ -302,6 +343,9 @@ class ADMTSKRegressorModel(BaseTSKRegressorModel):
             defuzzifier: Optional defuzzifier module.
             consequent_batch_norm: If True, apply batch normalization to
                 consequent inputs.
+            paper_zero_consequent_init: If ``True`` (default), initialize
+                consequent weights and biases to zero following the paper
+                protocol.
 
         Raises:
             ValueError: If ``lambda_`` is invalid when adaptive is False.
@@ -313,6 +357,7 @@ class ADMTSKRegressorModel(BaseTSKRegressorModel):
         self.lambda_ = float(lambda_)
         self.lower_bound = float(lower_bound)
         self.k = float(k)
+        self.paper_zero_consequent_init = bool(paper_zero_consequent_init)
 
         if not callable(t_norm):
             if self.adaptive:
@@ -332,9 +377,43 @@ class ADMTSKRegressorModel(BaseTSKRegressorModel):
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
         )
+        if self.paper_zero_consequent_init:
+            self._zero_initialize_consequents()
+
+    def _zero_initialize_consequents(self) -> None:
+        """Zero-initialize consequent parameters for paper-strict defaults."""
+        weight = getattr(self.consequent_layer, "weight", None)
+        if isinstance(weight, torch.Tensor):
+            nn.init.zeros_(weight)
+        bias = getattr(self.consequent_layer, "bias", None)
+        if isinstance(bias, torch.Tensor):
+            nn.init.zeros_(bias)
 
     def _build_consequent_layer(self) -> nn.Module:
         return RegressionConsequentLayer(self.n_rules, self.n_inputs)
 
     def _default_criterion(self) -> nn.Module:
         return nn.MSELoss()
+
+    def _build_optimizer(
+        self,
+        optimizer: torch.optim.Optimizer | None,
+        learning_rate: float,
+        weight_decay: float,
+    ) -> torch.optim.Optimizer:
+        """Return *optimizer* unchanged, or build a paper-style Adam optimizer."""
+        if optimizer is not None:
+            return optimizer
+        ante_params = list(self.membership_layer.parameters())
+        rule_params = list(self.rule_layer.parameters())
+        cons_params = list(self.consequent_layer.parameters())
+        if self.consequent_bn is not None:
+            cons_params.extend(self.consequent_bn.parameters())
+        return torch.optim.Adam(
+            [
+                {"params": ante_params},
+                {"params": rule_params},
+                {"params": cons_params},
+            ],
+            lr=learning_rate,
+        )
