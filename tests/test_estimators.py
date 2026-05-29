@@ -604,7 +604,7 @@ def test_fsre_adatsk_classifier_estimator_fit_predict_proba_predict_score() -> N
         n_mfs=2,
         mf_init="kmeans",
         lambda_init=1.5,
-        epochs=5,
+        fs_epochs=5,
         learning_rate=1e-2,
         random_state=7,
         batch_size=16,
@@ -1563,12 +1563,12 @@ def test_logtsk_regressor_estimator_fit_predict() -> None:
 
 def test_fsre_adatsk_classifier_estimator_rejects_nonpositive_lambda() -> None:
     with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        FSREADATSKClassifier(n_mfs=2, mf_init="kmeans", lambda_init=0.0, epochs=1, batch_size=16)
+        FSREADATSKClassifier(n_mfs=2, mf_init="kmeans", lambda_init=0.0, fs_epochs=1, batch_size=16)
 
 
 def test_fsre_adatsk_regressor_estimator_rejects_nonpositive_lambda() -> None:
     with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        FSREADATSKRegressor(n_mfs=2, mf_init="kmeans", lambda_init=0.0, epochs=1, batch_size=16)
+        FSREADATSKRegressor(n_mfs=2, mf_init="kmeans", lambda_init=0.0, fs_epochs=1, batch_size=16)
 
 
 def test_estimator_input_configs_length_validator_regressor() -> None:
@@ -2372,7 +2372,7 @@ def test_fsre_adatsk_regressor_estimator_fit_predict() -> None:
         n_mfs=2,
         mf_init="kmeans",
         lambda_init=2.0,
-        epochs=5,
+        fs_epochs=5,
         learning_rate=1e-2,
         random_state=7,
         batch_size=16,

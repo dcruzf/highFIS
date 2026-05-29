@@ -3,6 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from typing import Any, cast
+
+import numpy as np
+import torch
+from sklearn.utils.validation import check_array, check_is_fitted
 
 from ..base import BaseTSK
 from ..memberships import MembershipFunction
@@ -11,6 +16,7 @@ from ..models import (
     FSREADATSKRegressorModel,
 )
 from ..optim._base import BaseTrainer
+from ..optim._fsre import FSRETrainer
 from ._base import (
     InputConfig,
     _BaseClassifierEstimator,
@@ -49,7 +55,9 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 10,
+        fs_epochs: int = 10,
+        re_epochs: int = 10,
+        finetune_epochs: int = 100,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
@@ -61,6 +69,9 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
+        zeta_lambda: float = 0.5,
+        zeta_theta: float = 0.3,
+        structural_pruning: bool = True,
         trainer: BaseTrainer | None = None,
     ) -> None:
         """Initialise an FSRE-ADATSK classifier.
@@ -82,7 +93,9 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
             mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``10``).
+            fs_epochs: Maximum epochs for phase 1 (FS training). Default ``10``.
+            re_epochs: Maximum epochs for phase 2 (RE training). Default ``10``.
+            finetune_epochs: Maximum epochs for phase 3 (fine-tuning). Default ``100``.
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
@@ -95,9 +108,15 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
             weight_decay: L2 weight decay for consequent parameters.
+            zeta_lambda: Feature-selection threshold coefficient (paper eq. 28).
+                Larger values retain more features.  Default ``0.5``.
+            zeta_theta: Rule-extraction threshold coefficient (paper eq. 29).
+                Larger values retain more rules.  Default ``0.3``.
+            structural_pruning: If ``True`` (default), hard-prune the model
+                architecture after each threshold step.
             trainer: Optional custom :class:`~highfis.optim.BaseTrainer`.
                 When ``None`` (default) a
-                :class:`~highfis.optim.GradientTrainer` is built automatically
+                :class:`~highfis.optim.FSRETrainer` is built automatically
                 from this estimator's hyperparameters.
 
         Raises:
@@ -107,13 +126,19 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
             raise ValueError("lambda_init must be > 0")
         self.lambda_init = float(lambda_init)
         self.use_en_frb = bool(use_en_frb)
+        self.fs_epochs = int(fs_epochs)
+        self.re_epochs = int(re_epochs)
+        self.finetune_epochs = int(finetune_epochs)
+        self.zeta_lambda = float(zeta_lambda)
+        self.zeta_theta = float(zeta_theta)
+        self.structural_pruning = bool(structural_pruning)
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
             mf_init=mf_init,
             sigma_scale=sigma_scale,
             random_state=random_state,
-            epochs=epochs,
+            epochs=fs_epochs,
             learning_rate=learning_rate,
             verbose=verbose,
             rule_base=rule_base,
@@ -141,6 +166,62 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             use_en_frb=self.use_en_frb,
+        )
+
+    def predict_proba(self, x: Any) -> np.ndarray:
+        """Predict class probabilities, applying structural feature selection if trained with FSRETrainer.
+
+        When structural pruning was applied during :meth:`fit`, the original
+        feature matrix is automatically sliced to the surviving features before
+        being passed to the pruned model.
+
+        Args:
+            x: Input array of shape ``(N, n_features_in_)``.
+
+        Returns:
+            Class probability array of shape ``(N, n_classes)``.
+        """
+        check_is_fitted(self, "model_")
+        x_arr = check_array(x)
+        if x_arr.shape[1] != self.n_features_in_:
+            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
+        sf: list[int] | None = getattr(self, "history_", {}).get("surviving_feature_indices")
+        x_m = x_arr[:, sf] if sf is not None and cast(Any, self.model_).n_inputs < x_arr.shape[1] else x_arr
+        probs = cast(Any, self.model_).predict_proba(self._as_tensor_x(x_m, torch.device(str(self.device))))
+        return probs.detach().cpu().numpy()
+
+    def _get_trainer(self) -> BaseTrainer:
+        """Return an :class:`~highfis.optim.FSRETrainer` built from this estimator's params."""
+        return FSRETrainer(
+            fs_epochs=self.fs_epochs,
+            fs_learning_rate=float(self.learning_rate),
+            fs_batch_size=self.batch_size,
+            fs_shuffle=bool(self.shuffle),
+            fs_patience=self.patience,
+            fs_weight_decay=float(self.weight_decay),
+            fs_ur_weight=float(self.ur_weight),
+            fs_ur_target=self.ur_target,
+            re_epochs=self.re_epochs,
+            re_learning_rate=float(self.learning_rate),
+            re_batch_size=self.batch_size,
+            re_shuffle=bool(self.shuffle),
+            re_patience=self.patience,
+            re_weight_decay=float(self.weight_decay),
+            re_ur_weight=float(self.ur_weight),
+            re_ur_target=self.ur_target,
+            finetune_epochs=self.finetune_epochs,
+            finetune_learning_rate=float(self.learning_rate),
+            finetune_batch_size=self.batch_size,
+            finetune_shuffle=bool(self.shuffle),
+            finetune_patience=self.patience,
+            finetune_restore_best=bool(self.restore_best),
+            finetune_weight_decay=float(self.weight_decay),
+            finetune_ur_weight=float(self.ur_weight),
+            finetune_ur_target=self.ur_target,
+            zeta_lambda=float(self.zeta_lambda),
+            zeta_theta=float(self.zeta_theta),
+            structural_pruning=bool(self.structural_pruning),
+            verbose=self.verbose,
         )
 
 
@@ -175,7 +256,9 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 10,
+        fs_epochs: int = 10,
+        re_epochs: int = 10,
+        finetune_epochs: int = 100,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
@@ -187,6 +270,9 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
+        zeta_lambda: float = 0.5,
+        zeta_theta: float = 0.3,
+        structural_pruning: bool = True,
         trainer: BaseTrainer | None = None,
     ) -> None:
         """Initialise an FSRE-ADATSK regressor.
@@ -205,7 +291,9 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
             mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``10``).
+            fs_epochs: Maximum epochs for phase 1 (FS training). Default ``10``.
+            re_epochs: Maximum epochs for phase 2 (RE training). Default ``10``.
+            finetune_epochs: Maximum epochs for phase 3 (fine-tuning). Default ``100``.
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
@@ -218,9 +306,15 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
             weight_decay: L2 weight decay for consequent parameters.
+            zeta_lambda: Feature-selection threshold coefficient (paper eq. 28).
+                Larger values retain more features.  Default ``0.5``.
+            zeta_theta: Rule-extraction threshold coefficient (paper eq. 29).
+                Larger values retain more rules.  Default ``0.3``.
+            structural_pruning: If ``True`` (default), hard-prune the model
+                architecture after each threshold step.
             trainer: Optional custom :class:`~highfis.optim.BaseTrainer`.
                 When ``None`` (default) a
-                :class:`~highfis.optim.GradientTrainer` is built automatically
+                :class:`~highfis.optim.FSRETrainer` is built automatically
                 from this estimator's hyperparameters.
 
         Raises:
@@ -230,13 +324,19 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
             raise ValueError("lambda_init must be > 0")
         self.lambda_init = float(lambda_init)
         self.use_en_frb = bool(use_en_frb)
+        self.fs_epochs = int(fs_epochs)
+        self.re_epochs = int(re_epochs)
+        self.finetune_epochs = int(finetune_epochs)
+        self.zeta_lambda = float(zeta_lambda)
+        self.zeta_theta = float(zeta_theta)
+        self.structural_pruning = bool(structural_pruning)
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
             mf_init=mf_init,
             sigma_scale=sigma_scale,
             random_state=random_state,
-            epochs=epochs,
+            epochs=fs_epochs,
             learning_rate=learning_rate,
             verbose=verbose,
             rule_base=rule_base,
@@ -263,4 +363,60 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             use_en_frb=self.use_en_frb,
+        )
+
+    def predict(self, x: Any) -> np.ndarray:
+        """Predict continuous targets, applying structural feature selection if trained with FSRETrainer.
+
+        When structural pruning was applied during :meth:`fit`, the original
+        feature matrix is automatically sliced to the surviving features before
+        being passed to the pruned model.
+
+        Args:
+            x: Input array of shape ``(N, n_features_in_)``.
+
+        Returns:
+            Prediction array of shape ``(N,)``.
+        """
+        check_is_fitted(self, "model_")
+        x_arr = check_array(x)
+        if x_arr.shape[1] != self.n_features_in_:
+            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
+        sf: list[int] | None = getattr(self, "history_", {}).get("surviving_feature_indices")
+        x_m = x_arr[:, sf] if sf is not None and cast(Any, self.model_).n_inputs < x_arr.shape[1] else x_arr
+        preds = cast(Any, self.model_).predict(self._as_tensor_x(x_m, torch.device(str(self.device))))
+        return preds.detach().cpu().numpy()
+
+    def _get_trainer(self) -> BaseTrainer:
+        """Return an :class:`~highfis.optim.FSRETrainer` built from this estimator's params."""
+        return FSRETrainer(
+            fs_epochs=self.fs_epochs,
+            fs_learning_rate=float(self.learning_rate),
+            fs_batch_size=self.batch_size,
+            fs_shuffle=bool(self.shuffle),
+            fs_patience=self.patience,
+            fs_weight_decay=float(self.weight_decay),
+            fs_ur_weight=float(self.ur_weight),
+            fs_ur_target=self.ur_target,
+            re_epochs=self.re_epochs,
+            re_learning_rate=float(self.learning_rate),
+            re_batch_size=self.batch_size,
+            re_shuffle=bool(self.shuffle),
+            re_patience=self.patience,
+            re_weight_decay=float(self.weight_decay),
+            re_ur_weight=float(self.ur_weight),
+            re_ur_target=self.ur_target,
+            finetune_epochs=self.finetune_epochs,
+            finetune_learning_rate=float(self.learning_rate),
+            finetune_batch_size=self.batch_size,
+            finetune_shuffle=bool(self.shuffle),
+            finetune_patience=self.patience,
+            finetune_restore_best=bool(self.restore_best),
+            finetune_weight_decay=float(self.weight_decay),
+            finetune_ur_weight=float(self.ur_weight),
+            finetune_ur_target=self.ur_target,
+            zeta_lambda=float(self.zeta_lambda),
+            zeta_theta=float(self.zeta_theta),
+            structural_pruning=bool(self.structural_pruning),
+            verbose=self.verbose,
         )

@@ -70,8 +70,45 @@ class FirstOrderModelProtocol(Protocol):
         ...  # pragma: no cover
 
 
+class FSREModelProtocol(Protocol):
+    """Structural protocol for models that support three-phase FSRE training.
+
+    Satisfied by :class:`~highfis.models.FSREADATSKClassifierModel` and
+    :class:`~highfis.models.FSREADATSKRegressorModel`.
+    """
+
+    def get_feature_gate_values(self) -> Tensor:
+        """Return M(λ_d) gate activations of shape ``(n_inputs,)``."""
+        ...  # pragma: no cover
+
+    def get_rule_gate_values(self) -> Tensor:
+        """Return M(θ_r) gate activations of shape ``(n_rules,)``."""
+        ...  # pragma: no cover
+
+    def fit_fs(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+        """Execute phase-1 (feature-selection) training."""
+        ...  # pragma: no cover
+
+    def fit_re(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+        """Execute phase-2 (rule-extraction) training."""
+        ...  # pragma: no cover
+
+    def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+        """Execute phase-3 (fine-tune) training."""
+        ...  # pragma: no cover
+
+    def prune_to_features(self, surviving_features: list[int]) -> None:
+        """Prune the model architecture to the given feature indices."""
+        ...  # pragma: no cover
+
+    def prune_to_rules(self, surviving_rules: list[int]) -> None:
+        """Prune the model architecture to the given rule indices."""
+        ...  # pragma: no cover
+
+
 __all__: list[str] = [
     "DGModelProtocol",
+    "FSREModelProtocol",
     "FirstOrderModelProtocol",
     "PFRBModelProtocol",
 ]

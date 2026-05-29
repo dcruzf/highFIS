@@ -121,12 +121,8 @@ class DGALETSKClassifier(FSREADATSKClassifier):
                 parameters and feature gates during fine-tuning.
         """
         self.dg_epochs = int(dg_epochs)
-        self.finetune_epochs = int(finetune_epochs)
-        self.zeta_lambda = zeta_lambda
-        self.zeta_theta = zeta_theta
         self.use_lse = bool(use_lse)
         self.optimizer_type = str(optimizer_type)
-        self.structural_pruning = bool(structural_pruning)
         self.freeze_antecedents_finetune = bool(freeze_antecedents_finetune)
         super().__init__(
             lambda_init=lambda_init,
@@ -136,7 +132,7 @@ class DGALETSKClassifier(FSREADATSKClassifier):
             mf_init=mf_init,
             sigma_scale=sigma_scale,
             random_state=random_state,
-            epochs=dg_epochs,
+            fs_epochs=dg_epochs,
             learning_rate=learning_rate,
             verbose=verbose,
             rule_base=rule_base,
@@ -150,6 +146,12 @@ class DGALETSKClassifier(FSREADATSKClassifier):
             weight_decay=weight_decay,
             trainer=trainer,
         )
+        # Override the scalar defaults set by FSREADATSKClassifier with the
+        # list-typed grid values and DG-specific values expected by DGTrainer.
+        self.finetune_epochs = int(finetune_epochs)
+        self.structural_pruning = bool(structural_pruning)
+        self.zeta_lambda: list[float] | None = zeta_lambda
+        self.zeta_theta: list[float] | None = zeta_theta
 
     def _build_model(
         self,
@@ -292,12 +294,8 @@ class DGALETSKRegressor(FSREADATSKRegressor):
                 parameters and feature gates during fine-tuning.
         """
         self.dg_epochs = int(dg_epochs)
-        self.finetune_epochs = int(finetune_epochs)
-        self.zeta_lambda = zeta_lambda
-        self.zeta_theta = zeta_theta
         self.use_lse = bool(use_lse)
         self.optimizer_type = str(optimizer_type)
-        self.structural_pruning = bool(structural_pruning)
         self.freeze_antecedents_finetune = bool(freeze_antecedents_finetune)
         super().__init__(
             lambda_init=lambda_init,
@@ -307,7 +305,7 @@ class DGALETSKRegressor(FSREADATSKRegressor):
             mf_init=mf_init,
             sigma_scale=sigma_scale,
             random_state=random_state,
-            epochs=dg_epochs,
+            fs_epochs=dg_epochs,
             learning_rate=learning_rate,
             verbose=verbose,
             rule_base=rule_base,
@@ -321,6 +319,12 @@ class DGALETSKRegressor(FSREADATSKRegressor):
             weight_decay=weight_decay,
             trainer=trainer,
         )
+        # Override the scalar defaults set by FSREADATSKRegressor with the
+        # list-typed grid values and DG-specific values expected by DGTrainer.
+        self.finetune_epochs = int(finetune_epochs)
+        self.structural_pruning = bool(structural_pruning)
+        self.zeta_lambda: list[float] | None = zeta_lambda
+        self.zeta_theta: list[float] | None = zeta_theta
 
     def _build_regressor_model(
         self,
