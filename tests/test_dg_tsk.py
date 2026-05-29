@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import torch
 
-from highfis.estimators import DGTSKClassifier, DGTSKRegressor
+from highfis.estimators import DGTSKClassifier, DGTSKRegressor, InputConfig
 from highfis.layers import GatedClassificationConsequentLayer, GatedRegressionConsequentLayer
 from highfis.memberships import GaussianMF
 from highfis.models import DGTSKClassifierModel, DGTSKRegressorModel
@@ -779,3 +779,136 @@ def test_dg_trainer_slices_x_ft_when_features_pruned() -> None:
     history = trainer.fit(model, x, y, x_val=x_val, y_val=y_val)
     assert set(history) == {"dg", "threshold", "finetune"}
     assert history["threshold"]["surviving_feature_indices"] == [0]
+
+
+# ---------------------------------------------------------------------------
+# Persistence: DGTSKClassifier save / load
+# ---------------------------------------------------------------------------
+
+
+def test_dgtsk_classifier_save_load_roundtrip(tmp_path: object) -> None:
+    """DGTSKClassifier.save() and .load() produce an identical predictor."""
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal((20, 2)).astype(np.float32)
+    y = (X[:, 0] > 0).astype(int)
+
+    clf = DGTSKClassifier(
+        n_mfs=2,
+        dg_epochs=1,
+        finetune_epochs=1,
+        structural_pruning=False,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        random_state=0,
+    )
+    clf.fit(X, y)
+    path = str(tmp_path) + "/dgtsk_clf.pt"  # type: ignore[operator]
+    clf.save(path)
+
+    loaded = DGTSKClassifier.load(path)
+    assert loaded.n_features_in_ == clf.n_features_in_
+    assert np.array_equal(loaded.classes_, clf.classes_)
+    assert np.array_equal(loaded.predict(X), clf.predict(X))
+
+
+def test_dgtsk_classifier_load_with_input_configs(tmp_path: object) -> None:
+    """DGTSKClassifier.load() restores InputConfig objects from the checkpoint."""
+    rng = np.random.default_rng(1)
+    X = rng.standard_normal((20, 2)).astype(np.float32)
+    y = (X[:, 0] > 0).astype(int)
+    configs = [InputConfig(name="a", n_mfs=2), InputConfig(name="b", n_mfs=2)]
+
+    clf = DGTSKClassifier(
+        input_configs=configs,
+        dg_epochs=1,
+        finetune_epochs=1,
+        structural_pruning=False,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        random_state=0,
+    )
+    clf.fit(X, y)
+    path = str(tmp_path) + "/dgtsk_clf_cfg.pt"  # type: ignore[operator]
+    clf.save(path)
+
+    loaded = DGTSKClassifier.load(path)
+    assert loaded.n_features_in_ == clf.n_features_in_
+    assert np.array_equal(loaded.predict(X), clf.predict(X))
+
+
+# ---------------------------------------------------------------------------
+# Persistence: DGTSKRegressor save / load
+# ---------------------------------------------------------------------------
+
+
+def test_dgtsk_regressor_save_load_roundtrip(tmp_path: object) -> None:
+    """DGTSKRegressor.save() and .load() produce an identical predictor."""
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal((20, 2)).astype(np.float32)
+    y = (X[:, 0] * 2.0).astype(np.float32)
+
+    reg = DGTSKRegressor(
+        n_mfs=2,
+        dg_epochs=1,
+        finetune_epochs=1,
+        structural_pruning=False,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        random_state=0,
+    )
+    reg.fit(X, y)
+    path = str(tmp_path) + "/dgtsk_reg.pt"  # type: ignore[operator]
+    reg.save(path)
+
+    loaded = DGTSKRegressor.load(path)
+    assert loaded.n_features_in_ == reg.n_features_in_
+    assert np.allclose(loaded.predict(X), reg.predict(X), atol=1e-5)
+
+
+def test_dgtsk_regressor_load_with_input_configs(tmp_path: object) -> None:
+    """DGTSKRegressor.load() restores InputConfig objects from the checkpoint."""
+    rng = np.random.default_rng(1)
+    X = rng.standard_normal((20, 2)).astype(np.float32)
+    y = X[:, 0] + X[:, 1]
+    configs = [InputConfig(name="u", n_mfs=2), InputConfig(name="v", n_mfs=2)]
+
+    reg = DGTSKRegressor(
+        input_configs=configs,
+        dg_epochs=1,
+        finetune_epochs=1,
+        structural_pruning=False,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        random_state=0,
+    )
+    reg.fit(X, y)
+    path = str(tmp_path) + "/dgtsk_reg_cfg.pt"  # type: ignore[operator]
+    reg.save(path)
+
+    loaded = DGTSKRegressor.load(path)
+    assert loaded.n_features_in_ == reg.n_features_in_
+
+
+def test_dgtsk_regressor_load_restores_first_order_architecture(tmp_path: object) -> None:
+    """DGTSKRegressor.load() converts model to first-order when saved after finetuning."""
+    rng = np.random.default_rng(2)
+    X = rng.standard_normal((20, 2)).astype(np.float32)
+    y = X[:, 0].astype(np.float32)
+
+    reg = DGTSKRegressor(
+        n_mfs=2,
+        dg_epochs=1,
+        finetune_epochs=1,
+        use_lse=True,
+        structural_pruning=False,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        random_state=0,
+    )
+    reg.fit(X, y)  # use_lse=True + finetune → model is first-order after fit
+    path = str(tmp_path) + "/dgtsk_reg_fo.pt"  # type: ignore[operator]
+    reg.save(path)
+
+    loaded = DGTSKRegressor.load(path)
+    assert loaded.n_features_in_ == reg.n_features_in_
+    assert np.allclose(loaded.predict(X), reg.predict(X), atol=1e-4)

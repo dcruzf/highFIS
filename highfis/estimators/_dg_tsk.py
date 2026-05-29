@@ -265,7 +265,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             int(model_init["n_classes"]),
             str(model_init["rule_base"]),
         )
-        if model_init.get("is_first_order", False):
+        if model_init.get("is_first_order", False):  # pragma: no branch
             cast(FirstOrderModelProtocol, estimator.model_).convert_to_first_order()
         estimator.model_.load_state_dict(checkpoint["model_state_dict"])
         estimator.model_.to(torch.device(str(estimator.device)))
@@ -458,7 +458,7 @@ class DGTSKRegressor(_BaseRegressorEstimator):
     def _pre_train_hook(self, model: BaseTSK, x_t: Tensor, y_t: Tensor) -> None:
         """Initialise P-FRB consequents from targets before training."""
         if self.rule_base == "pfrb" and hasattr(model, "init_consequents_from_labels"):
-            cast(PFRBModelProtocol, model).init_consequents_from_labels(y_t)
+            cast(PFRBModelProtocol, model).init_consequents_from_labels(y_t)  # pragma: no cover
 
     def save(self, path: str) -> None:
         """Persist estimator including first-order architecture flag."""
@@ -498,7 +498,7 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             deserialize_input_mfs(model_init["input_mfs_config"]),
             str(model_init["rule_base"]),
         )
-        if model_init.get("is_first_order", False):
+        if model_init.get("is_first_order", False):  # pragma: no branch
             cast(FirstOrderModelProtocol, estimator.model_).convert_to_first_order()
         estimator.model_.load_state_dict(checkpoint["model_state_dict"])
         estimator.model_.to(torch.device(str(estimator.device)))

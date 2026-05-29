@@ -437,14 +437,16 @@ def test_dgaletsk_regressor_search_thresholds_non_structural_no_lse() -> None:
 
 
 def test_dgaletsk_regressor_search_thresholds_sf_non_empty_no_fallback() -> None:
-    """Feature 0 gate > tau → sf=[0] non-empty, no sf-fallback taken."""
+    """Feature 0 gate > tau → sf=[0] non-empty; rule 0 gate > tau → sr=[0] non-empty."""
     model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
-    model.rule_layer.lambda_gates.data = torch.tensor([1.0, 0.0])
-    model.consequent_layer.theta_gates.data.fill_(1.0)
+    # Non-uniform gates: zeta=1.0 → tau=max-1.0*(max-min)=1.0-0.5=0.5
+    # Gates [1.0, 0.5]: gate[0]=1.0 > 0.5 → sf=[0] (non-empty, no fallback)
+    model.rule_layer.lambda_gates.data = torch.tensor([1.0, 0.5])
+    # theta[0]=1.0 > 0.5 → sr=[0] (non-empty, no fallback)
+    model.consequent_layer.theta_gates.data = torch.tensor([1.0, 0.5])
     x = torch.randn(16, 2)
     y = torch.randn(16)
 
-    # zeta=1.0 → tau=min_gate=0 → gate 0 > 0 → sf=[0], no fallback
     result = model.search_thresholds(
         x,
         y,
@@ -455,6 +457,7 @@ def test_dgaletsk_regressor_search_thresholds_sf_non_empty_no_fallback() -> None
         use_lse=False,
     )
     assert result["surviving_feature_indices"] == [0]
+    assert result["surviving_rule_indices"] == [0]
 
 
 # ---------------------------------------------------------------------------
