@@ -434,6 +434,44 @@ def test_admtsk_regressor_can_disable_zero_consequent_init() -> None:
     assert not torch.allclose(weight, torch.zeros_like(weight))
 
 
+def test_admtsk_classifier_zero_init_noop_when_weight_and_bias_not_tensors() -> None:
+    class FakeConsequent(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.weight = nn.Identity()
+            self.bias = nn.Identity()
+
+        def forward(self, x: torch.Tensor, norm_w: torch.Tensor) -> torch.Tensor:
+            return x.new_zeros((x.shape[0], 2))
+
+    model = ADMTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    model.consequent_layer = FakeConsequent()
+
+    model._zero_initialize_consequents()
+
+    assert isinstance(model.consequent_layer.weight, nn.Module)
+    assert isinstance(model.consequent_layer.bias, nn.Module)
+
+
+def test_admtsk_regressor_zero_init_noop_when_weight_and_bias_not_tensors() -> None:
+    class FakeConsequent(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.weight = nn.Identity()
+            self.bias = nn.Identity()
+
+        def forward(self, x: torch.Tensor, norm_w: torch.Tensor) -> torch.Tensor:
+            return x.new_zeros((x.shape[0], 1))
+
+    model = ADMTSKRegressorModel(_build_input_mfs(), rule_base="coco")
+    model.consequent_layer = FakeConsequent()
+
+    model._zero_initialize_consequents()
+
+    assert isinstance(model.consequent_layer.weight, nn.Module)
+    assert isinstance(model.consequent_layer.bias, nn.Module)
+
+
 def test_admtsk_classifier_fixed_lambda_branch() -> None:
     model = ADMTSKClassifierModel(_build_input_mfs(), n_classes=2, adaptive=False, lambda_=2.0)
     x = torch.randn(6, 3)
