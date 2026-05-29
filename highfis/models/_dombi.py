@@ -190,7 +190,7 @@ class ADMTSKClassifierModel(BaseTSKClassifierModel):
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
-        paper_zero_consequent_init: bool = True,
+        zero_consequent_init: bool = True,
     ) -> None:
         """Initialize the ADMTSK classifier.
 
@@ -214,9 +214,8 @@ class ADMTSKClassifierModel(BaseTSKClassifierModel):
             defuzzifier: Optional defuzzifier module.
             consequent_batch_norm: If True, apply batch normalization to
                 consequent inputs.
-            paper_zero_consequent_init: If ``True`` (default), initialize
-                consequent weights and biases to zero following the paper
-                protocol.
+            zero_consequent_init: If ``True`` (default), initialize
+                consequent weights and biases to zero.
 
         Raises:
             ValueError: If ``n_classes < 2`` or if ``lambda_`` is invalid
@@ -232,7 +231,7 @@ class ADMTSKClassifierModel(BaseTSKClassifierModel):
         self.lambda_ = float(lambda_)
         self.lower_bound = float(lower_bound)
         self.k = float(k)
-        self.paper_zero_consequent_init = bool(paper_zero_consequent_init)
+        self.zero_consequent_init = bool(zero_consequent_init)
 
         if not callable(t_norm):
             if self.adaptive:
@@ -252,7 +251,7 @@ class ADMTSKClassifierModel(BaseTSKClassifierModel):
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
         )
-        if self.paper_zero_consequent_init:
+        if self.zero_consequent_init:
             self._zero_initialize_consequents()
 
     def _zero_initialize_consequents(self) -> None:
@@ -320,7 +319,7 @@ class ADMTSKRegressorModel(BaseTSKRegressorModel):
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
-        paper_zero_consequent_init: bool = True,
+        zero_consequent_init: bool = True,
     ) -> None:
         """Initialize the ADMTSK regressor.
 
@@ -343,9 +342,8 @@ class ADMTSKRegressorModel(BaseTSKRegressorModel):
             defuzzifier: Optional defuzzifier module.
             consequent_batch_norm: If True, apply batch normalization to
                 consequent inputs.
-            paper_zero_consequent_init: If ``True`` (default), initialize
-                consequent weights and biases to zero following the paper
-                protocol.
+            zero_consequent_init: If ``True`` (default), initialize
+                consequent weights and biases to zero.
 
         Raises:
             ValueError: If ``lambda_`` is invalid when adaptive is False.
@@ -357,7 +355,7 @@ class ADMTSKRegressorModel(BaseTSKRegressorModel):
         self.lambda_ = float(lambda_)
         self.lower_bound = float(lower_bound)
         self.k = float(k)
-        self.paper_zero_consequent_init = bool(paper_zero_consequent_init)
+        self.zero_consequent_init = bool(zero_consequent_init)
 
         if not callable(t_norm):
             if self.adaptive:
@@ -377,7 +375,7 @@ class ADMTSKRegressorModel(BaseTSKRegressorModel):
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
         )
-        if self.paper_zero_consequent_init:
+        if self.zero_consequent_init:
             self._zero_initialize_consequents()
 
     def _zero_initialize_consequents(self) -> None:

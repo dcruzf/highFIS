@@ -43,7 +43,7 @@ class ADATSKClassifierModel(BaseTSKClassifierModel):
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
         eps: float | None = None,
-        paper_zero_consequent_init: bool = True,
+        zero_consequent_init: bool = True,
     ) -> None:
         """Initialise the ADATSK classifier.
 
@@ -60,9 +60,8 @@ class ADATSKClassifierModel(BaseTSKClassifierModel):
                 :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
             consequent_batch_norm: Batch normalisation on consequent inputs.
             eps: Numerical stability epsilon for the Ada-softmin operator.
-            paper_zero_consequent_init: If ``True`` (default), initialize
-                consequent weights and biases to zeros to match the paper
-                protocol.
+            zero_consequent_init: If ``True`` (default), initialize
+                consequent weights and biases to zeros.
 
         Raises:
             ValueError: If ``n_classes < 2``.
@@ -72,7 +71,7 @@ class ADATSKClassifierModel(BaseTSKClassifierModel):
 
         self.n_classes = int(n_classes)
         self.eps = eps
-        self.paper_zero_consequent_init = bool(paper_zero_consequent_init)
+        self.zero_consequent_init = bool(zero_consequent_init)
 
         super().__init__(
             input_mfs,
@@ -90,7 +89,7 @@ class ADATSKClassifierModel(BaseTSKClassifierModel):
             rule_base=rule_base,
             eps=self.eps,
         )
-        if self.paper_zero_consequent_init:
+        if self.zero_consequent_init:
             self._zero_initialize_consequents()
 
     def _zero_initialize_consequents(self) -> None:

@@ -223,12 +223,12 @@ def test_adatsk_regressor_model_optimizer_uses_custom_instance() -> None:
     assert optimizer is custom
 
 
-def test_adatsk_classifier_can_disable_paper_zero_init() -> None:
+def test_adatsk_classifier_can_disable_zero_init() -> None:
     torch.manual_seed(0)
     model = ADATSKClassifierModel(
         _build_adatsk_input_mfs(n_inputs=2, n_rules=2),
         n_classes=2,
-        paper_zero_consequent_init=False,
+        zero_consequent_init=False,
     )
 
     weight = cast(torch.Tensor, model.consequent_layer.weight).detach()

@@ -439,7 +439,7 @@ class ADATSKClassifier(_BaseClassifierEstimator):
             n_classes=n_classes,
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),
-            paper_zero_consequent_init=True,
+            zero_consequent_init=True,
         )
 
     def _resolve_input_configs(self, x: np.ndarray) -> list[InputConfig]:

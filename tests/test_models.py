@@ -384,7 +384,7 @@ def test_admtsk_classifier_can_disable_zero_consequent_init() -> None:
     model = ADMTSKClassifierModel(
         _build_input_mfs(),
         n_classes=2,
-        paper_zero_consequent_init=False,
+        zero_consequent_init=False,
     )
     weight = getattr(model.consequent_layer, "weight", None)
     assert isinstance(weight, torch.Tensor)
@@ -427,7 +427,7 @@ def test_admtsk_regressor_can_disable_zero_consequent_init() -> None:
     model = ADMTSKRegressorModel(
         _build_input_mfs(),
         rule_base="coco",
-        paper_zero_consequent_init=False,
+        zero_consequent_init=False,
     )
     weight = getattr(model.consequent_layer, "weight", None)
     assert isinstance(weight, torch.Tensor)
