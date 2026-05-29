@@ -4,7 +4,7 @@ DG-TSK uses M-shaped feature and rule gates together with a point-based rule bas
 
 ## Reference
 
-> Guangdong Xue, Jian Wang, Bingjie Zhang, Bin Yuan, Caili Dai, Double groups of gates based Takagi-Sugeno-Kang (DG-TSK) fuzzy system for simultaneous feature selection and rule extraction, Fuzzy Sets and Systems, Volume 469, 2023, 108627, ISSN 0165-0114, doi: [10.1016/j.fss.2023.](https://doi.org/10.1016/j.fss.2023.108627).
+> Guangdong Xue, Jian Wang, Bingjie Zhang, Bin Yuan, Caili Dai, Double groups of gates based Takagi-Sugeno-Kang (DG-TSK) fuzzy system for simultaneous feature selection and rule extraction, Fuzzy Sets and Systems, Volume 469, 2023, 108627, ISSN 0165-0114, doi: [10.1016/j.fss.2023.108627](https://doi.org/10.1016/j.fss.2023.108627).
 
 ## Mathematical Formulation
 

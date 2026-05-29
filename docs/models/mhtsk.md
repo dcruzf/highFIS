@@ -73,7 +73,7 @@ For regression, the result is the scalar weighted sum of sparse consequents.
 
 - `highfis` represents each head with a partial rule base created by `FuzzyCMeans` on the sampled feature subset.
 - Every input feature has a constant `ConstantMF(1.0)` to support don't-care membership when the feature is not selected by a head.
-- The total number of rules is `n_heads * n_mfs`, because each head produces `n_rules` cluster-based rules.
+- The total number of rules is `n_heads * n_mfs`, because each head produces `n_mfs` cluster-based rules.
 - The sparse consequent is implemented by masking the weight tensor with `rule_feature_mask` inside `SparseClassificationConsequentLayer` and `SparseRegressionConsequentLayer`.
 - The rule masks are derived from the selected feature subsets and the per-head cluster indices.
 - `rule_sigma` controls the Gaussian spread used for all selected feature MFs; the paper fixes this value to preserve interpretability and avoid numeric underflow.
@@ -85,13 +85,13 @@ For regression, the result is the scalar weighted sum of sparse consequents.
 
 These classes extend `BaseTSKClassifier` and `BaseTSKRegressor`, respectively, and use `rule_base="custom"` with explicit rule definitions and a sparse consequent.
 
-### MHTSKClassifier
+### MHTSKClassifierModel
 
 - Uses `SparseClassificationConsequentLayer`
 - Default antecedent t-norm: `prod`
 - Default defuzzifier: `SumBasedDefuzzifier`
 
-### MHTSKRegressor
+### MHTSKRegressorModel
 
 - Uses `SparseRegressionConsequentLayer`
 - Default antecedent t-norm: `prod`
@@ -106,7 +106,7 @@ These sklearn-style wrappers build the MHTSK rule base from raw data and expose 
 
 ### Key estimator parameters
 
-- `n_rules`: Number of FCM clusters per head (`K`). Default: `3`.
+- `n_mfs`: Number of FCM clusters per head (`K`). Default: `3`.
 - `n_heads`: Number of heads (`T`). When `None`, defaults are resolved from `head_size`, `fcr_target`, and `h_value`.
 - `head_size`: Number of features per head (`S`). When `None`, defaults to `max(1, round(D * 0.02))` for `D <= 5000` or `max(1, round(D * 0.01))` otherwise.
 - `head_size_ratio`: Alternative way to specify `head_size` as a fraction of `D`.
