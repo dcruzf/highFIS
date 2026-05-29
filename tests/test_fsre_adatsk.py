@@ -233,6 +233,13 @@ def test_prune_to_rules_empty_raises_regressor() -> None:
         model.prune_to_rules([])
 
 
+def test_prune_to_rules_empty_raises_classifier() -> None:
+    model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=3, n_mfs=2), n_classes=2)
+    model.expand_to_en_frb()
+    with pytest.raises(ValueError, match="must not be empty"):
+        model.prune_to_rules([])
+
+
 # ---------------------------------------------------------------------------
 # FSRETrainer end-to-end
 # ---------------------------------------------------------------------------

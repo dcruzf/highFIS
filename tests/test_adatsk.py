@@ -7,6 +7,8 @@ import torch
 from torch import nn
 
 from highfis import ADATSKClassifier
+from highfis.estimators import InputConfig
+from highfis.estimators._adaptive import _set_sigma_to_one_and_freeze, _wrap_adatsk_gaussian_input_mfs
 from highfis.layers import AdaSoftminRuleLayer
 from highfis.memberships import ADATSKGaussianMF, CompositeGaussianMF, GaussianMF
 from highfis.models import ADATSKClassifierModel, ADATSKRegressorModel
@@ -170,3 +172,98 @@ def test_adatsk_classifier_consequents_are_zero_initialized() -> None:
 
     assert torch.allclose(weight, torch.zeros_like(weight))
     assert torch.allclose(bias, torch.zeros_like(bias))
+
+
+def test_set_sigma_to_one_and_freeze_ignores_non_gaussian_mf() -> None:
+    mf = CompositeGaussianMF(mean=0.0, sigma=0.7, eps=1e-4)
+    before = float(mf.sigma.detach().item())
+    assert mf.raw_sigma.requires_grad is True
+
+    _set_sigma_to_one_and_freeze(mf)
+
+    after = float(mf.sigma.detach().item())
+    assert abs(after - before) < 1e-6
+    assert mf.raw_sigma.requires_grad is True
+
+
+def test_wrap_adatsk_gaussian_input_mfs_preserves_non_gaussian_modules() -> None:
+    cg = CompositeGaussianMF(mean=0.0, sigma=0.9, eps=1e-4)
+    g = GaussianMF(mean=1.0, sigma=1.1, eps=1e-4)
+    wrapped = _wrap_adatsk_gaussian_input_mfs({"x1": [g, cg]})
+
+    assert isinstance(wrapped["x1"][0], ADATSKGaussianMF)
+    assert wrapped["x1"][1] is cg
+
+
+def test_adatsk_classifier_resolve_input_configs_keeps_user_configs() -> None:
+    configs = [InputConfig(name="x1", n_mfs=3, overlap=0.5, margin=0.2)]
+    clf = ADATSKClassifier(input_configs=configs)
+    x = np.array([[0.0], [1.0]], dtype=np.float64)
+
+    resolved = clf._resolve_input_configs(x)
+
+    assert resolved[0].margin == 0.2
+
+
+def test_adatsk_classifier_model_optimizer_uses_custom_instance() -> None:
+    model = ADATSKClassifierModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2), n_classes=2)
+    custom = torch.optim.Adam(model.parameters(), lr=1e-3)
+
+    optimizer = model._build_optimizer(custom, learning_rate=1e-2, weight_decay=0.0)
+
+    assert optimizer is custom
+
+
+def test_adatsk_regressor_model_optimizer_uses_custom_instance() -> None:
+    model = ADATSKRegressorModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2))
+    custom = torch.optim.Adam(model.parameters(), lr=1e-3)
+
+    optimizer = model._build_optimizer(custom, learning_rate=1e-2, weight_decay=0.0)
+
+    assert optimizer is custom
+
+
+def test_adatsk_classifier_can_disable_paper_zero_init() -> None:
+    torch.manual_seed(0)
+    model = ADATSKClassifierModel(
+        _build_adatsk_input_mfs(n_inputs=2, n_rules=2),
+        n_classes=2,
+        paper_zero_consequent_init=False,
+    )
+
+    weight = cast(torch.Tensor, model.consequent_layer.weight).detach()
+    assert not torch.allclose(weight, torch.zeros_like(weight))
+
+
+def test_adatsk_classifier_zero_init_skips_non_tensor_weight() -> None:
+    model = ADATSKClassifierModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2), n_classes=2)
+
+    class _BiasOnlyConsequent(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.weight = object()
+            self.bias = torch.ones(2, 2)
+
+    fake = _BiasOnlyConsequent()
+    model.consequent_layer = cast(nn.Module, fake)
+
+    model._zero_initialize_consequents()
+
+    assert torch.allclose(fake.bias, torch.zeros_like(fake.bias))
+
+
+def test_adatsk_classifier_zero_init_skips_non_tensor_bias() -> None:
+    model = ADATSKClassifierModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2), n_classes=2)
+
+    class _WeightOnlyConsequent(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.weight = torch.ones(2, 2, 2)
+            self.bias = object()
+
+    fake = _WeightOnlyConsequent()
+    model.consequent_layer = cast(nn.Module, fake)
+
+    model._zero_initialize_consequents()
+
+    assert torch.allclose(fake.weight, torch.zeros_like(fake.weight))
