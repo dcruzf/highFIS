@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 import torch
 from torch import nn
@@ -42,6 +44,7 @@ from highfis.models._common import (
     _build_first_order_design_matrix,
     _threshold_from_zeta,
 )
+from highfis.models._yager import _adaptive_yager_lambda, _zero_initialize_consequents
 from highfis.t_norms import DombiTNorm
 
 
@@ -157,6 +160,50 @@ def test_ayatsk_regressor_zero_initializes_consequents() -> None:
     assert isinstance(bias, torch.Tensor)
     assert torch.allclose(weight, torch.zeros_like(weight))
     assert torch.allclose(bias, torch.zeros_like(bias))
+
+
+def test_adaptive_yager_lambda_validates_inputs() -> None:
+    with pytest.raises(ValueError, match="dimension must be > 1"):
+        _adaptive_yager_lambda(1, 0.2)
+    with pytest.raises(ValueError, match=r"lower_bound must be in \(0, 1\)"):
+        _adaptive_yager_lambda(3, 1.0)
+
+
+def test_yager_zero_initialize_consequents_handles_missing_params() -> None:
+    class DummyLayer(nn.Module):
+        pass
+
+    _zero_initialize_consequents(DummyLayer())
+
+
+def test_ayatsk_classifier_optimizer_passthrough() -> None:
+    model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3)
+    provided = torch.optim.SGD(model.parameters(), lr=1e-2)
+    optimizer = model._build_optimizer(provided, learning_rate=1e-3, weight_decay=1e-4)
+
+    assert optimizer is provided
+
+
+def test_ayatsk_regressor_optimizer_passthrough() -> None:
+    model = AYATSKRegressorModel(_build_input_mfs(), rule_base="coco")
+    provided = torch.optim.SGD(model.parameters(), lr=1e-2)
+    optimizer = model._build_optimizer(provided, learning_rate=1e-3, weight_decay=1e-4)
+
+    assert optimizer is provided
+
+
+def test_ayatsk_classifier_optimizer_with_consequent_batch_norm() -> None:
+    model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3, consequent_batch_norm=True)
+    optimizer = model._build_optimizer(None, learning_rate=1e-3, weight_decay=0.0)
+
+    assert isinstance(optimizer, torch.optim.Adam)
+
+
+def test_ayatsk_regressor_optimizer_with_consequent_batch_norm() -> None:
+    model = AYATSKRegressorModel(_build_input_mfs(), rule_base="coco", consequent_batch_norm=True)
+    optimizer = model._build_optimizer(None, learning_rate=1e-3, weight_decay=0.0)
+
+    assert isinstance(optimizer, torch.optim.Adam)
 
 
 def test_adptsk_classifier_forward_predict_shapes() -> None:
@@ -289,6 +336,31 @@ def test_adptsk_classifier_can_disable_zero_consequent_init() -> None:
     weight = getattr(model.consequent_layer, "weight", None)
     assert isinstance(weight, torch.Tensor)
     assert not torch.allclose(weight, torch.zeros_like(weight))
+
+
+def test_adptsk_regressor_can_disable_zero_consequent_init() -> None:
+    from highfis.models import ADPTSKRegressorModel
+
+    model = ADPTSKRegressorModel(_build_input_mfs(), rule_base="coco", zero_consequent_init=False)
+    weight = getattr(model.consequent_layer, "weight", None)
+    assert isinstance(weight, torch.Tensor)
+    assert not torch.allclose(weight, torch.zeros_like(weight))
+
+
+def test_adptsk_classifier_zero_initialize_handles_missing_params() -> None:
+    from highfis.models import ADPTSKClassifierModel
+
+    model = ADPTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    model.consequent_layer = cast(nn.Module, nn.Identity())
+    model._zero_initialize_consequents()
+
+
+def test_adptsk_regressor_zero_initialize_handles_missing_params() -> None:
+    from highfis.models import ADPTSKRegressorModel
+
+    model = ADPTSKRegressorModel(_build_input_mfs(), rule_base="coco")
+    model.consequent_layer = cast(nn.Module, nn.Identity())
+    model._zero_initialize_consequents()
 
 
 def test_htsk_classifier_fit_returns_history() -> None:
