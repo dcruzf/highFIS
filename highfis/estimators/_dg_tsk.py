@@ -76,7 +76,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         finetune_epochs: int = 200,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
-        rule_base: str | None = None,
+        rule_base: str | None = "pfrb",
         batch_size: int | None = 512,
         shuffle: bool = True,
         ur_weight: float = 0.0,
@@ -281,6 +281,18 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         estimator._label_encoder_ = label_encoder
         estimator.history_ = cast(dict[str, Any], checkpoint.get("history", {}))
         return estimator
+
+    def predict_proba(self, x: Any) -> np.ndarray:
+        """Predict class probabilities, applying any surviving-feature pruning from fit()."""
+        from sklearn.utils.validation import check_array, check_is_fitted
+
+        check_is_fitted(self, "model_")
+        x_arr = check_array(x)
+        if x_arr.shape[1] != self.n_features_in_:
+            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
+        x_model = _select_dgtsking_surviving_features(self, x_arr)
+        probs = cast(Any, self.model_).predict_proba(self._as_tensor_x(x_model, torch.device(str(self.device))))
+        return probs.detach().cpu().numpy()
 
 
 class DGTSKRegressor(_BaseRegressorEstimator):
@@ -509,3 +521,26 @@ class DGTSKRegressor(_BaseRegressorEstimator):
         estimator.feature_names_in_ = np.asarray(fitted["feature_names_in"], dtype=object)
         estimator.history_ = cast(dict[str, Any], checkpoint.get("history", {}))
         return estimator
+
+    def predict(self, x: Any) -> np.ndarray:
+        """Predict regression values, applying any surviving-feature pruning from fit()."""
+        from sklearn.utils.validation import check_array, check_is_fitted
+
+        check_is_fitted(self, "model_")
+        x_arr = check_array(x)
+        if x_arr.shape[1] != self.n_features_in_:
+            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
+        x_model = _select_dgtsking_surviving_features(self, x_arr)
+        pred = cast(Any, self.model_).predict(self._as_tensor_x(x_model, torch.device(str(self.device))))
+        return pred.detach().cpu().numpy()
+
+
+def _select_dgtsking_surviving_features(estimator: Any, x_arr: np.ndarray) -> np.ndarray:
+    """Slice to surviving features when DG structural pruning reduced the model input width."""
+    history: dict[str, Any] = getattr(estimator, "history_", {})
+    surviving_features: list[int] | None = history.get("surviving_feature_indices")
+    if surviving_features is None and isinstance(history.get("threshold"), dict):
+        surviving_features = cast(list[int] | None, history["threshold"].get("surviving_feature_indices"))
+    if surviving_features is not None and getattr(estimator.model_, "n_inputs", x_arr.shape[1]) < x_arr.shape[1]:
+        return x_arr[:, surviving_features]
+    return x_arr

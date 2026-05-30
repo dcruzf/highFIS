@@ -436,6 +436,7 @@ def test_dgtsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
         n_mfs=2,
         mf_init="kmeans",
         dg_epochs=5,
+        finetune_epochs=1,
         learning_rate=1e-2,
         random_state=7,
         batch_size=16,
