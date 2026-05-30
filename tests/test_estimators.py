@@ -62,8 +62,9 @@ from highfis.estimators._base import (
     _select_rule_indices,
 )
 from highfis.estimators._dg_tsk import _select_dgtsking_surviving_features
+from highfis.estimators._htsk import _HTSKPaperStrictTrainer
 from highfis.memberships import DimensionDependentGaussianMF, GaussianMF, GaussianPiMF, MembershipFunction
-from highfis.models import HDFISMinClassifierModel, HDFISMinRegressorModel, TSKRegressorModel
+from highfis.models import HDFISMinClassifierModel, HDFISMinRegressorModel, HTSKClassifierModel, TSKRegressorModel
 
 
 def _make_dataset(n_samples: int = 60) -> tuple[np.ndarray, np.ndarray]:
@@ -333,6 +334,74 @@ def test_hdfis_paper_strict_rejects_conflicting_hyperparameters() -> None:
         HDFISMinRegressor(paper_strict=True, rule_base="cartesian")
     with pytest.raises(ValueError, match="paper_strict requires batch_size=64"):
         HDFISMinClassifier(paper_strict=True, batch_size=32)
+
+
+def test_htsk_classifier_paper_strict_uses_paper_protocol_defaults() -> None:
+    est = HTSKClassifier(paper_strict=True)
+    assert est.n_mfs == 30
+    assert est.mf_init == "kmeans"
+    assert est.sigma_scale == 1.0
+    assert est.rule_base == "coco"
+    assert est.epochs == 200
+    assert est.learning_rate == 1e-2
+    assert est.batch_size == 512
+
+
+def test_htsk_regressor_paper_strict_uses_paper_protocol_defaults() -> None:
+    est = HTSKRegressor(paper_strict=True)
+    assert est.n_mfs == 30
+    assert est.mf_init == "kmeans"
+    assert est.sigma_scale == 1.0
+    assert est.rule_base == "coco"
+    assert est.epochs == 200
+    assert est.learning_rate == 1e-2
+    assert est.batch_size == 512
+
+
+def test_htsk_paper_strict_rejects_conflicting_hyperparameters() -> None:
+    with pytest.raises(ValueError, match=r"paper_strict requires n_mfs=30"):
+        HTSKClassifier(paper_strict=True, n_mfs=3)
+    with pytest.raises(ValueError, match=r"paper_strict requires mf_init='kmeans'"):
+        HTSKClassifier(paper_strict=True, mf_init="grid")
+    with pytest.raises(ValueError, match=r"paper_strict requires sigma_scale=1.0"):
+        HTSKRegressor(paper_strict=True, sigma_scale=2.0)
+    with pytest.raises(ValueError, match=r"paper_strict requires rule_base='coco'"):
+        HTSKRegressor(paper_strict=True, rule_base="cartesian")
+    with pytest.raises(ValueError, match=r"paper_strict requires epochs=200"):
+        HTSKClassifier(paper_strict=True, epochs=10)
+    with pytest.raises(ValueError, match=r"paper_strict requires learning_rate=1e-2"):
+        HTSKClassifier(paper_strict=True, learning_rate=1e-3)
+    with pytest.raises(ValueError, match=r"paper_strict requires batch_size=512"):
+        HTSKRegressor(paper_strict=True, batch_size=256)
+
+
+def test_htsk_paper_strict_fit_does_not_auto_split_data() -> None:
+    x, y = _make_dataset(40)
+    est = HTSKClassifier(paper_strict=True, random_state=0)
+    est.fit(x, y)
+    assert len(est.history_["val"]) == 0
+
+
+def test_htsk_paper_strict_regressor_uses_strict_trainer() -> None:
+    est = HTSKRegressor(paper_strict=True)
+    trainer = est._get_trainer()
+    assert isinstance(trainer, _HTSKPaperStrictTrainer)
+
+
+def test_htsk_paper_strict_trainer_keeps_batch_when_not_exceeding_samples() -> None:
+    input_mfs = {
+        "x1": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
+        "x2": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
+        "x3": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
+    }
+    model = HTSKClassifierModel(input_mfs, n_classes=2)
+    x = torch.randn(20, 3)
+    y = torch.randint(0, 2, (20,), dtype=torch.long)
+
+    trainer = _HTSKPaperStrictTrainer(epochs=1, learning_rate=1e-2, batch_size=16)
+    history = trainer.fit(model, x, y)
+
+    assert len(history["train"]) == 1
 
 
 def test_ayatsk_classifier_estimator_fit_predict_score() -> None:
