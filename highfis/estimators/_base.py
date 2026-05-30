@@ -527,6 +527,7 @@ def _wrap_dimension_dependent_gaussian_input_mfs(
     dimension: int,
     xi: float = 745.0,
     rho: float | None = None,
+    paper_strict_equation: bool = False,
 ) -> dict[str, list[GaussianMF]]:
     return {
         name: cast(
@@ -538,6 +539,7 @@ def _wrap_dimension_dependent_gaussian_input_mfs(
                     dimension=dimension,
                     xi=xi,
                     rho=rho,
+                    paper_strict_equation=paper_strict_equation,
                 )
                 for mf in mfs
             ],

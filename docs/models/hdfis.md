@@ -123,6 +123,26 @@ $$
 
 ## Implementation notes
 
+### Strict paper mode
+
+highFIS provides an opt-in strict mode on HDFIS estimators:
+
+- `paper_strict=True` in `HDFISProdClassifier`, `HDFISProdRegressor`,
+  `HDFISMinClassifier`, and `HDFISMinRegressor`.
+- In this mode, the estimator enforces the paper protocol defaults used in
+  HDFIS_2023 experiments:
+  - `mf_init="grid"`
+  - `rule_base="coco"`
+  - `n_mfs=3` (three rules)
+  - `batch_size=64`
+- For HDFIS-prod, strict mode also enables the paper-form DMF equation
+  denominator (`D^rho + sigma^2`) and zero consequent initialization.
+- For HDFIS-min, strict mode enables zero consequent initialization while
+  keeping antecedent freezing.
+
+When `paper_strict=False` (default), highFIS uses library-oriented defaults
+for broader usability (for example, clustering-based initialization).
+
 ### Model classes
 
 - `HDFISProdClassifierModel` and `HDFISProdRegressorModel` are concrete model classes
@@ -168,16 +188,19 @@ $$
 - `BaseTSK.fit()` supports mini-batch optimization, optional early stopping,
   uniform rule regularization, and weight decay across HDFIS estimators.
 
+Paper protocol is reproduced in highFIS through `paper_strict=True`.
+
 ## Alignment with the paper
 
-- highFIS implements the HDFIS-prod architecture with product antecedent
-  aggregation, dimension-dependent Gaussian membership functions, and
-  sum-based normalization.
-- highFIS implements the HDFIS-min architecture with minimum antecedent
-  aggregation and frozen antecedent membership parameters, optimizing only
-  first-order consequents.
-- Both HDFIS variants preserve the paper's first-order TSK consequent
-  structure and sum-based rule normalization.
+- Core architecture alignment (always):
+  - HDFIS-prod uses product aggregation + dimension-dependent Gaussian MFs.
+  - HDFIS-min uses minimum aggregation + frozen antecedents.
+  - Both use first-order TSK consequents and sum-based normalization.
+- Experimental-protocol alignment (strict):
+  - Use `paper_strict=True` to enforce paper defaults and strict DMF equation
+    behavior.
+- Non-strict defaults are practical library defaults and are not intended to
+  be an exact replication of the paper protocol.
 
 ## Notes
 
