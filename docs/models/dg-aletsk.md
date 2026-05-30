@@ -148,9 +148,9 @@ Features and rules with gate values below these thresholds are pruned.
   the consequent layer as trainable. This implements paper §3.3:
   *"we fix the first group of gates and the membership functions."*
 - **Loss function**: the paper uses MSE throughout, including for classification
-  (applied to one-hot targets). highFIS uses **cross-entropy** for classification
-  and **MSE** for regression. Cross-entropy is more appropriate for discrete class
-  outputs and is used in both `fit_dg_phase` and `fit_finetune`.
+  (applied to one-hot targets). highFIS follows that paper contract in the DG
+  path: classification uses MSE with one-hot targets and regression uses MSE on
+  scalar targets.
 - The feature gate uses `ExpGate(k=10)` ($M(\lambda)=1-e^{-10\lambda^2}$,
   paper eq. 24), the enhanced gate function introduced in DG-ALETSK.
   Gate values are applied to antecedent memberships as $\mu^{M(\lambda_d)}$

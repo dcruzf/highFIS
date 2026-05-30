@@ -110,9 +110,9 @@ class DGTSKClassifier(_BaseClassifierEstimator):
                 Default ``200``.
             learning_rate: Adam learning rate for both phase 1 and phase 3.
             verbose: Print per-epoch progress.
-            rule_base: ``"coco"``, ``"cartesian"``, or ``"pfrb"``.  Use
-                ``"pfrb"`` to initialise one rule per training sample
-                (paper's default for DG-TSK).
+            rule_base: ``"coco"``, ``"cartesian"``, or ``"pfrb"``.  Defaults
+                to ``"pfrb"`` for the paper-strict DG-TSK path, which
+                initialises one rule per training sample.
             batch_size: Mini-batch size (default ``512``).
             shuffle: Reshuffle each epoch.
             ur_weight: Uncertainty regularisation weight.
@@ -319,7 +319,7 @@ class DGTSKRegressor(_BaseRegressorEstimator):
         finetune_epochs: int = 200,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
-        rule_base: str | None = None,
+        rule_base: str | None = "pfrb",
         batch_size: int | None = 512,
         shuffle: bool = True,
         ur_weight: float = 0.0,
@@ -353,7 +353,8 @@ class DGTSKRegressor(_BaseRegressorEstimator):
                 Default ``200``.
             learning_rate: Adam learning rate for both phase 1 and phase 3.
             verbose: Print per-epoch progress.
-            rule_base: ``"coco"``, ``"cartesian"``, or ``"pfrb"``.
+            rule_base: ``"coco"``, ``"cartesian"``, or ``"pfrb"``.  Defaults
+                to ``"pfrb"`` for the paper-strict DG-TSK regressor path.
             batch_size: Mini-batch size (default ``512``).
             shuffle: Reshuffle each epoch.
             ur_weight: Uncertainty regularisation weight.
