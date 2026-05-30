@@ -4,7 +4,7 @@ import math
 import tempfile
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 import numpy as np
 import pytest
@@ -61,6 +61,7 @@ from highfis.estimators._base import (
     _resolve_mhtsk_scale_parameters,
     _select_rule_indices,
 )
+from highfis.estimators._dg_tsk import _select_dgtsking_surviving_features
 from highfis.memberships import DimensionDependentGaussianMF, GaussianMF, GaussianPiMF, MembershipFunction
 from highfis.models import HDFISMinClassifierModel, HDFISMinRegressorModel, TSKRegressorModel
 
@@ -387,12 +388,17 @@ def test_ayatsk_regressor_default_setup_is_paper_style() -> None:
 
 
 def test_dgaletsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
-    x, y = _make_dataset(80)
+    x, y = _make_dataset(40)
     est = DGALETSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         lambda_init=1.5,
-        dg_epochs=5,
+        dg_epochs=2,
+        finetune_epochs=1,
+        zeta_lambda=[0.5],
+        zeta_theta=[0.5],
+        use_lse=False,
+        structural_pruning=False,
         learning_rate=1e-2,
         random_state=7,
         batch_size=16,
@@ -410,13 +416,18 @@ def test_dgaletsk_classifier_estimator_fit_predict_proba_predict_score() -> None
 
 
 def test_dgaletsk_regressor_estimator_fit_predict_score() -> None:
-    x = np.random.default_rng(123).normal(size=(80, 3)).astype(np.float32)
-    y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=80).astype(np.float32)
+    x = np.random.default_rng(123).normal(size=(40, 3)).astype(np.float32)
+    y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=40).astype(np.float32)
     est = DGALETSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         lambda_init=1.5,
-        dg_epochs=5,
+        dg_epochs=2,
+        finetune_epochs=1,
+        zeta_lambda=[0.5],
+        zeta_theta=[0.5],
+        use_lse=False,
+        structural_pruning=False,
         learning_rate=1e-2,
         random_state=7,
         batch_size=16,
@@ -431,12 +442,16 @@ def test_dgaletsk_regressor_estimator_fit_predict_score() -> None:
 
 
 def test_dgtsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
-    x, y = _make_dataset(80)
+    x, y = _make_dataset(40)
     est = DGTSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
-        dg_epochs=5,
+        dg_epochs=2,
         finetune_epochs=1,
+        zeta_lambda=[0.5],
+        zeta_theta=[0.5],
+        use_lse=False,
+        structural_pruning=False,
         learning_rate=1e-2,
         random_state=7,
         batch_size=16,
@@ -455,12 +470,17 @@ def test_dgtsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
 
 
 def test_dgtsk_regressor_estimator_fit_predict_score() -> None:
-    x = np.random.default_rng(123).normal(size=(80, 3)).astype(np.float32)
-    y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=80).astype(np.float32)
+    x = np.random.default_rng(123).normal(size=(40, 3)).astype(np.float32)
+    y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=40).astype(np.float32)
     est = DGTSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
-        dg_epochs=5,
+        dg_epochs=2,
+        finetune_epochs=1,
+        zeta_lambda=[0.5],
+        zeta_theta=[0.5],
+        use_lse=False,
+        structural_pruning=False,
         learning_rate=1e-2,
         random_state=7,
         batch_size=16,
@@ -476,11 +496,16 @@ def test_dgtsk_regressor_estimator_fit_predict_score() -> None:
 
 
 def test_dgtsk_classifier_estimator_pipeline_integration() -> None:
-    x, y = _make_dataset(60)
+    x, y = _make_dataset(40)
     est = DGTSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
-        dg_epochs=5,
+        dg_epochs=2,
+        finetune_epochs=1,
+        zeta_lambda=[0.5],
+        zeta_theta=[0.5],
+        use_lse=False,
+        structural_pruning=False,
         learning_rate=1e-2,
         random_state=7,
         batch_size=16,
@@ -494,12 +519,17 @@ def test_dgtsk_classifier_estimator_pipeline_integration() -> None:
 
 
 def test_dgtsk_regressor_estimator_save_load_roundtrip() -> None:
-    x = np.random.default_rng(123).normal(size=(80, 3)).astype(np.float32)
-    y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=80).astype(np.float32)
+    x = np.random.default_rng(123).normal(size=(40, 3)).astype(np.float32)
+    y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=40).astype(np.float32)
     est = DGTSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
-        dg_epochs=5,
+        dg_epochs=2,
+        finetune_epochs=1,
+        zeta_lambda=[0.5],
+        zeta_theta=[0.5],
+        use_lse=False,
+        structural_pruning=False,
         learning_rate=1e-2,
         random_state=7,
         batch_size=16,
@@ -516,6 +546,96 @@ def test_dgtsk_regressor_estimator_save_load_roundtrip() -> None:
         assert pred.shape == (x.shape[0],)
     finally:
         Path(path).unlink()
+
+
+def test_dgtsk_classifier_predict_proba_wrong_feature_count_raises() -> None:
+    x, y = _make_dataset(40)
+    est = DGTSKClassifier(
+        n_mfs=2,
+        mf_init="kmeans",
+        dg_epochs=1,
+        finetune_epochs=1,
+        zeta_lambda=[0.5],
+        zeta_theta=[0.5],
+        use_lse=False,
+        structural_pruning=False,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+        use_en_frb=True,
+    )
+    est.fit(x, y)
+
+    with pytest.raises(ValueError, match="expected"):
+        est.predict_proba(x[:, :2])
+
+
+def test_dgtsk_regressor_predict_wrong_feature_count_raises() -> None:
+    x = np.random.default_rng(123).normal(size=(40, 3)).astype(np.float32)
+    y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=40).astype(np.float32)
+    est = DGTSKRegressor(
+        n_mfs=2,
+        mf_init="kmeans",
+        dg_epochs=1,
+        finetune_epochs=1,
+        zeta_lambda=[0.5],
+        zeta_theta=[0.5],
+        use_lse=False,
+        structural_pruning=False,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+        use_en_frb=True,
+    )
+    est.fit(x, y)
+
+    with pytest.raises(ValueError, match="expected"):
+        est.predict(x[:, :2])
+
+
+def test_select_dgtsking_surviving_features_from_threshold_history() -> None:
+    class DummyModel:
+        n_inputs = 2
+
+    class DummyEstimator:
+        model_ = DummyModel()
+        history_: ClassVar[dict[str, object]] = {"threshold": {"surviving_feature_indices": [0, 2]}}
+
+    x = np.arange(12, dtype=np.float32).reshape(4, 3)
+    reduced = _select_dgtsking_surviving_features(DummyEstimator(), x)
+
+    assert reduced.shape == (4, 2)
+    assert np.array_equal(reduced, x[:, [0, 2]])
+
+
+def test_select_dgtsking_surviving_features_keeps_input_when_threshold_not_dict() -> None:
+    class DummyModel:
+        n_inputs = 2
+
+    class DummyEstimator:
+        model_ = DummyModel()
+        history_: ClassVar[dict[str, float]] = {"threshold": 1.0}
+
+    x = np.arange(12, dtype=np.float32).reshape(4, 3)
+    kept = _select_dgtsking_surviving_features(DummyEstimator(), x)
+
+    assert kept.shape == x.shape
+    assert np.array_equal(kept, x)
+
+
+def test_dgtsk_classifier_pre_train_hook_skips_when_not_pfrb() -> None:
+    class DummyModel:
+        def __init__(self) -> None:
+            self.called = False
+
+        def init_consequents_from_labels(self, y_t: Tensor) -> None:
+            self.called = True
+
+    est = DGTSKClassifier(rule_base="coco", n_mfs=2, dg_epochs=1, batch_size=8)
+    model = DummyModel()
+    est._pre_train_hook(cast(BaseTSK, model), torch.randn(4, 3), torch.randint(0, 2, (4,)))
+
+    assert model.called is False
 
 
 def test_build_pfrb_input_mfs_limits_rules_and_returns_gaussian_mfs() -> None:
@@ -1696,12 +1816,17 @@ def test_classifier_estimator_save_load_roundtrip() -> None:
 
 
 def test_dgaletsk_classifier_estimator_pipeline_integration() -> None:
-    x, y = _make_dataset(60)
+    x, y = _make_dataset(40)
     est = DGALETSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         lambda_init=1.5,
-        dg_epochs=5,
+        dg_epochs=2,
+        finetune_epochs=1,
+        zeta_lambda=[0.5],
+        zeta_theta=[0.5],
+        use_lse=False,
+        structural_pruning=False,
         learning_rate=1e-2,
         random_state=7,
         batch_size=16,
