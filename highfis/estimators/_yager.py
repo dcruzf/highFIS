@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Mapping, Sequence
 
 import numpy as np
@@ -22,7 +23,54 @@ from ._base import (
 )
 
 
-def _build_ayatsk_default_input_mfs(feature_names: Sequence[str]) -> dict[str, list[CompositeExponentialMF]]:
+def _resolve_ayatsk_classifier_paper_strict_config(
+    *,
+    paper_strict: bool,
+    n_mfs: int,
+    mf_init: str,
+    sigma_scale: float | str,
+    rule_base: str | None,
+    epochs: int,
+    learning_rate: float,
+    k: float,
+) -> tuple[int, str, float | str, str | None, int, float, float]:
+    """Resolve AYATSK classifier config with optional paper-strict checks."""
+    if not paper_strict:
+        if float(k) <= 1.0:
+            raise ValueError("k must be > 1.0")
+        return (
+            int(n_mfs),
+            str(mf_init),
+            sigma_scale,
+            rule_base,
+            int(epochs),
+            float(learning_rate),
+            float(k),
+        )
+
+    if int(n_mfs) != 3:
+        raise ValueError("paper_strict requires n_mfs=3")
+    if str(mf_init).lower() != "grid":
+        raise ValueError("paper_strict requires mf_init='grid'")
+    if float(sigma_scale) != 1.0:
+        raise ValueError("paper_strict requires sigma_scale=1.0")
+    if rule_base is not None and str(rule_base).lower() != "coco":
+        raise ValueError("paper_strict requires rule_base='coco'")
+    if int(epochs) != 200:
+        raise ValueError("paper_strict requires epochs=200")
+    if float(learning_rate) != 1e-3:
+        raise ValueError("paper_strict requires learning_rate=1e-3")
+    if float(k) <= 1.0:
+        raise ValueError("paper_strict requires k > 1.0")
+
+    return 3, "grid", 1.0, "coco", 200, 1e-3, float(k)
+
+
+def _build_ayatsk_default_input_mfs(
+    feature_names: Sequence[str],
+    *,
+    k: float,
+) -> dict[str, list[CompositeExponentialMF]]:
     """Build the paper-style AYATSK default CEMFs.
 
     The paper initializes three fuzzy sets per feature with centers
@@ -30,7 +78,7 @@ def _build_ayatsk_default_input_mfs(feature_names: Sequence[str]) -> dict[str, l
     """
     centers = [0.0, 0.5, 1.0]
     return {
-        name: [CompositeExponentialMF(center=center, sigma=1.0, k=10.0) for center in centers] for name in feature_names
+        name: [CompositeExponentialMF(center=center, sigma=1.0, k=k) for center in centers] for name in feature_names
     }
 
 
@@ -84,6 +132,8 @@ class AYATSKClassifier(_BaseClassifierEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 0.0,
+        k: float = 10.0,
+        paper_strict: bool = False,
     ) -> None:
         """Initialise an AYATSK classifier.
 
@@ -111,7 +161,29 @@ class AYATSKClassifier(_BaseClassifierEstimator):
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
             weight_decay: L2 weight decay for consequent parameters.
+            k: CEMF lower-bound control parameter. Must be ``> 1``.
+            paper_strict: If ``True``, enforce AYATSK paper defaults for
+                classifier hyperparameters.
         """
+        (
+            n_mfs,
+            mf_init,
+            sigma_scale,
+            rule_base,
+            epochs,
+            learning_rate,
+            k,
+        ) = _resolve_ayatsk_classifier_paper_strict_config(
+            paper_strict=bool(paper_strict),
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            rule_base=rule_base,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            k=k,
+        )
+
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -132,6 +204,8 @@ class AYATSKClassifier(_BaseClassifierEstimator):
             restore_best=restore_best,
             weight_decay=weight_decay,
         )
+        self.k = float(k)
+        self.paper_strict = bool(paper_strict)
 
     def _build_input_mfs(
         self,
@@ -145,7 +219,7 @@ class AYATSKClassifier(_BaseClassifierEstimator):
         ):
             input_configs = self._resolve_input_configs(x_arr)
             feature_names = [cfg.name for cfg in input_configs]
-            input_mfs = _build_ayatsk_default_input_mfs(feature_names)
+            input_mfs = _build_ayatsk_default_input_mfs(feature_names, k=self.k)
             return input_mfs, feature_names, self.rule_base if self.rule_base is not None else "coco"
         return super()._build_input_mfs(x_arr)
 
@@ -162,9 +236,16 @@ class AYATSKClassifier(_BaseClassifierEstimator):
     ) -> AYATSKClassifier:
         original_batch_size = self.batch_size
         try:
+            x_arr = np.asarray(x)
             n_samples = int(np.asarray(y).shape[0])
             if original_batch_size is None:
                 self.batch_size = self._resolve_default_batch_size(n_samples)
+            if self.paper_strict and n_samples >= 500 and int(x_arr.shape[1]) < 1000:
+                warnings.warn(
+                    "paper_strict: mini-batch policy may diverge from paper protocol when D < 1000 and N >= 500",
+                    UserWarning,
+                    stacklevel=2,
+                )
             return super().fit(x, y, x_val=x_val, y_val=y_val)
         finally:
             self.batch_size = original_batch_size
@@ -226,6 +307,7 @@ class AYATSKRegressor(_BaseRegressorEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 0.0,
+        k: float = 10.0,
     ) -> None:
         """Initialise an AYATSK regressor.
 
@@ -251,7 +333,11 @@ class AYATSKRegressor(_BaseRegressorEstimator):
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
             weight_decay: L2 weight decay for consequent parameters.
+            k: CEMF lower-bound control parameter. Must be ``> 1``.
         """
+        if float(k) <= 1.0:
+            raise ValueError("k must be > 1.0")
+
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -271,6 +357,7 @@ class AYATSKRegressor(_BaseRegressorEstimator):
             restore_best=restore_best,
             weight_decay=weight_decay,
         )
+        self.k = float(k)
 
     def _build_input_mfs(
         self,
@@ -284,7 +371,7 @@ class AYATSKRegressor(_BaseRegressorEstimator):
         ):
             input_configs = self._resolve_input_configs(x_arr)
             feature_names = [cfg.name for cfg in input_configs]
-            input_mfs = _build_ayatsk_default_input_mfs(feature_names)
+            input_mfs = _build_ayatsk_default_input_mfs(feature_names, k=self.k)
             return input_mfs, feature_names, self.rule_base if self.rule_base is not None else "coco"
         return super()._build_input_mfs(x_arr)
 

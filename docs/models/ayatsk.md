@@ -1,6 +1,6 @@
 # AYATSK
 
-AYATSK is a classification-focused TSK model from the 2025 paper by Xue, Yang, and Wang. In highFIS, the paper-strict path uses a paper-style adaptive Yager T-norm, Composite Exponential membership functions with a positive lower bound, and CoCo rule bases.
+AYATSK is a classification-focused TSK model from the 2025 paper by Xue, Yang, and Wang. In highFIS, `AYATSKClassifier(paper_strict=True)` enforces a paper-style classifier configuration with adaptive Yager T-norm, Composite Exponential membership functions (CEMF), and CoCo rule base defaults.
 
 ## Reference
 
@@ -32,7 +32,7 @@ $$
 \lambda = -\frac{\ln D}{\ln(1 - \varepsilon)}
 $$
 
-highFIS follows that paper-strict policy in the default AYATSK classification path by deriving $\lambda$ from the number of input features and the CEMF lower bound.
+highFIS follows that policy by deriving $\lambda$ from the number of input features and the CEMF lower bound in AYATSK models.
 
 ### Defuzzification
 
@@ -88,12 +88,15 @@ $$
 
 - `AYATSKClassifierModel` uses MSE loss, Adam, and zero-initialized consequents by default.
 - `AYATSKClassifier` defaults to `n_mfs=3`, `mf_init="grid"`, `rule_base="coco"`, `epochs=200`, and `learning_rate=0.001`.
+- `AYATSKClassifier` and `AYATSKRegressor` expose `k` (CEMF parameter), with required constraint `k > 1`.
 - When `batch_size=None`, the AYATSK estimator uses full-batch for `N < 500` and `0.1 * N` otherwise, matching the paper’s training policy.
+- In `paper_strict=True`, `AYATSKClassifier` enforces paper defaults and emits a warning when mini-batch behavior may diverge from the paper’s high-dimensional experimental setting.
 - `AYATSKRegressor` remains available as a framework extension, but the paper itself evaluates classification only.
 
 ## Estimator wrappers
 
 - `AYATSKClassifier` wraps `AYATSKClassifierModel` and supports classification with paper-style adaptive Yager aggregation.
+- `paper_strict=True` is classifier-only in the current implementation.
 - `AYATSKRegressor` wraps `AYATSKRegressorModel` for regression tasks, but this is outside the paper’s evaluated scope.
 - Estimators accept the usual hyperparameters: `n_mfs`, `mf_init`, `sigma_scale`, `random_state`, `epochs`, `learning_rate`, `batch_size`, `shuffle`, `validation_data`, and `patience`.
 - `pfrb_max_rules` exists on the shared estimator base but is unused by AYATSK.

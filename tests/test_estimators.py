@@ -495,6 +495,50 @@ def test_ayatsk_classifier_default_setup_is_paper_style() -> None:
     assert float(cast(Any, est.model_).lambda_) > 0.0
 
 
+def test_ayatsk_classifier_paper_strict_uses_paper_protocol_defaults() -> None:
+    est = AYATSKClassifier(paper_strict=True)
+
+    assert est.n_mfs == 3
+    assert est.mf_init == "grid"
+    assert est.sigma_scale == 1.0
+    assert est.rule_base == "coco"
+    assert est.epochs == 200
+    assert est.learning_rate == 1e-3
+    assert est.k == 10.0
+    assert est.paper_strict is True
+
+
+def test_ayatsk_classifier_paper_strict_rejects_conflicting_hyperparameters() -> None:
+    with pytest.raises(ValueError, match="paper_strict requires n_mfs=3"):
+        AYATSKClassifier(paper_strict=True, n_mfs=4)
+    with pytest.raises(ValueError, match="paper_strict requires mf_init='grid'"):
+        AYATSKClassifier(paper_strict=True, mf_init="kmeans")
+    with pytest.raises(ValueError, match=r"paper_strict requires sigma_scale=1\.0"):
+        AYATSKClassifier(paper_strict=True, sigma_scale=0.8)
+    with pytest.raises(ValueError, match="paper_strict requires rule_base='coco'"):
+        AYATSKClassifier(paper_strict=True, rule_base="cartesian")
+    with pytest.raises(ValueError, match="paper_strict requires epochs=200"):
+        AYATSKClassifier(paper_strict=True, epochs=100)
+    with pytest.raises(ValueError, match="paper_strict requires learning_rate=1e-3"):
+        AYATSKClassifier(paper_strict=True, learning_rate=1e-2)
+
+
+def test_ayatsk_estimators_validate_k_parameter() -> None:
+    with pytest.raises(ValueError, match=r"k must be > 1\.0"):
+        AYATSKClassifier(k=1.0)
+    with pytest.raises(ValueError, match=r"k must be > 1\.0"):
+        AYATSKRegressor(k=1.0)
+
+
+def test_ayatsk_classifier_paper_strict_warns_batch_policy_low_dimensional_case() -> None:
+    x = np.zeros((600, 3), dtype=np.float32)
+    y = np.zeros((599,), dtype=np.int64)
+    est = AYATSKClassifier(paper_strict=True)
+
+    with pytest.warns(UserWarning, match="paper_strict: mini-batch policy may diverge"), pytest.raises(ValueError):
+        est.fit(x, y)
+
+
 def test_ayatsk_regressor_default_setup_is_paper_style() -> None:
     x = np.random.default_rng(123).normal(size=(40, 3)).astype(np.float32)
     y = x[:, 0] + 0.5 * x[:, 1]
