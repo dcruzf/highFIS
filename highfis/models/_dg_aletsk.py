@@ -405,6 +405,21 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
         """Train the DG phase using zero-order TSK and joint FS+RE."""
         return self.fit(x, y, **kwargs)
 
+    def init_consequents_from_labels(self, y: Tensor) -> None:
+        """Initialise zero-order consequent biases with one-hot labels for P-FRB."""
+        if not isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
+            raise ValueError(
+                "init_consequents_from_labels() requires a zero-order consequent layer; "
+                "call before convert_to_first_order()"
+            )
+
+        n = min(len(y), self.n_rules)
+        dtype = self.consequent_layer.bias.dtype
+        device = self.consequent_layer.bias.device
+        one_hot = torch.zeros(self.n_rules, self.n_classes, dtype=dtype, device=device)
+        one_hot[:n].scatter_(1, y[:n].to(device=device).unsqueeze(1), 1.0)
+        self.consequent_layer.bias.data.copy_(one_hot)
+
     def fit_finetune(
         self,
         x: Tensor,

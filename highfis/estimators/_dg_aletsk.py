@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from typing import cast
+
+import numpy as np
+from torch import Tensor
 
 from ..base import BaseTSK
 from ..memberships import MembershipFunction
@@ -12,11 +16,14 @@ from ..models import (
 )
 from ..optim._base import BaseTrainer
 from ..optim._dg import DGTrainer
+from ..optim._protocols import PFRBModelProtocol
 from ._base import InputConfig
 from ._fsre import (
     FSREADATSKClassifier,
     FSREADATSKRegressor,
 )
+
+_DG_ALETSK_PAPER_ZETA_GRID: list[float] = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
 
 
 class DGALETSKClassifier(FSREADATSKClassifier):
@@ -61,21 +68,22 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         dg_epochs: int = 10,
-        finetune_epochs: int = 200,
+        finetune_epochs: int = 50,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
-        rule_base: str | None = None,
+        rule_base: str | None = "pfrb",
         batch_size: int | None = 512,
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
         consequent_batch_norm: bool = False,
+        pfrb_max_rules: int | None = None,
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
-        zeta_lambda: list[float] | None = None,
-        zeta_theta: list[float] | None = None,
-        use_lse: bool = True,
+        zeta_lambda: list[float] | None = _DG_ALETSK_PAPER_ZETA_GRID,
+        zeta_theta: list[float] | None = _DG_ALETSK_PAPER_ZETA_GRID,
+        use_lse: bool = False,
         trainer: BaseTrainer | None = None,
         optimizer_type: str = "sgd",
         structural_pruning: bool = True,
@@ -95,21 +103,29 @@ class DGALETSKClassifier(FSREADATSKClassifier):
             random_state: Seed for reproducibility.
             dg_epochs: Maximum epochs for phase 1 (DG training).
             finetune_epochs: Maximum epochs for phase 3 (fine-tune).
+                Default ``50`` follows the DG-ALETSK paper setup.
             learning_rate: Adam learning rate for both phases.
             verbose: Print per-epoch progress.
-            rule_base: ``"coco"`` or ``"cartesian"``.
+            rule_base: ``"coco"``, ``"cartesian"``, or ``"pfrb"``.
+                Default ``"pfrb"`` follows the paper workflow.
             batch_size: Mini-batch size (default ``512``).
             shuffle: Reshuffle each epoch.
             ur_weight: Uncertainty regularisation weight.
             ur_target: Uncertainty regularisation target.
             consequent_batch_norm: Batch normalisation on consequent layers.
+            pfrb_max_rules: Maximum number of point-based FRB rules when
+                ``rule_base='pfrb'``. If ``None`` (default), uses
+                paper-style automatic cap: ``100`` rules (or ``50`` when
+                ``D >= 10000``).
             patience: Early-stopping patience.  ``None`` disables.
             restore_best: Restore best validation weights after fine-tuning.
             weight_decay: L2 weight decay for consequent parameters.
-            zeta_lambda: Grid of λ-pruning threshold candidates.
-            zeta_theta: Grid of θ-pruning threshold candidates.
+            zeta_lambda: Grid of λ-pruning threshold candidates. Default
+                follows the paper: ``[0.05, 0.1, 0.15, 0.2, 0.25, 0.3]``.
+            zeta_theta: Grid of θ-pruning threshold candidates. Default
+                follows the paper: ``[0.05, 0.1, 0.15, 0.2, 0.25, 0.3]``.
             use_lse: Refit first-order consequents via LSE during threshold
-                search (default ``True``).
+                search. Default ``False`` for the classification path.
             trainer: Optional custom :class:`~highfis.optim.BaseTrainer`.
                 When ``None`` (default) a :class:`~highfis.optim.DGTrainer`
                 is built from this estimator's hyperparameters.
@@ -150,8 +166,32 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         # list-typed grid values and DG-specific values expected by DGTrainer.
         self.finetune_epochs = int(finetune_epochs)
         self.structural_pruning = bool(structural_pruning)
-        self.zeta_lambda: list[float] | None = zeta_lambda
-        self.zeta_theta: list[float] | None = zeta_theta
+        self.zeta_lambda: list[float] | None = [
+            float(v) for v in (_DG_ALETSK_PAPER_ZETA_GRID if zeta_lambda is None else zeta_lambda)
+        ]
+        self.zeta_theta: list[float] | None = [
+            float(v) for v in (_DG_ALETSK_PAPER_ZETA_GRID if zeta_theta is None else zeta_theta)
+        ]
+        self.pfrb_max_rules = pfrb_max_rules
+
+    @staticmethod
+    def _resolve_default_pfrb_max_rules(n_features: int) -> int:
+        return 50 if int(n_features) >= 10_000 else 100
+
+    def _build_input_mfs(self, x_arr: np.ndarray):
+        # Delegate to base behavior, but enforce paper-style P-FRB cap when unset.
+        if self.rule_base == "pfrb" and self.pfrb_max_rules is None:
+            original = self.pfrb_max_rules
+            self.pfrb_max_rules = self._resolve_default_pfrb_max_rules(int(x_arr.shape[1]))
+            try:
+                return super()._build_input_mfs(x_arr)
+            finally:
+                self.pfrb_max_rules = original
+        return super()._build_input_mfs(x_arr)
+
+    def _pre_train_hook(self, model: BaseTSK, x_t: Tensor, y_t: Tensor) -> None:
+        if self.rule_base == "pfrb" and hasattr(model, "init_consequents_from_labels"):
+            cast(PFRBModelProtocol, model).init_consequents_from_labels(y_t)
 
     def _build_model(
         self,

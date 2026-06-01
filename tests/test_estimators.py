@@ -580,6 +580,45 @@ def test_dgaletsk_classifier_estimator_fit_predict_proba_predict_score() -> None
     assert 0.0 <= score <= 1.0
 
 
+def test_dgaletsk_classifier_default_profile_is_paper_strict_like() -> None:
+    est = DGALETSKClassifier()
+
+    assert est.rule_base == "pfrb"
+    assert est.finetune_epochs == 50
+    assert est.use_lse is False
+    assert est.zeta_lambda == [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+    assert est.zeta_theta == [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+
+
+def test_dgaletsk_classifier_default_pfrb_max_rules_policy() -> None:
+    est = DGALETSKClassifier(rule_base="pfrb", pfrb_max_rules=None)
+
+    x_low_dim = np.random.default_rng(1).normal(size=(130, 8)).astype(np.float32)
+    input_mfs_low, _, _ = est._build_input_mfs(x_low_dim)
+    assert len(input_mfs_low["x1"]) == 100
+
+    x_high_dim = np.random.default_rng(2).normal(size=(60, 10_000)).astype(np.float32)
+    input_mfs_high, _, _ = est._build_input_mfs(x_high_dim)
+    assert len(input_mfs_high["x1"]) == 50
+
+
+def test_dgaletsk_classifier_pre_train_hook_initializes_pfrb_consequents_from_labels() -> None:
+    x, y = _make_dataset(30)
+    est = DGALETSKClassifier(rule_base="pfrb", pfrb_max_rules=None)
+    input_mfs, _, rule_base = est._build_input_mfs(x)
+    model = cast(Any, est._build_model(input_mfs, n_classes=2, rule_base=rule_base))
+
+    assert torch.allclose(model.consequent_layer.bias, torch.zeros_like(model.consequent_layer.bias))
+
+    x_t = torch.as_tensor(x, dtype=torch.float32)
+    y_t = torch.as_tensor(y, dtype=torch.long)
+    est._pre_train_hook(model, x_t, y_t)
+
+    one_hot = model.consequent_layer.bias.detach().cpu().numpy()
+    assert np.allclose(one_hot.sum(axis=1), 1.0)
+    assert np.array_equal(np.argmax(one_hot, axis=1), y)
+
+
 def test_dgaletsk_regressor_estimator_fit_predict_score() -> None:
     x = np.random.default_rng(123).normal(size=(40, 3)).astype(np.float32)
     y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=40).astype(np.float32)
