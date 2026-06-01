@@ -83,7 +83,7 @@ For regression, the result is the scalar weighted sum of sparse consequents.
 - `highfis.models.MHTSKClassifierModel`
 - `highfis.models.MHTSKRegressorModel`
 
-These classes extend `BaseTSKClassifier` and `BaseTSKRegressor`, respectively, and use `rule_base="custom"` with explicit rule definitions and a sparse consequent.
+These classes extend `BaseTSKClassifierModel` and `BaseTSKRegressorModel`, respectively, and use `rule_base="custom"` with explicit rule definitions and a sparse consequent.
 
 ### MHTSKClassifierModel
 
@@ -102,7 +102,23 @@ These classes extend `BaseTSKClassifier` and `BaseTSKRegressor`, respectively, a
 - `highfis.estimators.MHTSKClassifier`
 - `highfis.estimators.MHTSKRegressor`
 
-These sklearn-style wrappers build the MHTSK rule base from raw data and expose the paper's scale parameter defaults.
+These sklearn-style wrappers build the MHTSK rule base from raw data and expose configurable scale parameter resolution.
+
+### `paper_strict` mode
+
+Both wrappers support `paper_strict=True` to enforce a constrained configuration aligned with the paper defaults used in highFIS:
+
+- Fixed defaults and constraints: `n_mfs=3`, `fcm_m=2.0`, `rule_sigma=1.0`, `xi=743.0`, `instance_sample_fraction=0.8`.
+- Dynamic scale policy from input dimension `D`:
+	- If `D <= 5000`: `S = max(1, round(0.02 * D))`, `T = 200`.
+	- If `D > 5000`: `S = max(1, round(0.01 * D))`, `T = 300`.
+	- `S` is additionally bounded by the numeric-underflow limit based on `xi` and `rule_sigma`.
+- Rule extraction defaults enabled: `rule_extraction=True`, `crcr_us=0.5` (and `crcr_s=0.5` for classifier), `retrain_after_extraction=True`.
+- Consequent-only optimization in strict mode uses an Adam optimizer over consequent parameters.
+
+`paper_strict=True` intentionally rejects incompatible overrides (for example, manual `n_heads`, `head_size`, or disabling extraction).
+
+No internal train/validation holdout split is performed by MHTSK estimators; validation data is only used when explicitly passed via `x_val` and `y_val`.
 
 ### Key estimator parameters
 
@@ -110,7 +126,7 @@ These sklearn-style wrappers build the MHTSK rule base from raw data and expose 
 - `n_heads`: Number of heads (`T`). When `None`, defaults are resolved from `head_size`, `fcr_target`, and `h_value`.
 - `head_size`: Number of features per head (`S`). When `None`, defaults to `max(1, round(D * 0.02))` for `D <= 5000` or `max(1, round(D * 0.01))` otherwise.
 - `head_size_ratio`: Alternative way to specify `head_size` as a fraction of `D`.
-- `fcr_target`: Target feature coverage rate. Default: `0.85`.
+- `fcr_target`: Target feature coverage rate. Default behavior follows `0.85` when `h_value` is not set.
 - `h_value`: Paper-derived scale constant `H`. If provided, it overrides `fcr_target`.
 - `xi`: Numeric underflow threshold constant. Default: `743.0`.
 - `rule_sigma`: Gaussian sigma used for FCM-derived MFs. Default: `1.0`.
@@ -150,13 +166,13 @@ Selected rules are merged and the model is retrained on the reduced rule base.
 
 ## Alignment with the paper
 
-- highFIS implements the random head construction and sparse consequent exactly as described in the MHTSK paper.
+- highFIS implements the random head construction and sparse consequent consistent with the MHTSK paper formulation.
 - `feature_coverage_rate()` matches the paper's FCR equation:
 
 $$
 \text{FCR} = 1 - \left(1 - \frac{S}{D}\right)^{T}
 $$
 
-- The default `head_size` and `n_heads` resolution reproduces the paper's recommended scale parameter strategy using `xi`, `sigma`, `fcr_target`, and `h_value`.
+- The default `head_size` and `n_heads` resolution follows the paper-inspired scale parameter strategy using `xi`, `sigma`, `fcr_target`, and `h_value`.
 - The sparse consequent layers mirror the paper's per-rule subspace-specific linear consequents.
-- The `MHTSKClassifier` and `MHTSKRegressor` provide a user-facing API that reflects the paper's `S`, `T`, `K`, and rule extraction workflow.
+- The `MHTSKClassifier` and `MHTSKRegressor` provide a user-facing API that maps to paper symbols `S`, `T`, `K`, and rule extraction workflow.

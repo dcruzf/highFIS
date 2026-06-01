@@ -63,8 +63,20 @@ from highfis.estimators._base import (
 )
 from highfis.estimators._dg_tsk import _select_dgtsking_surviving_features
 from highfis.estimators._htsk import _HTSKPaperStrictTrainer
+from highfis.estimators._mhtsk import (
+    _MHTSKPaperStrictTrainer,
+    _resolve_mhtsk_paper_strict_classifier_config,
+    _resolve_mhtsk_paper_strict_regressor_config,
+    _strict_mhtsk_scale_from_dimension,
+)
 from highfis.memberships import DimensionDependentGaussianMF, GaussianMF, GaussianPiMF, MembershipFunction
-from highfis.models import HDFISMinClassifierModel, HDFISMinRegressorModel, HTSKClassifierModel, TSKRegressorModel
+from highfis.models import (
+    HDFISMinClassifierModel,
+    HDFISMinRegressorModel,
+    HTSKClassifierModel,
+    MHTSKClassifierModel,
+    TSKRegressorModel,
+)
 
 
 def _make_dataset(n_samples: int = 60) -> tuple[np.ndarray, np.ndarray]:
@@ -1194,6 +1206,208 @@ def test_mhtsk_regressor_estimator_rule_extraction_reduces_rules() -> None:
     assert est._extracted_rule_indices_ is not None
     assert len(est._extracted_rule_indices_) > 0
     assert est.model_.n_rules == len(est._extracted_rule_indices_)
+
+
+def test_mhtsk_paper_strict_defaults() -> None:
+    clf = MHTSKClassifier(paper_strict=True)
+    reg = MHTSKRegressor(paper_strict=True)
+
+    assert clf.n_mfs == 3
+    assert clf.fcm_m == 2.0
+    assert clf.rule_sigma == 1.0
+    assert clf.xi == 743.0
+    assert clf.instance_sample_fraction == 0.8
+    assert clf.rule_extraction is True
+    assert clf.crcr_us == 0.5
+    assert clf.crcr_s == 0.5
+    assert clf.retrain_after_extraction is True
+
+    assert reg.n_mfs == 3
+    assert reg.fcm_m == 2.0
+    assert reg.rule_sigma == 1.0
+    assert reg.xi == 743.0
+    assert reg.instance_sample_fraction == 0.8
+    assert reg.rule_extraction is True
+    assert reg.crcr_us == 0.5
+    assert reg.retrain_after_extraction is True
+
+
+def test_mhtsk_paper_strict_rejects_conflicting_hyperparameters() -> None:
+    with pytest.raises(ValueError, match="paper_strict requires n_mfs=3"):
+        MHTSKClassifier(paper_strict=True, n_mfs=4)
+    with pytest.raises(ValueError, match="paper_strict requires n_mfs=3"):
+        MHTSKRegressor(paper_strict=True, n_mfs=4)
+    with pytest.raises(ValueError, match="paper_strict computes n_heads from input dimension"):
+        MHTSKClassifier(paper_strict=True, n_heads=100)
+    with pytest.raises(ValueError, match="paper_strict computes n_heads from input dimension"):
+        MHTSKRegressor(paper_strict=True, n_heads=100)
+    with pytest.raises(ValueError, match="paper_strict computes head_size from input dimension"):
+        MHTSKClassifier(paper_strict=True, head_size=10)
+    with pytest.raises(ValueError, match="paper_strict computes head_size from input dimension"):
+        MHTSKRegressor(paper_strict=True, head_size=10)
+    with pytest.raises(ValueError, match="paper_strict requires fcr_target=None"):
+        MHTSKClassifier(paper_strict=True, fcr_target=0.9)
+    with pytest.raises(ValueError, match="paper_strict requires fcr_target=None"):
+        MHTSKRegressor(paper_strict=True, fcr_target=0.9)
+    with pytest.raises(ValueError, match="paper_strict requires h_value=None"):
+        MHTSKClassifier(paper_strict=True, h_value=3.0)
+    with pytest.raises(ValueError, match="paper_strict requires h_value=None"):
+        MHTSKRegressor(paper_strict=True, h_value=3.0)
+    with pytest.raises(ValueError, match="paper_strict requires rule_extraction=True"):
+        MHTSKClassifier(paper_strict=True, rule_extraction=False)
+    with pytest.raises(ValueError, match="paper_strict requires rule_extraction=True"):
+        MHTSKRegressor(paper_strict=True, rule_extraction=False)
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"head_size_ratio": 0.1}, "paper_strict requires head_size_ratio=None"),
+        ({"fcm_m": 2.1}, "paper_strict requires fcm_m=2.0"),
+        ({"rule_sigma": 1.1}, "paper_strict requires rule_sigma=1.0"),
+        ({"xi": 700.0}, "paper_strict requires xi=743.0"),
+        ({"instance_sample_fraction": 0.7}, "paper_strict requires instance_sample_fraction=0.8"),
+        ({"crcr_us": 0.6}, "paper_strict requires crcr_us=0.5"),
+        ({"crcr_s": 0.6}, "paper_strict requires crcr_s=0.5"),
+        ({"retrain_after_extraction": False}, "paper_strict requires retrain_after_extraction=True"),
+    ],
+)
+def test_mhtsk_paper_strict_classifier_config_rejects_invalid_values(
+    kwargs: dict[str, float | bool],
+    message: str,
+) -> None:
+    base_kwargs: dict[str, float | bool | None] = {
+        "n_mfs": None,
+        "n_heads": None,
+        "head_size": None,
+        "head_size_ratio": None,
+        "fcm_m": None,
+        "rule_sigma": None,
+        "fcr_target": None,
+        "h_value": None,
+        "xi": None,
+        "instance_sample_fraction": None,
+        "rule_extraction": None,
+        "crcr_us": None,
+        "crcr_s": None,
+        "retrain_after_extraction": None,
+    }
+    base_kwargs.update(kwargs)
+
+    with pytest.raises(ValueError, match=message):
+        _resolve_mhtsk_paper_strict_classifier_config(
+            paper_strict=True,
+            **base_kwargs,
+        )
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"head_size_ratio": 0.1}, "paper_strict requires head_size_ratio=None"),
+        ({"fcm_m": 2.1}, "paper_strict requires fcm_m=2.0"),
+        ({"rule_sigma": 1.1}, "paper_strict requires rule_sigma=1.0"),
+        ({"xi": 700.0}, "paper_strict requires xi=743.0"),
+        ({"instance_sample_fraction": 0.7}, "paper_strict requires instance_sample_fraction=0.8"),
+        ({"crcr_us": 0.6}, "paper_strict requires crcr_us=0.5"),
+        ({"retrain_after_extraction": False}, "paper_strict requires retrain_after_extraction=True"),
+    ],
+)
+def test_mhtsk_paper_strict_regressor_config_rejects_invalid_values(
+    kwargs: dict[str, float | bool],
+    message: str,
+) -> None:
+    base_kwargs: dict[str, float | bool | None] = {
+        "n_mfs": None,
+        "n_heads": None,
+        "head_size": None,
+        "head_size_ratio": None,
+        "fcm_m": None,
+        "rule_sigma": None,
+        "fcr_target": None,
+        "h_value": None,
+        "xi": None,
+        "instance_sample_fraction": None,
+        "rule_extraction": None,
+        "crcr_us": None,
+        "retrain_after_extraction": None,
+    }
+    base_kwargs.update(kwargs)
+
+    with pytest.raises(ValueError, match=message):
+        _resolve_mhtsk_paper_strict_regressor_config(
+            paper_strict=True,
+            **base_kwargs,
+        )
+
+
+def test_mhtsk_paper_strict_scale_policy_helper() -> None:
+    assert _strict_mhtsk_scale_from_dimension(1000, sigma=1.0, xi=743.0) == (20, 200)
+    assert _strict_mhtsk_scale_from_dimension(6000, sigma=1.0, xi=743.0) == (60, 300)
+
+
+def test_mhtsk_classifier_paper_strict_builds_fixed_head_count() -> None:
+    x, _ = _make_dataset(20)
+    est = MHTSKClassifier(paper_strict=True, random_state=0)
+    est._build_input_mfs(x)
+
+    assert len(est._mhtsk_rules) == 600
+    assert est._mhtsk_rule_feature_mask.shape[0] == 600
+
+
+def test_mhtsk_paper_strict_trainer_updates_only_consequents() -> None:
+    input_mfs = {
+        "x1": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0), GaussianMF(mean=2.0, sigma=1.0)],
+        "x2": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0), GaussianMF(mean=2.0, sigma=1.0)],
+    }
+    rules = [(1, 0), (0, 2), (2, 0)]
+    rule_feature_mask = torch.tensor([[True, False], [False, True], [True, False]], dtype=torch.bool)
+    model = MHTSKClassifierModel(input_mfs, rule_feature_mask, rules, n_classes=2, consequent_batch_norm=True)
+    x = torch.randn(16, 2)
+    y = torch.randint(0, 2, (16,), dtype=torch.long)
+
+    ante_before = next(model.membership_layer.parameters()).detach().clone()
+    cons_before = next(model.consequent_layer.parameters()).detach().clone()
+
+    trainer = _MHTSKPaperStrictTrainer(epochs=1, learning_rate=1e-2, batch_size=8)
+    trainer.fit(model, x, y)
+
+    ante_after = next(model.membership_layer.parameters()).detach()
+    cons_after = next(model.consequent_layer.parameters()).detach()
+
+    assert torch.allclose(ante_before, ante_after)
+    assert not torch.allclose(cons_before, cons_after)
+
+
+def test_mhtsk_paper_strict_classifier_fit_retrains_with_strict_trainer() -> None:
+    x, y = _make_dataset(20)
+    est = MHTSKClassifier(
+        paper_strict=True,
+        consequent_batch_norm=True,
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+    )
+
+    est.fit(x, y)
+
+    assert isinstance(est._get_trainer(), _MHTSKPaperStrictTrainer)
+    assert est._extracted_rule_indices_ is not None
+
+
+def test_mhtsk_paper_strict_regressor_fit_retrains_with_strict_trainer() -> None:
+    x, y = _make_dataset(20)
+    est = MHTSKRegressor(
+        paper_strict=True,
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+    )
+
+    est.fit(x, y.astype(np.float32))
+
+    assert isinstance(est._get_trainer(), _MHTSKPaperStrictTrainer)
+    assert est._extracted_rule_indices_ is not None
 
 
 def test_feature_coverage_rate() -> None:
