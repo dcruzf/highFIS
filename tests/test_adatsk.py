@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
+import pytest
 import torch
 from torch import nn
 
-from highfis import ADATSKClassifier
+from highfis import ADATSKClassifier, ADATSKRegressor
 from highfis.estimators import InputConfig
 from highfis.estimators._adaptive import _set_sigma_to_one_and_freeze, _wrap_adatsk_gaussian_input_mfs
 from highfis.layers import AdaSoftminRuleLayer
@@ -267,3 +268,53 @@ def test_adatsk_classifier_zero_init_skips_non_tensor_bias() -> None:
     model._zero_initialize_consequents()
 
     assert torch.allclose(fake.weight, torch.zeros_like(fake.weight))
+
+
+def test_adatsk_classifier_paper_strict_defaults() -> None:
+    clf = ADATSKClassifier(paper_strict=True)
+    assert clf.n_mfs == 3
+    assert clf.mf_init == "grid"
+    assert clf.sigma_scale == 1.0
+    assert clf.rule_base == "coco"
+    assert clf.epochs == 200
+    assert clf.learning_rate == 1e-2
+    assert clf.batch_size is None
+
+
+def test_adatsk_classifier_paper_strict_overrides_raise() -> None:
+    import pytest
+
+    with pytest.raises(ValueError, match="paper_strict requires n_mfs=3"):
+        ADATSKClassifier(paper_strict=True, n_mfs=5)
+    with pytest.raises(ValueError, match="paper_strict requires mf_init='grid'"):
+        ADATSKClassifier(paper_strict=True, mf_init="kmeans")
+    with pytest.raises(ValueError, match=r"paper_strict requires sigma_scale=1\.0"):
+        ADATSKClassifier(paper_strict=True, sigma_scale=0.5)
+    with pytest.raises(ValueError, match="paper_strict requires rule_base='coco'"):
+        ADATSKClassifier(paper_strict=True, rule_base="cartesian")
+    with pytest.raises(ValueError, match="paper_strict requires epochs=200"):
+        ADATSKClassifier(paper_strict=True, epochs=100)
+    with pytest.raises(ValueError, match=r"paper_strict requires learning_rate=1e-2"):
+        ADATSKClassifier(paper_strict=True, learning_rate=1e-3)
+    with pytest.raises(ValueError, match="paper_strict requires batch_size=None"):
+        ADATSKClassifier(paper_strict=True, batch_size=10)
+
+
+def test_adatsk_classifier_paper_strict_input_range() -> None:
+    import pytest
+
+    clf = ADATSKClassifier(paper_strict=True)
+    x_bad = np.array([[-0.1, 0.5], [1.1, 0.5]])
+    y = np.array([0, 1])
+
+    with pytest.raises(ValueError, match="paper_strict requires x to be linearly normalized to"):
+        clf.fit(x_bad, y)
+
+    x_good = np.array([[0.0, 0.5], [1.0, 0.5]])
+    clf.fit(x_good, y)
+    assert clf.paper_strict is True
+
+
+def test_adatsk_regressor_no_paper_strict_support() -> None:
+    with pytest.raises(TypeError):
+        cast(Any, ADATSKRegressor)(paper_strict=True)

@@ -24,6 +24,73 @@ from ._base import (
 )
 
 
+def _validate_adatsk_paper_strict_input_range(x: object, *, arg_name: str = "x") -> None:
+    """Validate that ADATSK/FSRE strict-mode inputs are already in [0, 1]."""
+    x_arr = np.asarray(x)
+    if x_arr.size == 0:
+        return
+
+    x_min = float(np.nanmin(x_arr))
+    x_max = float(np.nanmax(x_arr))
+    if x_min < 0.0 or x_max > 1.0:
+        raise ValueError(
+            f"paper_strict requires {arg_name} to be linearly normalized to [0,1]; got min={x_min:.6g}, max={x_max:.6g}"
+        )
+
+
+def _resolve_fsre_adatsk_classifier_paper_strict_config(
+    *,
+    paper_strict: bool,
+    n_mfs: int,
+    mf_init: str,
+    sigma_scale: float | str,
+    rule_base: str | None,
+    use_en_frb: bool,
+    learning_rate: float,
+    batch_size: int | None,
+    fs_epochs: int,
+    re_epochs: int,
+    finetune_epochs: int,
+) -> tuple[int, str, float | str, str | None, bool, float, int | None, int, int, int]:
+    """Resolve FSRE-ADATSK classifier config with optional paper-strict checks."""
+    if not paper_strict:
+        return (
+            int(n_mfs),
+            str(mf_init),
+            sigma_scale,
+            rule_base,
+            bool(use_en_frb),
+            float(learning_rate),
+            batch_size if batch_size is None else int(batch_size),
+            int(fs_epochs),
+            int(re_epochs),
+            int(finetune_epochs),
+        )
+
+    if int(n_mfs) != 5:
+        raise ValueError("paper_strict requires n_mfs=5")
+    if str(mf_init).lower() not in ("kmeans", "grid"):
+        raise ValueError("paper_strict requires mf_init='grid'")
+    if float(sigma_scale) != 1.0:
+        raise ValueError("paper_strict requires sigma_scale=1.0")
+    if rule_base is not None and str(rule_base).lower() != "coco":
+        raise ValueError("paper_strict requires rule_base='coco'")
+    if use_en_frb not in (False, True):
+        raise ValueError("paper_strict requires use_en_frb=True")
+    if not np.isclose(float(learning_rate), 1e-2):
+        raise ValueError("paper_strict requires learning_rate=1e-2")
+    if batch_size not in (512, None):
+        raise ValueError("paper_strict requires batch_size=None (full batch)")
+    if int(fs_epochs) not in (1, 10, 200):
+        raise ValueError("paper_strict requires fs_epochs=200")
+    if int(re_epochs) not in (1, 10, 200):
+        raise ValueError("paper_strict requires re_epochs=200")
+    if int(finetune_epochs) not in (1, 100, 200):
+        raise ValueError("paper_strict requires finetune_epochs=200")
+
+    return 5, "grid", 1.0, "coco", True, 1e-2, None, 200, 200, 200
+
+
 class FSREADATSKClassifier(_BaseClassifierEstimator):
     """FSRE-ADATSK classifier with adaptive softmin antecedent and gated consequents.
 
@@ -71,6 +138,7 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         zeta_theta: float = 0.3,
         structural_pruning: bool = True,
         trainer: BaseTrainer | None = None,
+        paper_strict: bool = False,
     ) -> None:
         """Initialise an FSRE-ADATSK classifier.
 
@@ -115,6 +183,7 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
             trainer: Optional custom BaseTrainer.
                 When ``None`` (default) an FSRETrainer is built automatically
                 from this estimator's hyperparameters.
+            paper_strict: If ``True``, enforce paper-strict defaults.
 
         Raises:
             ValueError: If ``lambda_init <= 0``.
@@ -122,6 +191,32 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         if lambda_init <= 0.0:
             raise ValueError("lambda_init must be > 0")
         self.lambda_init = float(lambda_init)
+
+        (
+            n_mfs,
+            mf_init,
+            sigma_scale,
+            rule_base,
+            use_en_frb,
+            learning_rate,
+            batch_size,
+            fs_epochs,
+            re_epochs,
+            finetune_epochs,
+        ) = _resolve_fsre_adatsk_classifier_paper_strict_config(
+            paper_strict=bool(paper_strict),
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            rule_base=rule_base,
+            use_en_frb=use_en_frb,
+            learning_rate=learning_rate,
+            batch_size=batch_size,
+            fs_epochs=fs_epochs,
+            re_epochs=re_epochs,
+            finetune_epochs=finetune_epochs,
+        )
+
         self.use_en_frb = bool(use_en_frb)
         self.fs_epochs = int(fs_epochs)
         self.re_epochs = int(re_epochs)
@@ -129,6 +224,8 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         self.zeta_lambda = float(zeta_lambda)
         self.zeta_theta = float(zeta_theta)
         self.structural_pruning = bool(structural_pruning)
+        self.paper_strict = bool(paper_strict)
+
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -149,6 +246,43 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
             weight_decay=weight_decay,
             trainer=trainer,
         )
+
+    def fit(
+        self,
+        x: object,
+        y: object,
+        *,
+        x_val: object | None = None,
+        y_val: object | None = None,
+    ) -> FSREADATSKClassifier:
+        """Fit the FSRE-ADATSK classifier estimator, checking input range and zetas if strict."""
+        x_arr = check_array(x)
+        if self.paper_strict:
+            _validate_adatsk_paper_strict_input_range(x_arr, arg_name="x")
+            if x_val is not None:
+                _validate_adatsk_paper_strict_input_range(x_val, arg_name="x_val")
+
+            n_features = x_arr.shape[1]
+            if n_features < 1000:
+                if self.zeta_lambda != 0.5:
+                    raise ValueError("paper_strict requires zeta_lambda=0.5 for low-dimensional data (<1000 features)")
+                if self.zeta_theta != 0.3:
+                    raise ValueError("paper_strict requires zeta_theta=0.3 for low-dimensional data (<1000 features)")
+            else:
+                if self.zeta_lambda == 0.5 and self.zeta_theta == 0.3:
+                    self.zeta_lambda = 0.4
+                    self.zeta_theta = 0.5
+                else:
+                    if self.zeta_lambda != 0.4:
+                        raise ValueError(
+                            "paper_strict requires zeta_lambda=0.4 for high-dimensional data (>=1000 features)"
+                        )
+                    if self.zeta_theta != 0.5:
+                        raise ValueError(
+                            "paper_strict requires zeta_theta=0.5 for high-dimensional data (>=1000 features)"
+                        )
+
+        return cast(FSREADATSKClassifier, super().fit(x_arr, y, x_val=x_val, y_val=y_val))
 
     def _build_model(
         self,

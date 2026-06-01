@@ -33,6 +33,68 @@ from ._base import (
 )
 
 
+def _validate_dg_tsk_paper_strict_input_range(x: object, *, arg_name: str = "x") -> None:
+    """Validate that DG-TSK strict-mode inputs are already in [0, 1]."""
+    x_arr = np.asarray(x)
+    if x_arr.size == 0:
+        return
+
+    x_min = float(np.nanmin(x_arr))
+    x_max = float(np.nanmax(x_arr))
+    if x_min < 0.0 or x_max > 1.0:
+        raise ValueError(
+            f"paper_strict requires {arg_name} to be linearly normalized to [0,1]; got min={x_min:.6g}, max={x_max:.6g}"
+        )
+
+
+def _resolve_dg_tsk_paper_strict_config(
+    *,
+    paper_strict: bool,
+    dg_epochs: int,
+    finetune_epochs: int,
+    learning_rate: float,
+    rule_base: str | None,
+    zeta_lambda: list[float] | None,
+    zeta_theta: list[float] | None,
+    pfrb_max_rules: int | None,
+    batch_size: int | None,
+) -> tuple[int, int, float, str, list[float], list[float], int | None, int | None]:
+    if not paper_strict:
+        return (
+            int(dg_epochs),
+            int(finetune_epochs),
+            float(learning_rate),
+            rule_base if rule_base is not None else "pfrb",
+            [0.5] if zeta_lambda is None else list(zeta_lambda),
+            [0.01] if zeta_theta is None else list(zeta_theta),
+            pfrb_max_rules,
+            batch_size,
+        )
+
+    # If parameters are their non-strict defaults or their strict values, resolve to strict.
+    if int(dg_epochs) not in (10, 300):
+        raise ValueError("paper_strict requires dg_epochs=300")
+    if int(finetune_epochs) not in (200, 300):
+        raise ValueError("paper_strict requires finetune_epochs=300")
+    if not (np.isclose(float(learning_rate), 1e-2) or np.isclose(float(learning_rate), 0.2)):
+        raise ValueError("paper_strict requires learning_rate=0.2")
+    if rule_base is not None and str(rule_base).lower() != "pfrb":
+        raise ValueError("paper_strict requires rule_base='pfrb'")
+    if pfrb_max_rules is not None and int(pfrb_max_rules) != 300:
+        raise ValueError("paper_strict requires pfrb_max_rules=300")
+    if batch_size not in (512, None):
+        raise ValueError("paper_strict requires batch_size=None (full batch)")
+
+    resolved_zeta_lambda = [0.5] if zeta_lambda is None else list(zeta_lambda)
+    resolved_zeta_theta = [0.01] if zeta_theta is None else list(zeta_theta)
+    if resolved_zeta_lambda != [0.5]:
+        raise ValueError("paper_strict requires zeta_lambda=[0.5]")
+    if resolved_zeta_theta != [0.01]:
+        raise ValueError("paper_strict requires zeta_theta=[0.01]")
+
+    return 300, 300, 0.2, "pfrb", [0.5], [0.01], 300, None
+
+
 class DGTSKClassifier(_BaseClassifierEstimator):
     """DG-TSK classifier with M-gate antecedent and point-based FRB (P-FRB).
 
@@ -44,8 +106,8 @@ class DGTSKClassifier(_BaseClassifierEstimator):
        antecedent MFs frozen (P-FRB).
     2. **Threshold search** — Grid-search for the pruning thresholds
        ``(zeta_lambda, zeta_theta)`` that maximise held-out accuracy.
-     3. **Fine-tune phase** — Train first-order consequents on the pruned
-         structure.
+    3. **Fine-tune phase** — Train first-order consequents on the pruned
+       structure.
 
     Reference:
         Guangdong Xue, Jian Wang, Bingjie Zhang, Bin Yuan, Caili Dai,
@@ -93,6 +155,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         optimizer_type: str = "sgd",
         structural_pruning: bool = True,
         freeze_antecedents_finetune: bool = False,
+        paper_strict: bool = False,
     ) -> None:
         """Initialise a DG-TSK classifier.
 
@@ -145,37 +208,82 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             freeze_antecedents_finetune: If ``True``, freeze MF parameters
                 and feature gates during fine-tuning. Defaults to ``False``
                 to optimize antecedents and consequents in fine-tuning.
+            paper_strict: If ``True``, enforce DG-TSK paper protocol
+                defaults in the classifier (``dg_epochs=300``, ``finetune_epochs=300``,
+                ``learning_rate=0.2``, ``rule_base='pfrb'``, ``pfrb_max_rules=300``, and
+                ``batch_size=None``). In strict mode, ``fit`` validates that
+                inputs are already in ``[0, 1]``.
         """
+        (
+            resolved_dg_epochs,
+            resolved_finetune_epochs,
+            resolved_learning_rate,
+            resolved_rule_base,
+            resolved_zeta_lambda,
+            resolved_zeta_theta,
+            resolved_pfrb_max_rules,
+            resolved_batch_size,
+        ) = _resolve_dg_tsk_paper_strict_config(
+            paper_strict=bool(paper_strict),
+            dg_epochs=dg_epochs,
+            finetune_epochs=finetune_epochs,
+            learning_rate=learning_rate,
+            rule_base=rule_base,
+            zeta_lambda=zeta_lambda,
+            zeta_theta=zeta_theta,
+            pfrb_max_rules=pfrb_max_rules,
+            batch_size=batch_size,
+        )
+
         self.use_en_frb = bool(use_en_frb)
-        self.dg_epochs = int(dg_epochs)
-        self.finetune_epochs = int(finetune_epochs)
-        self.zeta_lambda = [0.5] if zeta_lambda is None else list(zeta_lambda)
-        self.zeta_theta = [0.01] if zeta_theta is None else list(zeta_theta)
+        self.dg_epochs = resolved_dg_epochs
+        self.finetune_epochs = resolved_finetune_epochs
+        self.zeta_lambda = resolved_zeta_lambda
+        self.zeta_theta = resolved_zeta_theta
         self.use_lse = bool(use_lse)
         self.optimizer_type = str(optimizer_type)
         self.structural_pruning = bool(structural_pruning)
         self.freeze_antecedents_finetune = bool(freeze_antecedents_finetune)
+        self.paper_strict = bool(paper_strict)
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
             mf_init=mf_init,
             sigma_scale=sigma_scale,
             random_state=random_state,
-            epochs=dg_epochs,
-            learning_rate=learning_rate,
+            epochs=resolved_dg_epochs,
+            learning_rate=resolved_learning_rate,
             verbose=verbose,
-            rule_base=rule_base,
-            batch_size=batch_size,
+            rule_base=resolved_rule_base,
+            batch_size=resolved_batch_size,
             shuffle=shuffle,
             ur_weight=ur_weight,
             ur_target=ur_target,
             consequent_batch_norm=consequent_batch_norm,
-            pfrb_max_rules=pfrb_max_rules,
+            pfrb_max_rules=resolved_pfrb_max_rules,
             patience=patience,
             restore_best=restore_best,
-            weight_decay=weight_decay,
             trainer=trainer,
         )
+
+    def fit(
+        self,
+        x: Any,
+        y: Any,
+        *,
+        x_val: Any | None = None,
+        y_val: Any | None = None,
+    ) -> DGTSKClassifier:
+        """Train the DG-TSK classifier.
+
+        Validation data should be supplied using ``x_val`` and ``y_val``
+        when available.
+        """
+        if self.paper_strict:
+            _validate_dg_tsk_paper_strict_input_range(x, arg_name="x")
+            if x_val is not None:
+                _validate_dg_tsk_paper_strict_input_range(x_val, arg_name="x_val")
+        return cast(DGTSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val))
 
     def _build_model(
         self,

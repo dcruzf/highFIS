@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 import torch
 
@@ -487,3 +489,64 @@ def test_dgaletsk_regressor_fit_finetune_unfreeze_antecedents() -> None:
     history = model.fit_finetune(x, y, epochs=1, batch_size=8, shuffle=False, freeze_antecedents=False)
     assert isinstance(history, dict)
     assert isinstance(model.consequent_layer, GatedRegressionConsequentLayer)
+
+
+# ---------------------------------------------------------------------------
+# paper_strict verification tests
+# ---------------------------------------------------------------------------
+
+
+def test_dgaletsk_classifier_paper_strict_defaults() -> None:
+    from highfis import DGALETSKClassifier
+
+    clf = DGALETSKClassifier(paper_strict=True)
+    assert clf.dg_epochs == 10
+    assert clf.finetune_epochs == 50
+    assert clf.learning_rate == 0.01
+    assert clf.rule_base == "pfrb"
+    assert clf.zeta_lambda == [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+    assert clf.zeta_theta == [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+
+
+def test_dgaletsk_regressor_no_paper_strict_support() -> None:
+    from highfis import DGALETSKRegressor
+
+    with pytest.raises(TypeError):
+        # DGALETSKRegressor does not accept paper_strict since it's a project extension
+        kwargs: dict[str, Any] = {"paper_strict": True}
+        DGALETSKRegressor(**kwargs)
+
+
+def test_dgaletsk_classifier_paper_strict_invalid_raises() -> None:
+    from highfis import DGALETSKClassifier
+
+    with pytest.raises(ValueError, match="paper_strict requires dg_epochs=10"):
+        DGALETSKClassifier(dg_epochs=20, paper_strict=True)
+
+    with pytest.raises(ValueError, match="paper_strict requires finetune_epochs=50"):
+        DGALETSKClassifier(finetune_epochs=100, paper_strict=True)
+
+    with pytest.raises(ValueError, match="paper_strict requires learning_rate=1e-2"):
+        DGALETSKClassifier(learning_rate=0.05, paper_strict=True)
+
+    with pytest.raises(ValueError, match="paper_strict requires rule_base='pfrb'"):
+        DGALETSKClassifier(rule_base="coco", paper_strict=True)
+
+    with pytest.raises(ValueError, match="paper_strict requires zeta_lambda"):
+        DGALETSKClassifier(zeta_lambda=[0.1], paper_strict=True)
+
+    with pytest.raises(ValueError, match="paper_strict requires zeta_theta"):
+        DGALETSKClassifier(zeta_theta=[0.1], paper_strict=True)
+
+
+def test_dgaletsk_classifier_paper_strict_input_range_raises() -> None:
+    import numpy as np
+
+    from highfis import DGALETSKClassifier
+
+    X_invalid = np.array([[1.5, 0.2], [0.3, 0.8]])
+    y = np.array([0, 1])
+
+    clf = DGALETSKClassifier(paper_strict=True)
+    with pytest.raises(ValueError, match="to be linearly normalized to"):
+        clf.fit(X_invalid, y)

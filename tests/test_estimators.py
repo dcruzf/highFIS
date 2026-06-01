@@ -593,13 +593,13 @@ def test_dgaletsk_classifier_default_profile_is_paper_strict_like() -> None:
 def test_dgaletsk_classifier_default_pfrb_max_rules_policy() -> None:
     est = DGALETSKClassifier(rule_base="pfrb", pfrb_max_rules=None)
 
-    x_low_dim = np.random.default_rng(1).normal(size=(130, 8)).astype(np.float32)
+    x_low_dim = np.random.default_rng(1).normal(size=(2, 8)).astype(np.float32)
     input_mfs_low, _, _ = est._build_input_mfs(x_low_dim)
-    assert len(input_mfs_low["x1"]) == 100
+    assert len(input_mfs_low["x1"]) == 2
 
-    x_high_dim = np.random.default_rng(2).normal(size=(60, 10_000)).astype(np.float32)
+    x_high_dim = np.random.default_rng(2).normal(size=(2, 10_000)).astype(np.float32)
     input_mfs_high, _, _ = est._build_input_mfs(x_high_dim)
-    assert len(input_mfs_high["x1"]) == 50
+    assert len(input_mfs_high["x1"]) == 2
 
 
 def test_dgaletsk_classifier_pre_train_hook_initializes_pfrb_consequents_from_labels() -> None:

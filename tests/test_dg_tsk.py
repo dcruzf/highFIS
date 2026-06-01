@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pytest
 import torch
@@ -922,3 +924,75 @@ def test_dgtsk_regressor_load_restores_first_order_architecture(tmp_path: object
     loaded = DGTSKRegressor.load(path)
     assert loaded.n_features_in_ == reg.n_features_in_
     assert np.allclose(loaded.predict(X), reg.predict(X), atol=1e-4)
+
+
+# ---------------------------------------------------------------------------
+# Paper-strict defaults and validation
+# ---------------------------------------------------------------------------
+
+
+def test_dgtsk_classifier_paper_strict_defaults() -> None:
+    """Test that paper_strict=True enforces exact paper hyperparameters."""
+    clf = DGTSKClassifier(paper_strict=True)
+    assert clf.paper_strict is True
+    assert clf.dg_epochs == 300
+    assert clf.finetune_epochs == 300
+    assert clf.learning_rate == 0.2
+    assert clf.rule_base == "pfrb"
+    assert clf.pfrb_max_rules == 300
+    assert clf.batch_size is None
+    assert clf.zeta_lambda == [0.5]
+    assert clf.zeta_theta == [0.01]
+
+
+def test_dgtsk_classifier_paper_strict_invalid_raises() -> None:
+    """Test that overriding any paper hyperparameter in strict mode raises ValueError."""
+    with pytest.raises(ValueError, match="paper_strict requires dg_epochs=300"):
+        DGTSKClassifier(paper_strict=True, dg_epochs=100)
+
+    with pytest.raises(ValueError, match="paper_strict requires finetune_epochs=300"):
+        DGTSKClassifier(paper_strict=True, finetune_epochs=100)
+
+    with pytest.raises(ValueError, match=r"paper_strict requires learning_rate=0.2"):
+        DGTSKClassifier(paper_strict=True, learning_rate=0.05)
+
+    with pytest.raises(ValueError, match="paper_strict requires rule_base='pfrb'"):
+        DGTSKClassifier(paper_strict=True, rule_base="coco")
+
+    with pytest.raises(ValueError, match="paper_strict requires pfrb_max_rules=300"):
+        DGTSKClassifier(paper_strict=True, pfrb_max_rules=100)
+
+    with pytest.raises(ValueError, match="paper_strict requires batch_size=None"):
+        DGTSKClassifier(paper_strict=True, batch_size=128)
+
+    with pytest.raises(ValueError, match=r"paper_strict requires zeta_lambda=\[0.5\]"):
+        DGTSKClassifier(paper_strict=True, zeta_lambda=[0.1])
+
+    with pytest.raises(ValueError, match=r"paper_strict requires zeta_theta=\[0.01\]"):
+        DGTSKClassifier(paper_strict=True, zeta_theta=[0.05])
+
+
+def test_dgtsk_classifier_paper_strict_input_range_raises() -> None:
+    """Test that fit() validates that inputs are strictly normalized in [0, 1]."""
+    clf = DGTSKClassifier(paper_strict=True)
+
+    X_invalid_min = np.array([[-0.1, 0.5], [0.2, 0.8]])
+    y = np.array([0, 1])
+    with pytest.raises(ValueError, match=r"paper_strict requires x to be linearly normalized to \[0,1\]"):
+        clf.fit(X_invalid_min, y)
+
+    X_invalid_max = np.array([[1.1, 0.5], [0.2, 0.8]])
+    with pytest.raises(ValueError, match=r"paper_strict requires x to be linearly normalized to \[0,1\]"):
+        clf.fit(X_invalid_max, y)
+
+    X_valid = np.array([[0.0, 0.5], [0.2, 1.0]])
+    X_val_invalid = np.array([[0.0, 1.5], [0.2, 0.8]])
+    with pytest.raises(ValueError, match=r"paper_strict requires x_val to be linearly normalized to \[0,1\]"):
+        clf.fit(X_valid, y, x_val=X_val_invalid, y_val=y)
+
+
+def test_dgtsk_regressor_no_paper_strict_support() -> None:
+    """Test that paper_strict is not supported by DGTSKRegressor (raises TypeError)."""
+    with pytest.raises(TypeError):
+        kwargs: dict[str, Any] = {"paper_strict": True}
+        DGTSKRegressor(**kwargs)

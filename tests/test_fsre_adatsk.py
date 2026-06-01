@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import numpy as np
 import pytest
 import torch
 import torch.nn as nn
 
+from highfis import FSREADATSKClassifier
 from highfis.layers import AdaSoftminRuleLayer
 from highfis.memberships import GaussianMF
 from highfis.models import FSREADATSKClassifierModel, FSREADATSKRegressorModel
@@ -466,3 +468,103 @@ def test_fsre_adatsk_regressor_predict_wrong_n_features() -> None:
     reg.fit(X, y)
     with pytest.raises(ValueError, match="expected"):
         reg.predict(X[:, :2])
+
+
+def test_fsre_adatsk_classifier_paper_strict_defaults() -> None:
+    clf = FSREADATSKClassifier(paper_strict=True)
+    assert clf.n_mfs == 5
+    assert clf.mf_init == "grid"
+    assert clf.sigma_scale == 1.0
+    assert clf.rule_base == "coco"
+    assert clf.use_en_frb is True
+    assert clf.learning_rate == 1e-2
+    assert clf.batch_size is None
+    assert clf.fs_epochs == 200
+    assert clf.re_epochs == 200
+    assert clf.finetune_epochs == 200
+
+
+def test_fsre_adatsk_classifier_paper_strict_overrides_raise() -> None:
+    with pytest.raises(ValueError, match="paper_strict requires n_mfs=5"):
+        FSREADATSKClassifier(paper_strict=True, n_mfs=3)
+    with pytest.raises(ValueError, match="paper_strict requires mf_init='grid'"):
+        FSREADATSKClassifier(paper_strict=True, mf_init="fcm")
+    with pytest.raises(ValueError, match=r"paper_strict requires sigma_scale=1\.0"):
+        FSREADATSKClassifier(paper_strict=True, sigma_scale=0.5)
+    with pytest.raises(ValueError, match="paper_strict requires rule_base='coco'"):
+        FSREADATSKClassifier(paper_strict=True, rule_base="cartesian")
+    with pytest.raises(ValueError, match=r"paper_strict requires learning_rate=1e-2"):
+        FSREADATSKClassifier(paper_strict=True, learning_rate=1e-3)
+    with pytest.raises(ValueError, match="paper_strict requires batch_size=None"):
+        FSREADATSKClassifier(paper_strict=True, batch_size=128)
+    with pytest.raises(ValueError, match="paper_strict requires fs_epochs=200"):
+        FSREADATSKClassifier(paper_strict=True, fs_epochs=5)
+    with pytest.raises(ValueError, match="paper_strict requires re_epochs=200"):
+        FSREADATSKClassifier(paper_strict=True, re_epochs=5)
+    with pytest.raises(ValueError, match="paper_strict requires finetune_epochs=200"):
+        FSREADATSKClassifier(paper_strict=True, finetune_epochs=5)
+
+
+def test_fsre_adatsk_classifier_paper_strict_low_dim_zeta_fit() -> None:
+    from unittest.mock import patch
+
+    clf = FSREADATSKClassifier(paper_strict=True, fs_epochs=1, re_epochs=1, finetune_epochs=1)
+    x = np.random.default_rng(0).uniform(0, 1, size=(2, 5))
+    y = np.array([0, 1])
+
+    with patch("highfis.optim.FSRETrainer.fit", return_value={"train": [], "stopped_epoch": 0}):
+        clf.fit(x, y)
+    assert clf.zeta_lambda == 0.5
+    assert clf.zeta_theta == 0.3
+
+    clf_bad = FSREADATSKClassifier(paper_strict=True, zeta_lambda=0.4, fs_epochs=1, re_epochs=1, finetune_epochs=1)
+    with (
+        pytest.raises(ValueError, match=r"paper_strict requires zeta_lambda=0\.5 for low-dimensional data"),
+        patch("highfis.optim.FSRETrainer.fit", return_value={"train": [], "stopped_epoch": 0}),
+    ):
+        clf_bad.fit(x, y)
+
+
+def test_fsre_adatsk_classifier_paper_strict_high_dim_zeta_fit() -> None:
+    from unittest.mock import patch
+
+    clf = FSREADATSKClassifier(paper_strict=True, fs_epochs=1, re_epochs=1, finetune_epochs=1)
+    x = np.random.default_rng(0).uniform(0, 1, size=(2, 1000))
+    y = np.array([0, 1])
+
+    with patch("highfis.optim.FSRETrainer.fit", return_value={"train": [], "stopped_epoch": 0}):
+        clf.fit(x, y)
+    assert clf.zeta_lambda == 0.4
+    assert clf.zeta_theta == 0.5
+
+    clf_bad_explicit = FSREADATSKClassifier(
+        paper_strict=True, zeta_lambda=0.9, fs_epochs=1, re_epochs=1, finetune_epochs=1
+    )
+    with (
+        pytest.raises(ValueError, match=r"paper_strict requires zeta_lambda=0\.4 for high-dimensional data"),
+        patch("highfis.optim.FSRETrainer.fit", return_value={"train": [], "stopped_epoch": 0}),
+    ):
+        clf_bad_explicit.fit(x, y)
+
+
+def test_fsre_adatsk_classifier_paper_strict_input_range() -> None:
+    from unittest.mock import patch
+
+    clf = FSREADATSKClassifier(paper_strict=True, fs_epochs=1, re_epochs=1, finetune_epochs=1)
+    x_bad = np.array([[-0.1, 0.5], [1.1, 0.5]])
+    y = np.array([0, 1])
+
+    with (
+        pytest.raises(ValueError, match="paper_strict requires x to be linearly normalized to"),
+        patch("highfis.optim.FSRETrainer.fit", return_value={"train": [], "stopped_epoch": 0}),
+    ):
+        clf.fit(x_bad, y)
+
+
+def test_fsre_adatsk_regressor_no_paper_strict_support() -> None:
+    from typing import Any, cast
+
+    from highfis import FSREADATSKRegressor
+
+    with pytest.raises(TypeError):
+        cast(Any, FSREADATSKRegressor)(paper_strict=True)

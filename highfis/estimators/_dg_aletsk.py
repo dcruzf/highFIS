@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 from torch import Tensor
@@ -24,6 +24,59 @@ from ._fsre import (
 )
 
 _DG_ALETSK_PAPER_ZETA_GRID: list[float] = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+
+
+def _validate_dg_aletsk_paper_strict_input_range(x: object, *, arg_name: str = "x") -> None:
+    """Validate that DG-ALETSK strict-mode inputs are already in [0, 1]."""
+    x_arr = np.asarray(x)
+    if x_arr.size == 0:
+        return
+
+    x_min = float(np.nanmin(x_arr))
+    x_max = float(np.nanmax(x_arr))
+    if x_min < 0.0 or x_max > 1.0:
+        raise ValueError(
+            f"paper_strict requires {arg_name} to be linearly normalized to [0,1]; got min={x_min:.6g}, max={x_max:.6g}"
+        )
+
+
+def _resolve_dg_aletsk_paper_strict_config(
+    *,
+    paper_strict: bool,
+    dg_epochs: int,
+    finetune_epochs: int,
+    learning_rate: float,
+    rule_base: str | None,
+    zeta_lambda: list[float] | None,
+    zeta_theta: list[float] | None,
+) -> tuple[int, int, float, str, list[float], list[float]]:
+    if not paper_strict:
+        return (
+            int(dg_epochs),
+            int(finetune_epochs),
+            float(learning_rate),
+            rule_base if rule_base is not None else "pfrb",
+            [float(v) for v in (_DG_ALETSK_PAPER_ZETA_GRID if zeta_lambda is None else zeta_lambda)],
+            [float(v) for v in (_DG_ALETSK_PAPER_ZETA_GRID if zeta_theta is None else zeta_theta)],
+        )
+
+    if int(dg_epochs) != 10:
+        raise ValueError("paper_strict requires dg_epochs=10")
+    if int(finetune_epochs) != 50:
+        raise ValueError("paper_strict requires finetune_epochs=50")
+    if float(learning_rate) != 1e-2:
+        raise ValueError("paper_strict requires learning_rate=1e-2")
+    if rule_base is not None and str(rule_base).lower() != "pfrb":
+        raise ValueError("paper_strict requires rule_base='pfrb'")
+
+    resolved_zeta_lambda = [float(v) for v in (_DG_ALETSK_PAPER_ZETA_GRID if zeta_lambda is None else zeta_lambda)]
+    resolved_zeta_theta = [float(v) for v in (_DG_ALETSK_PAPER_ZETA_GRID if zeta_theta is None else zeta_theta)]
+    if resolved_zeta_lambda != _DG_ALETSK_PAPER_ZETA_GRID:
+        raise ValueError("paper_strict requires zeta_lambda=[0.05, 0.1, 0.15, 0.2, 0.25, 0.3]")
+    if resolved_zeta_theta != _DG_ALETSK_PAPER_ZETA_GRID:
+        raise ValueError("paper_strict requires zeta_theta=[0.05, 0.1, 0.15, 0.2, 0.25, 0.3]")
+
+    return 10, 50, 1e-2, "pfrb", _DG_ALETSK_PAPER_ZETA_GRID, _DG_ALETSK_PAPER_ZETA_GRID
 
 
 class DGALETSKClassifier(FSREADATSKClassifier):
@@ -88,6 +141,7 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         optimizer_type: str = "sgd",
         structural_pruning: bool = True,
         freeze_antecedents_finetune: bool = True,
+        paper_strict: bool = False,
     ) -> None:
         """Initialise a DG-ALETSK classifier.
 
@@ -135,11 +189,32 @@ class DGALETSKClassifier(FSREADATSKClassifier):
                 pruning after threshold search.
             freeze_antecedents_finetune: If ``True`` (default), freeze MF
                 parameters and feature gates during fine-tuning.
+            paper_strict: If ``True``, enforce DG-ALETSK paper protocol
+                defaults in the classifier (``dg_epochs=10``, ``finetune_epochs=50``,
+                ``learning_rate=0.01``, ``rule_base='pfrb'``, and
+                ``zeta_lambda`` / ``zeta_theta`` grids as
+                ``[0.05, 0.1, 0.15, 0.2, 0.25, 0.3]``).
+                Input normalization remains external to the estimator. In strict
+                mode, ``fit`` validates that inputs are already in ``[0, 1]``
+                and dynamically sets the batch size to ``10%`` of the training samples.
         """
-        self.dg_epochs = int(dg_epochs)
-        self.use_lse = bool(use_lse)
-        self.optimizer_type = str(optimizer_type)
-        self.freeze_antecedents_finetune = bool(freeze_antecedents_finetune)
+        (
+            resolved_dg_epochs,
+            resolved_finetune_epochs,
+            resolved_learning_rate,
+            resolved_rule_base,
+            resolved_zeta_lambda,
+            resolved_zeta_theta,
+        ) = _resolve_dg_aletsk_paper_strict_config(
+            paper_strict=bool(paper_strict),
+            dg_epochs=dg_epochs,
+            finetune_epochs=finetune_epochs,
+            learning_rate=learning_rate,
+            rule_base=rule_base,
+            zeta_lambda=zeta_lambda,
+            zeta_theta=zeta_theta,
+        )
+
         super().__init__(
             lambda_init=lambda_init,
             use_en_frb=use_en_frb,
@@ -148,10 +223,10 @@ class DGALETSKClassifier(FSREADATSKClassifier):
             mf_init=mf_init,
             sigma_scale=sigma_scale,
             random_state=random_state,
-            fs_epochs=dg_epochs,
-            learning_rate=learning_rate,
+            fs_epochs=resolved_dg_epochs,
+            learning_rate=resolved_learning_rate,
             verbose=verbose,
-            rule_base=rule_base,
+            rule_base=resolved_rule_base,
             batch_size=batch_size,
             shuffle=shuffle,
             ur_weight=ur_weight,
@@ -164,15 +239,16 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         )
         # Override the scalar defaults set by FSREADATSKClassifier with the
         # list-typed grid values and DG-specific values expected by DGTrainer.
-        self.finetune_epochs = int(finetune_epochs)
+        self.dg_epochs = resolved_dg_epochs
+        self.use_lse = bool(use_lse)
+        self.optimizer_type = str(optimizer_type)
+        self.freeze_antecedents_finetune = bool(freeze_antecedents_finetune)
+        self.finetune_epochs = resolved_finetune_epochs
         self.structural_pruning = bool(structural_pruning)
-        self.zeta_lambda: list[float] | None = [
-            float(v) for v in (_DG_ALETSK_PAPER_ZETA_GRID if zeta_lambda is None else zeta_lambda)
-        ]
-        self.zeta_theta: list[float] | None = [
-            float(v) for v in (_DG_ALETSK_PAPER_ZETA_GRID if zeta_theta is None else zeta_theta)
-        ]
+        self.zeta_lambda: list[float] | None = resolved_zeta_lambda
+        self.zeta_theta: list[float] | None = resolved_zeta_theta
         self.pfrb_max_rules = pfrb_max_rules
+        self.paper_strict = bool(paper_strict)
 
     @staticmethod
     def _resolve_default_pfrb_max_rules(n_features: int) -> int:
@@ -237,6 +313,30 @@ class DGALETSKClassifier(FSREADATSKClassifier):
             structural_pruning=bool(self.structural_pruning),
             finetune_freeze_antecedents=bool(self.freeze_antecedents_finetune),
         )
+
+    def fit(
+        self,
+        x: Any,
+        y: Any,
+        *,
+        x_val: Any | None = None,
+        y_val: Any | None = None,
+    ) -> DGALETSKClassifier:
+        """Train the DG-ALETSK classifier.
+
+        Validation data should be supplied using ``x_val`` and ``y_val``
+        when available.
+        """
+        original_batch_size = self.batch_size
+        try:
+            if self.paper_strict:
+                _validate_dg_aletsk_paper_strict_input_range(x, arg_name="x")
+                if x_val is not None:
+                    _validate_dg_aletsk_paper_strict_input_range(x_val, arg_name="x_val")
+                self.batch_size = max(1, round(0.1 * float(np.asarray(y).shape[0])))
+            return cast(DGALETSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val))
+        finally:
+            self.batch_size = original_batch_size
 
 
 class DGALETSKRegressor(FSREADATSKRegressor):
@@ -333,10 +433,6 @@ class DGALETSKRegressor(FSREADATSKRegressor):
             freeze_antecedents_finetune: If ``True`` (default), freeze MF
                 parameters and feature gates during fine-tuning.
         """
-        self.dg_epochs = int(dg_epochs)
-        self.use_lse = bool(use_lse)
-        self.optimizer_type = str(optimizer_type)
-        self.freeze_antecedents_finetune = bool(freeze_antecedents_finetune)
         super().__init__(
             lambda_init=lambda_init,
             use_en_frb=use_en_frb,
@@ -359,8 +455,10 @@ class DGALETSKRegressor(FSREADATSKRegressor):
             weight_decay=weight_decay,
             trainer=trainer,
         )
-        # Override the scalar defaults set by FSREADATSKRegressor with the
-        # list-typed grid values and DG-specific values expected by DGTrainer.
+        self.dg_epochs = int(dg_epochs)
+        self.use_lse = bool(use_lse)
+        self.optimizer_type = str(optimizer_type)
+        self.freeze_antecedents_finetune = bool(freeze_antecedents_finetune)
         self.finetune_epochs = int(finetune_epochs)
         self.structural_pruning = bool(structural_pruning)
         self.zeta_lambda: list[float] | None = zeta_lambda
@@ -409,3 +507,18 @@ class DGALETSKRegressor(FSREADATSKRegressor):
             structural_pruning=bool(self.structural_pruning),
             finetune_freeze_antecedents=bool(self.freeze_antecedents_finetune),
         )
+
+    def fit(
+        self,
+        x: Any,
+        y: Any,
+        *,
+        x_val: Any | None = None,
+        y_val: Any | None = None,
+    ) -> DGALETSKRegressor:
+        """Train the DG-ALETSK regressor.
+
+        Validation data should be supplied using ``x_val`` and ``y_val``
+        when available.
+        """
+        return cast(DGALETSKRegressor, super().fit(x, y, x_val=x_val, y_val=y_val))

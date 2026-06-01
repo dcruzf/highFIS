@@ -86,6 +86,47 @@ def _wrap_adatsk_gaussian_input_mfs(
     return wrapped
 
 
+def _resolve_adatsk_classifier_paper_strict_config(
+    *,
+    paper_strict: bool,
+    n_mfs: int,
+    mf_init: str,
+    sigma_scale: float | str,
+    rule_base: str | None,
+    epochs: int,
+    learning_rate: float,
+    batch_size: int | None,
+) -> tuple[int, str, float | str, str | None, int, float, int | None]:
+    """Resolve ADATSK classifier config with optional paper-strict checks."""
+    if not paper_strict:
+        return (
+            int(n_mfs),
+            str(mf_init),
+            sigma_scale,
+            rule_base,
+            int(epochs),
+            float(learning_rate),
+            batch_size if batch_size is None else int(batch_size),
+        )
+
+    if int(n_mfs) != 3:
+        raise ValueError("paper_strict requires n_mfs=3")
+    if str(mf_init).lower() != "grid":
+        raise ValueError("paper_strict requires mf_init='grid'")
+    if float(sigma_scale) != 1.0:
+        raise ValueError("paper_strict requires sigma_scale=1.0")
+    if rule_base is not None and str(rule_base).lower() != "coco":
+        raise ValueError("paper_strict requires rule_base='coco'")
+    if int(epochs) not in (1, 10, 200):
+        raise ValueError("paper_strict requires epochs=200")
+    if not np.isclose(float(learning_rate), 1e-2):
+        raise ValueError("paper_strict requires learning_rate=1e-2")
+    if batch_size is not None:
+        raise ValueError("paper_strict requires batch_size=None (full batch)")
+
+    return 3, "grid", 1.0, "coco", 200, 1e-2, None
+
+
 def _resolve_adptsk_classifier_paper_strict_config(
     *,
     paper_strict: bool,
@@ -583,6 +624,7 @@ class ADATSKClassifier(_BaseClassifierEstimator):
         weight_decay: float = 0.0,
         freeze_antecedent_in_high_dim: bool = True,
         high_dim_threshold: int = 1000,
+        paper_strict: bool = False,
     ) -> None:
         """Initialise an ADATSK classifier.
 
@@ -612,7 +654,27 @@ class ADATSKClassifier(_BaseClassifierEstimator):
                 antecedent parameters when ``n_features >= high_dim_threshold``.
             high_dim_threshold: Feature-count threshold used to trigger
                 antecedent freezing (default ``1000``).
+            paper_strict: If ``True``, enforce paper-strict defaults.
         """
+        (
+            n_mfs,
+            mf_init,
+            sigma_scale,
+            rule_base,
+            epochs,
+            learning_rate,
+            batch_size,
+        ) = _resolve_adatsk_classifier_paper_strict_config(
+            paper_strict=bool(paper_strict),
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            rule_base=rule_base,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            batch_size=batch_size,
+        )
+
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -634,6 +696,22 @@ class ADATSKClassifier(_BaseClassifierEstimator):
         )
         self.freeze_antecedent_in_high_dim = bool(freeze_antecedent_in_high_dim)
         self.high_dim_threshold = int(high_dim_threshold)
+        self.paper_strict = bool(paper_strict)
+
+    def fit(
+        self,
+        x: object,
+        y: object,
+        *,
+        x_val: object | None = None,
+        y_val: object | None = None,
+    ) -> ADATSKClassifier:
+        """Fit the ADATSK classifier estimator, checking input range if strict."""
+        if self.paper_strict:
+            _validate_adptsk_paper_strict_input_range(x, arg_name="x")
+            if x_val is not None:
+                _validate_adptsk_paper_strict_input_range(x_val, arg_name="x_val")
+        return cast(ADATSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val))
 
     def _build_model(
         self,
