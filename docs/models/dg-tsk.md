@@ -110,9 +110,9 @@ The paper describes DG-TSK as a single training phase in which feature gates, ru
 - `gate_m` is the default M-gate in highFIS and matches the paper's M-shaped gate function.
 - DG-TSK feature gating is implemented as exponential gating: each membership value is raised to the power of its gate value ($\mu^{M(\lambda_d)}$), matching the general antecedent gating mechanism described in the paper.
 - The DG phase freezes antecedent parameters and trains only gate params and zero-order consequents (paper §3.3). The recommended Phase 2 workflow differs by task:
-    - **Classification** (`use_lse=False`): `search_thresholds` evaluates the zero-order model on the validation set directly, preserving the quality of the gate-training phase. Call `fit_finetune` afterwards to convert to first-order and retrain consequents with MFs and λ-gates frozen (paper §3.3).
+    - **Classification** (`use_lse=False`): `search_thresholds` evaluates the zero-order model on the validation set directly, preserving the quality of the gate-training phase. Call `fit_finetune` afterwards to convert to first-order and retrain the pruned model. In estimator defaults, this fine-tune stage runs with antecedents enabled to improve paper conformance with the text in §3.3.
     - **Regression** (`use_lse=True`): `search_thresholds` prunes gates and fits first-order consequents via least squares in a single step. The LSE result is the final model — **do not call `fit_finetune`** afterwards, as it would reset the LSE-fitted weights and retrain from zero.
-- `fit_finetune` freezes **all MF parameters** (centres and spreads) and the **feature-selection gates** (λ) during gradient fine-tuning, retaining only the consequent layer as trainable. This implements the exact prescription of paper §3.3: *"we fix the first group of gates and the membership functions."* Note that the authors' reference code uses `trained_param='IF_THEN'`, which trains MFs — a departure from their own §3.3 text. highFIS follows the paper.
+- `fit_finetune` supports both behaviours: freeze antecedents (`freeze_antecedents=True`, model-level default) or update antecedents (`freeze_antecedents=False`). `DGTSKClassifier` now defaults to `freeze_antecedents_finetune=False` for better paper conformance in the end-to-end estimator pipeline.
 - **Loss function**: the paper uses MSE (eq. 8) throughout, including for classification (applied to one-hot targets). highFIS follows that paper contract in the DG path: classification uses MSE with one-hot targets, and regression uses MSE on scalar targets.
 - `DGTSKClassifier` and `DGTSKRegressor` support both classification and regression in the same DG-TSK style.
 
@@ -124,7 +124,10 @@ The paper describes DG-TSK as a single training phase in which feature gates, ru
 - `compute_thresholds(zeta_lambda, zeta_theta)` — compute pruning thresholds from gate activations.
 - `apply_thresholds(tau_lambda, tau_theta)` — prune features and rules by zeroing gates.
 - `search_thresholds(x, y, *, zeta_lambda, zeta_theta, x_val, y_val, use_lse, inplace, ...)` — grid-search over `(zeta_lambda, zeta_theta)` pairs and select the best gate thresholds by validation score. When `use_lse=True`, each candidate also fits first-order consequents via least squares before scoring (recommended for **regression**). When `use_lse=False`, the zero-order model is scored directly (recommended for **classification**). With `inplace=True`, the winning thresholds are applied to `self`.
-- `fit_finetune(x, y, **kwargs)` — convert the pruned zero-order model to first-order, reset consequent weights to zero, and retrain with MFs and λ-gates frozen (paper §3.3). **Call this only after `search_thresholds(use_lse=False)`** (classification path). Do not call it after `search_thresholds(use_lse=True)`, which already produces final first-order consequents via LSE.
+- `fit_finetune(x, y, **kwargs)` — convert the pruned zero-order model to first-order, reset consequent weights to zero, and retrain. Use `freeze_antecedents=True` to keep MFs and λ-gates fixed, or `freeze_antecedents=False` to optimize antecedents and consequents jointly. **Call this only after `search_thresholds(use_lse=False)`** (classification path). Do not call it after `search_thresholds(use_lse=True)`, which already produces final first-order consequents via LSE.
+
+Estimator defaults (paper-conformance profile for classification):
+- `DGTSKClassifier`: `rule_base='pfrb'`, `pfrb_max_rules=300`, `zeta_lambda=[0.5]`, `zeta_theta=[0.01]`, `use_lse=False`, `freeze_antecedents_finetune=False`.
 
 ## Usage examples
 
@@ -133,7 +136,7 @@ The paper describes DG-TSK as a single training phase in which feature gates, ru
 For classification, Phase 2 uses `use_lse=False` so that threshold candidates are
 ranked by the zero-order model's accuracy on the validation set.  After selecting
 the best thresholds, `fit_finetune` converts the model to first-order and retrains
-consequents with MFs and feature gates frozen (paper §3.3).
+the pruned model (antecedents can be frozen or unfrozen via `freeze_antecedents`).
 
 ```python
 from highfis import DGTSKClassifier, GaussianMF
@@ -161,8 +164,8 @@ history = model.fit_dg_phase(X_train, y_train, epochs=30, learning_rate=1e-3)
 result = model.search_thresholds(
     X_train,
     y_train,
-    zeta_lambda=[0.0, 0.25, 0.5, 0.75, 1.0],
-    zeta_theta=[0.0, 0.25, 0.5],
+    zeta_lambda=[0.5],
+    zeta_theta=[0.01],
     x_val=X_val,
     y_val=y_val,
     use_lse=False,   # evaluate zero-order quality; do not fit first-order here

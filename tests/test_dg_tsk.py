@@ -56,6 +56,17 @@ def test_dgtsk_estimator_instantiation() -> None:
     assert reg is not None
 
 
+def test_dgtsk_classifier_default_paper_protocol_settings() -> None:
+    clf = DGTSKClassifier()
+
+    assert clf.rule_base == "pfrb"
+    assert clf.pfrb_max_rules == 300
+    assert clf.zeta_lambda == [0.5]
+    assert clf.zeta_theta == [0.01]
+    assert clf.use_lse is False
+    assert clf.freeze_antecedents_finetune is False
+
+
 def test_dgtsk_classifier_apply_thresholds_invalid_thresholds_raises() -> None:
     model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
     with pytest.raises(ValueError, match="thresholds must be finite"):
@@ -677,12 +688,11 @@ def test_dgtsk_regressor_search_thresholds_non_structural_no_lse() -> None:
 
 
 def test_dgtsk_classifier_search_thresholds_sr_fallback() -> None:
-    """All rule theta-gates == 0 with zeta_theta=0 → sr=[] → fallback to all rules."""
+    """When sr would be too small, keep at least n_classes rules by top gate values."""
     model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
     model.consequent_layer.theta_gates.data.fill_(0.0)
     x = torch.randn(16, 3)
     y = torch.randint(0, 2, (16,))
-    n_rules_orig = model.n_rules
 
     result = model.search_thresholds(
         x,
@@ -693,7 +703,7 @@ def test_dgtsk_classifier_search_thresholds_sr_fallback() -> None:
         structural=True,
         use_lse=False,
     )
-    assert result["surviving_rule_indices"] == list(range(n_rules_orig))
+    assert len(result["surviving_rule_indices"]) == model.n_classes
 
 
 def test_dgtsk_regressor_search_thresholds_sf_non_empty_no_fallback() -> None:

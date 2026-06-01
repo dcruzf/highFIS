@@ -397,8 +397,10 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
                 sr = torch.where(rule_gate_values > best_tau_theta)[0].tolist()
                 if not sf:
                     sf = list(range(self.n_inputs))
-                if not sr:
-                    sr = list(range(self.n_rules))
+                if len(sr) < self.n_classes:
+                    top_k = min(self.n_classes, self.n_rules)
+                    top_rules = torch.topk(rule_gate_values, k=top_k).indices.tolist()
+                    sr = sorted(set(sr) | set(top_rules))
                 if use_lse and isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
                     self.convert_to_first_order()
                 self.apply_thresholds(best_tau_lambda, best_tau_theta)

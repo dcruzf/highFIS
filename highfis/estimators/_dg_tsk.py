@@ -37,15 +37,15 @@ class DGTSKClassifier(_BaseClassifierEstimator):
     """DG-TSK classifier with M-gate antecedent and point-based FRB (P-FRB).
 
     DG-TSK uses a data-guided M-gate function to automatically select
-    relevant features and rules.  Training follows the three-phase protocol
-    from Xue et al. (2023):
+    relevant features and rules.  Training follows the DG + threshold +
+    fine-tune pipeline from Xue et al. (2023):
 
     1. **DG phase** — Train gate parameters and zero-order consequents with
        antecedent MFs frozen (P-FRB).
     2. **Threshold search** — Grid-search for the pruning thresholds
        ``(zeta_lambda, zeta_theta)`` that maximise held-out accuracy.
-    3. **Fine-tune phase** — Train first-order consequents with antecedent
-       MFs and feature gates frozen.
+     3. **Fine-tune phase** — Train first-order consequents on the pruned
+         structure.
 
     Reference:
         Guangdong Xue, Jian Wang, Bingjie Zhang, Bin Yuan, Caili Dai,
@@ -82,17 +82,17 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         ur_weight: float = 0.0,
         ur_target: float | None = None,
         consequent_batch_norm: bool = False,
-        pfrb_max_rules: int | None = None,
+        pfrb_max_rules: int | None = 300,
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
         zeta_lambda: list[float] | None = None,
         zeta_theta: list[float] | None = None,
-        use_lse: bool = True,
+        use_lse: bool = False,
         trainer: BaseTrainer | None = None,
         optimizer_type: str = "sgd",
         structural_pruning: bool = True,
-        freeze_antecedents_finetune: bool = True,
+        freeze_antecedents_finetune: bool = False,
     ) -> None:
         """Initialise a DG-TSK classifier.
 
@@ -119,18 +119,20 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             ur_target: Uncertainty regularisation target.
             consequent_batch_norm: Batch normalisation on consequent layers.
             pfrb_max_rules: Maximum number of point-based FRB rules when
-                ``rule_base='pfrb'``. ``None`` uses all training samples.
+                ``rule_base='pfrb'``. Defaults to ``300`` to match the
+                paper's experimental cap.
             patience: Early-stopping patience (default ``20``). Set to
                 ``None`` to disable early stopping.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
             weight_decay: L2 weight decay for consequent parameters.
             zeta_lambda: Grid of λ-pruning threshold candidates.  ``None``
-                uses ``[0.0, 0.25, 0.5, 0.75, 1.0]``.
-            zeta_theta: Grid of θ-pruning threshold candidates.  Same
-                default as ``zeta_lambda``.
+                uses paper default ``[0.5]``.
+            zeta_theta: Grid of θ-pruning threshold candidates.  ``None``
+                uses paper default ``[0.01]``.
             use_lse: Refit first-order consequents via LSE during threshold
-                search.  Recommended (default ``True``).
+                search.  Defaults to ``False`` for the paper-faithful
+                classification path.
             trainer: Optional custom :class:`~highfis.optim.BaseTrainer`.
                 When ``None`` (default) a :class:`~highfis.optim.DGTrainer`
                 is built from this estimator's hyperparameters.  Pass a
@@ -140,14 +142,15 @@ class DGTSKClassifier(_BaseClassifierEstimator):
                 ``"adamw"``.
             structural_pruning: If ``True`` (default), apply hard structural
                 pruning after threshold search.
-            freeze_antecedents_finetune: If ``True`` (default), freeze MF
-                parameters and feature gates during fine-tuning.
+            freeze_antecedents_finetune: If ``True``, freeze MF parameters
+                and feature gates during fine-tuning. Defaults to ``False``
+                to optimize antecedents and consequents in fine-tuning.
         """
         self.use_en_frb = bool(use_en_frb)
         self.dg_epochs = int(dg_epochs)
         self.finetune_epochs = int(finetune_epochs)
-        self.zeta_lambda = zeta_lambda
-        self.zeta_theta = zeta_theta
+        self.zeta_lambda = [0.5] if zeta_lambda is None else list(zeta_lambda)
+        self.zeta_theta = [0.01] if zeta_theta is None else list(zeta_theta)
         self.use_lse = bool(use_lse)
         self.optimizer_type = str(optimizer_type)
         self.structural_pruning = bool(structural_pruning)
@@ -233,12 +236,18 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             self.model_.consequent_layer,  # type: ignore[attr-defined]
             GatedClassificationZeroOrderConsequentLayer,
         )
+        consequent_mode = (
+            str(self.model_.consequent_layer.mode)  # type: ignore[attr-defined]
+            if is_first_order and hasattr(self.model_.consequent_layer, "mode")  # type: ignore[attr-defined]
+            else None
+        )
         checkpoint = self._build_checkpoint_base(
             model_init={
                 "input_mfs_config": serialize_input_mfs(self.model_.input_mfs),  # type: ignore[attr-defined]
                 "n_classes": len(self.classes_),
                 "rule_base": self.rule_base_,
                 "is_first_order": is_first_order,
+                "consequent_mode": consequent_mode,
             },
             fitted_attrs={
                 "n_features_in": int(self.n_features_in_),
@@ -267,6 +276,9 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         )
         if model_init.get("is_first_order", False):  # pragma: no branch
             cast(FirstOrderModelProtocol, estimator.model_).convert_to_first_order()
+            mode = model_init.get("consequent_mode")
+            if isinstance(mode, str) and hasattr(estimator.model_.consequent_layer, "mode"):
+                estimator.model_.consequent_layer.mode = mode  # type: ignore[attr-defined]
         estimator.model_.load_state_dict(checkpoint["model_state_dict"])
         estimator.model_.to(torch.device(str(estimator.device)))
 
@@ -482,11 +494,17 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             self.model_.consequent_layer,  # type: ignore[attr-defined]
             GatedRegressionZeroOrderConsequentLayer,
         )
+        consequent_mode = (
+            str(self.model_.consequent_layer.mode)  # type: ignore[attr-defined]
+            if is_first_order and hasattr(self.model_.consequent_layer, "mode")  # type: ignore[attr-defined]
+            else None
+        )
         checkpoint = self._build_checkpoint_base(
             model_init={
                 "input_mfs_config": serialize_input_mfs(self.model_.input_mfs),  # type: ignore[attr-defined]
                 "rule_base": self.rule_base_,
                 "is_first_order": is_first_order,
+                "consequent_mode": consequent_mode,
             },
             fitted_attrs={
                 "n_features_in": int(self.n_features_in_),
@@ -513,6 +531,9 @@ class DGTSKRegressor(_BaseRegressorEstimator):
         )
         if model_init.get("is_first_order", False):  # pragma: no branch
             cast(FirstOrderModelProtocol, estimator.model_).convert_to_first_order()
+            mode = model_init.get("consequent_mode")
+            if isinstance(mode, str) and hasattr(estimator.model_.consequent_layer, "mode"):
+                estimator.model_.consequent_layer.mode = mode  # type: ignore[attr-defined]
         estimator.model_.load_state_dict(checkpoint["model_state_dict"])
         estimator.model_.to(torch.device(str(estimator.device)))
 
