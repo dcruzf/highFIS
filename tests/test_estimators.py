@@ -2002,6 +2002,48 @@ def test_admtsk_regressor_default_estimator_uses_paper_centers_and_sigma() -> No
     assert sigmas == pytest.approx([1.0, 1.0, 1.0], abs=1e-8)
 
 
+def test_admtsk_classifier_paper_strict_uses_paper_protocol_defaults() -> None:
+    est = ADMTSKClassifier(paper_strict=True)
+
+    assert est.n_mfs == 3
+    assert est.mf_init == "grid"
+    assert est.sigma_scale == 1.0
+    assert est.rule_base == "coco"
+    assert est.adaptive is True
+    assert est.lambda_ == 1.0
+    assert est.lower_bound == pytest.approx(1.0 / math.e, abs=1e-12)
+    assert est.k == 10.0
+    assert est.zero_consequent_init is True
+
+
+def test_admtsk_classifier_paper_strict_rejects_conflicting_hyperparameters() -> None:
+    with pytest.raises(ValueError, match="paper_strict requires n_mfs=3"):
+        ADMTSKClassifier(paper_strict=True, n_mfs=5)
+    with pytest.raises(ValueError, match="paper_strict requires mf_init='grid'"):
+        ADMTSKClassifier(paper_strict=True, mf_init="kmeans")
+    with pytest.raises(ValueError, match=r"paper_strict requires sigma_scale=1\.0"):
+        ADMTSKClassifier(paper_strict=True, sigma_scale=2.0)
+    with pytest.raises(ValueError, match="paper_strict requires rule_base='coco'"):
+        ADMTSKClassifier(paper_strict=True, rule_base="cartesian")
+    with pytest.raises(ValueError, match="paper_strict requires adaptive=True"):
+        ADMTSKClassifier(paper_strict=True, adaptive=False)
+    with pytest.raises(ValueError, match=r"paper_strict requires lambda_=1\.0"):
+        ADMTSKClassifier(paper_strict=True, lambda_=2.0)
+    with pytest.raises(ValueError, match="paper_strict requires lower_bound=1/e"):
+        ADMTSKClassifier(paper_strict=True, lower_bound=0.3)
+    with pytest.raises(ValueError, match=r"paper_strict requires k=10\.0"):
+        ADMTSKClassifier(paper_strict=True, k=5.0)
+    with pytest.raises(ValueError, match="paper_strict requires zero_consequent_init=True"):
+        ADMTSKClassifier(paper_strict=True, zero_consequent_init=False)
+
+
+def test_admtsk_classifier_paper_strict_fit_does_not_auto_split_data() -> None:
+    x, y = _make_dataset(40)
+    est = ADMTSKClassifier(paper_strict=True, epochs=1, random_state=0)
+    est.fit(x, y)
+    assert len(est.history_["val"]) == 0
+
+
 def test_tsk_classifier_estimator_fit_predict() -> None:
     x, y = _make_dataset(60)
     est = TSKClassifier(

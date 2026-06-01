@@ -119,6 +119,24 @@ These wrappers provide sklearn-compatible `fit`/`predict` APIs and build the
 inferential pipeline from high-level settings such as `n_mfs`, `mf_init`,
 `sigma_scale`, and adaptive lambda parameters.
 
+`ADMTSKClassifier` now also supports `paper_strict=True` to enforce a
+classifier-only strict protocol aligned to the paper defaults.
+When enabled, the estimator requires and enforces:
+
+- `n_mfs=3`
+- `mf_init='grid'`
+- `sigma_scale=1.0`
+- `rule_base='coco'`
+- `adaptive=True`
+- `lambda_=1.0`
+- `lower_bound=1/e`
+- `k=10.0`
+- `zero_consequent_init=True`
+
+Any conflicting override raises `ValueError` with a `paper_strict requires ...`
+message so experiments do not silently drift from the paper protocol.
+This strict mode is intentionally scoped to the classifier path.
+
 When the estimator constructs input membership functions it converts the
 initial Gaussian MFs into `GaussianPiMF`, matching the paper's positive lower
 bound membership design.

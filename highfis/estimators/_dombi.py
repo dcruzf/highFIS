@@ -36,6 +36,55 @@ def _build_admtsk_default_input_mfs(n_features: int) -> dict[str, list[GaussianM
     return {f"x{i + 1}": [GaussianMF(mean=center, sigma=sigma) for center in centers] for i in range(n_features)}
 
 
+def _resolve_admtsk_classifier_paper_strict_config(
+    *,
+    paper_strict: bool,
+    n_mfs: int,
+    mf_init: str,
+    sigma_scale: float | str,
+    rule_base: str | None,
+    adaptive: bool,
+    lambda_: float,
+    lower_bound: float,
+    k: float,
+    zero_consequent_init: bool,
+) -> tuple[int, str, float | str, str | None, bool, float, float, float, bool]:
+    """Resolve ADMTSK classifier config with optional paper-strict checks."""
+    if not paper_strict:
+        return (
+            int(n_mfs),
+            str(mf_init),
+            sigma_scale,
+            rule_base,
+            bool(adaptive),
+            float(lambda_),
+            float(lower_bound),
+            float(k),
+            bool(zero_consequent_init),
+        )
+
+    if int(n_mfs) != 3:
+        raise ValueError("paper_strict requires n_mfs=3")
+    if str(mf_init).lower() != "grid":
+        raise ValueError("paper_strict requires mf_init='grid'")
+    if float(sigma_scale) != 1.0:
+        raise ValueError("paper_strict requires sigma_scale=1.0")
+    if rule_base is not None and str(rule_base).lower() != "coco":
+        raise ValueError("paper_strict requires rule_base='coco'")
+    if not bool(adaptive):
+        raise ValueError("paper_strict requires adaptive=True")
+    if float(lambda_) != 1.0:
+        raise ValueError("paper_strict requires lambda_=1.0")
+    if abs(float(lower_bound) - (1.0 / math.e)) > 1e-6:
+        raise ValueError("paper_strict requires lower_bound=1/e")
+    if float(k) != 10.0:
+        raise ValueError("paper_strict requires k=10.0")
+    if not bool(zero_consequent_init):
+        raise ValueError("paper_strict requires zero_consequent_init=True")
+
+    return 3, "grid", 1.0, "coco", True, 1.0, (1.0 / math.e), 10.0, True
+
+
 class DombiTSKClassifier(_BaseClassifierEstimator):
     r"""TSK classifier with a fixed Dombi T-norm in the antecedent.
 
@@ -293,6 +342,7 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
         lower_bound: float = 1.0 / math.e,
         k: float = 10.0,
         zero_consequent_init: bool = True,
+        paper_strict: bool = False,
     ) -> None:
         """Initialize an ADMTSK classifier estimator.
 
@@ -326,20 +376,49 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
             k: Heuristic constant used to compute adaptive lambda.
             zero_consequent_init: If True (default), initialize
                 consequent parameters to zero.
+            paper_strict: If ``True``, enforce paper protocol defaults
+                for ADMTSK classifier (``n_mfs=3``, ``mf_init='grid'``,
+                ``sigma_scale=1.0``, ``rule_base='coco'``,
+                ``adaptive=True``, ``lambda_=1.0``, ``lower_bound=1/e``,
+                ``k=10.0``, and ``zero_consequent_init=True``), and reject
+                conflicting overrides.
 
         Raises:
             ValueError: If estimator hyperparameters are invalid.
         """
-        super().__init__(
-            input_configs=input_configs,
+        (
+            resolved_n_mfs,
+            resolved_mf_init,
+            resolved_sigma_scale,
+            resolved_rule_base,
+            resolved_adaptive,
+            resolved_lambda_,
+            resolved_lower_bound,
+            resolved_k,
+            resolved_zero_consequent_init,
+        ) = _resolve_admtsk_classifier_paper_strict_config(
+            paper_strict=bool(paper_strict),
             n_mfs=n_mfs,
             mf_init=mf_init,
             sigma_scale=sigma_scale,
+            rule_base=rule_base,
+            adaptive=adaptive,
+            lambda_=lambda_,
+            lower_bound=lower_bound,
+            k=k,
+            zero_consequent_init=zero_consequent_init,
+        )
+
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=resolved_n_mfs,
+            mf_init=resolved_mf_init,
+            sigma_scale=resolved_sigma_scale,
             random_state=random_state,
             epochs=epochs,
             learning_rate=learning_rate,
             verbose=verbose,
-            rule_base=rule_base,
+            rule_base=resolved_rule_base,
             batch_size=batch_size,
             shuffle=shuffle,
             ur_weight=ur_weight,
@@ -350,11 +429,12 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
             restore_best=restore_best,
             weight_decay=weight_decay,
         )
-        self.adaptive = bool(adaptive)
-        self.lambda_ = float(lambda_)
-        self.lower_bound = float(lower_bound)
-        self.k = float(k)
-        self.zero_consequent_init = bool(zero_consequent_init)
+        self.adaptive = resolved_adaptive
+        self.lambda_ = resolved_lambda_
+        self.lower_bound = resolved_lower_bound
+        self.k = resolved_k
+        self.zero_consequent_init = resolved_zero_consequent_init
+        self.paper_strict = bool(paper_strict)
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         use_paper_default = (
