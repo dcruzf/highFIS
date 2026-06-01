@@ -895,6 +895,55 @@ def test_adptsk_default_batch_size_policy() -> None:
     assert est._resolve_default_batch_size(500) == 100
 
 
+def test_adptsk_classifier_paper_strict_uses_paper_protocol_defaults() -> None:
+    est = ADPTSKClassifier(paper_strict=True)
+
+    assert est.n_mfs == 3
+    assert est.mf_init == "grid"
+    assert est.sigma_scale == 1.0
+    assert est.rule_base == "coco"
+    assert est.kappa == 690.0
+    assert est.xi == 730.0
+    assert est.k == 1.0
+    assert est.zero_consequent_init is True
+
+
+def test_adptsk_classifier_paper_strict_rejects_conflicting_hyperparameters() -> None:
+    with pytest.raises(ValueError, match="paper_strict requires n_mfs=3"):
+        ADPTSKClassifier(paper_strict=True, n_mfs=4)
+    with pytest.raises(ValueError, match="paper_strict requires mf_init='grid'"):
+        ADPTSKClassifier(paper_strict=True, mf_init="kmeans")
+    with pytest.raises(ValueError, match=r"paper_strict requires sigma_scale=1\.0"):
+        ADPTSKClassifier(paper_strict=True, sigma_scale=0.8)
+    with pytest.raises(ValueError, match="paper_strict requires rule_base='coco'"):
+        ADPTSKClassifier(paper_strict=True, rule_base="cartesian")
+    with pytest.raises(ValueError, match=r"paper_strict requires kappa=690\.0"):
+        ADPTSKClassifier(paper_strict=True, kappa=700.0)
+    with pytest.raises(ValueError, match=r"paper_strict requires xi=730\.0"):
+        ADPTSKClassifier(paper_strict=True, xi=740.0)
+    with pytest.raises(ValueError, match=r"paper_strict requires k=1\.0"):
+        ADPTSKClassifier(paper_strict=True, k=0.8)
+    with pytest.raises(ValueError, match="paper_strict requires zero_consequent_init=True"):
+        ADPTSKClassifier(paper_strict=True, zero_consequent_init=False)
+
+
+def test_adptsk_classifier_paper_strict_requires_inputs_in_unit_interval() -> None:
+    x, y = _make_dataset(40)
+    est = ADPTSKClassifier(paper_strict=True, epochs=1, random_state=0)
+
+    with pytest.raises(ValueError, match=r"paper_strict requires x to be linearly normalized to \[0,1\]"):
+        est.fit(x, y)
+
+
+def test_adptsk_classifier_non_strict_accepts_inputs_outside_unit_interval() -> None:
+    x, y = _make_dataset(40)
+    est = ADPTSKClassifier(paper_strict=False, epochs=1, random_state=0)
+
+    est.fit(x, y)
+
+    assert est.model_ is not None
+
+
 def test_fsre_adatsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
     x, y = _make_dataset(80)
     est = FSREADATSKClassifier(

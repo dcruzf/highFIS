@@ -86,6 +86,65 @@ def _wrap_adatsk_gaussian_input_mfs(
     return wrapped
 
 
+def _resolve_adptsk_classifier_paper_strict_config(
+    *,
+    paper_strict: bool,
+    n_mfs: int,
+    mf_init: str,
+    sigma_scale: float | str,
+    rule_base: str | None,
+    kappa: float,
+    xi: float,
+    k: float,
+    zero_consequent_init: bool,
+) -> tuple[int, str, float | str, str | None, float, float, float, bool]:
+    """Resolve ADPTSK classifier config with optional paper-strict checks."""
+    if not paper_strict:
+        return (
+            int(n_mfs),
+            str(mf_init),
+            sigma_scale,
+            rule_base,
+            float(kappa),
+            float(xi),
+            float(k),
+            bool(zero_consequent_init),
+        )
+
+    if int(n_mfs) != 3:
+        raise ValueError("paper_strict requires n_mfs=3")
+    if str(mf_init).lower() != "grid":
+        raise ValueError("paper_strict requires mf_init='grid'")
+    if float(sigma_scale) != 1.0:
+        raise ValueError("paper_strict requires sigma_scale=1.0")
+    if rule_base is not None and str(rule_base).lower() != "coco":
+        raise ValueError("paper_strict requires rule_base='coco'")
+    if float(kappa) != 690.0:
+        raise ValueError("paper_strict requires kappa=690.0")
+    if float(xi) != 730.0:
+        raise ValueError("paper_strict requires xi=730.0")
+    if float(k) != 1.0:
+        raise ValueError("paper_strict requires k=1.0")
+    if not bool(zero_consequent_init):
+        raise ValueError("paper_strict requires zero_consequent_init=True")
+
+    return 3, "grid", 1.0, "coco", 690.0, 730.0, 1.0, True
+
+
+def _validate_adptsk_paper_strict_input_range(x: object, *, arg_name: str = "x") -> None:
+    """Validate that ADPTSK strict-mode inputs are already in [0, 1]."""
+    x_arr = np.asarray(x)
+    if x_arr.size == 0:
+        return
+
+    x_min = float(np.nanmin(x_arr))
+    x_max = float(np.nanmax(x_arr))
+    if x_min < 0.0 or x_max > 1.0:
+        raise ValueError(
+            f"paper_strict requires {arg_name} to be linearly normalized to [0,1]; got min={x_min:.6g}, max={x_max:.6g}"
+        )
+
+
 class ADPTSKClassifier(_BaseClassifierEstimator):
     r"""TSK classifier with ADP-softmin antecedent and Gaussian PIMF.
 
@@ -135,6 +194,7 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         k: float = 1.0,
         eps: float | None = None,
         zero_consequent_init: bool = True,
+        paper_strict: bool = False,
     ) -> None:
         """Initialise an ADPTSK classifier estimator.
 
@@ -176,7 +236,35 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
             eps: Optional lower bound for Gaussian PIMF values.
             zero_consequent_init: If ``True`` (default), initialize
                 consequent parameters to zeros.
+            paper_strict: If ``True``, enforce ADPTSK paper protocol
+                defaults in the classifier (``n_mfs=3``, ``mf_init='grid'``,
+                ``sigma_scale=1.0``, ``rule_base='coco'``, ``kappa=690``,
+                ``xi=730``, ``k=1.0``, and ``zero_consequent_init=True``).
+                Input normalization and splitting remain external to the
+                estimator. In strict mode, ``fit`` validates that inputs are
+                already in ``[0, 1]``.
         """
+        (
+            n_mfs,
+            mf_init,
+            sigma_scale,
+            rule_base,
+            kappa,
+            xi,
+            k,
+            zero_consequent_init,
+        ) = _resolve_adptsk_classifier_paper_strict_config(
+            paper_strict=bool(paper_strict),
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            rule_base=rule_base,
+            kappa=kappa,
+            xi=xi,
+            k=k,
+            zero_consequent_init=zero_consequent_init,
+        )
+
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -202,6 +290,7 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         self.k = float(k)
         self.eps = eps
         self.zero_consequent_init = bool(zero_consequent_init)
+        self.paper_strict = bool(paper_strict)
 
     def _resolve_default_batch_size(self, n_samples: int) -> int | None:
         """Resolve paper-style ADPTSK default batch sizing."""
@@ -244,6 +333,10 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
     ) -> ADPTSKClassifier:
         original_batch_size = self.batch_size
         try:
+            if self.paper_strict:
+                _validate_adptsk_paper_strict_input_range(x, arg_name="x")
+                if x_val is not None:
+                    _validate_adptsk_paper_strict_input_range(x_val, arg_name="x_val")
             self.batch_size = self._resolve_default_batch_size(int(np.asarray(y).shape[0]))
             return cast(ADPTSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val))
         finally:

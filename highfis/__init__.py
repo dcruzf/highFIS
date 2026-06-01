@@ -27,7 +27,7 @@ Each family comes in a ``*Classifier`` and ``*Regressor`` variant.
 - **ADATSK** — adaptive softmin antecedent.
   ``ADATSKClassifier``, ``ADATSKRegressor``.
 
-- **ADPTSK** — adaptive Pareto T-norm antecedent.
+- **ADPTSK** — adaptive double-parameter softmin antecedent.
   ``ADPTSKClassifier``, ``ADPTSKRegressor``.
 
 - **ADMTSK / DombiTSK** — Dombi T-norm antecedent.

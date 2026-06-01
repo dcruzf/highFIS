@@ -80,6 +80,9 @@ a regression consequent head and MSE loss.
   - `K=1.0` for the Gaussian PIMF lower bound.
 - The estimator wrapper converts initialized `GaussianMF` objects to
   `GaussianPiMF` before model construction.
+- Preprocessing remains external to the estimator by design:
+  train/validation split and feature normalization should be handled by
+  the user or by an sklearn pipeline.
 
 ## Model classes
 
@@ -111,6 +114,10 @@ This estimator:
 - constructs `ADPTSKClassifierModel` with `kappa`, `xi`, `eps`, and
   zero consequent initialization.
 
+`paper_strict=True` (classifier-only) enforces the paper protocol defaults
+for hyperparameters and requires `X` (and `X_val`, when provided) to
+already be in `[0, 1]`. No automatic normalization is applied.
+
 ### `highfis.estimators.ADPTSKRegressor`
 
 This estimator is analogous to the classifier wrapper but builds
@@ -131,6 +138,8 @@ This estimator is analogous to the classifier wrapper but builds
   uses Adam optimization within `BaseTSK.fit()`.
 - `ADPTSKClassifier` and `ADPTSKRegressor` expose the
   same training hyperparameters as other highFIS estimators.
+- As in the paper protocol, linear normalization to `[0, 1]` is expected;
+  in highFIS this step is intentionally external to the model.
 
 ## Alignment with the paper
 
