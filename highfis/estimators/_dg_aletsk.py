@@ -328,15 +328,18 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         when available.
         """
         original_batch_size = self.batch_size
+        original_paper_strict = self.paper_strict
         try:
             if self.paper_strict:
                 _validate_dg_aletsk_paper_strict_input_range(x, arg_name="x")
                 if x_val is not None:
                     _validate_dg_aletsk_paper_strict_input_range(x_val, arg_name="x_val")
                 self.batch_size = max(1, round(0.1 * float(np.asarray(y).shape[0])))
+                self.paper_strict = False
             return cast(DGALETSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val))
         finally:
             self.batch_size = original_batch_size
+            self.paper_strict = original_paper_strict
 
 
 class DGALETSKRegressor(FSREADATSKRegressor):
