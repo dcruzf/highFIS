@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, cast
 
 from torch import Tensor, nn
 
@@ -12,6 +12,7 @@ from ..layers import (
     AdaSoftminRuleLayer,
     GatedClassificationConsequentLayer,
     GatedRegressionConsequentLayer,
+    MembershipLayer,
 )
 from ..memberships import MembershipFunction
 from ._common import (
@@ -21,7 +22,7 @@ from ._common import (
 
 
 class FSREADATSKClassifierModel(BaseTSKClassifierModel):
-    r"""FSRE-ADATSK classifier with adaptive softmin antecedent and gated consequents.
+    """FSRE-ADATSK classifier with adaptive softmin antecedent and gated consequents.
 
     FSRE-ADATSK (Feature Selection and Rule Extraction) extends ADATSK.
 
@@ -50,7 +51,7 @@ class FSREADATSKClassifierModel(BaseTSKClassifierModel):
 
         Args:
             input_mfs: Mapping from feature name to a sequence of
-                :class:`~highfis.memberships.MembershipFunction` objects.
+                MembershipFunction objects.
             n_classes: Number of output classes (must be ≥ 2).
             rule_base: Rule-base construction strategy.  ``"coco"``
                 (default, same-index compact), ``"cartesian"`` (all MF
@@ -58,8 +59,8 @@ class FSREADATSKClassifierModel(BaseTSKClassifierModel):
                 *use_en_frb*), or ``"custom"`` (explicit rules via *rules*).
             rules: Explicit rule antecedent indices; ignored when
                 ``use_en_frb=True``.
-            defuzzifier: Custom defuzzifier.  Defaults to
-                :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`.
+            defuzzifier: Custom defuzzifier. Defaults to
+                SoftmaxLogDefuzzifier.
             consequent_batch_norm: Batch normalisation on consequent inputs.
             eps: Numerical stability epsilon for the Ada-softmin operator.
             use_en_frb: Start directly from the Enhanced FRB (En-FRB)
@@ -129,9 +130,91 @@ class FSREADATSKClassifierModel(BaseTSKClassifierModel):
         self.consequent_layer.mode = "finetune"
         return self.fit(x, y, **kwargs)
 
+    def get_feature_gate_values(self) -> Tensor:
+        """Return M(λ_d) gate activations for all input features.
+
+        Returns:
+            Detached tensor of shape ``(n_inputs,)`` with the gate
+            activation value for each feature after the FS phase.
+        """
+        return self.consequent_layer.gate_fn(self.consequent_layer.lambda_gates).detach()
+
+    def get_rule_gate_values(self) -> Tensor:
+        """Return M(θ_r) gate activations for all rules.
+
+        Returns:
+            Detached tensor of shape ``(n_rules,)`` with the gate
+            activation value for each rule after the RE phase.
+        """
+        return self.consequent_layer.gate_fn(self.consequent_layer.theta_gates).detach()
+
+    def prune_to_features(self, surviving_features: list[int]) -> None:
+        """Structurally prune the model to the given feature subset (paper step 2).
+
+        Updates input_names, input_mfs, n_inputs, membership_layer, and
+        optionally consequent_bn in-place.
+        The rule layer and consequent layer are intentionally left unchanged
+        here; they will be rebuilt from the updated feature set when
+        fit_re() calls expand_to_en_frb().
+
+        Args:
+            surviving_features: Indices of features to retain.
+
+        Raises:
+            ValueError: If *surviving_features* is empty.
+        """
+        if not surviving_features:
+            raise ValueError("surviving_features must not be empty")
+        surviving_names = [self.input_names[i] for i in surviving_features]
+        new_input_mfs = {name: self.input_mfs[name] for name in surviving_names}
+        self.input_names = surviving_names
+        self.input_mfs = new_input_mfs
+        self.n_inputs = len(surviving_features)
+        self.membership_layer = MembershipLayer(new_input_mfs)
+        if self.consequent_batch_norm:
+            self.consequent_bn = nn.BatchNorm1d(self.n_inputs)
+
+    def prune_to_rules(self, surviving_rules: list[int]) -> None:
+        """Structurally prune the model to the given rule subset (paper step 4).
+
+        Rebuilds rule_layer and consequent_layer in-place,
+        retaining only the specified rules.  Consequent weights, bias, and
+        gate parameters for the surviving rules are copied from the current
+        layers.  The new consequent layer is set to ``mode="finetune"``
+        ready for phase 3.
+
+        Args:
+            surviving_rules: Indices of rules to retain.
+
+        Raises:
+            ValueError: If *surviving_rules* is empty.
+        """
+        if not surviving_rules:
+            raise ValueError("surviving_rules must not be empty")
+        mf_per_input = [len(self.input_mfs[name]) for name in self.input_names]
+        new_rules = [self.rule_layer.rules[r] for r in surviving_rules]
+        new_n_rules = len(surviving_rules)
+
+        self.rule_layer = AdaSoftminRuleLayer(
+            self.input_names,
+            mf_per_input,
+            rules=new_rules,
+            eps=self.eps,
+        )
+        self.n_rules = new_n_rules
+
+        old_cons = self.consequent_layer
+        new_cons = GatedClassificationConsequentLayer(new_n_rules, self.n_inputs, self.n_classes, shared_lambda=True)
+        new_cons.mode = "finetune"
+        cast(Tensor, new_cons.theta_gates.data).copy_(old_cons.theta_gates.data[surviving_rules])
+        cast(Tensor, new_cons.lambda_gates.data).copy_(old_cons.lambda_gates.data)
+        cast(Tensor, new_cons.weight.data).copy_(old_cons.weight.data[surviving_rules])
+        cast(Tensor, new_cons.bias.data).copy_(old_cons.bias.data[surviving_rules])
+        self.consequent_layer = new_cons
+
 
 class FSREADATSKRegressorModel(BaseTSKRegressorModel):
-    r"""FSRE-ADATSK regressor with adaptive softmin antecedent and gated consequents.
+    """FSRE-ADATSK regressor with adaptive softmin antecedent and gated consequents.
 
     FSRE-ADATSK (Feature Selection and Rule Extraction) extends ADATSK.
 
@@ -159,15 +242,15 @@ class FSREADATSKRegressorModel(BaseTSKRegressorModel):
 
         Args:
             input_mfs: Mapping from feature name to a sequence of
-                :class:`~highfis.memberships.MembershipFunction` objects.
+                MembershipFunction objects.
             rule_base: Rule-base construction strategy.  ``"coco"``
                 (default, same-index compact), ``"cartesian"`` (all MF
                 combinations), ``"en"`` (enhanced FRB; see also
                 *use_en_frb*), or ``"custom"`` (explicit rules via *rules*).
             rules: Explicit rule antecedent indices; ignored when
                 ``use_en_frb=True``.
-            defuzzifier: Custom defuzzifier.  Defaults to
-                :class:`~highfis.defuzzifiers.SoftmaxLogDefuzzifier`.
+            defuzzifier: Custom defuzzifier. Defaults to
+                SoftmaxLogDefuzzifier.
             consequent_batch_norm: Batch normalisation on consequent inputs.
             eps: Numerical stability epsilon for the Ada-softmin operator.
             use_en_frb: Start directly from the Enhanced FRB (En-FRB).
@@ -228,3 +311,85 @@ class FSREADATSKRegressorModel(BaseTSKRegressorModel):
         """Fine-tune with no gates — plain TSK consequent (eq. 5)."""
         self.consequent_layer.mode = "finetune"
         return self.fit(x, y, **kwargs)
+
+    def get_feature_gate_values(self) -> Tensor:
+        """Return M(λ_d) gate activations for all input features.
+
+        Returns:
+            Detached tensor of shape ``(n_inputs,)`` with the gate
+            activation value for each feature after the FS phase.
+        """
+        return self.consequent_layer.gate_fn(self.consequent_layer.lambda_gates).detach()
+
+    def get_rule_gate_values(self) -> Tensor:
+        """Return M(θ_r) gate activations for all rules.
+
+        Returns:
+            Detached tensor of shape ``(n_rules,)`` with the gate
+            activation value for each rule after the RE phase.
+        """
+        return self.consequent_layer.gate_fn(self.consequent_layer.theta_gates).detach()
+
+    def prune_to_features(self, surviving_features: list[int]) -> None:
+        """Structurally prune the model to the given feature subset (paper step 2).
+
+        Updates input_names, input_mfs, n_inputs, membership_layer, and
+        optionally consequent_bn in-place.
+        The rule layer and consequent layer are intentionally left unchanged
+        here; they will be rebuilt from the updated feature set when
+        fit_re() calls expand_to_en_frb().
+
+        Args:
+            surviving_features: Indices of features to retain.
+
+        Raises:
+            ValueError: If *surviving_features* is empty.
+        """
+        if not surviving_features:
+            raise ValueError("surviving_features must not be empty")
+        surviving_names = [self.input_names[i] for i in surviving_features]
+        new_input_mfs = {name: self.input_mfs[name] for name in surviving_names}
+        self.input_names = surviving_names
+        self.input_mfs = new_input_mfs
+        self.n_inputs = len(surviving_features)
+        self.membership_layer = MembershipLayer(new_input_mfs)
+        if self.consequent_batch_norm:
+            self.consequent_bn = nn.BatchNorm1d(self.n_inputs)
+
+    def prune_to_rules(self, surviving_rules: list[int]) -> None:
+        """Structurally prune the model to the given rule subset (paper step 4).
+
+        Rebuilds rule_layer and consequent_layer in-place,
+        retaining only the specified rules.  Consequent weights, bias, and
+        gate parameters for the surviving rules are copied from the current
+        layers.  The new consequent layer is set to ``mode="finetune"``
+        ready for phase 3.
+
+        Args:
+            surviving_rules: Indices of rules to retain.
+
+        Raises:
+            ValueError: If *surviving_rules* is empty.
+        """
+        if not surviving_rules:
+            raise ValueError("surviving_rules must not be empty")
+        mf_per_input = [len(self.input_mfs[name]) for name in self.input_names]
+        new_rules = [self.rule_layer.rules[r] for r in surviving_rules]
+        new_n_rules = len(surviving_rules)
+
+        self.rule_layer = AdaSoftminRuleLayer(
+            self.input_names,
+            mf_per_input,
+            rules=new_rules,
+            eps=self.eps,
+        )
+        self.n_rules = new_n_rules
+
+        old_cons = self.consequent_layer
+        new_cons = GatedRegressionConsequentLayer(new_n_rules, self.n_inputs, shared_lambda=True)
+        new_cons.mode = "finetune"
+        cast(Tensor, new_cons.theta_gates.data).copy_(old_cons.theta_gates.data[surviving_rules])
+        cast(Tensor, new_cons.lambda_gates.data).copy_(old_cons.lambda_gates.data)
+        cast(Tensor, new_cons.weight.data).copy_(old_cons.weight.data[surviving_rules])
+        cast(Tensor, new_cons.bias.data).copy_(old_cons.bias.data[surviving_rules])
+        self.consequent_layer = new_cons

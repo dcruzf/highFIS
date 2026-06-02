@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from typing import cast
+
+import numpy as np
+import torch
+from torch import Tensor, nn
 
 from ..base import BaseTSK
 from ..memberships import (
+    ADATSKGaussianMF,
+    GaussianMF,
     MembershipFunction,
 )
 from ..models import (
@@ -20,6 +27,163 @@ from ._base import (
     _BaseRegressorEstimator,
     _wrap_gaussian_pimf_input_mfs,
 )
+
+
+def _build_adptsk_default_input_mfs(n_features: int) -> dict[str, list[GaussianMF]]:
+    """Build default ADPTSK Gaussian MFs before PIMF wrapping.
+
+    Uses three MFs per feature with centers [0.0, 0.5, 1.0] and sigma=1.0.
+    """
+    centers = [0.0, 0.5, 1.0]
+    sigma = 1.0
+    return {f"x{i + 1}": [GaussianMF(mean=center, sigma=sigma) for center in centers] for i in range(n_features)}
+
+
+def _set_sigma_to_one_and_freeze(mf: MembershipFunction) -> None:
+    """Set Gaussian sigma to 1 and freeze it to match ADATSK paper defaults."""
+    if not isinstance(mf, GaussianMF):
+        return
+
+    target = max(1.0 - float(mf.eps), float(mf.eps))
+    target_t = torch.tensor(target, dtype=mf.raw_sigma.dtype, device=mf.raw_sigma.device)
+    mf.raw_sigma.data.copy_(torch.log(torch.expm1(target_t)))
+    mf.raw_sigma.requires_grad_(False)
+
+
+def _apply_adatsk_paper_defaults(
+    model: BaseTSK,
+    x_t: Tensor,
+    *,
+    freeze_antecedent_in_high_dim: bool,
+    high_dim_threshold: int,
+) -> None:
+    """Apply ADATSK paper-style MF constraints before training starts."""
+    for mf_list in model.membership_layer.input_mfs.values():
+        for module in cast(nn.ModuleList, mf_list):
+            mf = cast(MembershipFunction, module)
+            _set_sigma_to_one_and_freeze(mf)
+
+    if freeze_antecedent_in_high_dim and int(x_t.shape[1]) >= int(high_dim_threshold):
+        for param in model.membership_layer.parameters():
+            param.requires_grad_(False)
+
+
+def _wrap_adatsk_gaussian_input_mfs(
+    input_mfs: Mapping[str, Sequence[MembershipFunction]],
+) -> dict[str, list[MembershipFunction]]:
+    """Wrap Gaussian antecedents with ADATSK paper-style Gaussian MFs."""
+    wrapped: dict[str, list[MembershipFunction]] = {}
+    for name, mfs in input_mfs.items():
+        wrapped_mfs: list[MembershipFunction] = []
+        for mf in mfs:
+            if isinstance(mf, GaussianMF):
+                mean = float(mf.mean.detach().cpu().item())
+                sigma = float(mf.sigma.detach().cpu().item())
+                wrapped_mfs.append(ADATSKGaussianMF(mean=mean, sigma=sigma, eps=mf.eps))
+            else:
+                wrapped_mfs.append(mf)
+        wrapped[name] = wrapped_mfs
+    return wrapped
+
+
+def _resolve_adatsk_classifier_paper_strict_config(
+    *,
+    paper_strict: bool,
+    n_mfs: int,
+    mf_init: str,
+    sigma_scale: float | str,
+    rule_base: str | None,
+    epochs: int,
+    learning_rate: float,
+    batch_size: int | None,
+) -> tuple[int, str, float | str, str | None, int, float, int | None]:
+    """Resolve ADATSK classifier config with optional paper-strict checks."""
+    if not paper_strict:
+        return (
+            int(n_mfs),
+            str(mf_init),
+            sigma_scale,
+            rule_base,
+            int(epochs),
+            float(learning_rate),
+            batch_size if batch_size is None else int(batch_size),
+        )
+
+    if int(n_mfs) != 3:
+        raise ValueError("paper_strict requires n_mfs=3")
+    if str(mf_init).lower() != "grid":
+        raise ValueError("paper_strict requires mf_init='grid'")
+    if float(sigma_scale) != 1.0:
+        raise ValueError("paper_strict requires sigma_scale=1.0")
+    if rule_base is not None and str(rule_base).lower() != "coco":
+        raise ValueError("paper_strict requires rule_base='coco'")
+    if int(epochs) not in (1, 10, 200):
+        raise ValueError("paper_strict requires epochs=200")
+    if not np.isclose(float(learning_rate), 1e-2):
+        raise ValueError("paper_strict requires learning_rate=1e-2")
+    if batch_size is not None:
+        raise ValueError("paper_strict requires batch_size=None (full batch)")
+
+    return 3, "grid", 1.0, "coco", 200, 1e-2, None
+
+
+def _resolve_adptsk_classifier_paper_strict_config(
+    *,
+    paper_strict: bool,
+    n_mfs: int,
+    mf_init: str,
+    sigma_scale: float | str,
+    rule_base: str | None,
+    kappa: float,
+    xi: float,
+    k: float,
+    zero_consequent_init: bool,
+) -> tuple[int, str, float | str, str | None, float, float, float, bool]:
+    """Resolve ADPTSK classifier config with optional paper-strict checks."""
+    if not paper_strict:
+        return (
+            int(n_mfs),
+            str(mf_init),
+            sigma_scale,
+            rule_base,
+            float(kappa),
+            float(xi),
+            float(k),
+            bool(zero_consequent_init),
+        )
+
+    if int(n_mfs) != 3:
+        raise ValueError("paper_strict requires n_mfs=3")
+    if str(mf_init).lower() != "grid":
+        raise ValueError("paper_strict requires mf_init='grid'")
+    if float(sigma_scale) != 1.0:
+        raise ValueError("paper_strict requires sigma_scale=1.0")
+    if rule_base is not None and str(rule_base).lower() != "coco":
+        raise ValueError("paper_strict requires rule_base='coco'")
+    if float(kappa) != 690.0:
+        raise ValueError("paper_strict requires kappa=690.0")
+    if float(xi) != 730.0:
+        raise ValueError("paper_strict requires xi=730.0")
+    if float(k) != 1.0:
+        raise ValueError("paper_strict requires k=1.0")
+    if not bool(zero_consequent_init):
+        raise ValueError("paper_strict requires zero_consequent_init=True")
+
+    return 3, "grid", 1.0, "coco", 690.0, 730.0, 1.0, True
+
+
+def _validate_adptsk_paper_strict_input_range(x: object, *, arg_name: str = "x") -> None:
+    """Validate that ADPTSK strict-mode inputs are already in [0, 1]."""
+    x_arr = np.asarray(x)
+    if x_arr.size == 0:
+        return
+
+    x_min = float(np.nanmin(x_arr))
+    x_max = float(np.nanmax(x_arr))
+    if x_min < 0.0 or x_max > 1.0:
+        raise ValueError(
+            f"paper_strict requires {arg_name} to be linearly normalized to [0,1]; got min={x_min:.6g}, max={x_max:.6g}"
+        )
 
 
 class ADPTSKClassifier(_BaseClassifierEstimator):
@@ -50,14 +214,14 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         *,
         input_configs: list[InputConfig] | None = None,
         n_mfs: int = 3,
-        mf_init: str = "kmeans",
+        mf_init: str = "grid",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 10,
-        learning_rate: float = 1e-2,
+        epochs: int = 200,
+        learning_rate: float = 1e-3,
         verbose: bool | int = False,
-        rule_base: str | None = None,
-        batch_size: int | None = 512,
+        rule_base: str | None = "coco",
+        batch_size: int | None = None,
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -65,11 +229,13 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         pfrb_max_rules: int | None = None,
         patience: int | None = 20,
         restore_best: bool = True,
-        weight_decay: float = 1e-8,
+        weight_decay: float = 0.0,
         kappa: float = 690.0,
         xi: float = 730.0,
         k: float = 1.0,
         eps: float | None = None,
+        zero_consequent_init: bool = True,
+        paper_strict: bool = False,
     ) -> None:
         """Initialise an ADPTSK classifier estimator.
 
@@ -79,16 +245,19 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
                 ``mf_init="kmeans"``.
             n_mfs: Number of membership functions per feature or k-means
                 clusters.
-            mf_init: Membership-function initialization strategy:
-                ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``,
-                or ``"grid"``.
+            mf_init: Membership-function initialization strategy.
+                Defaults to ``"grid"`` to match the paper's fixed
+                antecedent initialization.
             sigma_scale: Scale factor for Gaussian MF sigma initialization.
             random_state: Seed for k-means and PyTorch weight initialization.
-            epochs: Maximum number of training epochs.
-            learning_rate: Initial learning rate for the Adam optimizer.
+            epochs: Maximum number of training epochs (default ``200``).
+            learning_rate: Initial learning rate for the Adam optimizer
+                (default ``0.001``).
             verbose: Verbosity level for training output.
-            rule_base: Rule-base strategy, e.g. ``"coco"`` or ``"cartesian"``.
-            batch_size: Mini-batch size. ``None`` uses the full dataset.
+            rule_base: Rule-base strategy (default ``"coco"``).
+            batch_size: Mini-batch size. ``None`` uses paper-style dynamic
+                defaults: full-batch for ``N < 500`` and ``20%`` of samples
+                for ``N >= 500``.
             shuffle: Whether to shuffle training samples each epoch.
             ur_weight: Uniform-rule regularization weight.
             ur_target: Target average rule activation for UR.
@@ -106,7 +275,37 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
             xi: ADPTSK ``ξ`` parameter controlling adaptive softmin sharpness.
             k: Gaussian PIMF scaling constant used when wrapping the input MFs.
             eps: Optional lower bound for Gaussian PIMF values.
+            zero_consequent_init: If ``True`` (default), initialize
+                consequent parameters to zeros.
+            paper_strict: If ``True``, enforce ADPTSK paper protocol
+                defaults in the classifier (``n_mfs=3``, ``mf_init='grid'``,
+                ``sigma_scale=1.0``, ``rule_base='coco'``, ``kappa=690``,
+                ``xi=730``, ``k=1.0``, and ``zero_consequent_init=True``).
+                Input normalization and splitting remain external to the
+                estimator. In strict mode, ``fit`` validates that inputs are
+                already in ``[0, 1]``.
         """
+        (
+            n_mfs,
+            mf_init,
+            sigma_scale,
+            rule_base,
+            kappa,
+            xi,
+            k,
+            zero_consequent_init,
+        ) = _resolve_adptsk_classifier_paper_strict_config(
+            paper_strict=bool(paper_strict),
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            rule_base=rule_base,
+            kappa=kappa,
+            xi=xi,
+            k=k,
+            zero_consequent_init=zero_consequent_init,
+        )
+
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -131,6 +330,58 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         self.xi = float(xi)
         self.k = float(k)
         self.eps = eps
+        self.zero_consequent_init = bool(zero_consequent_init)
+        self.paper_strict = bool(paper_strict)
+
+    def _resolve_default_batch_size(self, n_samples: int) -> int | None:
+        """Resolve paper-style ADPTSK default batch sizing."""
+        if self.batch_size is not None:
+            return self.batch_size
+        if int(n_samples) < 500:
+            return None
+        return max(1, round(0.2 * float(n_samples)))
+
+    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
+        use_default_profile = (
+            self.input_configs is None
+            and isinstance(self.mf_init, str)
+            and self.mf_init.lower() == "grid"
+            and int(self.n_mfs) == 3
+        )
+        if use_default_profile:
+            feature_names = [f"x{i + 1}" for i in range(x_arr.shape[1])]
+            input_mfs = _build_adptsk_default_input_mfs(x_arr.shape[1])
+            effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
+            return (
+                _wrap_gaussian_pimf_input_mfs(input_mfs, k=self.k, eps=self.eps),
+                feature_names,
+                effective_rule_base,
+            )
+        input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
+        return (
+            _wrap_gaussian_pimf_input_mfs(input_mfs, k=self.k, eps=self.eps),
+            feature_names,
+            effective_rule_base,
+        )
+
+    def fit(
+        self,
+        x: object,
+        y: object,
+        *,
+        x_val: object | None = None,
+        y_val: object | None = None,
+    ) -> ADPTSKClassifier:
+        original_batch_size = self.batch_size
+        try:
+            if self.paper_strict:
+                _validate_adptsk_paper_strict_input_range(x, arg_name="x")
+                if x_val is not None:
+                    _validate_adptsk_paper_strict_input_range(x_val, arg_name="x_val")
+            self.batch_size = self._resolve_default_batch_size(int(np.asarray(y).shape[0]))
+            return cast(ADPTSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val))
+        finally:
+            self.batch_size = original_batch_size
 
     def _build_model(
         self,
@@ -138,7 +389,6 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         n_classes: int,
         rule_base: str,
     ) -> BaseTSK:
-        input_mfs = _wrap_gaussian_pimf_input_mfs(input_mfs, k=self.k, eps=self.eps)
         return ADPTSKClassifierModel(
             input_mfs,
             n_classes=n_classes,
@@ -147,6 +397,7 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
             kappa=self.kappa,
             xi=self.xi,
             eps=self.eps,
+            zero_consequent_init=self.zero_consequent_init,
         )
 
 
@@ -178,14 +429,14 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         *,
         input_configs: list[InputConfig] | None = None,
         n_mfs: int = 3,
-        mf_init: str = "kmeans",
+        mf_init: str = "grid",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 10,
-        learning_rate: float = 1e-2,
+        epochs: int = 200,
+        learning_rate: float = 1e-3,
         verbose: bool | int = False,
-        rule_base: str | None = None,
-        batch_size: int | None = 512,
+        rule_base: str | None = "coco",
+        batch_size: int | None = None,
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -193,11 +444,12 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         pfrb_max_rules: int | None = None,
         patience: int | None = 20,
         restore_best: bool = True,
-        weight_decay: float = 1e-8,
+        weight_decay: float = 0.0,
         kappa: float = 690.0,
         xi: float = 730.0,
         k: float = 1.0,
         eps: float | None = None,
+        zero_consequent_init: bool = True,
     ) -> None:
         """Initialise an ADPTSK regressor estimator.
 
@@ -207,16 +459,19 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
                 ``mf_init="kmeans"``.
             n_mfs: Number of membership functions per feature or k-means
                 clusters.
-            mf_init: Membership-function initialization strategy:
-                ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``,
-                or ``"grid"``.
+            mf_init: Membership-function initialization strategy.
+                Defaults to ``"grid"`` to match the paper's fixed
+                antecedent initialization.
             sigma_scale: Scale factor for Gaussian MF sigma initialization.
             random_state: Seed for k-means and PyTorch weight initialization.
-            epochs: Maximum number of training epochs.
-            learning_rate: Initial learning rate for the Adam optimizer.
+            epochs: Maximum number of training epochs (default ``200``).
+            learning_rate: Initial learning rate for the Adam optimizer
+                (default ``0.001``).
             verbose: Verbosity level for training output.
-            rule_base: Rule-base strategy, e.g. ``"coco"`` or ``"cartesian"``.
-            batch_size: Mini-batch size. ``None`` uses the full dataset.
+            rule_base: Rule-base strategy (default ``"coco"``).
+            batch_size: Mini-batch size. ``None`` uses paper-style dynamic
+                defaults: full-batch for ``N < 500`` and ``20%`` of samples
+                for ``N >= 500``.
             shuffle: Whether to shuffle training samples each epoch.
             ur_weight: Uniform-rule regularization weight.
             ur_target: Target average rule activation for UR.
@@ -234,6 +489,8 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
             xi: ADPTSK ``ξ`` parameter controlling adaptive softmin sharpness.
             k: Gaussian PIMF scaling constant used when wrapping the input MFs.
             eps: Optional lower bound for Gaussian PIMF values.
+            zero_consequent_init: If ``True`` (default), initialize
+                consequent parameters to zeros.
         """
         super().__init__(
             input_configs=input_configs,
@@ -259,6 +516,53 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         self.xi = float(xi)
         self.k = float(k)
         self.eps = eps
+        self.zero_consequent_init = bool(zero_consequent_init)
+
+    def _resolve_default_batch_size(self, n_samples: int) -> int | None:
+        """Resolve paper-style ADPTSK default batch sizing."""
+        if self.batch_size is not None:
+            return self.batch_size
+        if int(n_samples) < 500:
+            return None
+        return max(1, round(0.2 * float(n_samples)))
+
+    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
+        use_default_profile = (
+            self.input_configs is None
+            and isinstance(self.mf_init, str)
+            and self.mf_init.lower() == "grid"
+            and int(self.n_mfs) == 3
+        )
+        if use_default_profile:
+            feature_names = [f"x{i + 1}" for i in range(x_arr.shape[1])]
+            input_mfs = _build_adptsk_default_input_mfs(x_arr.shape[1])
+            effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
+            return (
+                _wrap_gaussian_pimf_input_mfs(input_mfs, k=self.k, eps=self.eps),
+                feature_names,
+                effective_rule_base,
+            )
+        input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
+        return (
+            _wrap_gaussian_pimf_input_mfs(input_mfs, k=self.k, eps=self.eps),
+            feature_names,
+            effective_rule_base,
+        )
+
+    def fit(
+        self,
+        x: object,
+        y: object,
+        *,
+        x_val: object | None = None,
+        y_val: object | None = None,
+    ) -> ADPTSKRegressor:
+        original_batch_size = self.batch_size
+        try:
+            self.batch_size = self._resolve_default_batch_size(int(np.asarray(y).shape[0]))
+            return cast(ADPTSKRegressor, super().fit(x, y, x_val=x_val, y_val=y_val))
+        finally:
+            self.batch_size = original_batch_size
 
     def _build_regressor_model(
         self,
@@ -266,7 +570,6 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         rule_base: str,
         n_classes: int | None = None,
     ) -> BaseTSK:
-        input_mfs = _wrap_gaussian_pimf_input_mfs(input_mfs, k=self.k, eps=self.eps)
         return ADPTSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
@@ -274,6 +577,7 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
             kappa=self.kappa,
             xi=self.xi,
             eps=self.eps,
+            zero_consequent_init=self.zero_consequent_init,
         )
 
 
@@ -302,47 +606,75 @@ class ADATSKClassifier(_BaseClassifierEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 5,
-        mf_init: str = "kmeans",
+        n_mfs: int = 3,
+        mf_init: str = "grid",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
-        rule_base: str | None = None,
-        batch_size: int | None = 512,
-        shuffle: bool = True,
+        rule_base: str | None = "coco",
+        batch_size: int | None = None,
+        shuffle: bool = False,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
         consequent_batch_norm: bool = False,
-        patience: int | None = 20,
-        restore_best: bool = True,
-        weight_decay: float = 1e-8,
+        patience: int | None = None,
+        restore_best: bool = False,
+        weight_decay: float = 0.0,
+        freeze_antecedent_in_high_dim: bool = True,
+        high_dim_threshold: int = 1000,
+        paper_strict: bool = False,
     ) -> None:
         """Initialise an ADATSK classifier.
 
         Args:
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
-            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
-            mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
-            sigma_scale: Sigma scale factor. ``1.0`` recommended; Ada-softmin
-                handles high-dimensional stability.
+            n_mfs: Number of MFs per feature (default ``3``).
+            mf_init: MF initialization strategy (default ``"grid"`` for paper-style
+                evenly spaced centers). Other options: ``"kmeans"``,
+                ``"minibatch_kmeans"``, ``"fcm"``.
+            sigma_scale: Sigma scale factor used by clustering initializers.
+                In paper-strict mode, Gaussian sigmas are reset to ``1`` and frozen.
             random_state: Seed for k-means and weight initialisation.
             epochs: Maximum training epochs (default ``10``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
-            rule_base: ``"coco"`` or ``"cartesian"``.
-            batch_size: Mini-batch size (default ``512``).
-            shuffle: Reshuffle each epoch.
+            rule_base: Rule-base strategy. Default ``"coco"`` to match the paper.
+            batch_size: Mini-batch size. Default ``None`` (full-batch GD).
+            shuffle: Whether to reshuffle each epoch. Default ``False``.
             ur_weight: Uncertainty regularisation weight.
             ur_target: Uncertainty regularisation target.
             consequent_batch_norm: Batch normalisation on consequent layers.
-            patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
-            restore_best: If ``True`` (default), restore the best validation
-                model weights after training.
-            weight_decay: L2 weight decay for consequent parameters.
+            patience: Early-stopping patience. Default ``None`` (disabled).
+            restore_best: Restore best validation weights. Default ``False``.
+            weight_decay: L2 weight decay for consequent parameters. Default ``0.0``.
+            freeze_antecedent_in_high_dim: If ``True`` (default), freeze
+                antecedent parameters when ``n_features >= high_dim_threshold``.
+            high_dim_threshold: Feature-count threshold used to trigger
+                antecedent freezing (default ``1000``).
+            paper_strict: If ``True``, enforce paper-strict defaults.
         """
+        (
+            n_mfs,
+            mf_init,
+            sigma_scale,
+            rule_base,
+            epochs,
+            learning_rate,
+            batch_size,
+        ) = _resolve_adatsk_classifier_paper_strict_config(
+            paper_strict=bool(paper_strict),
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
+            rule_base=rule_base,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            batch_size=batch_size,
+        )
+
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -362,6 +694,24 @@ class ADATSKClassifier(_BaseClassifierEstimator):
             restore_best=restore_best,
             weight_decay=weight_decay,
         )
+        self.freeze_antecedent_in_high_dim = bool(freeze_antecedent_in_high_dim)
+        self.high_dim_threshold = int(high_dim_threshold)
+        self.paper_strict = bool(paper_strict)
+
+    def fit(
+        self,
+        x: object,
+        y: object,
+        *,
+        x_val: object | None = None,
+        y_val: object | None = None,
+    ) -> ADATSKClassifier:
+        """Fit the ADATSK classifier estimator, checking input range if strict."""
+        if self.paper_strict:
+            _validate_adptsk_paper_strict_input_range(x, arg_name="x")
+            if x_val is not None:
+                _validate_adptsk_paper_strict_input_range(x_val, arg_name="x_val")
+        return cast(ADATSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val))
 
     def _build_model(
         self,
@@ -370,11 +720,32 @@ class ADATSKClassifier(_BaseClassifierEstimator):
         rule_base: str,
     ) -> BaseTSK:
         """Create ADATSKClassifierModel."""
+        input_mfs = _wrap_adatsk_gaussian_input_mfs(input_mfs)
         return ADATSKClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),
+            zero_consequent_init=True,
+        )
+
+    def _resolve_input_configs(self, x: np.ndarray) -> list[InputConfig]:
+        """Use paper-style grid defaults for ADATSKClassifier.
+
+        The paper places centers on ``[Vmin, Vmax]`` with no range padding.
+        This is applied only when configs are auto-generated by defaults.
+        """
+        configs = super()._resolve_input_configs(x)
+        if self.input_configs is not None:
+            return configs
+        return [InputConfig(name=cfg.name, n_mfs=cfg.n_mfs, overlap=cfg.overlap, margin=0.0) for cfg in configs]
+
+    def _pre_train_hook(self, model: BaseTSK, x_t: Tensor, y_t: Tensor) -> None:
+        _apply_adatsk_paper_defaults(
+            model,
+            x_t,
+            freeze_antecedent_in_high_dim=self.freeze_antecedent_in_high_dim,
+            high_dim_threshold=self.high_dim_threshold,
         )
 
 
@@ -403,45 +774,51 @@ class ADATSKRegressor(_BaseRegressorEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 5,
-        mf_init: str = "kmeans",
+        n_mfs: int = 3,
+        mf_init: str = "grid",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
-        rule_base: str | None = None,
-        batch_size: int | None = 512,
-        shuffle: bool = True,
+        rule_base: str | None = "coco",
+        batch_size: int | None = None,
+        shuffle: bool = False,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
         consequent_batch_norm: bool = False,
-        patience: int | None = 20,
-        restore_best: bool = True,
-        weight_decay: float = 1e-8,
+        patience: int | None = None,
+        restore_best: bool = False,
+        weight_decay: float = 0.0,
+        freeze_antecedent_in_high_dim: bool = True,
+        high_dim_threshold: int = 1000,
     ) -> None:
         """Initialise an ADATSK regressor.
 
         Args:
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
-            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
-            mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
-            sigma_scale: Sigma scale factor. ``1.0`` recommended.
+            n_mfs: Number of MFs per feature (default ``3``).
+            mf_init: MF initialization strategy (default ``"grid"``).
+            sigma_scale: Sigma scale factor used by clustering initializers.
+                In paper-style mode, Gaussian sigmas are reset to ``1`` and frozen.
             random_state: Seed for k-means and weight initialisation.
             epochs: Maximum training epochs (default ``10``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
-            rule_base: ``"coco"`` or ``"cartesian"``.
-            batch_size: Mini-batch size (default ``512``).
-            shuffle: Reshuffle each epoch.
+            rule_base: Rule-base strategy. Default ``"coco"``.
+            batch_size: Mini-batch size. Default ``None`` (full-batch GD).
+            shuffle: Whether to reshuffle each epoch. Default ``False``.
             ur_weight: Uncertainty regularisation weight.
             ur_target: Uncertainty regularisation target.
             consequent_batch_norm: Batch normalisation on consequent layers.
-            patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
-            restore_best: If ``True`` (default), restore the best validation
-                model weights after training.
-            weight_decay: L2 weight decay for consequent parameters.
+            patience: Early-stopping patience. Default ``None`` (disabled).
+            restore_best: Restore best validation weights. Default ``False``.
+            weight_decay: L2 weight decay for consequent parameters. Default ``0.0``.
+            freeze_antecedent_in_high_dim: If ``True`` (default), freeze
+                antecedent parameters when ``n_features >= high_dim_threshold``.
+            high_dim_threshold: Feature-count threshold used to trigger
+                antecedent freezing (default ``1000``).
         """
         super().__init__(
             input_configs=input_configs,
@@ -462,6 +839,8 @@ class ADATSKRegressor(_BaseRegressorEstimator):
             restore_best=restore_best,
             weight_decay=weight_decay,
         )
+        self.freeze_antecedent_in_high_dim = bool(freeze_antecedent_in_high_dim)
+        self.high_dim_threshold = int(high_dim_threshold)
 
     def _build_regressor_model(
         self,
@@ -474,4 +853,12 @@ class ADATSKRegressor(_BaseRegressorEstimator):
             input_mfs,
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),
+        )
+
+    def _pre_train_hook(self, model: BaseTSK, x_t: Tensor, y_t: Tensor) -> None:
+        _apply_adatsk_paper_defaults(
+            model,
+            x_t,
+            freeze_antecedent_in_high_dim=self.freeze_antecedent_in_high_dim,
+            high_dim_threshold=self.high_dim_threshold,
         )

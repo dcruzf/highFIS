@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 import torch
 from torch import nn
@@ -11,7 +13,7 @@ from highfis.layers import (
     GatedRegressionConsequentLayer,
     GatedRegressionZeroOrderConsequentLayer,
 )
-from highfis.memberships import GaussianMF
+from highfis.memberships import DimensionDependentGaussianMF, GaussianMF
 from highfis.models import (
     ADATSKClassifierModel,
     ADATSKRegressorModel,
@@ -28,6 +30,7 @@ from highfis.models import (
     HDFISMinClassifierModel,
     HDFISMinRegressorModel,
     HDFISProdClassifierModel,
+    HDFISProdRegressorModel,
     HTSKClassifierModel,
     HTSKRegressorModel,
     LogTSKClassifierModel,
@@ -42,6 +45,8 @@ from highfis.models._common import (
     _build_first_order_design_matrix,
     _threshold_from_zeta,
 )
+from highfis.models._hdfis import _zero_initialize_consequents as _hdfis_zero_initialize_consequents
+from highfis.models._yager import _adaptive_yager_lambda, _zero_initialize_consequents
 from highfis.t_norms import DombiTNorm
 
 
@@ -116,6 +121,93 @@ def test_ayatsk_regressor_default_criterion() -> None:
     assert isinstance(model._default_criterion(), nn.MSELoss)
 
 
+def test_ayatsk_classifier_default_criterion_is_mse() -> None:
+    model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3)
+    assert isinstance(model._default_criterion(), nn.MSELoss)
+
+
+def test_ayatsk_classifier_default_optimizer_is_adam() -> None:
+    model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3)
+    optimizer = model._build_optimizer(None, learning_rate=1e-3, weight_decay=0.0)
+    assert isinstance(optimizer, torch.optim.Adam)
+
+
+def test_ayatsk_classifier_zero_initializes_consequents() -> None:
+    model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3)
+    weight = getattr(model.consequent_layer, "weight", None)
+    bias = getattr(model.consequent_layer, "bias", None)
+    assert isinstance(weight, torch.Tensor)
+    assert isinstance(bias, torch.Tensor)
+    assert torch.allclose(weight, torch.zeros_like(weight))
+    assert torch.allclose(bias, torch.zeros_like(bias))
+
+
+def test_ayatsk_classifier_uses_adaptive_yager_lambda() -> None:
+    model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3)
+    assert model.lambda_ > 0.0
+    assert model.lower_bound_ > 0.0
+
+
+def test_ayatsk_regressor_default_optimizer_is_adam() -> None:
+    model = AYATSKRegressorModel(_build_input_mfs(), rule_base="coco")
+    optimizer = model._build_optimizer(None, learning_rate=1e-3, weight_decay=0.0)
+    assert isinstance(optimizer, torch.optim.Adam)
+
+
+def test_ayatsk_regressor_zero_initializes_consequents() -> None:
+    model = AYATSKRegressorModel(_build_input_mfs(), rule_base="coco")
+    weight = getattr(model.consequent_layer, "weight", None)
+    bias = getattr(model.consequent_layer, "bias", None)
+    assert isinstance(weight, torch.Tensor)
+    assert isinstance(bias, torch.Tensor)
+    assert torch.allclose(weight, torch.zeros_like(weight))
+    assert torch.allclose(bias, torch.zeros_like(bias))
+
+
+def test_adaptive_yager_lambda_validates_inputs() -> None:
+    with pytest.raises(ValueError, match="dimension must be > 1"):
+        _adaptive_yager_lambda(1, 0.2)
+    with pytest.raises(ValueError, match=r"lower_bound must be in \(0, 1\)"):
+        _adaptive_yager_lambda(3, 1.0)
+
+
+def test_yager_zero_initialize_consequents_handles_missing_params() -> None:
+    class DummyLayer(nn.Module):
+        pass
+
+    _zero_initialize_consequents(DummyLayer())
+
+
+def test_ayatsk_classifier_optimizer_passthrough() -> None:
+    model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3)
+    provided = torch.optim.SGD(model.parameters(), lr=1e-2)
+    optimizer = model._build_optimizer(provided, learning_rate=1e-3, weight_decay=1e-4)
+
+    assert optimizer is provided
+
+
+def test_ayatsk_regressor_optimizer_passthrough() -> None:
+    model = AYATSKRegressorModel(_build_input_mfs(), rule_base="coco")
+    provided = torch.optim.SGD(model.parameters(), lr=1e-2)
+    optimizer = model._build_optimizer(provided, learning_rate=1e-3, weight_decay=1e-4)
+
+    assert optimizer is provided
+
+
+def test_ayatsk_classifier_optimizer_with_consequent_batch_norm() -> None:
+    model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3, consequent_batch_norm=True)
+    optimizer = model._build_optimizer(None, learning_rate=1e-3, weight_decay=0.0)
+
+    assert isinstance(optimizer, torch.optim.Adam)
+
+
+def test_ayatsk_regressor_optimizer_with_consequent_batch_norm() -> None:
+    model = AYATSKRegressorModel(_build_input_mfs(), rule_base="coco", consequent_batch_norm=True)
+    optimizer = model._build_optimizer(None, learning_rate=1e-3, weight_decay=0.0)
+
+    assert isinstance(optimizer, torch.optim.Adam)
+
+
 def test_adptsk_classifier_forward_predict_shapes() -> None:
     from highfis.models import ADPTSKClassifierModel
 
@@ -168,6 +260,109 @@ def test_adptsk_regressor_forward_predict_shape() -> None:
 
     assert output.shape == (6, 1)
     assert pred.shape == (6,)
+
+
+def test_adptsk_classifier_default_criterion_is_mse() -> None:
+    from highfis.models import ADPTSKClassifierModel
+
+    model = ADPTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    assert isinstance(model._default_criterion(), nn.MSELoss)
+
+
+def test_adptsk_classifier_default_optimizer_is_adam() -> None:
+    from highfis.models import ADPTSKClassifierModel
+
+    model = ADPTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    optimizer = model._build_optimizer(None, learning_rate=1e-3, weight_decay=0.0)
+    assert isinstance(optimizer, torch.optim.Adam)
+
+
+def test_adptsk_classifier_optimizer_passthrough() -> None:
+    from highfis.models import ADPTSKClassifierModel
+
+    model = ADPTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    provided = torch.optim.SGD(model.parameters(), lr=1e-2)
+    optimizer = model._build_optimizer(provided, learning_rate=1e-3, weight_decay=0.0)
+    assert optimizer is provided
+
+
+def test_adptsk_classifier_optimizer_with_consequent_batch_norm_uses_adam() -> None:
+    from highfis.models import ADPTSKClassifierModel
+
+    model = ADPTSKClassifierModel(_build_input_mfs(), n_classes=2, consequent_batch_norm=True)
+    optimizer = model._build_optimizer(None, learning_rate=1e-3, weight_decay=0.0)
+    assert isinstance(optimizer, torch.optim.Adam)
+
+
+def test_adptsk_regressor_default_optimizer_is_adam() -> None:
+    from highfis.models import ADPTSKRegressorModel
+
+    model = ADPTSKRegressorModel(_build_input_mfs(), rule_base="coco")
+    optimizer = model._build_optimizer(None, learning_rate=1e-3, weight_decay=0.0)
+    assert isinstance(optimizer, torch.optim.Adam)
+
+
+def test_adptsk_regressor_optimizer_passthrough() -> None:
+    from highfis.models import ADPTSKRegressorModel
+
+    model = ADPTSKRegressorModel(_build_input_mfs(), rule_base="coco")
+    provided = torch.optim.SGD(model.parameters(), lr=1e-2)
+    optimizer = model._build_optimizer(provided, learning_rate=1e-3, weight_decay=0.0)
+    assert optimizer is provided
+
+
+def test_adptsk_regressor_optimizer_with_consequent_batch_norm_uses_adam() -> None:
+    from highfis.models import ADPTSKRegressorModel
+
+    model = ADPTSKRegressorModel(_build_input_mfs(), rule_base="coco", consequent_batch_norm=True)
+    optimizer = model._build_optimizer(None, learning_rate=1e-3, weight_decay=0.0)
+    assert isinstance(optimizer, torch.optim.Adam)
+
+
+def test_adptsk_classifier_zero_initializes_consequents_by_default() -> None:
+    from highfis.models import ADPTSKClassifierModel
+
+    model = ADPTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    weight = getattr(model.consequent_layer, "weight", None)
+    bias = getattr(model.consequent_layer, "bias", None)
+    assert isinstance(weight, torch.Tensor)
+    assert isinstance(bias, torch.Tensor)
+    assert torch.allclose(weight, torch.zeros_like(weight))
+    assert torch.allclose(bias, torch.zeros_like(bias))
+
+
+def test_adptsk_classifier_can_disable_zero_consequent_init() -> None:
+    from highfis.models import ADPTSKClassifierModel
+
+    model = ADPTSKClassifierModel(_build_input_mfs(), n_classes=2, zero_consequent_init=False)
+    weight = getattr(model.consequent_layer, "weight", None)
+    assert isinstance(weight, torch.Tensor)
+    assert not torch.allclose(weight, torch.zeros_like(weight))
+
+
+def test_adptsk_regressor_can_disable_zero_consequent_init() -> None:
+    from highfis.models import ADPTSKRegressorModel
+
+    model = ADPTSKRegressorModel(_build_input_mfs(), rule_base="coco", zero_consequent_init=False)
+    weight = getattr(model.consequent_layer, "weight", None)
+    assert isinstance(weight, torch.Tensor)
+    assert not torch.allclose(weight, torch.zeros_like(weight))
+
+
+def test_adptsk_classifier_zero_initialize_handles_missing_params() -> None:
+    from highfis.models import ADPTSKClassifierModel
+
+    model = ADPTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    model.consequent_layer = cast(nn.Module, nn.Identity())
+    model._zero_initialize_consequents()
+
+
+def test_adptsk_regressor_zero_initialize_handles_missing_params() -> None:
+    from highfis.models import ADPTSKRegressorModel
+
+    model = ADPTSKRegressorModel(_build_input_mfs(), rule_base="coco")
+    model.consequent_layer = cast(nn.Module, nn.Identity())
+    model._zero_initialize_consequents()
 
 
 def test_htsk_classifier_fit_returns_history() -> None:
@@ -310,6 +505,71 @@ def test_hdfismin_regressor_freezes_membership_parameters() -> None:
     assert all(not p.requires_grad for p in model.membership_layer.parameters())
 
 
+def test_hdfis_models_can_zero_initialize_consequents() -> None:
+    clf = HDFISProdClassifierModel(_build_input_mfs(), n_classes=2, zero_consequent_init=True)
+    reg = HDFISProdRegressorModel(_build_input_mfs(), zero_consequent_init=True)
+    min_clf = HDFISMinClassifierModel(_build_input_mfs(), n_classes=2, zero_consequent_init=True)
+    min_reg = HDFISMinRegressorModel(_build_input_mfs(), zero_consequent_init=True)
+
+    clf_weight = getattr(clf.consequent_layer, "weight", None)
+    clf_bias = getattr(clf.consequent_layer, "bias", None)
+    reg_weight = getattr(reg.consequent_layer, "weight", None)
+    reg_bias = getattr(reg.consequent_layer, "bias", None)
+    min_clf_weight = getattr(min_clf.consequent_layer, "weight", None)
+    min_clf_bias = getattr(min_clf.consequent_layer, "bias", None)
+    min_reg_weight = getattr(min_reg.consequent_layer, "weight", None)
+    min_reg_bias = getattr(min_reg.consequent_layer, "bias", None)
+
+    assert isinstance(clf_weight, torch.Tensor)
+    assert isinstance(clf_bias, torch.Tensor)
+    assert isinstance(reg_weight, torch.Tensor)
+    assert isinstance(reg_bias, torch.Tensor)
+    assert isinstance(min_clf_weight, torch.Tensor)
+    assert isinstance(min_clf_bias, torch.Tensor)
+    assert isinstance(min_reg_weight, torch.Tensor)
+    assert isinstance(min_reg_bias, torch.Tensor)
+    assert torch.allclose(clf_weight, torch.zeros_like(clf_weight))
+    assert torch.allclose(clf_bias, torch.zeros_like(clf_bias))
+    assert torch.allclose(reg_weight, torch.zeros_like(reg_weight))
+    assert torch.allclose(reg_bias, torch.zeros_like(reg_bias))
+    assert torch.allclose(min_clf_weight, torch.zeros_like(min_clf_weight))
+    assert torch.allclose(min_clf_bias, torch.zeros_like(min_clf_bias))
+    assert torch.allclose(min_reg_weight, torch.zeros_like(min_reg_weight))
+    assert torch.allclose(min_reg_bias, torch.zeros_like(min_reg_bias))
+
+
+def test_hdfis_zero_initialize_consequents_handles_missing_params() -> None:
+    class DummyLayer(nn.Module):
+        pass
+
+    _hdfis_zero_initialize_consequents(DummyLayer())
+
+
+def test_dimension_dependent_gaussian_mf_paper_strict_equation_toggle() -> None:
+    strict = DimensionDependentGaussianMF(
+        mean=0.0,
+        sigma=1.0,
+        dimension=1000,
+        xi=745.0,
+        paper_strict_equation=True,
+        eps=1e-1,
+    )
+    stable = DimensionDependentGaussianMF(
+        mean=0.0,
+        sigma=1.0,
+        dimension=1000,
+        xi=745.0,
+        paper_strict_equation=False,
+        eps=1e-1,
+    )
+
+    x = torch.tensor([0.5], dtype=torch.float32)
+    y_strict = strict(x)
+    y_stable = stable(x)
+
+    assert bool(torch.all(y_stable >= y_strict))
+
+
 def test_dombitsk_classifier_forward_antecedents_row_sum_one() -> None:
     model = DombiTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, lambda_=2.0)
     x = torch.randn(6, 2)
@@ -344,6 +604,53 @@ def test_admtsk_classifier_forward_predict_shapes() -> None:
     assert torch.allclose(proba.sum(dim=1), torch.ones(8), atol=1e-6)
 
 
+def test_admtsk_classifier_default_criterion_is_mse() -> None:
+    model = ADMTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    assert isinstance(model._default_criterion(), nn.MSELoss)
+
+
+def test_admtsk_classifier_default_optimizer_is_adam() -> None:
+    model = ADMTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    optimizer = model._build_optimizer(None, learning_rate=1e-2, weight_decay=0.0)
+    assert isinstance(optimizer, torch.optim.Adam)
+
+
+def test_admtsk_classifier_optimizer_returns_custom_optimizer() -> None:
+    model = ADMTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    custom = torch.optim.SGD(model.parameters(), lr=1e-2)
+    optimizer = model._build_optimizer(custom, learning_rate=1e-2, weight_decay=0.0)
+    assert optimizer is custom
+
+
+def test_admtsk_classifier_optimizer_includes_bn_params_when_enabled() -> None:
+    model = ADMTSKClassifierModel(_build_input_mfs(), n_classes=2, consequent_batch_norm=True)
+    optimizer = model._build_optimizer(None, learning_rate=1e-2, weight_decay=0.0)
+    cons_only = len(list(model.consequent_layer.parameters()))
+    cons_group = optimizer.param_groups[2]["params"]
+    assert len(cons_group) > cons_only
+
+
+def test_admtsk_classifier_zero_initializes_consequents_by_default() -> None:
+    model = ADMTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    weight = getattr(model.consequent_layer, "weight", None)
+    bias = getattr(model.consequent_layer, "bias", None)
+    assert isinstance(weight, torch.Tensor)
+    assert isinstance(bias, torch.Tensor)
+    assert torch.allclose(weight, torch.zeros_like(weight))
+    assert torch.allclose(bias, torch.zeros_like(bias))
+
+
+def test_admtsk_classifier_can_disable_zero_consequent_init() -> None:
+    model = ADMTSKClassifierModel(
+        _build_input_mfs(),
+        n_classes=2,
+        zero_consequent_init=False,
+    )
+    weight = getattr(model.consequent_layer, "weight", None)
+    assert isinstance(weight, torch.Tensor)
+    assert not torch.allclose(weight, torch.zeros_like(weight))
+
+
 def test_admtsk_regressor_forward_shape() -> None:
     model = ADMTSKRegressorModel(_build_input_mfs(), rule_base="coco")
     x = torch.randn(5, 3)
@@ -353,6 +660,76 @@ def test_admtsk_regressor_forward_shape() -> None:
 
     assert output.shape == (5, 1)
     assert pred.shape == (5,)
+
+
+def test_admtsk_regressor_default_optimizer_is_adam() -> None:
+    model = ADMTSKRegressorModel(_build_input_mfs(), rule_base="coco")
+    optimizer = model._build_optimizer(None, learning_rate=1e-2, weight_decay=0.0)
+    assert isinstance(optimizer, torch.optim.Adam)
+
+
+def test_admtsk_regressor_optimizer_returns_custom_optimizer() -> None:
+    model = ADMTSKRegressorModel(_build_input_mfs(), rule_base="coco")
+    custom = torch.optim.SGD(model.parameters(), lr=1e-2)
+    optimizer = model._build_optimizer(custom, learning_rate=1e-2, weight_decay=0.0)
+    assert optimizer is custom
+
+
+def test_admtsk_regressor_optimizer_includes_bn_params_when_enabled() -> None:
+    model = ADMTSKRegressorModel(_build_input_mfs(), rule_base="coco", consequent_batch_norm=True)
+    optimizer = model._build_optimizer(None, learning_rate=1e-2, weight_decay=0.0)
+    cons_only = len(list(model.consequent_layer.parameters()))
+    cons_group = optimizer.param_groups[2]["params"]
+    assert len(cons_group) > cons_only
+
+
+def test_admtsk_regressor_can_disable_zero_consequent_init() -> None:
+    model = ADMTSKRegressorModel(
+        _build_input_mfs(),
+        rule_base="coco",
+        zero_consequent_init=False,
+    )
+    weight = getattr(model.consequent_layer, "weight", None)
+    assert isinstance(weight, torch.Tensor)
+    assert not torch.allclose(weight, torch.zeros_like(weight))
+
+
+def test_admtsk_classifier_zero_init_noop_when_weight_and_bias_not_tensors() -> None:
+    class FakeConsequent(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.weight = nn.Identity()
+            self.bias = nn.Identity()
+
+        def forward(self, x: torch.Tensor, norm_w: torch.Tensor) -> torch.Tensor:
+            return x.new_zeros((x.shape[0], 2))
+
+    model = ADMTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    model.consequent_layer = FakeConsequent()
+
+    model._zero_initialize_consequents()
+
+    assert isinstance(model.consequent_layer.weight, nn.Module)
+    assert isinstance(model.consequent_layer.bias, nn.Module)
+
+
+def test_admtsk_regressor_zero_init_noop_when_weight_and_bias_not_tensors() -> None:
+    class FakeConsequent(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.weight = nn.Identity()
+            self.bias = nn.Identity()
+
+        def forward(self, x: torch.Tensor, norm_w: torch.Tensor) -> torch.Tensor:
+            return x.new_zeros((x.shape[0], 1))
+
+    model = ADMTSKRegressorModel(_build_input_mfs(), rule_base="coco")
+    model.consequent_layer = FakeConsequent()
+
+    model._zero_initialize_consequents()
+
+    assert isinstance(model.consequent_layer.weight, nn.Module)
+    assert isinstance(model.consequent_layer.bias, nn.Module)
 
 
 def test_admtsk_classifier_fixed_lambda_branch() -> None:
@@ -748,7 +1125,7 @@ def test_dg_aletsk_regressor_convert_to_first_order_preserves_theta() -> None:
 
 def test_dg_aletsk_classifier_default_criterion() -> None:
     model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
-    assert isinstance(model._default_criterion(), nn.CrossEntropyLoss)
+    assert isinstance(model._default_criterion(), nn.MSELoss)
 
 
 def test_dg_aletsk_regressor_default_criterion() -> None:

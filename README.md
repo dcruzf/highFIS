@@ -60,7 +60,7 @@ high-dimensional inference strategy.
 - `LogTSK` — log-domain inverse-log normalization for stable aggregation.
 - `MHTSK` — multihead sparse TSK with feature-subset heads and sparse consequents.
 - `DombiTSK` — Dombi T-norm aggregation with a learnable shape parameter.
-- `ADMTSK` — adaptive Dombi TSK with dimension-dependent Gaussian membership functions.
+- `ADMTSK` — adaptive Dombi TSK with composite Gaussian Pi membership functions.
 - `AYATSK` — Yager T-norm aggregation for flexible antecedent behavior.
 - `ADATSK` — adaptive softmin-style inference with dynamic rule weighting.
 - `ADPTSK` — adaptive double-parameter softmin inference with stable normalized rule weights.

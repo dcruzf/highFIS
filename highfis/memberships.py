@@ -160,6 +160,20 @@ class GaussianMF(MembershipFunction):
         return torch.exp(-0.5 * z.square())
 
 
+class ADATSKGaussianMF(GaussianMF):
+    """ADATSK paper-style Gaussian membership.
+
+    Uses ``exp(-((x-c)^2)/(sigma^2))`` so that with ``sigma=1`` it matches
+    the simplified paper form ``exp(-(x-c)^2)``.
+    """
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Compute ADATSK paper-style Gaussian membership values."""
+        x = self._as_tensor(x)
+        z = (x - self.mean) / self.sigma
+        return torch.exp(-z.square())
+
+
 class DimensionDependentGaussianMF(GaussianMF):
     """Dimension-dependent Gaussian membership function for HDFIS-prod."""
 
@@ -170,6 +184,7 @@ class DimensionDependentGaussianMF(GaussianMF):
         dimension: int = 1000,
         xi: float = 745.0,
         rho: float | None = None,
+        paper_strict_equation: bool = False,
         eps: float | None = None,
     ) -> None:
         """Initialize dimension-dependent Gaussian MF.
@@ -181,6 +196,9 @@ class DimensionDependentGaussianMF(GaussianMF):
             xi: Precision constant used to compute the scale exponent.
             rho: Scale exponent. If ``None``, uses
                 ``1 - log(xi) / log(dimension)``.
+            paper_strict_equation: If ``True``, use the paper-form denominator
+                exactly as ``D^rho + sigma^2``. If ``False`` (default), add
+                ``eps`` to the denominator for extra numeric stability.
             eps: Numeric stability constant.
 
         Raises:
@@ -201,6 +219,7 @@ class DimensionDependentGaussianMF(GaussianMF):
         self.xi = float(xi)
         self.rho = float(rho) if rho is not None else 1.0 - math.log(self.xi) / math.log(self.dimension)
         self.scale = float(self.dimension**self.rho)
+        self.paper_strict_equation = bool(paper_strict_equation)
 
     @property
     def sigma(self) -> Tensor:
@@ -210,7 +229,9 @@ class DimensionDependentGaussianMF(GaussianMF):
     def forward(self, x: Tensor) -> Tensor:
         """Compute dimension-dependent Gaussian membership values for input tensor."""
         x = self._as_tensor(x)
-        denom = self.scale + self.sigma.square() + self.eps
+        denom = self.scale + self.sigma.square()
+        if not self.paper_strict_equation:
+            denom = denom + self.eps
         return torch.exp(-(x - self.mean).square() / denom)
 
     def inspect_params(self) -> dict[str, Any]:
@@ -221,6 +242,7 @@ class DimensionDependentGaussianMF(GaussianMF):
             "dimension": float(self.dimension),
             "xi": float(self.xi),
             "rho": float(self.rho),
+            "paper_strict_equation": bool(self.paper_strict_equation),
         }
 
 
@@ -717,6 +739,7 @@ class GaussianPiMF(MembershipFunction):
 
 
 __all__: list[str] = [
+    "ADATSKGaussianMF",
     "BellMF",
     "CompositeExponentialMF",
     "CompositeGaussianMF",

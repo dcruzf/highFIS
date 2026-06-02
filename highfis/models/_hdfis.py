@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
+import torch
 from torch import nn
 
 from ..defuzzifiers import SumBasedDefuzzifier
@@ -17,6 +18,15 @@ from ._common import (
     BaseTSKClassifierModel,
     BaseTSKRegressorModel,
 )
+
+
+def _zero_initialize_consequents(consequent_layer: nn.Module) -> None:
+    weight = getattr(consequent_layer, "weight", None)
+    if isinstance(weight, torch.Tensor):
+        nn.init.zeros_(weight)
+    bias = getattr(consequent_layer, "bias", None)
+    if isinstance(bias, torch.Tensor):
+        nn.init.zeros_(bias)
 
 
 class HDFISProdClassifierModel(BaseTSKClassifierModel):
@@ -43,6 +53,7 @@ class HDFISProdClassifierModel(BaseTSKClassifierModel):
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
+        zero_consequent_init: bool = False,
     ) -> None:
         """Initialize the HDFIS-prod classifier."""
         if n_classes < 2:
@@ -56,6 +67,8 @@ class HDFISProdClassifierModel(BaseTSKClassifierModel):
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
         )
+        if zero_consequent_init:
+            _zero_initialize_consequents(self.consequent_layer)
 
     def _build_consequent_layer(self) -> nn.Module:
         return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
@@ -88,6 +101,7 @@ class HDFISProdRegressorModel(BaseTSKRegressorModel):
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
+        zero_consequent_init: bool = False,
     ) -> None:
         """Initialize the HDFIS-prod regressor."""
         super().__init__(
@@ -98,6 +112,8 @@ class HDFISProdRegressorModel(BaseTSKRegressorModel):
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
         )
+        if zero_consequent_init:
+            _zero_initialize_consequents(self.consequent_layer)
 
     def _build_consequent_layer(self) -> nn.Module:
         return RegressionConsequentLayer(self.n_rules, self.n_inputs)
@@ -129,6 +145,7 @@ class HDFISMinClassifierModel(BaseTSKClassifierModel):
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
+        zero_consequent_init: bool = False,
     ) -> None:
         """Initialize the HDFIS-min classifier."""
         if n_classes < 2:
@@ -142,6 +159,8 @@ class HDFISMinClassifierModel(BaseTSKClassifierModel):
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
         )
+        if zero_consequent_init:
+            _zero_initialize_consequents(self.consequent_layer)
         for param in self.membership_layer.parameters():
             param.requires_grad = False
 
@@ -174,6 +193,7 @@ class HDFISMinRegressorModel(BaseTSKRegressorModel):
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
+        zero_consequent_init: bool = False,
     ) -> None:
         """Initialize the HDFIS-min regressor."""
         super().__init__(
@@ -184,6 +204,8 @@ class HDFISMinRegressorModel(BaseTSKRegressorModel):
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
         )
+        if zero_consequent_init:
+            _zero_initialize_consequents(self.consequent_layer)
         for param in self.membership_layer.parameters():
             param.requires_grad = False
 

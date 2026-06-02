@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 import torch
 
@@ -227,3 +229,324 @@ def test_dgaletsk_rule_layer_firing_strengths_in_unit_interval() -> None:
     assert f.shape == (1, 2)
     assert torch.allclose(f[0, 0], torch.tensor(0.3), atol=0.01), f"expected ≈0.3, got {f[0, 0].item():.4f}"
     assert torch.allclose(f[0, 1], torch.tensor(0.6), atol=0.01), f"expected ≈0.6, got {f[0, 1].item():.4f}"
+
+
+# ---------------------------------------------------------------------------
+# Estimator-level tests
+# ---------------------------------------------------------------------------
+
+
+def test_dgaletsk_classifier_estimator_fit_three_phase_history() -> None:
+    """DGALETSKClassifier.fit() must produce history_ with dg/threshold/finetune keys."""
+    import numpy as np
+
+    from highfis import DGALETSKClassifier
+
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal((40, 3)).astype(np.float32)
+    y = (rng.random(40) > 0.5).astype(int)
+    clf = DGALETSKClassifier(
+        n_mfs=2,
+        dg_epochs=2,
+        finetune_epochs=3,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        random_state=0,
+    )
+    clf.fit(X, y)
+    assert isinstance(clf.history_, dict)
+    assert set(clf.history_) >= {"dg", "threshold", "finetune"}
+
+
+def test_dgaletsk_regressor_estimator_fit_three_phase_history() -> None:
+    """DGALETSKRegressor.fit() must produce history_ with dg/threshold/finetune keys."""
+    import numpy as np
+
+    from highfis import DGALETSKRegressor
+
+    rng = np.random.default_rng(0)
+    X = rng.standard_normal((40, 3)).astype(np.float32)
+    y = rng.standard_normal(40).astype(np.float32)
+    reg = DGALETSKRegressor(
+        n_mfs=2,
+        dg_epochs=2,
+        finetune_epochs=3,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        random_state=0,
+    )
+    reg.fit(X, y)
+    assert isinstance(reg.history_, dict)
+    assert set(reg.history_) >= {"dg", "threshold", "finetune"}
+
+
+def test_dgaletsk_classifier_new_params_in_get_params() -> None:
+    from highfis import DGALETSKClassifier
+
+    clf = DGALETSKClassifier(n_mfs=3, dg_epochs=15, finetune_epochs=50, use_lse=False)
+    params = clf.get_params()
+    assert params["dg_epochs"] == 15
+    assert params["finetune_epochs"] == 50
+    assert params["use_lse"] is False
+
+
+# ---------------------------------------------------------------------------
+# _build_optimizer: custom passthrough and adamw fallback
+# ---------------------------------------------------------------------------
+
+
+def test_dgaletsk_classifier_build_optimizer_passthrough() -> None:
+    model = DGALETSKClassifierModel(_build_input_mfs(), n_classes=2)
+    custom_opt = torch.optim.Adam(model.parameters(), lr=1e-3)
+    result = model._build_optimizer(custom_opt, 1e-3, 0.0)
+    assert result is custom_opt
+
+
+def test_dgaletsk_classifier_build_optimizer_adamw_fallback() -> None:
+    model = DGALETSKClassifierModel(_build_input_mfs(), n_classes=2, optimizer_type="adamw")
+    result = model._build_optimizer(None, 1e-3, 1e-4)
+    assert isinstance(result, torch.optim.AdamW)
+
+
+def test_dgaletsk_regressor_build_optimizer_passthrough() -> None:
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    custom_opt = torch.optim.Adam(model.parameters(), lr=1e-3)
+    result = model._build_optimizer(custom_opt, 1e-3, 0.0)
+    assert result is custom_opt
+
+
+def test_dgaletsk_regressor_build_optimizer_adamw_fallback() -> None:
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), optimizer_type="adamw")
+    result = model._build_optimizer(None, 1e-3, 1e-4)
+    assert isinstance(result, torch.optim.AdamW)
+
+
+# ---------------------------------------------------------------------------
+# prune_structure: input validation
+# ---------------------------------------------------------------------------
+
+
+def test_dgaletsk_classifier_prune_structure_empty_features_raises() -> None:
+    model = DGALETSKClassifierModel(_build_input_mfs(), n_classes=2)
+    with pytest.raises(ValueError, match="surviving_features must not be empty"):
+        model.prune_structure([], [0])
+
+
+def test_dgaletsk_classifier_prune_structure_empty_rules_raises() -> None:
+    model = DGALETSKClassifierModel(_build_input_mfs(), n_classes=2)
+    with pytest.raises(ValueError, match="surviving_rules must not be empty"):
+        model.prune_structure([0], [])
+
+
+def test_dgaletsk_regressor_prune_structure_empty_features_raises() -> None:
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    with pytest.raises(ValueError, match="surviving_features must not be empty"):
+        model.prune_structure([], [0])
+
+
+def test_dgaletsk_regressor_prune_structure_empty_rules_raises() -> None:
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    with pytest.raises(ValueError, match="surviving_rules must not be empty"):
+        model.prune_structure([0], [])
+
+
+# ---------------------------------------------------------------------------
+# search_thresholds: inplace=True, structural=False
+# ---------------------------------------------------------------------------
+
+
+def test_dgaletsk_classifier_search_thresholds_non_structural_lse() -> None:
+    """inplace=True, structural=False, use_lse=True: restore best LSE state."""
+    model = DGALETSKClassifierModel(_build_input_mfs(), n_classes=2)
+    x = torch.randn(16, 3)
+    y = torch.randint(0, 2, (16,))
+    model.fit_dg_phase(x, y, epochs=2, learning_rate=1e-2, batch_size=8, shuffle=False)
+
+    result = model.search_thresholds(
+        x,
+        y,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        inplace=True,
+        structural=False,
+        use_lse=True,
+    )
+    assert isinstance(model.consequent_layer, GatedClassificationConsequentLayer)
+    assert set(result) >= {"best_score", "best_zeta_lambda", "best_zeta_theta"}
+
+
+def test_dgaletsk_classifier_search_thresholds_non_structural_no_lse() -> None:
+    """inplace=True, structural=False, use_lse=False: apply thresholds in-place."""
+    model = DGALETSKClassifierModel(_build_input_mfs(), n_classes=2)
+    x = torch.randn(16, 3)
+    y = torch.randint(0, 2, (16,))
+    model.fit_dg_phase(x, y, epochs=2, learning_rate=1e-2, batch_size=8, shuffle=False)
+
+    result = model.search_thresholds(
+        x,
+        y,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        inplace=True,
+        structural=False,
+        use_lse=False,
+    )
+    assert set(result) >= {"best_score", "best_zeta_lambda", "best_zeta_theta"}
+
+
+def test_dgaletsk_regressor_search_thresholds_non_structural_lse() -> None:
+    """inplace=True, structural=False, use_lse=True for regressor."""
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    x = torch.randn(20, 2)
+    y = torch.randn(20)
+    model.fit_dg_phase(x, y, epochs=2, learning_rate=1e-2, batch_size=8, shuffle=False)
+
+    result = model.search_thresholds(
+        x,
+        y,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        inplace=True,
+        structural=False,
+        use_lse=True,
+    )
+    assert isinstance(model.consequent_layer, GatedRegressionConsequentLayer)
+    assert set(result) >= {"best_score", "best_zeta_lambda", "best_zeta_theta"}
+
+
+def test_dgaletsk_regressor_search_thresholds_non_structural_no_lse() -> None:
+    """inplace=True, structural=False, use_lse=False for regressor."""
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    x = torch.randn(20, 2)
+    y = torch.randn(20)
+    model.fit_dg_phase(x, y, epochs=2, learning_rate=1e-2, batch_size=8, shuffle=False)
+
+    result = model.search_thresholds(
+        x,
+        y,
+        zeta_lambda=[0.0, 1.0],
+        zeta_theta=[0.0, 1.0],
+        inplace=True,
+        structural=False,
+        use_lse=False,
+    )
+    assert set(result) >= {"best_score", "best_zeta_lambda", "best_zeta_theta"}
+
+
+# ---------------------------------------------------------------------------
+# search_thresholds: sf/sr non-empty (no fallback) for structural path
+# ---------------------------------------------------------------------------
+
+
+def test_dgaletsk_regressor_search_thresholds_sf_non_empty_no_fallback() -> None:
+    """Feature 0 gate > tau → sf=[0] non-empty; rule 0 gate > tau → sr=[0] non-empty."""
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    # Non-uniform gates: zeta=1.0 → tau=max-1.0*(max-min)=1.0-0.5=0.5
+    # Gates [1.0, 0.5]: gate[0]=1.0 > 0.5 → sf=[0] (non-empty, no fallback)
+    model.rule_layer.lambda_gates.data = torch.tensor([1.0, 0.5])
+    # theta[0]=1.0 > 0.5 → sr=[0] (non-empty, no fallback)
+    model.consequent_layer.theta_gates.data = torch.tensor([1.0, 0.5])
+    x = torch.randn(16, 2)
+    y = torch.randn(16)
+
+    result = model.search_thresholds(
+        x,
+        y,
+        zeta_lambda=[1.0],
+        zeta_theta=[1.0],
+        inplace=True,
+        structural=True,
+        use_lse=False,
+    )
+    assert result["surviving_feature_indices"] == [0]
+    assert result["surviving_rule_indices"] == [0]
+
+
+# ---------------------------------------------------------------------------
+# fit_finetune: freeze_antecedents=False
+# ---------------------------------------------------------------------------
+
+
+def test_dgaletsk_classifier_fit_finetune_unfreeze_antecedents() -> None:
+    """freeze_antecedents=False sets consequent mode to 'finetune' during training."""
+    model = DGALETSKClassifierModel(_build_input_mfs(), n_classes=2)
+    model.convert_to_first_order()
+    x = torch.randn(8, 3)
+    y = torch.randint(0, 2, (8,))
+
+    history = model.fit_finetune(x, y, epochs=1, batch_size=8, shuffle=False, freeze_antecedents=False)
+    assert isinstance(history, dict)
+    assert isinstance(model.consequent_layer, GatedClassificationConsequentLayer)
+
+
+def test_dgaletsk_regressor_fit_finetune_unfreeze_antecedents() -> None:
+    """freeze_antecedents=False sets consequent mode to 'finetune' during training."""
+    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    model.convert_to_first_order()
+    x = torch.randn(8, 2)
+    y = torch.randn(8)
+
+    history = model.fit_finetune(x, y, epochs=1, batch_size=8, shuffle=False, freeze_antecedents=False)
+    assert isinstance(history, dict)
+    assert isinstance(model.consequent_layer, GatedRegressionConsequentLayer)
+
+
+# ---------------------------------------------------------------------------
+# paper_strict verification tests
+# ---------------------------------------------------------------------------
+
+
+def test_dgaletsk_classifier_paper_strict_defaults() -> None:
+    from highfis import DGALETSKClassifier
+
+    clf = DGALETSKClassifier(paper_strict=True)
+    assert clf.dg_epochs == 10
+    assert clf.finetune_epochs == 50
+    assert clf.learning_rate == 0.01
+    assert clf.rule_base == "pfrb"
+    assert clf.zeta_lambda == [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+    assert clf.zeta_theta == [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+
+
+def test_dgaletsk_regressor_no_paper_strict_support() -> None:
+    from highfis import DGALETSKRegressor
+
+    with pytest.raises(TypeError):
+        # DGALETSKRegressor does not accept paper_strict since it's a project extension
+        kwargs: dict[str, Any] = {"paper_strict": True}
+        DGALETSKRegressor(**kwargs)
+
+
+def test_dgaletsk_classifier_paper_strict_invalid_raises() -> None:
+    from highfis import DGALETSKClassifier
+
+    with pytest.raises(ValueError, match="paper_strict requires dg_epochs=10"):
+        DGALETSKClassifier(dg_epochs=20, paper_strict=True)
+
+    with pytest.raises(ValueError, match="paper_strict requires finetune_epochs=50"):
+        DGALETSKClassifier(finetune_epochs=100, paper_strict=True)
+
+    with pytest.raises(ValueError, match="paper_strict requires learning_rate=1e-2"):
+        DGALETSKClassifier(learning_rate=0.05, paper_strict=True)
+
+    with pytest.raises(ValueError, match="paper_strict requires rule_base='pfrb'"):
+        DGALETSKClassifier(rule_base="coco", paper_strict=True)
+
+    with pytest.raises(ValueError, match="paper_strict requires zeta_lambda"):
+        DGALETSKClassifier(zeta_lambda=[0.1], paper_strict=True)
+
+    with pytest.raises(ValueError, match="paper_strict requires zeta_theta"):
+        DGALETSKClassifier(zeta_theta=[0.1], paper_strict=True)
+
+
+def test_dgaletsk_classifier_paper_strict_input_range_raises() -> None:
+    import numpy as np
+
+    from highfis import DGALETSKClassifier
+
+    X_invalid = np.array([[1.5, 0.2], [0.3, 0.8]])
+    y = np.array([0, 1])
+
+    clf = DGALETSKClassifier(paper_strict=True)
+    with pytest.raises(ValueError, match="to be linearly normalized to"):
+        clf.fit(X_invalid, y)

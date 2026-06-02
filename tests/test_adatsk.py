@@ -1,9 +1,17 @@
 from __future__ import annotations
 
-import torch
+from typing import Any, cast
 
+import numpy as np
+import pytest
+import torch
+from torch import nn
+
+from highfis import ADATSKClassifier, ADATSKRegressor
+from highfis.estimators import InputConfig
+from highfis.estimators._adaptive import _set_sigma_to_one_and_freeze, _wrap_adatsk_gaussian_input_mfs
 from highfis.layers import AdaSoftminRuleLayer
-from highfis.memberships import CompositeGaussianMF
+from highfis.memberships import ADATSKGaussianMF, CompositeGaussianMF, GaussianMF
 from highfis.models import ADATSKClassifierModel, ADATSKRegressorModel
 
 
@@ -81,3 +89,232 @@ def test_adatsk_regressor_uses_ada_softmin_rule_layer() -> None:
     model = ADATSKRegressorModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2))
 
     assert isinstance(model.rule_layer, AdaSoftminRuleLayer)
+
+
+def test_adatsk_classifier_criterion_is_mse() -> None:
+    model = ADATSKClassifierModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2), n_classes=2)
+
+    assert isinstance(model._default_criterion(), nn.MSELoss)
+
+
+def test_adatsk_classifier_default_optimizer_is_sgd() -> None:
+    model = ADATSKClassifierModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2), n_classes=2)
+
+    optimizer = model._build_optimizer(None, learning_rate=1e-2, weight_decay=0.0)
+
+    assert isinstance(optimizer, torch.optim.SGD)
+
+
+def test_adatsk_classifier_defaults_follow_paper_profile() -> None:
+    clf = ADATSKClassifier()
+
+    assert clf.n_mfs == 3
+    assert clf.mf_init == "grid"
+    assert clf.rule_base == "coco"
+    assert clf.batch_size is None
+    assert clf.shuffle is False
+    assert clf.patience is None
+    assert clf.restore_best is False
+    assert clf.weight_decay == 0.0
+
+
+def test_adatsk_gaussian_mf_matches_paper_eq3_when_sigma_one() -> None:
+    mf = ADATSKGaussianMF(mean=0.0, sigma=1.0)
+    x = torch.tensor([-1.0, 0.0, 2.0])
+
+    values = mf(x)
+    expected = torch.exp(-x.square())
+
+    assert torch.allclose(values, expected, atol=1e-6)
+
+
+def test_adatsk_classifier_pre_hook_sets_sigma_one_and_freezes_sigma() -> None:
+    x = np.random.default_rng(0).normal(size=(12, 3)).astype(np.float64)
+    y = np.random.default_rng(1).integers(0, 2, size=(12,), dtype=np.int64)
+    clf = ADATSKClassifier(epochs=1, high_dim_threshold=10_000)
+
+    clf.fit(x, y)
+
+    for mf_list in clf.model_.membership_layer.input_mfs.values():
+        for module in cast(nn.ModuleList, mf_list):
+            mf = cast(GaussianMF, module)
+            assert abs(float(mf.sigma.detach().item()) - 1.0) < 1e-3
+            assert mf.raw_sigma.requires_grad is False
+
+
+def test_adatsk_classifier_high_dim_freezes_antecedents() -> None:
+    x = np.random.default_rng(2).normal(size=(10, 4)).astype(np.float64)
+    y = np.random.default_rng(3).integers(0, 2, size=(10,), dtype=np.int64)
+    clf = ADATSKClassifier(epochs=1, high_dim_threshold=4)
+
+    clf.fit(x, y)
+
+    assert all(not p.requires_grad for p in clf.model_.membership_layer.parameters())
+
+
+def test_adatsk_classifier_grid_init_uses_no_margin_centers() -> None:
+    x = np.array([[-1.0], [1.0]], dtype=np.float64)
+    y = np.array([0, 1], dtype=np.int64)
+    clf = ADATSKClassifier(n_mfs=3, mf_init="grid", epochs=1, high_dim_threshold=1)
+
+    clf.fit(x, y)
+
+    mf_list = cast(nn.ModuleList, clf.model_.membership_layer.input_mfs["x1"])
+    centers = torch.tensor([cast(ADATSKGaussianMF, mf).mean.detach().item() for mf in mf_list], dtype=torch.float32)
+    expected = torch.tensor([-1.0, 0.0, 1.0], dtype=torch.float32)
+    assert torch.allclose(centers, expected, atol=1e-6)
+
+
+def test_adatsk_classifier_consequents_are_zero_initialized() -> None:
+    model = ADATSKClassifierModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2), n_classes=2)
+
+    weight = cast(torch.Tensor, model.consequent_layer.weight).detach()
+    bias = cast(torch.Tensor, model.consequent_layer.bias).detach()
+
+    assert torch.allclose(weight, torch.zeros_like(weight))
+    assert torch.allclose(bias, torch.zeros_like(bias))
+
+
+def test_set_sigma_to_one_and_freeze_ignores_non_gaussian_mf() -> None:
+    mf = CompositeGaussianMF(mean=0.0, sigma=0.7, eps=1e-4)
+    before = float(mf.sigma.detach().item())
+    assert mf.raw_sigma.requires_grad is True
+
+    _set_sigma_to_one_and_freeze(mf)
+
+    after = float(mf.sigma.detach().item())
+    assert abs(after - before) < 1e-6
+    assert mf.raw_sigma.requires_grad is True
+
+
+def test_wrap_adatsk_gaussian_input_mfs_preserves_non_gaussian_modules() -> None:
+    cg = CompositeGaussianMF(mean=0.0, sigma=0.9, eps=1e-4)
+    g = GaussianMF(mean=1.0, sigma=1.1, eps=1e-4)
+    wrapped = _wrap_adatsk_gaussian_input_mfs({"x1": [g, cg]})
+
+    assert isinstance(wrapped["x1"][0], ADATSKGaussianMF)
+    assert wrapped["x1"][1] is cg
+
+
+def test_adatsk_classifier_resolve_input_configs_keeps_user_configs() -> None:
+    configs = [InputConfig(name="x1", n_mfs=3, overlap=0.5, margin=0.2)]
+    clf = ADATSKClassifier(input_configs=configs)
+    x = np.array([[0.0], [1.0]], dtype=np.float64)
+
+    resolved = clf._resolve_input_configs(x)
+
+    assert resolved[0].margin == 0.2
+
+
+def test_adatsk_classifier_model_optimizer_uses_custom_instance() -> None:
+    model = ADATSKClassifierModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2), n_classes=2)
+    custom = torch.optim.Adam(model.parameters(), lr=1e-3)
+
+    optimizer = model._build_optimizer(custom, learning_rate=1e-2, weight_decay=0.0)
+
+    assert optimizer is custom
+
+
+def test_adatsk_regressor_model_optimizer_uses_custom_instance() -> None:
+    model = ADATSKRegressorModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2))
+    custom = torch.optim.Adam(model.parameters(), lr=1e-3)
+
+    optimizer = model._build_optimizer(custom, learning_rate=1e-2, weight_decay=0.0)
+
+    assert optimizer is custom
+
+
+def test_adatsk_classifier_can_disable_zero_init() -> None:
+    torch.manual_seed(0)
+    model = ADATSKClassifierModel(
+        _build_adatsk_input_mfs(n_inputs=2, n_rules=2),
+        n_classes=2,
+        zero_consequent_init=False,
+    )
+
+    weight = cast(torch.Tensor, model.consequent_layer.weight).detach()
+    assert not torch.allclose(weight, torch.zeros_like(weight))
+
+
+def test_adatsk_classifier_zero_init_skips_non_tensor_weight() -> None:
+    model = ADATSKClassifierModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2), n_classes=2)
+
+    class _BiasOnlyConsequent(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.weight = object()
+            self.bias = torch.ones(2, 2)
+
+    fake = _BiasOnlyConsequent()
+    model.consequent_layer = cast(nn.Module, fake)
+
+    model._zero_initialize_consequents()
+
+    assert torch.allclose(fake.bias, torch.zeros_like(fake.bias))
+
+
+def test_adatsk_classifier_zero_init_skips_non_tensor_bias() -> None:
+    model = ADATSKClassifierModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2), n_classes=2)
+
+    class _WeightOnlyConsequent(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.weight = torch.ones(2, 2, 2)
+            self.bias = object()
+
+    fake = _WeightOnlyConsequent()
+    model.consequent_layer = cast(nn.Module, fake)
+
+    model._zero_initialize_consequents()
+
+    assert torch.allclose(fake.weight, torch.zeros_like(fake.weight))
+
+
+def test_adatsk_classifier_paper_strict_defaults() -> None:
+    clf = ADATSKClassifier(paper_strict=True)
+    assert clf.n_mfs == 3
+    assert clf.mf_init == "grid"
+    assert clf.sigma_scale == 1.0
+    assert clf.rule_base == "coco"
+    assert clf.epochs == 200
+    assert clf.learning_rate == 1e-2
+    assert clf.batch_size is None
+
+
+def test_adatsk_classifier_paper_strict_overrides_raise() -> None:
+    import pytest
+
+    with pytest.raises(ValueError, match="paper_strict requires n_mfs=3"):
+        ADATSKClassifier(paper_strict=True, n_mfs=5)
+    with pytest.raises(ValueError, match="paper_strict requires mf_init='grid'"):
+        ADATSKClassifier(paper_strict=True, mf_init="kmeans")
+    with pytest.raises(ValueError, match=r"paper_strict requires sigma_scale=1\.0"):
+        ADATSKClassifier(paper_strict=True, sigma_scale=0.5)
+    with pytest.raises(ValueError, match="paper_strict requires rule_base='coco'"):
+        ADATSKClassifier(paper_strict=True, rule_base="cartesian")
+    with pytest.raises(ValueError, match="paper_strict requires epochs=200"):
+        ADATSKClassifier(paper_strict=True, epochs=100)
+    with pytest.raises(ValueError, match=r"paper_strict requires learning_rate=1e-2"):
+        ADATSKClassifier(paper_strict=True, learning_rate=1e-3)
+    with pytest.raises(ValueError, match="paper_strict requires batch_size=None"):
+        ADATSKClassifier(paper_strict=True, batch_size=10)
+
+
+def test_adatsk_classifier_paper_strict_input_range() -> None:
+    import pytest
+
+    clf = ADATSKClassifier(paper_strict=True)
+    x_bad = np.array([[-0.1, 0.5], [1.1, 0.5]])
+    y = np.array([0, 1])
+
+    with pytest.raises(ValueError, match="paper_strict requires x to be linearly normalized to"):
+        clf.fit(x_bad, y)
+
+    x_good = np.array([[0.0, 0.5], [1.0, 0.5]])
+    clf.fit(x_good, y)
+    assert clf.paper_strict is True
+
+
+def test_adatsk_regressor_no_paper_strict_support() -> None:
+    with pytest.raises(TypeError):
+        cast(Any, ADATSKRegressor)(paper_strict=True)

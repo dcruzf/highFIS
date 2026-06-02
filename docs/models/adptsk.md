@@ -48,8 +48,8 @@ The rule strengths are normalized and passed to the standard TSK consequent
 layer.
 
 For classification, the model uses a classification consequent head and
-cross-entropy loss. For regression, it uses a regression consequent head and
-MSE loss.
+MSE loss (with one-hot encoded targets in training). For regression, it uses
+a regression consequent head and MSE loss.
 
 ## Code ↔ Paper Correspondence
 
@@ -69,25 +69,36 @@ MSE loss.
 - ADPTSK still builds on the BaseTSK pipeline, but replaces the rule layer
   with `ADPSoftminRuleLayer` instead of a vanilla product T-norm.
 - Default hyperparameters mirror the paper:
-  - `n_rules=3` for compact CoCo rule bases,
-  - `mf_init="kmeans"` with `sigma_scale=1.0`,
+  - three antecedent MFs per feature with centers `[0.0, 0.5, 1.0]`
+    and `sigma=1.0`,
+  - `rule_base="coco"` yielding a compact 3-rule structure,
+  - `epochs=200`, `learning_rate=0.001`,
+  - dynamic batch policy: full-batch when `N < 500`, else `0.2 * N`,
+  - Adam optimizer,
+  - zero initialization of consequent weights and biases,
   - `kappa=690.0`, `xi=730.0`,
   - `K=1.0` for the Gaussian PIMF lower bound.
 - The estimator wrapper converts initialized `GaussianMF` objects to
   `GaussianPiMF` before model construction.
+- Preprocessing remains external to the estimator by design:
+  train/validation split and feature normalization should be handled by
+  the user or by an sklearn pipeline.
 
 ## Model classes
 
 ### `highfis.models.ADPTSKClassifierModel`
 
 - Uses `ADPSoftminRuleLayer` for antecedent aggregation.
-- Defaults to `rule_base="coco"` when `mf_init="kmeans"`.
-- Uses `ClassificationConsequentLayer` and `CrossEntropyLoss`.
+- Uses `ClassificationConsequentLayer` and `MSELoss`.
+- Uses Adam by default when no external optimizer is provided.
+- Zero-initializes consequent parameters by default.
 
 ### `highfis.models.ADPTSKRegressorModel`
 
 - Uses the same ADP-softmin antecedent.
 - Uses `RegressionConsequentLayer` and `MSELoss`.
+- Uses Adam by default when no external optimizer is provided.
+- Zero-initializes consequent parameters by default.
 
 ## Estimator wrappers
 
@@ -95,9 +106,17 @@ MSE loss.
 
 This estimator:
 
-- builds Gaussian membership functions via `mf_init` and `input_configs`,
+- uses paper defaults (`mf_init="grid"`, `n_mfs=3`) to initialize
+  antecedents as Gaussian MFs with centers `[0.0, 0.5, 1.0]` and `sigma=1.0`,
 - wraps them as `GaussianPiMF` with the chosen `K` value,
-- constructs `ADPTSKClassifierModel` with `kappa`, `xi`, and `eps`.
+- defaults to `rule_base="coco"`,
+- applies paper-style batch sizing when `batch_size=None`,
+- constructs `ADPTSKClassifierModel` with `kappa`, `xi`, `eps`, and
+  zero consequent initialization.
+
+`paper_strict=True` (classifier-only) enforces the paper protocol defaults
+for hyperparameters and requires `X` (and `X_val`, when provided) to
+already be in `[0, 1]`. No automatic normalization is applied.
 
 ### `highfis.estimators.ADPTSKRegressor`
 
@@ -116,9 +135,11 @@ This estimator is analogous to the classifier wrapper but builds
 
 - The paper optimizes ADPTSK end-to-end with gradient-based learning.
 - highFIS follows the same paradigm: the estimator builds the model and
-  uses Adam-style optimization within `BaseTSK.fit()`.
+  uses Adam optimization within `BaseTSK.fit()`.
 - `ADPTSKClassifier` and `ADPTSKRegressor` expose the
   same training hyperparameters as other highFIS estimators.
+- As in the paper protocol, linear normalization to `[0, 1]` is expected;
+  in highFIS this step is intentionally external to the model.
 
 ## Alignment with the paper
 
@@ -126,5 +147,7 @@ This estimator is analogous to the classifier wrapper but builds
   paper describes.
 - The implementation also uses Gaussian PIMF membership functions to ensure
   a positive antecedent infimum, matching the paper's stability motivation.
+- Paper default initialization and training configuration are implemented as
+  default estimator behavior.
 - Recommended default values `kappa=690.0`, `xi=730.0`, and `K=1.0` are
   derived directly from the paper's suggested settings.

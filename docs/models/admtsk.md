@@ -94,6 +94,12 @@ The default settings are:
 - `lambda_=1.0`
 - `lower_bound=1/e`
 - `K=10.0`
+- `rule_base='coco'`
+- `n_mfs=3`, `mf_init='grid'`
+- paper-initialized antecedents with centers `[0.0, 0.5, 1.0]` and `sigma=1.0`
+- `epochs=50`, `batch_size=None`
+- `ADAM` optimizer (paper-style default in ADMTSK path)
+- zero-initialized consequent weights and biases
 
 ## Model classes
 
@@ -110,8 +116,26 @@ GaussianPiMF antecedents.
 - `ADMTSKRegressor`
 
 These wrappers provide sklearn-compatible `fit`/`predict` APIs and build the
-inferential pipeline from high-level settings such as `n_rules`, `mf_init`,
+inferential pipeline from high-level settings such as `n_mfs`, `mf_init`,
 `sigma_scale`, and adaptive lambda parameters.
+
+`ADMTSKClassifier` now also supports `paper_strict=True` to enforce a
+classifier-only strict protocol aligned to the paper defaults.
+When enabled, the estimator requires and enforces:
+
+- `n_mfs=3`
+- `mf_init='grid'`
+- `sigma_scale=1.0`
+- `rule_base='coco'`
+- `adaptive=True`
+- `lambda_=1.0`
+- `lower_bound=1/e`
+- `k=10.0`
+- `zero_consequent_init=True`
+
+Any conflicting override raises `ValueError` with a `paper_strict requires ...`
+message so experiments do not silently drift from the paper protocol.
+This strict mode is intentionally scoped to the classifier path.
 
 When the estimator constructs input membership functions it converts the
 initial Gaussian MFs into `GaussianPiMF`, matching the paper's positive lower
@@ -130,9 +154,13 @@ The estimator wrappers default to `GaussianPiMF` for the ADMTSK pipeline.
 ## Training in the paper vs. highFIS
 
 The ADMTSK paper describes end-to-end gradient-based training with adaptive
-Dombi lambda and GaussianPiMF antecedents. In highFIS, the model is trained through
-`BaseTSK.fit()` using AdamW, optional early stopping, and standard PyTorch
-backpropagation.
+Dombi lambda and GaussianPiMF antecedents. In highFIS, the default ADMTSK
+path follows the paper-oriented setup: CoCo-FRB with 3 rules, paper
+antecedent initialization (`[0, 0.5, 1]`, `sigma=1`), zero-initialized
+consequents, MSE objective for classification and Adam-based optimization.
+
+Optional overrides remain available through estimator arguments to support
+non-paper experimental variants.
 
 The highFIS implementation preserves the paper's main design:
 
@@ -149,3 +177,8 @@ This implementation mirrors the paper by:
 - computing a scalar adaptive `lambda` from feature dimension and lower bound,
 - using a Dombi T-norm aggregation for antecedent rule firing strengths,
 - keeping first-order consequents and standard sum normalization.
+
+## Scope note
+
+`ADMTSK` and `ADATSK` are different model families. This page documents only
+the ADMTSK protocol from the 2025 paper.

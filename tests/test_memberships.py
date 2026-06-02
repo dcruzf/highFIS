@@ -299,6 +299,7 @@ def test_gaussian_pimf_infimum_positive() -> None:
                 "dimension": 1000.0,
                 "xi": 745.0,
                 "rho": float(1.0 - math.log(745.0) / math.log(1000.0)),
+                "paper_strict_equation": False,
             },
         ),
         (CompositeGaussianMF(mean=0.5, sigma=2.0), {"mean": 0.5, "sigma": 2.0}),

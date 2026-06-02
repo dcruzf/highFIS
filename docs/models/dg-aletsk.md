@@ -123,16 +123,24 @@ Features and rules with gate values below these thresholds are pruned.
 
 ## Implementation notes
 
-- The highFIS DG-ALETSK implementation uses `rule_base='coco'` by default.
+- `DGALETSKClassifier` now defaults to a paper-strict-like profile for
+  classification: `rule_base='pfrb'`, `dg_epochs=10`,
+  `finetune_epochs=50`, `learning_rate=0.01`,
+  `zeta_lambda=zeta_theta=[0.05, 0.1, 0.15, 0.2, 0.25, 0.3]`, and
+  `use_lse=False`.
+- For P-FRB classification, zero-order consequent biases are initialised from
+  class labels before DG training (one-hot per sampled rule point).
 - `use_en_frb=True` starts from an enhanced rule base (`en` FRB), but the
   paper's point-based FRB (P-FRB) is not constructed by default.
 - The DG-ALETSK paper justifies P-FRB as a way to initialize an abundant
   candidate rule base from training samples, enabling the gate-based DG phase
   to perform rule extraction and feature selection in tandem.
-- Estimator wrappers now support `rule_base='pfrb'`, which builds a
+- Estimator wrappers support `rule_base='pfrb'`, which builds a
   point-based FRB from training samples and uses a CoCo rule base over the
   resulting sample-centered Gaussian MFs. Use `pfrb_max_rules` to cap the
   number of sample-based rules when the training set is large.
+- When `pfrb_max_rules=None` in `DGALETSKClassifier`, the default cap follows
+  the paper's high-dimensional policy: `100` rules (or `50` when `D >= 10000`).
 - `DGALETSKClassifier` and `DGALETSKRegressor` train a zero-order model in
   `fit_dg_phase()`. The recommended Phase 2 workflow differs by task:
     - **Classification** (`use_lse=False`): `search_thresholds` evaluates the
@@ -148,9 +156,9 @@ Features and rules with gate values below these thresholds are pruned.
   the consequent layer as trainable. This implements paper §3.3:
   *"we fix the first group of gates and the membership functions."*
 - **Loss function**: the paper uses MSE throughout, including for classification
-  (applied to one-hot targets). highFIS uses **cross-entropy** for classification
-  and **MSE** for regression. Cross-entropy is more appropriate for discrete class
-  outputs and is used in both `fit_dg_phase` and `fit_finetune`.
+  (applied to one-hot targets). highFIS follows that paper contract in the DG
+  path: classification uses MSE with one-hot targets and regression uses MSE on
+  scalar targets.
 - The feature gate uses `ExpGate(k=10)` ($M(\lambda)=1-e^{-10\lambda^2}$,
   paper eq. 24), the enhanced gate function introduced in DG-ALETSK.
   Gate values are applied to antecedent memberships as $\mu^{M(\lambda_d)}$
