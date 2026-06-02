@@ -319,6 +319,8 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         if x_arr.shape[1] != self.n_features_in_:
             raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
         sf: list[int] | None = getattr(self, "history_", {}).get("surviving_feature_indices")
+        if sf is None and "threshold" in getattr(self, "history_", {}):
+            sf = self.history_["threshold"].get("surviving_feature_indices")
         x_m = x_arr[:, sf] if sf is not None and cast(Any, self.model_).n_inputs < x_arr.shape[1] else x_arr
         probs = cast(Any, self.model_).predict_proba(self._as_tensor_x(x_m, torch.device(str(self.device))))
         return probs.detach().cpu().numpy()
@@ -513,6 +515,8 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
         if x_arr.shape[1] != self.n_features_in_:
             raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
         sf: list[int] | None = getattr(self, "history_", {}).get("surviving_feature_indices")
+        if sf is None and "threshold" in getattr(self, "history_", {}):
+            sf = self.history_["threshold"].get("surviving_feature_indices")
         x_m = x_arr[:, sf] if sf is not None and cast(Any, self.model_).n_inputs < x_arr.shape[1] else x_arr
         preds = cast(Any, self.model_).predict(self._as_tensor_x(x_m, torch.device(str(self.device))))
         return preds.detach().cpu().numpy()
