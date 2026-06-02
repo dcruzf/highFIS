@@ -26,6 +26,8 @@ from ..memberships import (
     MembershipFunction,
 )
 from ..metrics import compute_metrics
+from ..optim._base import BaseTrainer
+from ..optim._gradient import GradientTrainer
 from ..persistence import (
     CHECKPOINT_FORMAT,
     CHECKPOINT_FORMAT_VERSION,
@@ -525,6 +527,7 @@ def _wrap_dimension_dependent_gaussian_input_mfs(
     dimension: int,
     xi: float = 745.0,
     rho: float | None = None,
+    paper_strict_equation: bool = False,
 ) -> dict[str, list[GaussianMF]]:
     return {
         name: cast(
@@ -536,6 +539,7 @@ def _wrap_dimension_dependent_gaussian_input_mfs(
                     dimension=dimension,
                     xi=xi,
                     rho=rho,
+                    paper_strict_equation=paper_strict_equation,
                 )
                 for mf in mfs
             ],
@@ -595,9 +599,10 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
     delegates only model construction to concrete subclasses via the abstract
     method :meth:`_build_model`.
 
-    Subclasses must **not** override ``fit``; they should only implement
-    ``_build_model`` (and optionally their own ``__init__`` to add extra
-    hyperparameters).
+    Subclasses should implement :meth:`_build_model` and may override
+    :meth:`_get_trainer` to supply a custom training strategy.
+    Use :meth:`_pre_train_hook` for any per-estimator setup that must run
+    just before training starts.  Direct ``fit`` overrides should be avoided.
 
     Attributes:
         model_: Fitted :class:`~highfis.base.BaseTSK` instance. Available
@@ -633,6 +638,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         restore_best: bool = True,
         weight_decay: float = 1e-8,
         device: str = "cpu",
+        trainer: BaseTrainer | None = None,
     ) -> None:
         """Initialise shared hyperparameters for TSK classifier estimators.
 
@@ -710,6 +716,10 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
                 no CUDA device is available PyTorch will raise an error at
                 fit time; use ``torch.cuda.is_available()`` to check
                 availability before setting this parameter.
+            trainer: Optional custom :class:`~highfis.optim.BaseTrainer`.
+                When ``None`` (default) a
+                :class:`~highfis.optim.GradientTrainer` is built automatically
+                from this estimator's hyperparameters.
         """
         self.input_configs = input_configs
         self.n_mfs = n_mfs
@@ -730,6 +740,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         self.restore_best = restore_best
         self.weight_decay = weight_decay
         self.device = device
+        self.trainer = trainer
 
     # -- helpers ----------------------------------------------------------
 
@@ -825,6 +836,33 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
     ) -> BaseTSK:
         """Create the concrete TSK classification model."""
 
+    def _get_trainer(self) -> BaseTrainer:
+        """Return the default :class:`~highfis.optim.GradientTrainer` for this estimator.
+
+        Subclasses may override this to return a different trainer, e.g.
+        :class:`~highfis.optim.DGTrainer` for DG-TSK / DG-ALETSK estimators.
+        """
+        return GradientTrainer(
+            epochs=int(self.epochs),
+            learning_rate=float(self.learning_rate),
+            batch_size=self.batch_size,
+            shuffle=bool(self.shuffle),
+            patience=self.patience,
+            restore_best=bool(self.restore_best),
+            weight_decay=float(self.weight_decay),
+            ur_weight=float(self.ur_weight),
+            ur_target=self.ur_target,
+            verbose=self.verbose,
+        )
+
+    def _pre_train_hook(self, model: BaseTSK, x_t: Tensor, y_t: Tensor) -> None:
+        """Called just before the trainer runs.  No-op by default.
+
+        Subclasses may override this to perform model-specific setup that
+        depends on the already-built model and training tensors, e.g.
+        P-FRB consequent initialisation in DG-TSK.
+        """
+
     # -- sklearn API ------------------------------------------------------
 
     def fit(
@@ -871,23 +909,11 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
             y_val_idx = le.transform(np.asarray(y_v_arr))
             y_val_t = torch.as_tensor(y_val_idx, dtype=torch.long, device=_device)
 
-        self.history_ = self.model_.fit(
-            self._as_tensor_x(x_arr, _device),
-            y_t,
-            epochs=int(self.epochs),
-            learning_rate=float(self.learning_rate),
-            batch_size=self.batch_size,
-            shuffle=bool(self.shuffle),
-            ur_weight=float(self.ur_weight),
-            ur_target=self.ur_target,
-            verbose=self.verbose,
-            x_val=x_val_t,
-            y_val=y_val_t,
-            patience=self.patience,
-            restore_best=self.restore_best,
-            weight_decay=float(self.weight_decay),
-        )
+        x_t = self._as_tensor_x(x_arr, _device)
         self.rule_base_ = effective_rule_base
+        self._pre_train_hook(self.model_, x_t, y_t)
+        _trainer = self.trainer if self.trainer is not None else self._get_trainer()
+        self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t)
         return self
 
     def _build_checkpoint_base(
@@ -903,6 +929,9 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
                 {"name": c.name, "n_mfs": c.n_mfs, "overlap": c.overlap, "margin": c.margin}
                 for c in params["input_configs"]
             ]
+        # Exclude non-serialisable trainer objects from the checkpoint; they
+        # are reconstructed from the estimator's hyperparameters on load.
+        params.pop("trainer", None)
         return {
             "format": CHECKPOINT_FORMAT,
             "format_version": CHECKPOINT_FORMAT_VERSION,
@@ -1065,9 +1094,10 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
     construction to concrete subclasses via the abstract method
     :meth:`_build_model`.
 
-    Subclasses must **not** override ``fit``; they should only implement
-    ``_build_model`` (and optionally their own ``__init__`` to add extra
-    hyperparameters).
+    Subclasses should implement :meth:`_build_regressor_model` and may
+    override :meth:`_get_trainer` to supply a custom training strategy.
+    Use :meth:`_pre_train_hook` for any per-estimator setup that must run
+    just before training starts.  Direct ``fit`` overrides should be avoided.
 
     Attributes:
         model_: Fitted :class:`~highfis.base.BaseTSK` instance. Available
@@ -1102,6 +1132,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         restore_best: bool = True,
         weight_decay: float = 1e-8,
         device: str = "cpu",
+        trainer: BaseTrainer | None = None,
     ) -> None:
         """Initialise shared hyperparameters for TSK regressor estimators.
 
@@ -1175,6 +1206,10 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
                 no CUDA device is available PyTorch will raise an error at
                 fit time; use ``torch.cuda.is_available()`` to check
                 availability before setting this parameter.
+            trainer: Optional custom :class:`~highfis.optim.BaseTrainer`.
+                When ``None`` (default) a
+                :class:`~highfis.optim.GradientTrainer` is built automatically
+                from this estimator's hyperparameters.
         """
         self.input_configs = input_configs
         self.n_mfs = n_mfs
@@ -1195,6 +1230,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         self.restore_best = restore_best
         self.weight_decay = weight_decay
         self.device = device
+        self.trainer = trainer
 
     # -- helpers ----------------------------------------------------------
 
@@ -1290,6 +1326,28 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
     ) -> BaseTSK:
         """Create the concrete TSK regression model."""
 
+    def _get_trainer(self) -> BaseTrainer:
+        """Return the default :class:`~highfis.optim.GradientTrainer` for this estimator.
+
+        Subclasses may override this to return a different trainer, e.g.
+        :class:`~highfis.optim.DGTrainer` for DG-TSK / DG-ALETSK estimators.
+        """
+        return GradientTrainer(
+            epochs=int(self.epochs),
+            learning_rate=float(self.learning_rate),
+            batch_size=self.batch_size,
+            shuffle=bool(self.shuffle),
+            patience=self.patience,
+            restore_best=bool(self.restore_best),
+            weight_decay=float(self.weight_decay),
+            ur_weight=float(self.ur_weight),
+            ur_target=self.ur_target,
+            verbose=self.verbose,
+        )
+
+    def _pre_train_hook(self, model: BaseTSK, x_t: Tensor, y_t: Tensor) -> None:
+        """Called just before the trainer runs.  No-op by default."""
+
     # -- sklearn API ------------------------------------------------------
 
     def fit(
@@ -1330,23 +1388,11 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
             x_val_t = self._as_tensor_x(x_v_arr, _device)
             y_val_t = torch.as_tensor(np.asarray(y_v_arr, dtype=np.float32), dtype=torch.float32, device=_device)
 
-        self.history_ = self.model_.fit(
-            self._as_tensor_x(x_arr, _device),
-            y_t,
-            epochs=int(self.epochs),
-            learning_rate=float(self.learning_rate),
-            batch_size=self.batch_size,
-            shuffle=bool(self.shuffle),
-            ur_weight=float(self.ur_weight),
-            ur_target=self.ur_target,
-            verbose=self.verbose,
-            x_val=x_val_t,
-            y_val=y_val_t,
-            patience=self.patience,
-            restore_best=self.restore_best,
-            weight_decay=float(self.weight_decay),
-        )
+        x_t = self._as_tensor_x(x_arr, _device)
         self.rule_base_ = effective_rule_base
+        self._pre_train_hook(self.model_, x_t, y_t)
+        _trainer = self.trainer if self.trainer is not None else self._get_trainer()
+        self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t)
         return self
 
     def _build_checkpoint_base(
@@ -1362,6 +1408,9 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
                 {"name": c.name, "n_mfs": c.n_mfs, "overlap": c.overlap, "margin": c.margin}
                 for c in params["input_configs"]
             ]
+        # Exclude non-serialisable trainer objects from the checkpoint; they
+        # are reconstructed from the estimator's hyperparameters on load.
+        params.pop("trainer", None)
         return {
             "format": CHECKPOINT_FORMAT,
             "format_version": CHECKPOINT_FORMAT_VERSION,

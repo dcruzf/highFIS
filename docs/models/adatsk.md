@@ -21,9 +21,19 @@ $$
 
 where $c_{r,d}$ is the center and $\sigma_{r,d}>0$ is the spread.
 
-In highFIS, the default estimator wrappers build standard Gaussian MFs.
-The paper's proposed positive lower-bound variant can be instantiated with
-`highfis.memberships.CompositeGaussianMF` when desired.
+In highFIS, the paper-strict `ADATSKClassifier` path uses a dedicated
+`ADATSKGaussianMF` antecedent, with:
+
+$$
+\mu(x)=\exp\left(-\frac{(x-c)^2}{\sigma^2}\right)
+$$
+
+and applies `sigma=1` before training, yielding the paper's simplified
+form:
+
+$$
+\mu(x)=\exp\left(-(x-c)^2\right)
+$$
 
 ### Adaptive Ada-softmin aggregation
 
@@ -53,35 +63,21 @@ $$
 
 ### Consequent
 
-ADATSK uses a first-order TSK consequent for both classification and
-regression.
-
-For classification:
+In the ADATSK paper, the base formulation is presented for classification,
+with first-order TSK consequents:
 
 $$
 \mathbf{y}_r = W_r \mathbf{x} + \mathbf{b}_r
-$$
-
-For regression:
-
-$$
-\hat{y}_r = \mathbf{w}_r^\top \mathbf{x} + b_r
 $$
 
 ### Output aggregation
 
 The final prediction is the normalized weighted sum of rule consequents:
 
-- Classification:
+For classification:
 
 $$
 \mathbf{y} = \sum_{r=1}^{R} \bar{\phi}_r \mathbf{y}_r
-$$
-
-- Regression:
-
-$$
-\hat{y} = \sum_{r=1}^{R} \bar{\phi}_r \hat{y}_r
 $$
 
 ## Code ↔ Paper Correspondence
@@ -90,50 +86,62 @@ $$
 |----------|----------------|-------------|
 | Adaptive softmin | `highfis.layers.AdaSoftminRuleLayer` | Computes per-rule softmin exponents from the minimum membership value |
 | Normalization | `highfis.defuzzifiers.SumBasedDefuzzifier` | Standard sum-based rule strength normalization |
-| Consequent | `ClassificationConsequentLayer` / `RegressionConsequentLayer` | First-order linear consequents |
-| Membership functions | `highfis.memberships.GaussianMF` | Default Gaussian antecedent MFs |
-| Optional membership | `highfis.memberships.CompositeGaussianMF` | Optional positive lower-bound MF matching the paper variant |
+| Consequent | `ClassificationConsequentLayer` | First-order linear consequents for classification |
+| Membership functions | `highfis.memberships.ADATSKGaussianMF` | Paper-style Gaussian antecedent used by `ADATSKClassifier` |
 
 ## Implementation notes
 
-In highFIS, `ADATSKClassifierModel` and `ADATSKRegressorModel` implement the core
-ADATSK model by replacing the standard product antecedent with the
-adaptive softmin operator.
+In highFIS, `ADATSKClassifierModel` implements the paper-aligned ADATSK core
+by replacing the standard product antecedent with the adaptive softmin
+operator.
 
 ### Model classes
 
-- `ADATSKClassifierModel` and `ADATSKRegressorModel` use
-  `highfis.layers.AdaSoftminRuleLayer` to compute rule strengths.
-- The TSK consequent remains first-order linear and is normalized with
-  `highfis.defuzzifiers.SumBasedDefuzzifier`.
-- `ADATSKClassifierModel` and `ADATSKRegressorModel` do not expose the feature-
-  selection / rule-extraction gates of FSRE-ADATSK.
+- `ADATSKClassifierModel` uses `highfis.layers.AdaSoftminRuleLayer` to
+  compute rule strengths.
+- The classifier consequent remains first-order linear and is normalized
+  with `highfis.defuzzifiers.SumBasedDefuzzifier`.
+- `ADATSKClassifierModel` does not expose the feature-selection/
+  rule-extraction gates of FSRE-ADATSK.
 
 ### Estimator wrappers
 
-- `ADATSKClassifier` and `ADATSKRegressor` are
-  sklearn-compatible wrappers around the low-level ADATSK model classes.
-- They build Gaussian membership functions from `input_configs`, `n_rules`,
-  `mf_init`, and `sigma_scale`.
-- The default `sigma_scale=1.0` is appropriate because the adaptive softmin
-  operator handles high-dimensional stability.
+- `ADATSKClassifier` is the paper-strict default wrapper.
+- Default settings follow the paper protocol: `n_mfs=3`, `mf_init="grid"`,
+  `rule_base="coco"`, full-batch updates (`batch_size=None`), and no
+  shuffling.
+- For grid initialization, MF centers are placed directly on
+  `[V_{\min}, V_{\max}]` with no margin padding.
+- In the pre-train hook, Gaussian spreads are set to `sigma=1` and frozen.
+- Consequent parameters are initialized to zero in the ADATSK classifier
+  paper-strict path.
+- For high-dimensional inputs (default threshold `1000` features), antecedent
+  parameters are frozen by default to match the paper's experimental protocol.
 
 ### Membership functions
 
-- The primary antecedent MFs are standard `highfis.memberships.GaussianMF`
-  objects.
-- An optional nonzero lower-bound membership function is available via
-  `highfis.memberships.CompositeGaussianMF` for paper-style stability.
+- The primary antecedent MFs are `highfis.memberships.ADATSKGaussianMF`
+  objects in the paper-strict classifier path.
+- Gaussian spreads are fixed at `sigma=1` in the paper-strict ADATSK path,
+  reproducing Eq. (3).
 
 ### Training in the paper vs. highFIS
 
-- The paper trains ADATSK end-to-end by optimizing the task loss through
-  the adaptive softmin operator.
-- highFIS follows the same gradient-based training paradigm in `BaseTSK.fit()`.
+- The paper trains ADATSK end-to-end using full-batch gradient descent and
+  MSE-style classification error.
+- The paper-strict ADATSK default in highFIS uses `nn.MSELoss()` for the
+  classifier and SGD-based full-batch optimization.
 - `eps` is used to clamp membership values and stabilize log-space
   computations in `AdaSoftminRuleLayer`.
 
 - FSRE-ADATSK is documented separately in `docs/models/fsre-adatsk.md`.
+
+## Framework extensions (outside paper-strict scope)
+
+- `ADATSKRegressorModel` and `ADATSKRegressor` are provided as framework
+  extensions for regression workflows.
+- `highfis.memberships.CompositeGaussianMF` remains available as an
+  engineering alternative for custom experiments.
 
 ## Alignment with the paper
 
@@ -141,6 +149,8 @@ adaptive softmin operator.
   operator to avoid numeric underflow and fake minimum effects.
 - highFIS implements this via `AdaSoftminRuleLayer` with a per-rule exponent
   derived from the rule's minimum antecedent membership.
-- The TSK consequent remains first-order, matching the paper's model.
-- The default estimator wrappers use `GaussianMF`, while the paper's positive
-  lower-bound MF can be supplied via `CompositeGaussianMF`.
+- The default `ADATSKClassifier` now follows the paper protocol (CoCo rule
+  base, Eq. (3)-style Gaussian antecedent with `sigma=1` fixed, full-batch
+  GD, MSE-style classification loss, and zero-initialized consequents).
+- Regression and alternative MF variants are treated as explicit framework
+  extensions, not part of the strict ADATSK paper baseline.

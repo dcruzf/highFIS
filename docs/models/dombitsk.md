@@ -95,19 +95,24 @@ $$
 - `CompositeGaussianMF` is available when a positive lower bound on
   antecedent membership values is desired, supporting ADMTSK-style stability.
 - `AdaptiveDombiRuleLayer` is implemented in the codebase and provides
-  per-rule adaptive Dombi exponents, but there is currently no dedicated
-  `ADMTSK` wrapper class exposing this behavior directly.
+  per-rule adaptive Dombi exponents, which are exposed via the dedicated
+  `ADMTSKClassifier` wrapper class.
+
+### Strict paper mode
+
+- Use `paper_strict=True` in `DombiTSKClassifier` to enforce the paper protocol defaults at the estimator level:
+  `n_mfs=3`, `mf_init="grid"`, `sigma_scale=1.0`, `rule_base="coco"`, `lambda_=1.0`, `lower_bound=1/e` ($\approx 0.3679$), and `zero_consequent_init=True`.
+- When `paper_strict=True`, conflicting values for these parameters raise `ValueError`.
+- In `paper_strict` mode, Gaussian membership functions are automatically wrapped in `GaussianPiMF` (Composite Gaussian MF) with the paper-defined lower bound of $1/e$.
+- In `paper_strict` mode, the consequent linear layer weights and biases are initialized to exactly zero.
 
 ## Alignment with the paper
 
 - The paper defines a Dombi TSK baseline with Dombi antecedent aggregation and
   first-order consequent structure.
 - highFIS implements this baseline directly through `DombiTSKClassifierModel` and
-  `DombiTSKRegressorModel`.
+  `DombiTSKRegressorModel` (using `DombiTSKClassifier`).
 - Rule strengths are normalized by sum-based defuzzification, matching the
   paper's TSK output aggregation.
-- The package also includes building blocks for the ADMTSK extension:
-  `CompositeGaussianMF` and `AdaptiveDombiRuleLayer`.
-- A full ADMTSK-style model would require combining these components with an
-  adaptive λ selection mechanism, which is not currently wrapped by a single
-  model class.
+- The package also includes building blocks for the ADMTSK extension, including
+  `CompositeGaussianMF` and `AdaptiveDombiRuleLayer`, wrapped under `ADMTSKClassifier`.

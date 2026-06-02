@@ -4,7 +4,7 @@ import math
 import tempfile
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 import numpy as np
 import pytest
@@ -12,7 +12,7 @@ import torch
 from sklearn.exceptions import NotFittedError
 from sklearn.model_selection import KFold, StratifiedKFold, cross_val_score
 from sklearn.pipeline import Pipeline
-from torch import nn
+from torch import Tensor, nn
 
 from highfis.base import BaseTSK
 from highfis.clustering import FuzzyCMeans, KMeans
@@ -61,8 +61,22 @@ from highfis.estimators._base import (
     _resolve_mhtsk_scale_parameters,
     _select_rule_indices,
 )
+from highfis.estimators._dg_tsk import _select_dgtsking_surviving_features
+from highfis.estimators._htsk import _HTSKPaperStrictTrainer
+from highfis.estimators._mhtsk import (
+    _MHTSKPaperStrictTrainer,
+    _resolve_mhtsk_paper_strict_classifier_config,
+    _resolve_mhtsk_paper_strict_regressor_config,
+    _strict_mhtsk_scale_from_dimension,
+)
 from highfis.memberships import DimensionDependentGaussianMF, GaussianMF, GaussianPiMF, MembershipFunction
-from highfis.models import HDFISMinClassifierModel, HDFISMinRegressorModel, TSKRegressorModel
+from highfis.models import (
+    HDFISMinClassifierModel,
+    HDFISMinRegressorModel,
+    HTSKClassifierModel,
+    MHTSKClassifierModel,
+    TSKRegressorModel,
+)
 
 
 def _make_dataset(n_samples: int = 60) -> tuple[np.ndarray, np.ndarray]:
@@ -294,6 +308,114 @@ def test_hdfis_min_regressor_estimator_builds_hdfis_min_model() -> None:
     assert all(not p.requires_grad for p in est.model_.membership_layer.parameters())
 
 
+def test_hdfis_prod_classifier_paper_strict_uses_paper_protocol_defaults() -> None:
+    x, _ = _make_dataset(40)
+    est = HDFISProdClassifier(paper_strict=True, epochs=1, random_state=7)
+
+    input_mfs, feature_names, effective_rule_base = est._build_input_mfs(x)
+
+    assert est.mf_init == "grid"
+    assert est.n_mfs == 3
+    assert est.batch_size == 64
+    assert effective_rule_base == "coco"
+    assert feature_names == ["x1", "x2", "x3"]
+    assert all(len(input_mfs[name]) == 3 for name in feature_names)
+    assert all(isinstance(mf, DimensionDependentGaussianMF) for mfs in input_mfs.values() for mf in mfs)
+    assert all(getattr(mf, "paper_strict_equation", False) for mfs in input_mfs.values() for mf in mfs)
+
+
+def test_hdfis_min_classifier_paper_strict_uses_paper_protocol_defaults() -> None:
+    x, _ = _make_dataset(40)
+    est = HDFISMinClassifier(paper_strict=True, epochs=1, random_state=7)
+
+    input_mfs, _, effective_rule_base = est._build_input_mfs(x)
+
+    assert est.mf_init == "grid"
+    assert est.n_mfs == 3
+    assert est.batch_size == 64
+    assert effective_rule_base == "coco"
+    assert all(isinstance(mf, GaussianMF) for mfs in input_mfs.values() for mf in mfs)
+
+
+def test_hdfis_paper_strict_rejects_conflicting_hyperparameters() -> None:
+    with pytest.raises(ValueError, match="paper_strict requires n_mfs=3"):
+        HDFISProdClassifier(paper_strict=True, n_mfs=4)
+    with pytest.raises(ValueError, match="paper_strict requires mf_init='grid'"):
+        HDFISProdClassifier(paper_strict=True, mf_init="kmeans")
+    with pytest.raises(ValueError, match="paper_strict requires rule_base='coco'"):
+        HDFISMinRegressor(paper_strict=True, rule_base="cartesian")
+    with pytest.raises(ValueError, match="paper_strict requires batch_size=64"):
+        HDFISMinClassifier(paper_strict=True, batch_size=32)
+
+
+def test_htsk_classifier_paper_strict_uses_paper_protocol_defaults() -> None:
+    est = HTSKClassifier(paper_strict=True)
+    assert est.n_mfs == 30
+    assert est.mf_init == "kmeans"
+    assert est.sigma_scale == 1.0
+    assert est.rule_base == "coco"
+    assert est.epochs == 200
+    assert est.learning_rate == 1e-2
+    assert est.batch_size == 512
+
+
+def test_htsk_regressor_paper_strict_uses_paper_protocol_defaults() -> None:
+    est = HTSKRegressor(paper_strict=True)
+    assert est.n_mfs == 30
+    assert est.mf_init == "kmeans"
+    assert est.sigma_scale == 1.0
+    assert est.rule_base == "coco"
+    assert est.epochs == 200
+    assert est.learning_rate == 1e-2
+    assert est.batch_size == 512
+
+
+def test_htsk_paper_strict_rejects_conflicting_hyperparameters() -> None:
+    with pytest.raises(ValueError, match=r"paper_strict requires n_mfs=30"):
+        HTSKClassifier(paper_strict=True, n_mfs=3)
+    with pytest.raises(ValueError, match=r"paper_strict requires mf_init='kmeans'"):
+        HTSKClassifier(paper_strict=True, mf_init="grid")
+    with pytest.raises(ValueError, match=r"paper_strict requires sigma_scale=1.0"):
+        HTSKRegressor(paper_strict=True, sigma_scale=2.0)
+    with pytest.raises(ValueError, match=r"paper_strict requires rule_base='coco'"):
+        HTSKRegressor(paper_strict=True, rule_base="cartesian")
+    with pytest.raises(ValueError, match=r"paper_strict requires epochs=200"):
+        HTSKClassifier(paper_strict=True, epochs=10)
+    with pytest.raises(ValueError, match=r"paper_strict requires learning_rate=1e-2"):
+        HTSKClassifier(paper_strict=True, learning_rate=1e-3)
+    with pytest.raises(ValueError, match=r"paper_strict requires batch_size=512"):
+        HTSKRegressor(paper_strict=True, batch_size=256)
+
+
+def test_htsk_paper_strict_fit_does_not_auto_split_data() -> None:
+    x, y = _make_dataset(40)
+    est = HTSKClassifier(paper_strict=True, random_state=0)
+    est.fit(x, y)
+    assert len(est.history_["val"]) == 0
+
+
+def test_htsk_paper_strict_regressor_uses_strict_trainer() -> None:
+    est = HTSKRegressor(paper_strict=True)
+    trainer = est._get_trainer()
+    assert isinstance(trainer, _HTSKPaperStrictTrainer)
+
+
+def test_htsk_paper_strict_trainer_keeps_batch_when_not_exceeding_samples() -> None:
+    input_mfs = {
+        "x1": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
+        "x2": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
+        "x3": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
+    }
+    model = HTSKClassifierModel(input_mfs, n_classes=2)
+    x = torch.randn(20, 3)
+    y = torch.randint(0, 2, (20,), dtype=torch.long)
+
+    trainer = _HTSKPaperStrictTrainer(epochs=1, learning_rate=1e-2, batch_size=16)
+    history = trainer.fit(model, x, y)
+
+    assert len(history["train"]) == 1
+
+
 def test_ayatsk_classifier_estimator_fit_predict_score() -> None:
     x, y = _make_dataset(80)
     est = AYATSKClassifier(
@@ -356,13 +478,92 @@ def test_ayatsk_regressor_estimator_fit_predict() -> None:
     assert pred.shape == (x.shape[0],)
 
 
-def test_dgaletsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
+def test_ayatsk_classifier_default_setup_is_paper_style() -> None:
     x, y = _make_dataset(80)
+    est = AYATSKClassifier(epochs=1, random_state=7)
+    est.fit(x, y)
+
+    assert est.rule_base_ == "coco"
+    assert est.model_.n_rules == 3
+    assert est.model_._default_criterion().__class__.__name__ == "MSELoss"
+    assert est._resolve_default_batch_size(80) is None
+    assert est._resolve_default_batch_size(500) == 50
+
+    mfs = est.model_.input_mfs["x1"]
+    assert len(mfs) == 3
+    assert type(mfs[0]).__name__ == "CompositeExponentialMF"
+    assert float(cast(Any, est.model_).lambda_) > 0.0
+
+
+def test_ayatsk_classifier_paper_strict_uses_paper_protocol_defaults() -> None:
+    est = AYATSKClassifier(paper_strict=True)
+
+    assert est.n_mfs == 3
+    assert est.mf_init == "grid"
+    assert est.sigma_scale == 1.0
+    assert est.rule_base == "coco"
+    assert est.epochs == 200
+    assert est.learning_rate == 1e-3
+    assert est.k == 10.0
+    assert est.paper_strict is True
+
+
+def test_ayatsk_classifier_paper_strict_rejects_conflicting_hyperparameters() -> None:
+    with pytest.raises(ValueError, match="paper_strict requires n_mfs=3"):
+        AYATSKClassifier(paper_strict=True, n_mfs=4)
+    with pytest.raises(ValueError, match="paper_strict requires mf_init='grid'"):
+        AYATSKClassifier(paper_strict=True, mf_init="kmeans")
+    with pytest.raises(ValueError, match=r"paper_strict requires sigma_scale=1\.0"):
+        AYATSKClassifier(paper_strict=True, sigma_scale=0.8)
+    with pytest.raises(ValueError, match="paper_strict requires rule_base='coco'"):
+        AYATSKClassifier(paper_strict=True, rule_base="cartesian")
+    with pytest.raises(ValueError, match="paper_strict requires epochs=200"):
+        AYATSKClassifier(paper_strict=True, epochs=100)
+    with pytest.raises(ValueError, match="paper_strict requires learning_rate=1e-3"):
+        AYATSKClassifier(paper_strict=True, learning_rate=1e-2)
+
+
+def test_ayatsk_estimators_validate_k_parameter() -> None:
+    with pytest.raises(ValueError, match=r"k must be > 1\.0"):
+        AYATSKClassifier(k=1.0)
+    with pytest.raises(ValueError, match=r"k must be > 1\.0"):
+        AYATSKRegressor(k=1.0)
+
+
+def test_ayatsk_classifier_paper_strict_warns_batch_policy_low_dimensional_case() -> None:
+    x = np.zeros((600, 3), dtype=np.float32)
+    y = np.zeros((599,), dtype=np.int64)
+    est = AYATSKClassifier(paper_strict=True)
+
+    with pytest.warns(UserWarning, match="paper_strict: mini-batch policy may diverge"), pytest.raises(ValueError):
+        est.fit(x, y)
+
+
+def test_ayatsk_regressor_default_setup_is_paper_style() -> None:
+    x = np.random.default_rng(123).normal(size=(40, 3)).astype(np.float32)
+    y = x[:, 0] + 0.5 * x[:, 1]
+    est = AYATSKRegressor(epochs=1, random_state=7)
+    est.fit(x, y)
+
+    assert est.rule_base_ == "coco"
+    assert est.model_._default_criterion().__class__.__name__ == "MSELoss"
+    assert est._resolve_default_batch_size(80) is None
+    assert est._resolve_default_batch_size(500) == 50
+    assert float(cast(Any, est.model_).lambda_) > 0.0
+
+
+def test_dgaletsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
+    x, y = _make_dataset(40)
     est = DGALETSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         lambda_init=1.5,
-        epochs=5,
+        dg_epochs=2,
+        finetune_epochs=1,
+        zeta_lambda=[0.5],
+        zeta_theta=[0.5],
+        use_lse=False,
+        structural_pruning=False,
         learning_rate=1e-2,
         random_state=7,
         batch_size=16,
@@ -379,14 +580,58 @@ def test_dgaletsk_classifier_estimator_fit_predict_proba_predict_score() -> None
     assert 0.0 <= score <= 1.0
 
 
+def test_dgaletsk_classifier_default_profile_is_paper_strict_like() -> None:
+    est = DGALETSKClassifier()
+
+    assert est.rule_base == "pfrb"
+    assert est.finetune_epochs == 50
+    assert est.use_lse is False
+    assert est.zeta_lambda == [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+    assert est.zeta_theta == [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+
+
+def test_dgaletsk_classifier_default_pfrb_max_rules_policy() -> None:
+    est = DGALETSKClassifier(rule_base="pfrb", pfrb_max_rules=None)
+
+    x_low_dim = np.random.default_rng(1).normal(size=(2, 8)).astype(np.float32)
+    input_mfs_low, _, _ = est._build_input_mfs(x_low_dim)
+    assert len(input_mfs_low["x1"]) == 2
+
+    x_high_dim = np.random.default_rng(2).normal(size=(2, 10_000)).astype(np.float32)
+    input_mfs_high, _, _ = est._build_input_mfs(x_high_dim)
+    assert len(input_mfs_high["x1"]) == 2
+
+
+def test_dgaletsk_classifier_pre_train_hook_initializes_pfrb_consequents_from_labels() -> None:
+    x, y = _make_dataset(30)
+    est = DGALETSKClassifier(rule_base="pfrb", pfrb_max_rules=None)
+    input_mfs, _, rule_base = est._build_input_mfs(x)
+    model = cast(Any, est._build_model(input_mfs, n_classes=2, rule_base=rule_base))
+
+    assert torch.allclose(model.consequent_layer.bias, torch.zeros_like(model.consequent_layer.bias))
+
+    x_t = torch.as_tensor(x, dtype=torch.float32)
+    y_t = torch.as_tensor(y, dtype=torch.long)
+    est._pre_train_hook(model, x_t, y_t)
+
+    one_hot = model.consequent_layer.bias.detach().cpu().numpy()
+    assert np.allclose(one_hot.sum(axis=1), 1.0)
+    assert np.array_equal(np.argmax(one_hot, axis=1), y)
+
+
 def test_dgaletsk_regressor_estimator_fit_predict_score() -> None:
-    x = np.random.default_rng(123).normal(size=(80, 3)).astype(np.float32)
-    y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=80).astype(np.float32)
+    x = np.random.default_rng(123).normal(size=(40, 3)).astype(np.float32)
+    y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=40).astype(np.float32)
     est = DGALETSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         lambda_init=1.5,
-        epochs=5,
+        dg_epochs=2,
+        finetune_epochs=1,
+        zeta_lambda=[0.5],
+        zeta_theta=[0.5],
+        use_lse=False,
+        structural_pruning=False,
         learning_rate=1e-2,
         random_state=7,
         batch_size=16,
@@ -401,11 +646,16 @@ def test_dgaletsk_regressor_estimator_fit_predict_score() -> None:
 
 
 def test_dgtsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
-    x, y = _make_dataset(80)
+    x, y = _make_dataset(40)
     est = DGTSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
-        epochs=5,
+        dg_epochs=2,
+        finetune_epochs=1,
+        zeta_lambda=[0.5],
+        zeta_theta=[0.5],
+        use_lse=False,
+        structural_pruning=False,
         learning_rate=1e-2,
         random_state=7,
         batch_size=16,
@@ -424,12 +674,17 @@ def test_dgtsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
 
 
 def test_dgtsk_regressor_estimator_fit_predict_score() -> None:
-    x = np.random.default_rng(123).normal(size=(80, 3)).astype(np.float32)
-    y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=80).astype(np.float32)
+    x = np.random.default_rng(123).normal(size=(40, 3)).astype(np.float32)
+    y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=40).astype(np.float32)
     est = DGTSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
-        epochs=5,
+        dg_epochs=2,
+        finetune_epochs=1,
+        zeta_lambda=[0.5],
+        zeta_theta=[0.5],
+        use_lse=False,
+        structural_pruning=False,
         learning_rate=1e-2,
         random_state=7,
         batch_size=16,
@@ -445,11 +700,16 @@ def test_dgtsk_regressor_estimator_fit_predict_score() -> None:
 
 
 def test_dgtsk_classifier_estimator_pipeline_integration() -> None:
-    x, y = _make_dataset(60)
+    x, y = _make_dataset(40)
     est = DGTSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
-        epochs=5,
+        dg_epochs=2,
+        finetune_epochs=1,
+        zeta_lambda=[0.5],
+        zeta_theta=[0.5],
+        use_lse=False,
+        structural_pruning=False,
         learning_rate=1e-2,
         random_state=7,
         batch_size=16,
@@ -463,12 +723,17 @@ def test_dgtsk_classifier_estimator_pipeline_integration() -> None:
 
 
 def test_dgtsk_regressor_estimator_save_load_roundtrip() -> None:
-    x = np.random.default_rng(123).normal(size=(80, 3)).astype(np.float32)
-    y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=80).astype(np.float32)
+    x = np.random.default_rng(123).normal(size=(40, 3)).astype(np.float32)
+    y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=40).astype(np.float32)
     est = DGTSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
-        epochs=5,
+        dg_epochs=2,
+        finetune_epochs=1,
+        zeta_lambda=[0.5],
+        zeta_theta=[0.5],
+        use_lse=False,
+        structural_pruning=False,
         learning_rate=1e-2,
         random_state=7,
         batch_size=16,
@@ -485,6 +750,96 @@ def test_dgtsk_regressor_estimator_save_load_roundtrip() -> None:
         assert pred.shape == (x.shape[0],)
     finally:
         Path(path).unlink()
+
+
+def test_dgtsk_classifier_predict_proba_wrong_feature_count_raises() -> None:
+    x, y = _make_dataset(40)
+    est = DGTSKClassifier(
+        n_mfs=2,
+        mf_init="kmeans",
+        dg_epochs=1,
+        finetune_epochs=1,
+        zeta_lambda=[0.5],
+        zeta_theta=[0.5],
+        use_lse=False,
+        structural_pruning=False,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+        use_en_frb=True,
+    )
+    est.fit(x, y)
+
+    with pytest.raises(ValueError, match="expected"):
+        est.predict_proba(x[:, :2])
+
+
+def test_dgtsk_regressor_predict_wrong_feature_count_raises() -> None:
+    x = np.random.default_rng(123).normal(size=(40, 3)).astype(np.float32)
+    y = x[:, 0] + 0.5 * x[:, 1] + 0.1 * np.random.default_rng(123).normal(size=40).astype(np.float32)
+    est = DGTSKRegressor(
+        n_mfs=2,
+        mf_init="kmeans",
+        dg_epochs=1,
+        finetune_epochs=1,
+        zeta_lambda=[0.5],
+        zeta_theta=[0.5],
+        use_lse=False,
+        structural_pruning=False,
+        learning_rate=1e-2,
+        random_state=7,
+        batch_size=16,
+        use_en_frb=True,
+    )
+    est.fit(x, y)
+
+    with pytest.raises(ValueError, match="expected"):
+        est.predict(x[:, :2])
+
+
+def test_select_dgtsking_surviving_features_from_threshold_history() -> None:
+    class DummyModel:
+        n_inputs = 2
+
+    class DummyEstimator:
+        model_ = DummyModel()
+        history_: ClassVar[dict[str, object]] = {"threshold": {"surviving_feature_indices": [0, 2]}}
+
+    x = np.arange(12, dtype=np.float32).reshape(4, 3)
+    reduced = _select_dgtsking_surviving_features(DummyEstimator(), x)
+
+    assert reduced.shape == (4, 2)
+    assert np.array_equal(reduced, x[:, [0, 2]])
+
+
+def test_select_dgtsking_surviving_features_keeps_input_when_threshold_not_dict() -> None:
+    class DummyModel:
+        n_inputs = 2
+
+    class DummyEstimator:
+        model_ = DummyModel()
+        history_: ClassVar[dict[str, float]] = {"threshold": 1.0}
+
+    x = np.arange(12, dtype=np.float32).reshape(4, 3)
+    kept = _select_dgtsking_surviving_features(DummyEstimator(), x)
+
+    assert kept.shape == x.shape
+    assert np.array_equal(kept, x)
+
+
+def test_dgtsk_classifier_pre_train_hook_skips_when_not_pfrb() -> None:
+    class DummyModel:
+        def __init__(self) -> None:
+            self.called = False
+
+        def init_consequents_from_labels(self, y_t: Tensor) -> None:
+            self.called = True
+
+    est = DGTSKClassifier(rule_base="coco", n_mfs=2, dg_epochs=1, batch_size=8)
+    model = DummyModel()
+    est._pre_train_hook(cast(BaseTSK, model), torch.randn(4, 3), torch.randint(0, 2, (4,)))
+
+    assert model.called is False
 
 
 def test_build_pfrb_input_mfs_limits_rules_and_returns_gaussian_mfs() -> None:
@@ -516,16 +871,11 @@ def test_build_pfrb_input_mfs_max_rules_none_uses_all_samples() -> None:
 
 def test_dgtsk_classifier_estimator_rule_base_pfrb() -> None:
     x = np.arange(20, dtype=np.float32).reshape(5, 4)
-    est = DGTSKClassifier(
-        rule_base="pfrb",
-        pfrb_max_rules=3,
-        n_mfs=5,
-        mf_init="kmeans",
-        random_state=0,
-    )
+    est = DGTSKClassifier(pfrb_max_rules=3, n_mfs=5, mf_init="kmeans", random_state=0)
 
     input_mfs, feature_names, effective_rule_base = est._build_input_mfs(x)
 
+    assert est.rule_base == "pfrb"
     assert effective_rule_base == "coco"
     assert len(feature_names) == 4
     assert len(input_mfs["x1"]) == 3
@@ -598,13 +948,92 @@ def test_adptsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
     assert 0.0 <= score <= 1.0
 
 
+def test_adptsk_classifier_default_estimator_uses_paper_rule_base_and_rule_count() -> None:
+    x, y = _make_dataset(80)
+    est = ADPTSKClassifier(epochs=1, random_state=7)
+    est.fit(x, y)
+
+    assert est.rule_base_ == "coco"
+    assert est.model_.n_rules == 3
+
+
+def test_adptsk_classifier_default_estimator_uses_paper_centers_and_sigma() -> None:
+    x, y = _make_dataset(80)
+    est = ADPTSKClassifier(epochs=1, random_state=7)
+    est.fit(x, y)
+
+    mfs = est.model_.input_mfs["x1"]
+    assert len(mfs) == 3
+    assert isinstance(mfs[0], GaussianPiMF)
+    means = [float(cast(Tensor, cast(GaussianPiMF, mf).mean).detach().item()) for mf in mfs]
+    sigmas = [float(cast(GaussianPiMF, mf).sigma.detach().item()) for mf in mfs]
+    assert means == pytest.approx([0.0, 0.5, 1.0], abs=1e-8)
+    assert sigmas == pytest.approx([1.0, 1.0, 1.0], abs=1e-8)
+
+
+def test_adptsk_default_batch_size_policy() -> None:
+    est = ADPTSKClassifier()
+
+    assert est._resolve_default_batch_size(499) is None
+    assert est._resolve_default_batch_size(500) == 100
+
+
+def test_adptsk_classifier_paper_strict_uses_paper_protocol_defaults() -> None:
+    est = ADPTSKClassifier(paper_strict=True)
+
+    assert est.n_mfs == 3
+    assert est.mf_init == "grid"
+    assert est.sigma_scale == 1.0
+    assert est.rule_base == "coco"
+    assert est.kappa == 690.0
+    assert est.xi == 730.0
+    assert est.k == 1.0
+    assert est.zero_consequent_init is True
+
+
+def test_adptsk_classifier_paper_strict_rejects_conflicting_hyperparameters() -> None:
+    with pytest.raises(ValueError, match="paper_strict requires n_mfs=3"):
+        ADPTSKClassifier(paper_strict=True, n_mfs=4)
+    with pytest.raises(ValueError, match="paper_strict requires mf_init='grid'"):
+        ADPTSKClassifier(paper_strict=True, mf_init="kmeans")
+    with pytest.raises(ValueError, match=r"paper_strict requires sigma_scale=1\.0"):
+        ADPTSKClassifier(paper_strict=True, sigma_scale=0.8)
+    with pytest.raises(ValueError, match="paper_strict requires rule_base='coco'"):
+        ADPTSKClassifier(paper_strict=True, rule_base="cartesian")
+    with pytest.raises(ValueError, match=r"paper_strict requires kappa=690\.0"):
+        ADPTSKClassifier(paper_strict=True, kappa=700.0)
+    with pytest.raises(ValueError, match=r"paper_strict requires xi=730\.0"):
+        ADPTSKClassifier(paper_strict=True, xi=740.0)
+    with pytest.raises(ValueError, match=r"paper_strict requires k=1\.0"):
+        ADPTSKClassifier(paper_strict=True, k=0.8)
+    with pytest.raises(ValueError, match="paper_strict requires zero_consequent_init=True"):
+        ADPTSKClassifier(paper_strict=True, zero_consequent_init=False)
+
+
+def test_adptsk_classifier_paper_strict_requires_inputs_in_unit_interval() -> None:
+    x, y = _make_dataset(40)
+    est = ADPTSKClassifier(paper_strict=True, epochs=1, random_state=0)
+
+    with pytest.raises(ValueError, match=r"paper_strict requires x to be linearly normalized to \[0,1\]"):
+        est.fit(x, y)
+
+
+def test_adptsk_classifier_non_strict_accepts_inputs_outside_unit_interval() -> None:
+    x, y = _make_dataset(40)
+    est = ADPTSKClassifier(paper_strict=False, epochs=1, random_state=0)
+
+    est.fit(x, y)
+
+    assert est.model_ is not None
+
+
 def test_fsre_adatsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
     x, y = _make_dataset(80)
     est = FSREADATSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         lambda_init=1.5,
-        epochs=5,
+        fs_epochs=5,
         learning_rate=1e-2,
         random_state=7,
         batch_size=16,
@@ -909,6 +1338,208 @@ def test_mhtsk_regressor_estimator_rule_extraction_reduces_rules() -> None:
     assert est._extracted_rule_indices_ is not None
     assert len(est._extracted_rule_indices_) > 0
     assert est.model_.n_rules == len(est._extracted_rule_indices_)
+
+
+def test_mhtsk_paper_strict_defaults() -> None:
+    clf = MHTSKClassifier(paper_strict=True)
+    reg = MHTSKRegressor(paper_strict=True)
+
+    assert clf.n_mfs == 3
+    assert clf.fcm_m == 2.0
+    assert clf.rule_sigma == 1.0
+    assert clf.xi == 743.0
+    assert clf.instance_sample_fraction == 0.8
+    assert clf.rule_extraction is True
+    assert clf.crcr_us == 0.5
+    assert clf.crcr_s == 0.5
+    assert clf.retrain_after_extraction is True
+
+    assert reg.n_mfs == 3
+    assert reg.fcm_m == 2.0
+    assert reg.rule_sigma == 1.0
+    assert reg.xi == 743.0
+    assert reg.instance_sample_fraction == 0.8
+    assert reg.rule_extraction is True
+    assert reg.crcr_us == 0.5
+    assert reg.retrain_after_extraction is True
+
+
+def test_mhtsk_paper_strict_rejects_conflicting_hyperparameters() -> None:
+    with pytest.raises(ValueError, match="paper_strict requires n_mfs=3"):
+        MHTSKClassifier(paper_strict=True, n_mfs=4)
+    with pytest.raises(ValueError, match="paper_strict requires n_mfs=3"):
+        MHTSKRegressor(paper_strict=True, n_mfs=4)
+    with pytest.raises(ValueError, match="paper_strict computes n_heads from input dimension"):
+        MHTSKClassifier(paper_strict=True, n_heads=100)
+    with pytest.raises(ValueError, match="paper_strict computes n_heads from input dimension"):
+        MHTSKRegressor(paper_strict=True, n_heads=100)
+    with pytest.raises(ValueError, match="paper_strict computes head_size from input dimension"):
+        MHTSKClassifier(paper_strict=True, head_size=10)
+    with pytest.raises(ValueError, match="paper_strict computes head_size from input dimension"):
+        MHTSKRegressor(paper_strict=True, head_size=10)
+    with pytest.raises(ValueError, match="paper_strict requires fcr_target=None"):
+        MHTSKClassifier(paper_strict=True, fcr_target=0.9)
+    with pytest.raises(ValueError, match="paper_strict requires fcr_target=None"):
+        MHTSKRegressor(paper_strict=True, fcr_target=0.9)
+    with pytest.raises(ValueError, match="paper_strict requires h_value=None"):
+        MHTSKClassifier(paper_strict=True, h_value=3.0)
+    with pytest.raises(ValueError, match="paper_strict requires h_value=None"):
+        MHTSKRegressor(paper_strict=True, h_value=3.0)
+    with pytest.raises(ValueError, match="paper_strict requires rule_extraction=True"):
+        MHTSKClassifier(paper_strict=True, rule_extraction=False)
+    with pytest.raises(ValueError, match="paper_strict requires rule_extraction=True"):
+        MHTSKRegressor(paper_strict=True, rule_extraction=False)
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"head_size_ratio": 0.1}, "paper_strict requires head_size_ratio=None"),
+        ({"fcm_m": 2.1}, "paper_strict requires fcm_m=2.0"),
+        ({"rule_sigma": 1.1}, "paper_strict requires rule_sigma=1.0"),
+        ({"xi": 700.0}, "paper_strict requires xi=743.0"),
+        ({"instance_sample_fraction": 0.7}, "paper_strict requires instance_sample_fraction=0.8"),
+        ({"crcr_us": 0.6}, "paper_strict requires crcr_us=0.5"),
+        ({"crcr_s": 0.6}, "paper_strict requires crcr_s=0.5"),
+        ({"retrain_after_extraction": False}, "paper_strict requires retrain_after_extraction=True"),
+    ],
+)
+def test_mhtsk_paper_strict_classifier_config_rejects_invalid_values(
+    kwargs: dict[str, float | bool],
+    message: str,
+) -> None:
+    base_kwargs: dict[str, float | bool | None] = {
+        "n_mfs": None,
+        "n_heads": None,
+        "head_size": None,
+        "head_size_ratio": None,
+        "fcm_m": None,
+        "rule_sigma": None,
+        "fcr_target": None,
+        "h_value": None,
+        "xi": None,
+        "instance_sample_fraction": None,
+        "rule_extraction": None,
+        "crcr_us": None,
+        "crcr_s": None,
+        "retrain_after_extraction": None,
+    }
+    base_kwargs.update(kwargs)
+
+    with pytest.raises(ValueError, match=message):
+        _resolve_mhtsk_paper_strict_classifier_config(
+            paper_strict=True,
+            **base_kwargs,
+        )
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"head_size_ratio": 0.1}, "paper_strict requires head_size_ratio=None"),
+        ({"fcm_m": 2.1}, "paper_strict requires fcm_m=2.0"),
+        ({"rule_sigma": 1.1}, "paper_strict requires rule_sigma=1.0"),
+        ({"xi": 700.0}, "paper_strict requires xi=743.0"),
+        ({"instance_sample_fraction": 0.7}, "paper_strict requires instance_sample_fraction=0.8"),
+        ({"crcr_us": 0.6}, "paper_strict requires crcr_us=0.5"),
+        ({"retrain_after_extraction": False}, "paper_strict requires retrain_after_extraction=True"),
+    ],
+)
+def test_mhtsk_paper_strict_regressor_config_rejects_invalid_values(
+    kwargs: dict[str, float | bool],
+    message: str,
+) -> None:
+    base_kwargs: dict[str, float | bool | None] = {
+        "n_mfs": None,
+        "n_heads": None,
+        "head_size": None,
+        "head_size_ratio": None,
+        "fcm_m": None,
+        "rule_sigma": None,
+        "fcr_target": None,
+        "h_value": None,
+        "xi": None,
+        "instance_sample_fraction": None,
+        "rule_extraction": None,
+        "crcr_us": None,
+        "retrain_after_extraction": None,
+    }
+    base_kwargs.update(kwargs)
+
+    with pytest.raises(ValueError, match=message):
+        _resolve_mhtsk_paper_strict_regressor_config(
+            paper_strict=True,
+            **base_kwargs,
+        )
+
+
+def test_mhtsk_paper_strict_scale_policy_helper() -> None:
+    assert _strict_mhtsk_scale_from_dimension(1000, sigma=1.0, xi=743.0) == (20, 200)
+    assert _strict_mhtsk_scale_from_dimension(6000, sigma=1.0, xi=743.0) == (60, 300)
+
+
+def test_mhtsk_classifier_paper_strict_builds_fixed_head_count() -> None:
+    x, _ = _make_dataset(20)
+    est = MHTSKClassifier(paper_strict=True, random_state=0)
+    est._build_input_mfs(x)
+
+    assert len(est._mhtsk_rules) == 600
+    assert est._mhtsk_rule_feature_mask.shape[0] == 600
+
+
+def test_mhtsk_paper_strict_trainer_updates_only_consequents() -> None:
+    input_mfs = {
+        "x1": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0), GaussianMF(mean=2.0, sigma=1.0)],
+        "x2": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0), GaussianMF(mean=2.0, sigma=1.0)],
+    }
+    rules = [(1, 0), (0, 2), (2, 0)]
+    rule_feature_mask = torch.tensor([[True, False], [False, True], [True, False]], dtype=torch.bool)
+    model = MHTSKClassifierModel(input_mfs, rule_feature_mask, rules, n_classes=2, consequent_batch_norm=True)
+    x = torch.randn(16, 2)
+    y = torch.randint(0, 2, (16,), dtype=torch.long)
+
+    ante_before = next(model.membership_layer.parameters()).detach().clone()
+    cons_before = next(model.consequent_layer.parameters()).detach().clone()
+
+    trainer = _MHTSKPaperStrictTrainer(epochs=1, learning_rate=1e-2, batch_size=8)
+    trainer.fit(model, x, y)
+
+    ante_after = next(model.membership_layer.parameters()).detach()
+    cons_after = next(model.consequent_layer.parameters()).detach()
+
+    assert torch.allclose(ante_before, ante_after)
+    assert not torch.allclose(cons_before, cons_after)
+
+
+def test_mhtsk_paper_strict_classifier_fit_retrains_with_strict_trainer() -> None:
+    x, y = _make_dataset(20)
+    est = MHTSKClassifier(
+        paper_strict=True,
+        consequent_batch_norm=True,
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+    )
+
+    est.fit(x, y)
+
+    assert isinstance(est._get_trainer(), _MHTSKPaperStrictTrainer)
+    assert est._extracted_rule_indices_ is not None
+
+
+def test_mhtsk_paper_strict_regressor_fit_retrains_with_strict_trainer() -> None:
+    x, y = _make_dataset(20)
+    est = MHTSKRegressor(
+        paper_strict=True,
+        epochs=1,
+        batch_size=16,
+        random_state=0,
+    )
+
+    est.fit(x, y.astype(np.float32))
+
+    assert isinstance(est._get_trainer(), _MHTSKPaperStrictTrainer)
+    assert est._extracted_rule_indices_ is not None
 
 
 def test_feature_coverage_rate() -> None:
@@ -1451,6 +2082,29 @@ def test_admtsk_classifier_estimator_uses_composite_gmf() -> None:
     assert all(isinstance(mf, GaussianPiMF) for mfs in est.model_.input_mfs.values() for mf in mfs)
 
 
+def test_admtsk_classifier_default_estimator_uses_paper_rule_base_and_rule_count() -> None:
+    x, y = _make_dataset(60)
+    est = ADMTSKClassifier(epochs=1, random_state=7)
+    est.fit(x, y)
+
+    assert est.rule_base_ == "coco"
+    assert est.model_.n_rules == 3
+
+
+def test_admtsk_classifier_default_estimator_uses_paper_centers_and_sigma() -> None:
+    x, y = _make_dataset(60)
+    est = ADMTSKClassifier(epochs=1, random_state=7)
+    est.fit(x, y)
+
+    mfs = est.model_.input_mfs["x1"]
+    assert len(mfs) == 3
+    assert isinstance(mfs[0], GaussianPiMF)
+    means = [float(cast(Tensor, cast(GaussianPiMF, mf).mean).detach().item()) for mf in mfs]
+    sigmas = [float(cast(GaussianPiMF, mf).sigma.detach().item()) for mf in mfs]
+    assert means == pytest.approx([0.0, 0.5, 1.0], abs=1e-8)
+    assert sigmas == pytest.approx([1.0, 1.0, 1.0], abs=1e-8)
+
+
 def test_admtsk_regressor_estimator_fit_predict() -> None:
     x, y = _make_regression_dataset(80)
     est = ADMTSKRegressor(
@@ -1464,6 +2118,62 @@ def test_admtsk_regressor_estimator_fit_predict() -> None:
     est.fit(x, y)
     pred = est.predict(x)
     assert pred.shape == (x.shape[0],)
+
+
+def test_admtsk_regressor_default_estimator_uses_paper_centers_and_sigma() -> None:
+    x, y = _make_regression_dataset(80)
+    est = ADMTSKRegressor(epochs=1, random_state=7)
+    est.fit(x, y)
+
+    mfs = est.model_.input_mfs["x1"]
+    assert len(mfs) == 3
+    assert isinstance(mfs[0], GaussianPiMF)
+    means = [float(cast(Tensor, cast(GaussianPiMF, mf).mean).detach().item()) for mf in mfs]
+    sigmas = [float(cast(GaussianPiMF, mf).sigma.detach().item()) for mf in mfs]
+    assert means == pytest.approx([0.0, 0.5, 1.0], abs=1e-8)
+    assert sigmas == pytest.approx([1.0, 1.0, 1.0], abs=1e-8)
+
+
+def test_admtsk_classifier_paper_strict_uses_paper_protocol_defaults() -> None:
+    est = ADMTSKClassifier(paper_strict=True)
+
+    assert est.n_mfs == 3
+    assert est.mf_init == "grid"
+    assert est.sigma_scale == 1.0
+    assert est.rule_base == "coco"
+    assert est.adaptive is True
+    assert est.lambda_ == 1.0
+    assert est.lower_bound == pytest.approx(1.0 / math.e, abs=1e-12)
+    assert est.k == 10.0
+    assert est.zero_consequent_init is True
+
+
+def test_admtsk_classifier_paper_strict_rejects_conflicting_hyperparameters() -> None:
+    with pytest.raises(ValueError, match="paper_strict requires n_mfs=3"):
+        ADMTSKClassifier(paper_strict=True, n_mfs=5)
+    with pytest.raises(ValueError, match="paper_strict requires mf_init='grid'"):
+        ADMTSKClassifier(paper_strict=True, mf_init="kmeans")
+    with pytest.raises(ValueError, match=r"paper_strict requires sigma_scale=1\.0"):
+        ADMTSKClassifier(paper_strict=True, sigma_scale=2.0)
+    with pytest.raises(ValueError, match="paper_strict requires rule_base='coco'"):
+        ADMTSKClassifier(paper_strict=True, rule_base="cartesian")
+    with pytest.raises(ValueError, match="paper_strict requires adaptive=True"):
+        ADMTSKClassifier(paper_strict=True, adaptive=False)
+    with pytest.raises(ValueError, match=r"paper_strict requires lambda_=1\.0"):
+        ADMTSKClassifier(paper_strict=True, lambda_=2.0)
+    with pytest.raises(ValueError, match="paper_strict requires lower_bound=1/e"):
+        ADMTSKClassifier(paper_strict=True, lower_bound=0.3)
+    with pytest.raises(ValueError, match=r"paper_strict requires k=10\.0"):
+        ADMTSKClassifier(paper_strict=True, k=5.0)
+    with pytest.raises(ValueError, match="paper_strict requires zero_consequent_init=True"):
+        ADMTSKClassifier(paper_strict=True, zero_consequent_init=False)
+
+
+def test_admtsk_classifier_paper_strict_fit_does_not_auto_split_data() -> None:
+    x, y = _make_dataset(40)
+    est = ADMTSKClassifier(paper_strict=True, epochs=1, random_state=0)
+    est.fit(x, y)
+    assert len(est.history_["val"]) == 0
 
 
 def test_tsk_classifier_estimator_fit_predict() -> None:
@@ -1563,12 +2273,12 @@ def test_logtsk_regressor_estimator_fit_predict() -> None:
 
 def test_fsre_adatsk_classifier_estimator_rejects_nonpositive_lambda() -> None:
     with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        FSREADATSKClassifier(n_mfs=2, mf_init="kmeans", lambda_init=0.0, epochs=1, batch_size=16)
+        FSREADATSKClassifier(n_mfs=2, mf_init="kmeans", lambda_init=0.0, fs_epochs=1, batch_size=16)
 
 
 def test_fsre_adatsk_regressor_estimator_rejects_nonpositive_lambda() -> None:
     with pytest.raises(ValueError, match="lambda_init must be > 0"):
-        FSREADATSKRegressor(n_mfs=2, mf_init="kmeans", lambda_init=0.0, epochs=1, batch_size=16)
+        FSREADATSKRegressor(n_mfs=2, mf_init="kmeans", lambda_init=0.0, fs_epochs=1, batch_size=16)
 
 
 def test_estimator_input_configs_length_validator_regressor() -> None:
@@ -1603,12 +2313,17 @@ def test_classifier_estimator_save_load_roundtrip() -> None:
 
 
 def test_dgaletsk_classifier_estimator_pipeline_integration() -> None:
-    x, y = _make_dataset(60)
+    x, y = _make_dataset(40)
     est = DGALETSKClassifier(
         n_mfs=2,
         mf_init="kmeans",
         lambda_init=1.5,
-        epochs=5,
+        dg_epochs=2,
+        finetune_epochs=1,
+        zeta_lambda=[0.5],
+        zeta_theta=[0.5],
+        use_lse=False,
+        structural_pruning=False,
         learning_rate=1e-2,
         random_state=7,
         batch_size=16,
@@ -2366,13 +3081,43 @@ def test_adptsk_regressor_estimator_fit_predict() -> None:
     assert pred.shape == (x.shape[0],)
 
 
+def test_adptsk_regressor_default_estimator_uses_paper_rule_base_and_rule_count() -> None:
+    x, y = _make_regression_dataset(80)
+    est = ADPTSKRegressor(epochs=1, random_state=7)
+    est.fit(x, y)
+
+    assert est.rule_base_ == "coco"
+    assert est.model_.n_rules == 3
+
+
+def test_adptsk_regressor_default_estimator_uses_paper_centers_and_sigma() -> None:
+    x, y = _make_regression_dataset(80)
+    est = ADPTSKRegressor(epochs=1, random_state=7)
+    est.fit(x, y)
+
+    mfs = est.model_.input_mfs["x1"]
+    assert len(mfs) == 3
+    assert isinstance(mfs[0], GaussianPiMF)
+    means = [float(cast(Tensor, cast(GaussianPiMF, mf).mean).detach().item()) for mf in mfs]
+    sigmas = [float(cast(GaussianPiMF, mf).sigma.detach().item()) for mf in mfs]
+    assert means == pytest.approx([0.0, 0.5, 1.0], abs=1e-8)
+    assert sigmas == pytest.approx([1.0, 1.0, 1.0], abs=1e-8)
+
+
+def test_adptsk_regressor_default_batch_size_policy() -> None:
+    est = ADPTSKRegressor()
+
+    assert est._resolve_default_batch_size(499) is None
+    assert est._resolve_default_batch_size(500) == 100
+
+
 def test_fsre_adatsk_regressor_estimator_fit_predict() -> None:
     x, y = _make_regression_dataset(80)
     est = FSREADATSKRegressor(
         n_mfs=2,
         mf_init="kmeans",
         lambda_init=2.0,
-        epochs=5,
+        fs_epochs=5,
         learning_rate=1e-2,
         random_state=7,
         batch_size=16,

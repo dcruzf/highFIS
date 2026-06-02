@@ -16,6 +16,7 @@ from ..layers import (
     GatedClassificationZeroOrderConsequentLayer,
     GatedRegressionConsequentLayer,
     GatedRegressionZeroOrderConsequentLayer,
+    MembershipLayer,
 )
 from ..memberships import MembershipFunction
 from ._common import (
@@ -56,6 +57,7 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
         consequent_batch_norm: bool = False,
         eps: float | None = None,
         use_en_frb: bool = False,
+        optimizer_type: str = "sgd",
     ) -> None:
         """Initialise the DG-TSK classifier.
 
@@ -79,6 +81,8 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
             consequent_batch_norm: Batch normalisation on consequent inputs.
             eps: Numerical stability epsilon.
             use_en_frb: Use the Enhanced FRB (P-FRB) rule base.
+            optimizer_type: Optimizer for all training phases.  ``"sgd"`` (default,
+                paper) or ``"adamw"``.
 
         Raises:
             ValueError: If ``n_classes < 2``.
@@ -91,6 +95,7 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
         self.gate_rule = gate_rule
         self.eps = eps
         self.use_en_frb = bool(use_en_frb)
+        self._optimizer_type = str(optimizer_type)
 
         super().__init__(
             input_mfs,
@@ -131,7 +136,19 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
         return layer
 
     def _default_criterion(self) -> nn.Module:
-        return nn.CrossEntropyLoss()
+        return nn.MSELoss()
+
+    def _build_optimizer(
+        self,
+        optimizer: torch.optim.Optimizer | None,
+        learning_rate: float,
+        weight_decay: float,
+    ) -> torch.optim.Optimizer:
+        if optimizer is not None:
+            return optimizer
+        if self._optimizer_type == "sgd":
+            return torch.optim.SGD(self.parameters(), lr=learning_rate)
+        return super()._build_optimizer(optimizer, learning_rate, weight_decay)
 
     def convert_to_first_order(self) -> None:
         """Convert the DG-TSK model from zero-order to first-order consequent."""
@@ -211,6 +228,91 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
             predicted = torch.argmax(logits, dim=1)
             return float((predicted == y).float().mean().item())
 
+    def prune_structure(
+        self,
+        surviving_features: list[int],
+        surviving_rules: list[int],
+    ) -> None:
+        """Structurally prune the model to the given surviving feature and rule indices.
+
+        Rebuilds :attr:`membership_layer`, :attr:`rule_layer`, and
+        :attr:`consequent_layer` in-place, retaining only the specified
+        features and rules.  All associated parameters are copied from
+        the current layers.
+        """
+        if not surviving_features:
+            raise ValueError("surviving_features must not be empty")
+        if not surviving_rules:
+            raise ValueError("surviving_rules must not be empty")
+
+        surviving_names = [self.input_names[i] for i in surviving_features]
+
+        # For each surviving feature collect the MF indices used by the surviving
+        # rules and build a remapping to a compressed 0-based index.
+        new_input_mfs: dict[str, list[MembershipFunction]] = {}
+        mf_remap: dict[int, dict[int, int]] = {}
+        for orig_fi in surviving_features:
+            name = self.input_names[orig_fi]
+            all_mfs = list(cast(Any, self.membership_layer.input_mfs[name]))
+            used = sorted({self.rule_layer.rules[r][orig_fi] for r in surviving_rules})
+            new_input_mfs[name] = [all_mfs[mf_idx] for mf_idx in used]
+            mf_remap[orig_fi] = {old: new for new, old in enumerate(used)}
+
+        new_n_features = len(surviving_features)
+        new_n_rules = len(surviving_rules)
+        new_mf_per_input = [len(new_input_mfs[self.input_names[fi]]) for fi in surviving_features]
+        new_rules = [
+            tuple(mf_remap[fi][self.rule_layer.rules[r][fi]] for fi in surviving_features) for r in surviving_rules
+        ]
+
+        # Rebuild membership layer.
+        self.membership_layer = MembershipLayer(new_input_mfs)
+
+        # Rebuild rule layer, copying lambda_gates for surviving features.
+        old_lambda = self.rule_layer.lambda_gates.data[surviving_features].clone()
+        new_rule_layer = DGTSKRuleLayer(
+            surviving_names,
+            new_mf_per_input,
+            rules=new_rules,
+            gate_fea=self.gate_fea,
+            eps=self.eps,
+        )
+        new_rule_layer.lambda_gates.data.copy_(old_lambda)
+        self.rule_layer = new_rule_layer
+
+        # Rebuild consequent layer, copying surviving parameter slices.
+        if isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
+            old_bias = self.consequent_layer.bias.data[surviving_rules].clone()
+            old_theta = self.consequent_layer.theta_gates.data[surviving_rules].clone()
+            new_cons: GatedClassificationZeroOrderConsequentLayer | GatedClassificationConsequentLayer
+            new_cons = GatedClassificationZeroOrderConsequentLayer(
+                new_n_rules, new_n_features, self.n_classes, gate_fn=self.gate_rule
+            )
+            new_cons.bias.data.copy_(old_bias)
+            new_cons.theta_gates.data.copy_(old_theta)
+        else:
+            old_layer = cast(GatedClassificationConsequentLayer, self.consequent_layer)
+            old_mode = old_layer.mode
+            old_theta = old_layer.theta_gates.data[surviving_rules].clone()
+            old_bias = old_layer.bias.data[surviving_rules].clone()
+            old_weight = old_layer.weight.data[surviving_rules][:, :, surviving_features].clone()
+            old_lam_cons = old_layer.lambda_gates.data[surviving_rules][:, surviving_features].clone()
+            new_cons = GatedClassificationConsequentLayer(
+                new_n_rules, new_n_features, self.n_classes, gate_fn=self.gate_rule
+            )
+            new_cons.mode = old_mode
+            new_cons.theta_gates.data.copy_(old_theta)
+            new_cons.bias.data.copy_(old_bias)
+            new_cons.weight.data.copy_(old_weight)
+            new_cons.lambda_gates.data.copy_(old_lam_cons)
+        self.consequent_layer = new_cons
+
+        # Update model-level bookkeeping.
+        self.input_names = surviving_names
+        self.n_inputs = new_n_features
+        self.n_rules = new_n_rules
+        self.input_mfs = new_input_mfs
+
     def search_thresholds(
         self,
         x: Tensor,
@@ -222,6 +324,7 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
         use_lse: bool = True,
         inplace: bool = True,
         verbose: bool = False,
+        structural: bool = True,
     ) -> dict[str, Any]:
         """Search DG-TSK threshold combinations and optionally apply the best candidate."""
         if zeta_lambda is None:
@@ -274,7 +377,7 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
         if best_score == float("-inf"):
             raise RuntimeError("threshold search did not yield a valid candidate")
 
-        result = {
+        result: dict[str, Any] = {
             "best_score": best_score,
             "best_zeta_lambda": best_zeta_lambda,
             "best_zeta_theta": best_zeta_theta,
@@ -282,19 +385,41 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
             "tau_theta": best_tau_theta,
         }
 
+        result["surviving_feature_indices"] = list(range(self.n_inputs))
+        result["surviving_rule_indices"] = list(range(self.n_rules))
+
         if inplace:
-            if use_lse:
-                # best_state holds the already-converted, pruned, LSE-fitted model.
-                if isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
+            if structural:
+                # Compute surviving indices before zeroing gate params.
+                feature_gate_values = self.get_feature_gate_values()
+                rule_gate_values = self.get_rule_gate_values()
+                sf = torch.where(feature_gate_values > best_tau_lambda)[0].tolist()
+                sr = torch.where(rule_gate_values > best_tau_theta)[0].tolist()
+                if not sf:
+                    sf = list(range(self.n_inputs))
+                if len(sr) < self.n_classes:
+                    top_k = min(self.n_classes, self.n_rules)
+                    top_rules = torch.topk(rule_gate_values, k=top_k).indices.tolist()
+                    sr = sorted(set(sr) | set(top_rules))
+                if use_lse and isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
                     self.convert_to_first_order()
-                if best_state is None:  # pragma: no cover
-                    raise RuntimeError("best_state is None despite use_lse=True")
-                self.load_state_dict(best_state)
-            else:
-                # Non-LSE path: apply the best thresholds to the zero-order model.
-                # The caller is responsible for converting to first-order afterwards
-                # (e.g. via fit_finetune which also resets and retrains consequents).
                 self.apply_thresholds(best_tau_lambda, best_tau_theta)
+                self.prune_structure(sf, sr)
+                if use_lse:
+                    self._fit_first_order_consequents_lse(x[:, sf], y)
+                result["surviving_feature_indices"] = sf
+                result["surviving_rule_indices"] = sr
+            else:
+                if use_lse:
+                    # best_state holds the already-converted, pruned, LSE-fitted model.
+                    if isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
+                        self.convert_to_first_order()
+                    if best_state is None:  # pragma: no cover
+                        raise RuntimeError("best_state is None despite use_lse=True")
+                    self.load_state_dict(best_state)
+                else:
+                    # Non-LSE path: apply the best thresholds to the zero-order model.
+                    self.apply_thresholds(best_tau_lambda, best_tau_theta)
 
         return result
 
@@ -307,7 +432,7 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
 
         Args:
             y: Integer class labels of shape ``(N,)`` for the *N* training samples
-               used to build the P-FRB.  Only the first ``n_rules`` labels are used.
+                used to build the P-FRB. Only the first ``n_rules`` labels are used.
 
         Raises:
             ValueError: If the model is not in zero-order consequent mode.
@@ -339,24 +464,43 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
             for p in self.membership_layer.parameters():
                 p.requires_grad_(True)
 
-    def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+    def fit_finetune(
+        self,
+        x: Tensor,
+        y: Tensor,
+        *,
+        freeze_antecedents: bool = True,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
         """Fine-tune the DG-TSK classifier after conversion to first-order consequents.
 
         Consequent weights and biases are reset to zero before retraining, as stated
         in Xue et al. (2023): *"Before the training for fine tuning, all the consequent
         parameters are set to zero in our experiments."*
 
-        Antecedent parameters (MF centres/spreads) and feature-selection gates
-        (λ) are frozen during fine-tuning, per paper §3.3: *"we fix the first
-        group of gates and the membership functions."*
+        When *freeze_antecedents* is ``True`` (paper default, §3.3): antecedent
+        parameters (MF centres/spreads) and feature-selection gates (λ) are frozen,
+        and rule gates (θ) remain active in the consequent (mode ``"re"``).
+        When *freeze_antecedents* is ``False``: only feature gates are frozen; MF
+        parameters train freely and consequent gates are disabled (mode
+        ``"finetune"``), giving plain TSK fine-tuning.
+
+        Args:
+            x: Input tensor of shape ``(N, n_inputs)``.
+            y: Target tensor.
+            freeze_antecedents: If ``True`` (default), freeze MF parameters and
+                feature gates.  If ``False``, only feature gates are frozen.
+            **kwargs: Additional keyword arguments forwarded to :meth:`fit`.
         """
         # Ensure first-order mode (convert if search_thresholds used use_lse=False).
         if isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
             self.convert_to_first_order()
-        if isinstance(self.consequent_layer, GatedClassificationConsequentLayer):
+        if isinstance(self.consequent_layer, GatedClassificationConsequentLayer):  # pragma: no branch
             nn.init.zeros_(self.consequent_layer.weight)
             nn.init.zeros_(self.consequent_layer.bias)
-        frozen: list[nn.Parameter] = list(self.membership_layer.parameters())
+            if not freeze_antecedents:
+                self.consequent_layer.mode = "finetune"
+        frozen: list[nn.Parameter] = list(self.membership_layer.parameters()) if freeze_antecedents else []
         frozen.append(self.rule_layer.lambda_gates)  # type: ignore[arg-type]
         for p in frozen:
             p.requires_grad_(False)
@@ -395,6 +539,7 @@ class DGTSKRegressorModel(BaseTSKRegressorModel):
         consequent_batch_norm: bool = False,
         eps: float | None = None,
         use_en_frb: bool = False,
+        optimizer_type: str = "sgd",
     ) -> None:
         """Initialise the DG-TSK regressor.
 
@@ -416,11 +561,14 @@ class DGTSKRegressorModel(BaseTSKRegressorModel):
             consequent_batch_norm: Batch normalisation on consequent inputs.
             eps: Numerical stability epsilon.
             use_en_frb: Use the Enhanced FRB (P-FRB) rule base.
+            optimizer_type: Optimizer for all training phases.  ``"sgd"`` (default,
+                paper) or ``"adamw"``.
         """
         self.gate_fea = gate_fea
         self.gate_rule = gate_rule
         self.eps = eps
         self.use_en_frb = bool(use_en_frb)
+        self._optimizer_type = str(optimizer_type)
 
         super().__init__(
             input_mfs,
@@ -452,6 +600,18 @@ class DGTSKRegressorModel(BaseTSKRegressorModel):
 
     def _default_criterion(self) -> nn.Module:
         return nn.MSELoss()
+
+    def _build_optimizer(
+        self,
+        optimizer: torch.optim.Optimizer | None,
+        learning_rate: float,
+        weight_decay: float,
+    ) -> torch.optim.Optimizer:
+        if optimizer is not None:
+            return optimizer
+        if self._optimizer_type == "sgd":
+            return torch.optim.SGD(self.parameters(), lr=learning_rate)
+        return super()._build_optimizer(optimizer, learning_rate, weight_decay)
 
     def convert_to_first_order(self) -> None:
         """Convert the DG-TSK regressor from zero-order to first-order consequent."""
@@ -529,6 +689,81 @@ class DGTSKRegressorModel(BaseTSKRegressorModel):
             output = self.forward(x).squeeze(1)
             return -float(((output - y) ** 2).mean().item())
 
+    def prune_structure(
+        self,
+        surviving_features: list[int],
+        surviving_rules: list[int],
+    ) -> None:
+        """Structurally prune the model to the given surviving feature and rule indices.
+
+        Rebuilds :attr:`membership_layer`, :attr:`rule_layer`, and
+        :attr:`consequent_layer` in-place, retaining only the specified
+        features and rules.  All associated parameters are copied from
+        the current layers.
+        """
+        if not surviving_features:
+            raise ValueError("surviving_features must not be empty")
+        if not surviving_rules:
+            raise ValueError("surviving_rules must not be empty")
+
+        surviving_names = [self.input_names[i] for i in surviving_features]
+
+        new_input_mfs: dict[str, list[MembershipFunction]] = {}
+        mf_remap: dict[int, dict[int, int]] = {}
+        for orig_fi in surviving_features:
+            name = self.input_names[orig_fi]
+            all_mfs = list(cast(Any, self.membership_layer.input_mfs[name]))
+            used = sorted({self.rule_layer.rules[r][orig_fi] for r in surviving_rules})
+            new_input_mfs[name] = [all_mfs[mf_idx] for mf_idx in used]
+            mf_remap[orig_fi] = {old: new for new, old in enumerate(used)}
+
+        new_n_features = len(surviving_features)
+        new_n_rules = len(surviving_rules)
+        new_mf_per_input = [len(new_input_mfs[self.input_names[fi]]) for fi in surviving_features]
+        new_rules = [
+            tuple(mf_remap[fi][self.rule_layer.rules[r][fi]] for fi in surviving_features) for r in surviving_rules
+        ]
+
+        self.membership_layer = MembershipLayer(new_input_mfs)
+
+        old_lambda = self.rule_layer.lambda_gates.data[surviving_features].clone()
+        new_rule_layer = DGTSKRuleLayer(
+            surviving_names,
+            new_mf_per_input,
+            rules=new_rules,
+            gate_fea=self.gate_fea,
+            eps=self.eps,
+        )
+        new_rule_layer.lambda_gates.data.copy_(old_lambda)
+        self.rule_layer = new_rule_layer
+
+        if isinstance(self.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
+            old_bias = self.consequent_layer.bias.data[surviving_rules].clone()
+            old_theta = self.consequent_layer.theta_gates.data[surviving_rules].clone()
+            new_cons: GatedRegressionZeroOrderConsequentLayer | GatedRegressionConsequentLayer
+            new_cons = GatedRegressionZeroOrderConsequentLayer(new_n_rules, new_n_features, gate_fn=self.gate_rule)
+            new_cons.bias.data.copy_(old_bias)
+            new_cons.theta_gates.data.copy_(old_theta)
+        else:
+            old_layer = cast(GatedRegressionConsequentLayer, self.consequent_layer)
+            old_mode = old_layer.mode
+            old_theta = old_layer.theta_gates.data[surviving_rules].clone()
+            old_bias = old_layer.bias.data[surviving_rules].clone()
+            old_weight = old_layer.weight.data[surviving_rules][:, surviving_features].clone()
+            old_lam_cons = old_layer.lambda_gates.data[surviving_rules][:, surviving_features].clone()
+            new_cons = GatedRegressionConsequentLayer(new_n_rules, new_n_features, gate_fn=self.gate_rule)
+            new_cons.mode = old_mode
+            new_cons.theta_gates.data.copy_(old_theta)
+            new_cons.bias.data.copy_(old_bias)
+            new_cons.weight.data.copy_(old_weight)
+            new_cons.lambda_gates.data.copy_(old_lam_cons)
+        self.consequent_layer = new_cons
+
+        self.input_names = surviving_names
+        self.n_inputs = new_n_features
+        self.n_rules = new_n_rules
+        self.input_mfs = new_input_mfs
+
     def search_thresholds(
         self,
         x: Tensor,
@@ -540,6 +775,7 @@ class DGTSKRegressorModel(BaseTSKRegressorModel):
         use_lse: bool = True,
         inplace: bool = True,
         verbose: bool = False,
+        structural: bool = True,
     ) -> dict[str, Any]:
         """Search DG-TSK regression threshold combinations and optionally apply the best candidate."""
         if zeta_lambda is None:
@@ -590,7 +826,7 @@ class DGTSKRegressorModel(BaseTSKRegressorModel):
         if best_score == float("-inf"):
             raise RuntimeError("threshold search did not yield a valid candidate")
 
-        result = {
+        result: dict[str, Any] = {
             "best_score": best_score,
             "best_zeta_lambda": best_zeta_lambda,
             "best_zeta_theta": best_zeta_theta,
@@ -598,19 +834,38 @@ class DGTSKRegressorModel(BaseTSKRegressorModel):
             "tau_theta": best_tau_theta,
         }
 
+        result["surviving_feature_indices"] = list(range(self.n_inputs))
+        result["surviving_rule_indices"] = list(range(self.n_rules))
+
         if inplace:
-            if use_lse:
-                # best_state holds the already-converted, pruned, LSE-fitted model.
-                if isinstance(self.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
+            if structural:
+                feature_gate_values = self.get_feature_gate_values()
+                rule_gate_values = self.get_rule_gate_values()
+                sf = torch.where(feature_gate_values > best_tau_lambda)[0].tolist()
+                sr = torch.where(rule_gate_values > best_tau_theta)[0].tolist()
+                if not sf:
+                    sf = list(range(self.n_inputs))
+                if not sr:
+                    sr = list(range(self.n_rules))
+                if use_lse and isinstance(self.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
                     self.convert_to_first_order()
-                if best_state is None:  # pragma: no cover
-                    raise RuntimeError("best_state is None despite use_lse=True")
-                self.load_state_dict(best_state)
-            else:
-                # Non-LSE path: apply the best thresholds to the zero-order model.
-                # The caller is responsible for converting to first-order afterwards
-                # (e.g. via fit_finetune which also resets and retrains consequents).
                 self.apply_thresholds(best_tau_lambda, best_tau_theta)
+                self.prune_structure(sf, sr)
+                if use_lse:
+                    self._fit_first_order_consequents_lse(x[:, sf], y)
+                result["surviving_feature_indices"] = sf
+                result["surviving_rule_indices"] = sr
+            else:
+                if use_lse:
+                    # best_state holds the already-converted, pruned, LSE-fitted model.
+                    if isinstance(self.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
+                        self.convert_to_first_order()
+                    if best_state is None:  # pragma: no cover
+                        raise RuntimeError("best_state is None despite use_lse=True")
+                    self.load_state_dict(best_state)
+                else:
+                    # Non-LSE path: apply the best thresholds to the zero-order model.
+                    self.apply_thresholds(best_tau_lambda, best_tau_theta)
 
         return result
 
@@ -629,24 +884,43 @@ class DGTSKRegressorModel(BaseTSKRegressorModel):
             for p in self.membership_layer.parameters():
                 p.requires_grad_(True)
 
-    def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
+    def fit_finetune(
+        self,
+        x: Tensor,
+        y: Tensor,
+        *,
+        freeze_antecedents: bool = True,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
         """Fine-tune the DG-TSK regression model after converting to first order.
 
         Consequent weights and biases are reset to zero before retraining, as stated
         in Xue et al. (2023): *"Before the training for fine tuning, all the consequent
         parameters are set to zero in our experiments."*
 
-        Antecedent parameters (MF centres/spreads) and feature-selection gates
-        (λ) are frozen during fine-tuning, per paper §3.3: *"we fix the first
-        group of gates and the membership functions."*
+        When *freeze_antecedents* is ``True`` (paper default, §3.3): antecedent
+        parameters (MF centres/spreads) and feature-selection gates (λ) are frozen,
+        and rule gates (θ) remain active in the consequent (mode ``"re"``).
+        When *freeze_antecedents* is ``False``: only feature gates are frozen; MF
+        parameters train freely and consequent gates are disabled (mode
+        ``"finetune"``), giving plain TSK fine-tuning.
+
+        Args:
+            x: Input tensor of shape ``(N, n_inputs)``.
+            y: Target tensor.
+            freeze_antecedents: If ``True`` (default), freeze MF parameters and
+                feature gates.  If ``False``, only feature gates are frozen.
+            **kwargs: Additional keyword arguments forwarded to :meth:`fit`.
         """
         # Ensure first-order mode (convert if search_thresholds used use_lse=False).
         if isinstance(self.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
             self.convert_to_first_order()
-        if isinstance(self.consequent_layer, GatedRegressionConsequentLayer):
+        if isinstance(self.consequent_layer, GatedRegressionConsequentLayer):  # pragma: no branch
             nn.init.zeros_(self.consequent_layer.weight)
             nn.init.zeros_(self.consequent_layer.bias)
-        frozen: list[nn.Parameter] = list(self.membership_layer.parameters())
+            if not freeze_antecedents:
+                self.consequent_layer.mode = "finetune"
+        frozen: list[nn.Parameter] = list(self.membership_layer.parameters()) if freeze_antecedents else []
         frozen.append(self.rule_layer.lambda_gates)  # type: ignore[arg-type]
         for p in frozen:
             p.requires_grad_(False)
