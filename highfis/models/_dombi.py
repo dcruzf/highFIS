@@ -46,6 +46,7 @@ class DombiTSKClassifierModel(BaseTSKClassifierModel):
         rules: Sequence[Sequence[int]] | None = None,
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
+        zero_consequent_init: bool = True,
     ) -> None:
         """Initialise the Dombi TSK classifier.
 
@@ -65,6 +66,8 @@ class DombiTSKClassifierModel(BaseTSKClassifierModel):
             defuzzifier: Custom defuzzifier.  Defaults to
                 :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
             consequent_batch_norm: Batch normalisation on consequent inputs.
+            zero_consequent_init: If ``True`` (default), initialize
+                consequent weights and biases to zero.
 
         Raises:
             ValueError: If ``n_classes < 2`` or ``lambda_ <= 0``.
@@ -76,6 +79,7 @@ class DombiTSKClassifierModel(BaseTSKClassifierModel):
 
         self.n_classes = int(n_classes)
         self.lambda_ = float(lambda_)
+        self.zero_consequent_init = bool(zero_consequent_init)
         if not callable(t_norm):
             t_norm = DombiTNorm(lambda_=self.lambda_)
 
@@ -87,6 +91,17 @@ class DombiTSKClassifierModel(BaseTSKClassifierModel):
             defuzzifier=defuzzifier or SumBasedDefuzzifier(),
             consequent_batch_norm=consequent_batch_norm,
         )
+        if self.zero_consequent_init:
+            self._zero_initialize_consequents()
+
+    def _zero_initialize_consequents(self) -> None:
+        """Zero-initialize consequent parameters."""
+        weight = getattr(self.consequent_layer, "weight", None)
+        if isinstance(weight, torch.Tensor):
+            nn.init.zeros_(weight)
+        bias = getattr(self.consequent_layer, "bias", None)
+        if isinstance(bias, torch.Tensor):
+            nn.init.zeros_(bias)
 
     def _build_consequent_layer(self) -> nn.Module:
         return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)

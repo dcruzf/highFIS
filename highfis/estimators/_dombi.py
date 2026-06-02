@@ -85,6 +85,47 @@ def _resolve_admtsk_classifier_paper_strict_config(
     return 3, "grid", 1.0, "coco", True, 1.0, (1.0 / math.e), 10.0, True
 
 
+def _resolve_dombi_tsk_classifier_paper_strict_config(
+    *,
+    paper_strict: bool,
+    n_mfs: int | None,
+    mf_init: str | None,
+    sigma_scale: float | str | None,
+    rule_base: str | None,
+    lambda_: float | None,
+    lower_bound: float | None,
+    zero_consequent_init: bool | None,
+) -> tuple[int, str, float | str, str | None, float, float, bool]:
+    """Resolve DombiTSK classifier config with optional paper-strict checks."""
+    if not paper_strict:
+        return (
+            5 if n_mfs is None else int(n_mfs),
+            "kmeans" if mf_init is None else str(mf_init),
+            1.0 if sigma_scale is None else sigma_scale,
+            rule_base,
+            1.0 if lambda_ is None else float(lambda_),
+            (1.0 / math.e) if lower_bound is None else float(lower_bound),
+            True if zero_consequent_init is None else bool(zero_consequent_init),
+        )
+
+    if n_mfs is not None and int(n_mfs) != 3:
+        raise ValueError("paper_strict requires n_mfs=3")
+    if mf_init is not None and str(mf_init).lower() != "grid":
+        raise ValueError("paper_strict requires mf_init='grid'")
+    if sigma_scale is not None and float(sigma_scale) != 1.0:
+        raise ValueError("paper_strict requires sigma_scale=1.0")
+    if rule_base is not None and str(rule_base).lower() != "coco":
+        raise ValueError("paper_strict requires rule_base='coco'")
+    if lambda_ is not None and float(lambda_) != 1.0:
+        raise ValueError("paper_strict requires lambda_=1.0")
+    if lower_bound is not None and abs(float(lower_bound) - (1.0 / math.e)) > 1e-6:
+        raise ValueError("paper_strict requires lower_bound=1/e")
+    if zero_consequent_init is not None and not bool(zero_consequent_init):
+        raise ValueError("paper_strict requires zero_consequent_init=True")
+
+    return 3, "grid", 1.0, "coco", 1.0, (1.0 / math.e), True
+
+
 class DombiTSKClassifier(_BaseClassifierEstimator):
     r"""TSK classifier with a fixed Dombi T-norm in the antecedent.
 
@@ -112,9 +153,9 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 5,
-        mf_init: str = "kmeans",
-        sigma_scale: float | str = 1.0,
+        n_mfs: int | None = None,
+        mf_init: str | None = None,
+        sigma_scale: float | str | None = None,
         random_state: int | None = None,
         epochs: int = 10,
         learning_rate: float = 1e-2,
@@ -129,6 +170,10 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
+        lambda_: float | None = None,
+        lower_bound: float | None = None,
+        zero_consequent_init: bool | None = None,
+        paper_strict: bool = False,
     ) -> None:
         """Initialise a DombiTSK classifier.
 
@@ -156,17 +201,39 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
             weight_decay: L2 weight decay for consequent parameters.
+            lambda_: Dombi parameter ``λ > 0``.
+            lower_bound: Lower bound for Composite GMF.
+            zero_consequent_init: If ``True`` (default), initialize consequent parameters to zero.
+            paper_strict: If ``True``, enforce paper protocol defaults.
         """
-        super().__init__(
-            input_configs=input_configs,
+        (
+            resolved_n_mfs,
+            resolved_mf_init,
+            resolved_sigma_scale,
+            resolved_rule_base,
+            resolved_lambda,
+            resolved_lower_bound,
+            resolved_zero_consequent_init,
+        ) = _resolve_dombi_tsk_classifier_paper_strict_config(
+            paper_strict=bool(paper_strict),
             n_mfs=n_mfs,
             mf_init=mf_init,
             sigma_scale=sigma_scale,
+            rule_base=rule_base,
+            lambda_=lambda_,
+            lower_bound=lower_bound,
+            zero_consequent_init=zero_consequent_init,
+        )
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=resolved_n_mfs,
+            mf_init=resolved_mf_init,
+            sigma_scale=resolved_sigma_scale,
             random_state=random_state,
             epochs=epochs,
             learning_rate=learning_rate,
             verbose=verbose,
-            rule_base=rule_base,
+            rule_base=resolved_rule_base,
             batch_size=batch_size,
             shuffle=shuffle,
             ur_weight=ur_weight,
@@ -176,6 +243,34 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+        )
+        self.lambda_ = resolved_lambda
+        self.lower_bound = resolved_lower_bound
+        self.zero_consequent_init = resolved_zero_consequent_init
+        self.paper_strict = bool(paper_strict)
+
+    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
+        use_paper_default = (
+            self.input_configs is None
+            and isinstance(self.mf_init, str)
+            and self.mf_init.lower() == "grid"
+            and int(self.n_mfs) == 3
+        )
+        if use_paper_default:
+            feature_names = [f"x{i + 1}" for i in range(x_arr.shape[1])]
+            input_mfs = _build_admtsk_default_input_mfs(x_arr.shape[1])
+            effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
+            return (
+                _wrap_composite_gaussian_input_mfs(input_mfs, eps=self.lower_bound),
+                feature_names,
+                effective_rule_base,
+            )
+
+        input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
+        return (
+            _wrap_composite_gaussian_input_mfs(input_mfs, eps=self.lower_bound),
+            feature_names,
+            effective_rule_base,
         )
 
     def _build_model(
@@ -189,7 +284,9 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
+            lambda_=self.lambda_,
             consequent_batch_norm=bool(self.consequent_batch_norm),
+            zero_consequent_init=self.zero_consequent_init,
         )
 
 

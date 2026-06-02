@@ -12,11 +12,13 @@ from ..models import (
     LogTSKClassifierModel,
     LogTSKRegressorModel,
 )
+from ..optim._base import BaseTrainer
 from ._base import (
     InputConfig,
     _BaseClassifierEstimator,
     _BaseRegressorEstimator,
 )
+from ._htsk import _HTSKPaperStrictTrainer, _resolve_htsk_paper_strict_config
 
 
 class LogTSKClassifier(_BaseClassifierEstimator):
@@ -48,15 +50,15 @@ class LogTSKClassifier(_BaseClassifierEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 5,
-        mf_init: str = "kmeans",
-        sigma_scale: float | str = 1.0,
+        n_mfs: int | None = None,
+        mf_init: str | None = None,
+        sigma_scale: float | str | None = None,
         random_state: int | None = None,
-        epochs: int = 10,
-        learning_rate: float = 1e-2,
+        epochs: int | None = None,
+        learning_rate: float | None = None,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = 512,
+        batch_size: int | None = None,
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -64,6 +66,7 @@ class LogTSKClassifier(_BaseClassifierEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
+        paper_strict: bool = False,
     ) -> None:
         """Initialise a LogTSK classifier.
 
@@ -87,18 +90,37 @@ class LogTSKClassifier(_BaseClassifierEstimator):
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
             weight_decay: L2 weight decay for consequent parameters.
+            paper_strict: Enforce HTSK_2021 protocol defaults.
         """
-        super().__init__(
-            input_configs=input_configs,
+        (
+            resolved_n_mfs,
+            resolved_mf_init,
+            resolved_sigma_scale,
+            resolved_rule_base,
+            resolved_epochs,
+            resolved_learning_rate,
+            resolved_batch_size,
+        ) = _resolve_htsk_paper_strict_config(
+            paper_strict=bool(paper_strict),
             n_mfs=n_mfs,
             mf_init=mf_init,
             sigma_scale=sigma_scale,
-            random_state=random_state,
+            rule_base=rule_base,
             epochs=epochs,
             learning_rate=learning_rate,
-            verbose=verbose,
-            rule_base=rule_base,
             batch_size=batch_size,
+        )
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=resolved_n_mfs,
+            mf_init=resolved_mf_init,
+            sigma_scale=resolved_sigma_scale,
+            random_state=random_state,
+            epochs=resolved_epochs,
+            learning_rate=resolved_learning_rate,
+            verbose=verbose,
+            rule_base=resolved_rule_base,
+            batch_size=resolved_batch_size,
             shuffle=shuffle,
             ur_weight=ur_weight,
             ur_target=ur_target,
@@ -106,6 +128,23 @@ class LogTSKClassifier(_BaseClassifierEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+        )
+        self.paper_strict = bool(paper_strict)
+
+    def _get_trainer(self) -> BaseTrainer:
+        if not self.paper_strict:
+            return super()._get_trainer()
+        return _HTSKPaperStrictTrainer(
+            epochs=int(self.epochs),
+            learning_rate=float(self.learning_rate),
+            batch_size=self.batch_size,
+            shuffle=bool(self.shuffle),
+            patience=self.patience,
+            restore_best=bool(self.restore_best),
+            weight_decay=float(self.weight_decay),
+            ur_weight=float(self.ur_weight),
+            ur_target=self.ur_target,
+            verbose=self.verbose,
         )
 
     def _build_model(
@@ -152,15 +191,15 @@ class LogTSKRegressor(_BaseRegressorEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 5,
-        mf_init: str = "kmeans",
-        sigma_scale: float | str = 1.0,
+        n_mfs: int | None = None,
+        mf_init: str | None = None,
+        sigma_scale: float | str | None = None,
         random_state: int | None = None,
-        epochs: int = 10,
-        learning_rate: float = 1e-2,
+        epochs: int | None = None,
+        learning_rate: float | None = None,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = 512,
+        batch_size: int | None = None,
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -168,6 +207,7 @@ class LogTSKRegressor(_BaseRegressorEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
+        paper_strict: bool = False,
     ) -> None:
         """Initialise a LogTSK regressor.
 
@@ -191,18 +231,37 @@ class LogTSKRegressor(_BaseRegressorEstimator):
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
             weight_decay: L2 weight decay for consequent parameters.
+            paper_strict: Enforce HTSK_2021 protocol defaults.
         """
-        super().__init__(
-            input_configs=input_configs,
+        (
+            resolved_n_mfs,
+            resolved_mf_init,
+            resolved_sigma_scale,
+            resolved_rule_base,
+            resolved_epochs,
+            resolved_learning_rate,
+            resolved_batch_size,
+        ) = _resolve_htsk_paper_strict_config(
+            paper_strict=bool(paper_strict),
             n_mfs=n_mfs,
             mf_init=mf_init,
             sigma_scale=sigma_scale,
-            random_state=random_state,
+            rule_base=rule_base,
             epochs=epochs,
             learning_rate=learning_rate,
-            verbose=verbose,
-            rule_base=rule_base,
             batch_size=batch_size,
+        )
+        super().__init__(
+            input_configs=input_configs,
+            n_mfs=resolved_n_mfs,
+            mf_init=resolved_mf_init,
+            sigma_scale=resolved_sigma_scale,
+            random_state=random_state,
+            epochs=resolved_epochs,
+            learning_rate=resolved_learning_rate,
+            verbose=verbose,
+            rule_base=resolved_rule_base,
+            batch_size=resolved_batch_size,
             shuffle=shuffle,
             ur_weight=ur_weight,
             ur_target=ur_target,
@@ -210,6 +269,23 @@ class LogTSKRegressor(_BaseRegressorEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+        )
+        self.paper_strict = bool(paper_strict)
+
+    def _get_trainer(self) -> BaseTrainer:
+        if not self.paper_strict:
+            return super()._get_trainer()
+        return _HTSKPaperStrictTrainer(
+            epochs=int(self.epochs),
+            learning_rate=float(self.learning_rate),
+            batch_size=self.batch_size,
+            shuffle=bool(self.shuffle),
+            patience=self.patience,
+            restore_best=bool(self.restore_best),
+            weight_decay=float(self.weight_decay),
+            ur_weight=float(self.ur_weight),
+            ur_target=self.ur_target,
+            verbose=self.verbose,
         )
 
     def _build_regressor_model(

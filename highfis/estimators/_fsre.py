@@ -104,10 +104,12 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         July 2023, doi: 10.1109/TFUZZ.2022.3220950.
 
     Example:
+        ```python
         from highfis import FSREADATSKClassifier
 
         clf = FSREADATSKClassifier()
         clf.fit(X_train, y_train)
+        ```
     """
 
     def __init__(
