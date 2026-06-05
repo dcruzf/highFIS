@@ -52,10 +52,9 @@ def test_htsk_classifier_fit_returns_history() -> None:
 
     history = model.fit(x, y, epochs=4, learning_rate=1e-2, batch_size=5, shuffle=True)
 
-    assert set(history.keys()) == {"train", "ur", "val", "stopped_epoch"}
+    assert set(history.keys()) == {"train", "ur", "stopped_epoch"}
     assert len(history["train"]) == 4
     assert len(history["ur"]) == 4
-    assert len(history["val"]) == 0
     assert history["stopped_epoch"] == 4
 
 
@@ -95,8 +94,7 @@ def test_htsk_classifier_fit_history_keys_without_val() -> None:
 
     history = model.fit(x, y, epochs=3)
 
-    assert set(history.keys()) == {"train", "ur", "val", "stopped_epoch"}
-    assert len(history["val"]) == 0
+    assert set(history.keys()) == {"train", "ur", "stopped_epoch"}
     assert history["stopped_epoch"] == 3
 
 
@@ -241,10 +239,9 @@ def test_htsk_regressor_fit_returns_history() -> None:
 
     history = model.fit(x, y, epochs=4, learning_rate=1e-2, batch_size=5, shuffle=True)
 
-    assert set(history.keys()) == {"train", "ur", "val", "stopped_epoch"}
+    assert set(history.keys()) == {"train", "ur", "stopped_epoch"}
     assert len(history["train"]) == 4
     assert len(history["ur"]) == 4
-    assert len(history["val"]) == 0
     assert history["stopped_epoch"] == 4
 
 

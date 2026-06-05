@@ -67,7 +67,7 @@ def test_adatsk_classifier_fit_returns_history() -> None:
 
     history = model.fit(x, y, epochs=3, learning_rate=1e-2, batch_size=5)
 
-    assert set(history.keys()) == {"train", "ur", "val", "stopped_epoch"}
+    assert set(history.keys()) == {"train", "ur", "stopped_epoch"}
     assert len(history["train"]) == 3
     assert len(history["ur"]) == 3
     assert history["stopped_epoch"] == 3
