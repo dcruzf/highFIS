@@ -3243,3 +3243,47 @@ def test_regressor_estimator_fit_with_input_configs_kmeans() -> None:
     )
     est.fit(x, y)
     assert list(est.feature_names_in_) == ["g0", "g1", "g2"]
+
+
+def test_membership_functions_initialization_caching() -> None:
+    from highfis.estimators._base import _MF_INITIALIZATION_CACHE
+
+    x, _ = _make_dataset(40)
+
+    # Clear cache to ensure clean test environment
+    _MF_INITIALIZATION_CACHE.clear()
+
+    est1 = HTSKClassifier(n_mfs=2, mf_init="kmeans", epochs=1, random_state=42, batch_size=16)
+    mfs1, names1, rb1 = est1._build_input_mfs(x)
+
+    # Cache should have 1 entry
+    assert len(_MF_INITIALIZATION_CACHE) == 1
+
+    # Fit a second estimator with identical settings on the same input
+    est2 = HTSKClassifier(n_mfs=2, mf_init="kmeans", epochs=1, random_state=42, batch_size=16)
+    mfs2, names2, rb2 = est2._build_input_mfs(x)
+
+    # Cache count should remain 1 (cache hit)
+    assert len(_MF_INITIALIZATION_CACHE) == 1
+
+    # Check that MFs have the same values/names
+    assert list(mfs1.keys()) == list(mfs2.keys())
+    assert names1 == names2
+    assert rb1 == rb2
+
+    # Check that they are different object instances (independent memory/gradients)
+    for name in mfs1:
+        assert mfs1[name] is not mfs2[name]
+        for mf1, mf2 in zip(mfs1[name], mfs2[name], strict=True):
+            assert mf1 is not mf2
+            assert mf1.mean is not mf2.mean
+            val1 = float(cast(Any, mf1.mean).detach().cpu().numpy())
+            val2 = float(cast(Any, mf2.mean).detach().cpu().numpy())
+            assert val1 == val2
+
+    # Fit a third estimator with different hyperparameters (e.g., n_mfs=3)
+    est3 = HTSKClassifier(n_mfs=3, mf_init="kmeans", epochs=1, random_state=42, batch_size=16)
+    est3._build_input_mfs(x)
+
+    # Cache should now have 2 entries (cache miss due to n_mfs change)
+    assert len(_MF_INITIALIZATION_CACHE) == 2

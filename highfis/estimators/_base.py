@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 from abc import abstractmethod
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Self, cast
 
@@ -591,6 +591,80 @@ def _wrap_gaussian_pimf_input_mfs(
     }
 
 
+_MF_INITIALIZATION_CACHE: dict[tuple[Any, ...], tuple[dict[str, Any], list[str], str]] = {}
+
+
+def _get_mf_cache_key(
+    x_arr: np.ndarray,
+    mf_init: Any,
+    n_mfs: int,
+    sigma_scale: Any,
+    random_state: Any,
+    pfrb_max_rules: Any,
+    input_configs: list[InputConfig] | None,
+) -> tuple[Any, ...]:
+    # Determine step for sampling to hash quickly
+    step = max(1, x_arr.shape[0] // 1000)
+    sample_bytes = x_arr[::step].tobytes()
+    data_hash = hash((x_arr.shape, x_arr.dtype, sample_bytes))
+
+    # Normalize mf_init to a hashable type
+    if isinstance(mf_init, str):
+        mf_init_key: Any = mf_init.lower()
+    elif mf_init is None:
+        mf_init_key = None
+    else:
+        mf_init_key = (
+            type(mf_init).__name__,
+            getattr(mf_init, "n_clusters", None),
+            getattr(mf_init, "random_state", None),
+        )
+
+    # Normalize input_configs to a hashable tuple
+    input_configs_key = tuple(input_configs) if input_configs is not None else None
+
+    return (
+        data_hash,
+        mf_init_key,
+        n_mfs,
+        sigma_scale,
+        random_state,
+        pfrb_max_rules,
+        input_configs_key,
+    )
+
+
+def _build_input_mfs_cached(
+    estimator: Any,
+    x_arr: np.ndarray,
+    build_func: Callable[[np.ndarray], tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]],
+) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
+    cache_key = _get_mf_cache_key(
+        x_arr,
+        estimator.mf_init,
+        estimator.n_mfs,
+        estimator.sigma_scale,
+        estimator.random_state,
+        estimator.pfrb_max_rules,
+        estimator.input_configs,
+    )
+
+    if cache_key in _MF_INITIALIZATION_CACHE:
+        serialized_config, feature_names, effective_rule_base = _MF_INITIALIZATION_CACHE[cache_key]
+        # Reconstruct new MF objects from serialized parameters to ensure separate memory space/gradients
+        new_mfs = deserialize_input_mfs(serialized_config)
+        return new_mfs, feature_names, effective_rule_base
+
+    # Otherwise, execute the real build function
+    input_mfs, feature_names, effective_rule_base = build_func(x_arr)
+
+    # Serialize the resulting MFs to store in the cache
+    serialized_config = serialize_input_mfs(input_mfs)
+    _MF_INITIALIZATION_CACHE[cache_key] = (serialized_config, feature_names, effective_rule_base)
+
+    return input_mfs, feature_names, effective_rule_base
+
+
 class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[misc]
     """Abstract base class for all highFIS TSK classifier estimators.
 
@@ -779,6 +853,11 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         """Build MFs and resolve rule_base from the initialization mode."""
+        return _build_input_mfs_cached(self, x_arr, self._build_input_mfs_impl)
+
+    def _build_input_mfs_impl(
+        self, x_arr: np.ndarray
+    ) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         # ---- grid initialisation ----
         if isinstance(self.mf_init, str) and self.mf_init.lower() == "grid":
             input_configs = self._resolve_input_configs(x_arr)
@@ -1270,6 +1349,11 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         """Build MFs and resolve rule_base from the initialization mode."""
+        return _build_input_mfs_cached(self, x_arr, self._build_input_mfs_impl)
+
+    def _build_input_mfs_impl(
+        self, x_arr: np.ndarray
+    ) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         # ---- grid initialisation ----
         if isinstance(self.mf_init, str) and self.mf_init.lower() == "grid":
             input_configs = self._resolve_input_configs(x_arr)
