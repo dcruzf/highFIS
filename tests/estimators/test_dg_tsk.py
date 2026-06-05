@@ -576,3 +576,57 @@ def test_dgtsk_persistence_with_first_order_consequent_mode(tmp_path: object) ->
     assert isinstance(loaded_reg.model_.consequent_layer, GatedRegressionConsequentLayer)
     assert loaded_reg.n_features_in_ == reg.n_features_in_
     assert np.allclose(loaded_reg.predict(X), reg.predict(X), atol=1e-6)
+
+
+def test_fit_with_strict_and_validation_out_of_range_dg_tsk() -> None:
+    rng = np.random.default_rng(42)
+    x = rng.uniform(0.0, 1.0, (20, 2)).astype(np.float32)
+    y = rng.choice([0, 1], size=20).astype(np.int64)
+    x_val_bad = rng.uniform(2.0, 3.0, (10, 2)).astype(np.float32)
+    y_val = rng.choice([0, 1], size=10).astype(np.int64)
+
+    clf_dgt = DGTSKClassifier(paper_strict=True, dg_epochs=10, finetune_epochs=200)
+    with pytest.raises(ValueError, match="paper_strict requires x_val to be linearly normalized to"):
+        clf_dgt.fit(x, y, x_val=x_val_bad, y_val=y_val)
+
+
+def test_dgtsk_load_missing_consequent_mode(tmp_path: object) -> None:
+    from highfis.persistence import load_checkpoint, save_checkpoint
+
+    x, y = _make_dataset(10)
+    clf = DGTSKClassifier(dg_epochs=1, finetune_epochs=1, use_lse=True, random_state=0)
+    clf.fit(x, y)
+    path = str(tmp_path) + "/test_missing_mode.pt"
+    clf.save(path)
+
+    ckpt = load_checkpoint(path)
+    ckpt["model_init"]["consequent_mode"] = None
+    save_checkpoint(path, ckpt)
+
+    loaded = DGTSKClassifier.load(path)
+    assert isinstance(loaded.model_.consequent_layer, GatedClassificationConsequentLayer)
+
+    reg = DGTSKRegressor(dg_epochs=1, finetune_epochs=1, use_lse=True, random_state=0)
+    reg.fit(x, y.astype(np.float32))
+    path_reg = str(tmp_path) + "/test_missing_mode_reg.pt"
+    reg.save(path_reg)
+
+    ckpt_reg = load_checkpoint(path_reg)
+    ckpt_reg["model_init"]["consequent_mode"] = None
+    save_checkpoint(path_reg, ckpt_reg)
+
+    loaded_reg = DGTSKRegressor.load(path_reg)
+    assert isinstance(loaded_reg.model_.consequent_layer, GatedRegressionConsequentLayer)
+
+
+def test_dgtsk_classifier_paper_strict_no_val() -> None:
+    from unittest.mock import patch
+
+    rng = np.random.default_rng(42)
+    x = rng.uniform(0.0, 1.0, (10, 2)).astype(np.float32)
+    y = rng.choice([0, 1], size=10).astype(np.int64)
+
+    clf_dgt = DGTSKClassifier(paper_strict=True, dg_epochs=10, finetune_epochs=200)
+    with patch("highfis.estimators._dg_tsk._BaseClassifierEstimator.fit", return_value=clf_dgt) as mock_fit:
+        clf_dgt.fit(x, y)
+        mock_fit.assert_called_once()

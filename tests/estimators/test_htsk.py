@@ -976,3 +976,12 @@ def test_htsk_regressor_strict_trainer() -> None:
 
     reg_htsk = HTSKRegressor(paper_strict=True)
     reg_htsk.fit(x, y)
+
+
+def test_tsk_regressor_strict_trainer() -> None:
+    rng = np.random.default_rng(42)
+    x = rng.standard_normal((31, 2)).astype(np.float32)
+    y = rng.standard_normal((31,)).astype(np.float32)
+
+    reg_tsk = TSKRegressor(paper_strict=True)
+    reg_tsk.fit(x, y)

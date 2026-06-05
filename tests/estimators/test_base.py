@@ -323,3 +323,57 @@ def test_membership_functions_initialization_caching_eviction() -> None:
     assert len(_MF_INITIALIZATION_CACHE) == 128
     assert keys_before[0] not in _MF_INITIALIZATION_CACHE
     assert keys_before[1] in _MF_INITIALIZATION_CACHE
+
+
+def test_get_mf_cache_key_edge_cases() -> None:
+    from highfis.estimators._base import _get_mf_cache_key
+
+    x, _ = _make_dataset(20)
+    # 1. mf_init = None
+    key1 = _get_mf_cache_key(x, None, 2, 1.0, 42, None, None)
+    assert key1[1] is None
+
+    # 2. mf_init = custom clusterer
+    clusterer = KMeans(n_clusters=2)
+    key2 = _get_mf_cache_key(x, clusterer, 2, 1.0, 42, None, None)
+    assert key2[1] == ("KMeans", 2, None)
+
+
+def test_classifier_input_configs_mismatch() -> None:
+    x, y = _make_dataset(20)
+    configs = [InputConfig(name="x1", n_mfs=2)]  # 1 config, but 3 features
+    est = HTSKClassifier(input_configs=configs, mf_init="grid")
+    with pytest.raises(ValueError, match="input_configs length"):
+        est.fit(x, y)
+
+
+def test_regressor_input_configs_mismatch() -> None:
+    from highfis import HTSKRegressor
+
+    x, y = _make_dataset(20)
+    configs = [InputConfig(name="x1", n_mfs=2)]  # 1 config, but 3 features
+    est = HTSKRegressor(input_configs=configs, mf_init="grid")
+    with pytest.raises(ValueError, match="input_configs length"):
+        est.fit(x, y)
+
+    # Matching configs
+    matching_configs = [InputConfig(name=f"x{i}", n_mfs=2) for i in range(3)]
+    est_matching = HTSKRegressor(input_configs=matching_configs, mf_init="grid", epochs=1)
+    est_matching.fit(x, y)
+
+
+def test_regressor_grid_pfrb() -> None:
+    from highfis import HTSKRegressor
+
+    x, y = _make_dataset(20)
+    est = HTSKRegressor(mf_init="grid", rule_base="pfrb", pfrb_max_rules=2, sigma_scale=1.0)
+    est.fit(x, y)
+    assert est.rule_base_ == "coco"
+
+
+def test_regressor_sigma_scale_auto() -> None:
+    from highfis import HTSKRegressor
+
+    x, y = _make_dataset(20)
+    est = HTSKRegressor(sigma_scale="auto")
+    est.fit(x, y)

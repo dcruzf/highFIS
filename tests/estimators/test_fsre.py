@@ -209,7 +209,9 @@ def test_fit_with_strict_and_validation_data_fsre() -> None:
     y_val = rng.choice([0, 1], size=10).astype(np.int64)
 
     clf_fsre = FSREADATSKClassifier(paper_strict=True, fs_epochs=200, re_epochs=200, finetune_epochs=200)
-    clf_fsre.fit(x, y, x_val=x_val, y_val=y_val)
+    with patch("highfis.estimators._fsre._BaseClassifierEstimator.fit", return_value=clf_fsre) as mock_fit:
+        clf_fsre.fit(x, y, x_val=x_val, y_val=y_val)
+        mock_fit.assert_called_once()
 
 
 def test_fsre_strict_zeta_theta_validation() -> None:
@@ -250,3 +252,37 @@ def test_fsre_epochs_strict_validation() -> None:
 def test_fsre_invalid_en_frb_strict_validation() -> None:
     with pytest.raises(ValueError, match="paper_strict requires use_en_frb=True"):
         FSREADATSKClassifier(paper_strict=True, use_en_frb="invalid")  # type: ignore
+
+
+def test_fsre_classifier_paper_strict_no_val() -> None:
+    rng = np.random.default_rng(42)
+    x = rng.uniform(0.0, 1.0, (20, 2)).astype(np.float32)
+    y = rng.choice([0, 1], size=20).astype(np.int64)
+
+    clf = FSREADATSKClassifier(
+        paper_strict=True,
+        fs_epochs=200,
+        re_epochs=200,
+        finetune_epochs=200,
+    )
+    with patch("highfis.estimators._fsre._BaseClassifierEstimator.fit", return_value=clf) as mock_fit:
+        clf.fit(x, y)
+        mock_fit.assert_called_once()
+
+
+def test_fsre_high_dim_paper_strict_valid() -> None:
+    rng = np.random.default_rng(42)
+    x = rng.uniform(0.0, 1.0, (5, 1001)).astype(np.float32)
+    y = rng.choice([0, 1], size=5).astype(np.int64)
+
+    clf = FSREADATSKClassifier(
+        paper_strict=True,
+        zeta_lambda=0.4,
+        zeta_theta=0.5,
+        fs_epochs=200,
+        re_epochs=200,
+        finetune_epochs=200,
+    )
+    with patch("highfis.estimators._fsre._BaseClassifierEstimator.fit", return_value=clf) as mock_fit:
+        clf.fit(x, y)
+        mock_fit.assert_called_once()

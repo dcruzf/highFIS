@@ -500,3 +500,20 @@ def test_admtsk_regressor_accepts_custom_t_norm_fn() -> None:
     x = torch.randn(4, 3)
     out = model.forward(x)
     assert out.shape == (4, 1)
+
+
+def test_adatsk_classifier_invalid_n_classes() -> None:
+    with pytest.raises(ValueError, match="n_classes must be >= 2"):
+        ADATSKClassifierModel(_build_adatsk_input_mfs(), n_classes=1)
+
+
+def test_adatsk_classifier_optimizer_with_bn() -> None:
+    model = ADATSKClassifierModel(_build_adatsk_input_mfs(), n_classes=2, consequent_batch_norm=True)
+    optimizer = model._build_optimizer(None, learning_rate=1e-2, weight_decay=0.0)
+    assert isinstance(optimizer, torch.optim.SGD)
+
+
+def test_adatsk_regressor_optimizer_with_bn() -> None:
+    model = ADATSKRegressorModel(_build_adatsk_input_mfs(), consequent_batch_norm=True)
+    optimizer = model._build_optimizer(None, learning_rate=1e-2, weight_decay=0.0)
+    assert isinstance(optimizer, torch.optim.SGD)

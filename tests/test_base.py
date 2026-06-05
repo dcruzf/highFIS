@@ -189,3 +189,55 @@ class TestHelpers:
     def test_iter_minibatch_rejects_zero_batch(self) -> None:
         with pytest.raises(ValueError, match="batch_size must be > 0"):
             _iter_minibatch_indices(10, 0, False)
+
+
+class _ConcreteRegressor(BaseTSK):
+    """Minimal concrete regressor subclass for testing."""
+
+    def _build_consequent_layer(self) -> nn.Module:
+        from highfis.layers import RegressionConsequentLayer
+
+        return RegressionConsequentLayer(self.n_rules, self.n_inputs)
+
+    def _default_criterion(self) -> nn.Module:
+        return nn.MSELoss()
+
+
+def test_get_consequent_weights_none() -> None:
+    model = _ConcreteClassifier(_make_input_mfs(), n_classes=3)
+    model.consequent_layer = nn.Identity()
+    assert model.get_consequent_weights() is None
+
+
+def test_get_task_by_class_name() -> None:
+    class DummyClassifier(BaseTSK):
+        def _build_consequent_layer(self) -> nn.Module:
+            return nn.Identity()
+
+        def _default_criterion(self) -> nn.Module:
+            return nn.MSELoss()
+
+    model = DummyClassifier(_make_input_mfs())
+    assert model._get_task() == "classification"
+
+
+def test_predict_numpy_regression_squeezed() -> None:
+    model = _ConcreteRegressor(_make_input_mfs())
+    x = torch.randn(10, 2)
+    out = model._predict_numpy(x)
+    assert out.shape == (10,)
+
+
+def test_predict_numpy_regression_not_squeezed() -> None:
+    from unittest.mock import patch
+
+    model = _ConcreteRegressor(_make_input_mfs())
+    x = torch.randn(10, 2)
+
+    with patch.object(model, "forward", return_value=torch.randn(10)):
+        out = model._predict_numpy(x)
+        assert out.shape == (10,)
+
+    with patch.object(model, "forward", return_value=torch.randn(10, 2)):
+        out2 = model._predict_numpy(x)
+        assert out2.shape == (10, 2)

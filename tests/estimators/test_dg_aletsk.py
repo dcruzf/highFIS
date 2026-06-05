@@ -259,3 +259,42 @@ def test_dgaletsk_pfrb_with_no_max_rules() -> None:
     )
     clf.fit(x, y)
     assert clf.pfrb_max_rules is None
+
+
+def test_dgaletsk_classifier_coco() -> None:
+    rng = np.random.default_rng(42)
+    x = rng.uniform(0.0, 1.0, (20, 2)).astype(np.float32)
+    y = rng.choice([0, 1], size=20).astype(np.int64)
+
+    clf = DGALETSKClassifier(
+        rule_base="coco",
+        dg_epochs=1,
+        finetune_epochs=1,
+    )
+    clf.fit(x, y)
+    assert clf.rule_base_ == "coco"
+
+
+def test_fit_with_strict_and_validation_out_of_range_dg_aletsk() -> None:
+    rng = np.random.default_rng(42)
+    x = rng.uniform(0.0, 1.0, (20, 2)).astype(np.float32)
+    y = rng.choice([0, 1], size=20).astype(np.int64)
+    x_val_bad = rng.uniform(2.0, 3.0, (10, 2)).astype(np.float32)
+    y_val = rng.choice([0, 1], size=10).astype(np.int64)
+
+    clf_dga = DGALETSKClassifier(paper_strict=True, dg_epochs=10, finetune_epochs=50)
+    with pytest.raises(ValueError, match="paper_strict requires x_val to be linearly normalized to"):
+        clf_dga.fit(x, y, x_val=x_val_bad, y_val=y_val)
+
+
+def test_dgaletsk_classifier_paper_strict_no_val() -> None:
+    from unittest.mock import patch
+
+    rng = np.random.default_rng(42)
+    x = rng.uniform(0.0, 1.0, (10, 2)).astype(np.float32)
+    y = rng.choice([0, 1], size=10).astype(np.int64)
+
+    clf_dga = DGALETSKClassifier(paper_strict=True, dg_epochs=10, finetune_epochs=50)
+    with patch("highfis.estimators._dg_aletsk.FSREADATSKClassifier.fit", return_value=clf_dga) as mock_fit:
+        clf_dga.fit(x, y)
+        mock_fit.assert_called_once()

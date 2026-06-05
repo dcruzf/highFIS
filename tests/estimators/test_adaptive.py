@@ -459,9 +459,14 @@ def test_admtsk_classifier_paper_strict_rejects_conflicting_hyperparameters() ->
 
 
 def test_admtsk_classifier_paper_strict_fit_does_not_auto_split_data() -> None:
+    from unittest.mock import patch
+
     x, y = _make_dataset(40)
     est = ADMTSKClassifier(paper_strict=True, epochs=1, random_state=0)
-    est.fit(x, y)
+    est.history_ = {"val": []}
+    with patch("highfis.estimators._dombi._BaseClassifierEstimator.fit", return_value=est) as mock_fit:
+        est.fit(x, y)
+        mock_fit.assert_called_once()
     assert len(est.history_["val"]) == 0
 
 
@@ -472,6 +477,8 @@ def test_paper_strict_input_range_empty_arrays_adaptive() -> None:
 
 
 def test_fit_with_strict_and_validation_data_adaptive() -> None:
+    from unittest.mock import patch
+
     rng = np.random.default_rng(42)
     x = rng.uniform(0.0, 1.0, (40, 2)).astype(np.float32)
     y = rng.choice([0, 1], size=40).astype(np.int64)
@@ -479,7 +486,28 @@ def test_fit_with_strict_and_validation_data_adaptive() -> None:
     y_val = rng.choice([0, 1], size=10).astype(np.int64)
 
     clf_adp = ADPTSKClassifier(paper_strict=True, epochs=1)
-    clf_adp.fit(x, y, x_val=x_val, y_val=y_val)
+    with patch("highfis.estimators._adaptive._BaseClassifierEstimator.fit", return_value=clf_adp) as mock_fit:
+        clf_adp.fit(x, y, x_val=x_val, y_val=y_val)
+        mock_fit.assert_called_once()
+
+    x_val_out = rng.uniform(2.0, 3.0, (10, 2)).astype(np.float32)
+    with pytest.raises(ValueError, match="paper_strict requires x_val to be linearly normalized to"):
+        clf_adp.fit(x, y, x_val=x_val_out, y_val=y_val)
 
     clf_ada = ADATSKClassifier(paper_strict=True, epochs=1)
-    clf_ada.fit(x, y, x_val=x_val, y_val=y_val)
+    with patch("highfis.estimators._adaptive._BaseClassifierEstimator.fit", return_value=clf_ada) as mock_fit:
+        clf_ada.fit(x, y, x_val=x_val, y_val=y_val)
+        mock_fit.assert_called_once()
+
+
+def test_adptsk_paper_strict_fit_no_val() -> None:
+    from unittest.mock import patch
+
+    rng = np.random.default_rng(42)
+    x = rng.uniform(0.0, 1.0, (20, 2)).astype(np.float32)
+    y = rng.choice([0, 1], size=20).astype(np.int64)
+
+    clf_adp = ADPTSKClassifier(paper_strict=True, epochs=1)
+    with patch("highfis.estimators._adaptive._BaseClassifierEstimator.fit", return_value=clf_adp) as mock_fit:
+        clf_adp.fit(x, y)
+        mock_fit.assert_called_once()
