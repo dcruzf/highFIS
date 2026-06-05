@@ -24,6 +24,11 @@ def test_compute_metrics_classification_default() -> None:
         "precision_macro",
         "recall_macro",
         "f1_macro",
+        "precision_micro",
+        "recall_micro",
+        "f1_micro",
+        "confusion_matrix",
+        "classes",
     }
     assert np.isclose(result["accuracy"], 0.75)
 
@@ -38,7 +43,21 @@ def test_compute_metrics_regression_default() -> None:
         y_pred=y_pred,
     )
 
-    assert set(result) == {"mse", "mae", "rmse", "r2"}
+    assert set(result) == {
+        "mse",
+        "mae",
+        "rmse",
+        "median_absolute_error",
+        "mean_bias_error",
+        "max_error",
+        "std_error",
+        "explained_variance",
+        "mape",
+        "smape",
+        "msle",
+        "pearson",
+        "r2",
+    }
     assert np.isclose(result["mse"], np.mean((y_true - y_pred) ** 2))
     assert np.isclose(result["rmse"], np.sqrt(result["mse"]))
 

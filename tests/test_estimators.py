@@ -204,6 +204,11 @@ def test_estimator_evaluate_classification_metrics() -> None:
         "precision_macro",
         "recall_macro",
         "f1_macro",
+        "precision_micro",
+        "recall_micro",
+        "f1_micro",
+        "confusion_matrix",
+        "classes",
     }
     assert 0.0 <= report["accuracy"] <= 1.0
 
@@ -2773,7 +2778,21 @@ def test_regressor_estimator_evaluate_metrics() -> None:
     est.fit(x, y)
     report = est.evaluate(x, y)
 
-    assert set(report) == {"mse", "mae", "rmse", "r2"}
+    assert set(report) == {
+        "mse",
+        "mae",
+        "rmse",
+        "median_absolute_error",
+        "mean_bias_error",
+        "max_error",
+        "std_error",
+        "explained_variance",
+        "mape",
+        "smape",
+        "msle",
+        "pearson",
+        "r2",
+    }
     assert report["mse"] >= 0.0
     assert np.isclose(report["rmse"], np.sqrt(report["mse"]))
 

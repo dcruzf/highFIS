@@ -1099,7 +1099,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         y: Any,
         metrics: list[str] | None = None,
         sample_weight: Any | None = None,
-    ) -> dict[str, float]:
+    ) -> dict[str, Any]:
         """Compute classification evaluation metrics for the provided dataset."""
         y_true = np.asarray(y)
         y_pred = self.predict(X)
@@ -1565,7 +1565,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         y: Any,
         metrics: list[str] | None = None,
         sample_weight: Any | None = None,
-    ) -> dict[str, float]:
+    ) -> dict[str, Any]:
         """Compute regression evaluation metrics for the provided dataset."""
         y_true = np.asarray(y)
         y_pred = self.predict(X)
