@@ -250,6 +250,7 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
+        device: str = "cpu",
         paper_strict: bool = False,
     ) -> None:
         """Initialize a MHTSK classifier estimator.
@@ -286,6 +287,8 @@ class MHTSKClassifier(_BaseClassifierEstimator):
             patience: Early-stopping patience for validation.
             restore_best: Whether to restore the best validation model weights after training.
             weight_decay: Weight decay coefficient for the optimizer.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
             paper_strict: If ``True``, apply paper-derived defaults for MHTSK
                 scale and extraction parameters when omitted.
         """
@@ -335,6 +338,7 @@ class MHTSKClassifier(_BaseClassifierEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
         self.n_heads = int(n_heads) if n_heads is not None else None
         self.head_size = int(head_size) if head_size is not None else None
@@ -537,6 +541,7 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
+        device: str = "cpu",
         paper_strict: bool = False,
     ) -> None:
         """Initialize a MHTSK regressor estimator.
@@ -572,6 +577,8 @@ class MHTSKRegressor(_BaseRegressorEstimator):
             patience: Early-stopping patience for validation.
             restore_best: Whether to restore the best validation model weights after training.
             weight_decay: Weight decay coefficient for the optimizer.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
             paper_strict: If ``True``, apply paper-derived defaults for MHTSK
                 scale and extraction parameters when omitted.
 
@@ -623,6 +630,7 @@ class MHTSKRegressor(_BaseRegressorEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
         self.n_heads = int(n_heads) if n_heads is not None else None
         self.head_size = int(head_size) if head_size is not None else None

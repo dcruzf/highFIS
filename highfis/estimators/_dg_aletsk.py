@@ -141,6 +141,7 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         optimizer_type: str = "sgd",
         structural_pruning: bool = True,
         freeze_antecedents_finetune: bool = True,
+        device: str = "cpu",
         paper_strict: bool = False,
     ) -> None:
         """Initialise a DG-ALETSK classifier.
@@ -189,6 +190,8 @@ class DGALETSKClassifier(FSREADATSKClassifier):
                 pruning after threshold search.
             freeze_antecedents_finetune: If ``True`` (default), freeze MF
                 parameters and feature gates during fine-tuning.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
             paper_strict: If ``True``, enforce DG-ALETSK paper protocol
                 defaults in the classifier (``dg_epochs=10``, ``finetune_epochs=50``,
                 ``learning_rate=0.01``, ``rule_base='pfrb'``, and
@@ -236,6 +239,7 @@ class DGALETSKClassifier(FSREADATSKClassifier):
             restore_best=restore_best,
             weight_decay=weight_decay,
             trainer=trainer,
+            device=device,
         )
         # Override the scalar defaults set by FSREADATSKClassifier with the
         # list-typed grid values and DG-specific values expected by DGTrainer.
@@ -396,6 +400,7 @@ class DGALETSKRegressor(FSREADATSKRegressor):
         optimizer_type: str = "sgd",
         structural_pruning: bool = True,
         freeze_antecedents_finetune: bool = True,
+        device: str = "cpu",
     ) -> None:
         """Initialise a DG-ALETSK regressor.
 
@@ -435,6 +440,8 @@ class DGALETSKRegressor(FSREADATSKRegressor):
                 pruning after threshold search.
             freeze_antecedents_finetune: If ``True`` (default), freeze MF
                 parameters and feature gates during fine-tuning.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
         """
         super().__init__(
             lambda_init=lambda_init,
@@ -457,6 +464,7 @@ class DGALETSKRegressor(FSREADATSKRegressor):
             restore_best=restore_best,
             weight_decay=weight_decay,
             trainer=trainer,
+            device=device,
         )
         self.dg_epochs = int(dg_epochs)
         self.use_lse = bool(use_lse)

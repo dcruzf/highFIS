@@ -155,6 +155,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         optimizer_type: str = "sgd",
         structural_pruning: bool = True,
         freeze_antecedents_finetune: bool = False,
+        device: str = "cpu",
         paper_strict: bool = False,
     ) -> None:
         """Initialise a DG-TSK classifier.
@@ -208,6 +209,8 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             freeze_antecedents_finetune: If ``True``, freeze MF parameters
                 and feature gates during fine-tuning. Defaults to ``False``
                 to optimize antecedents and consequents in fine-tuning.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
             paper_strict: If ``True``, enforce DG-TSK paper protocol
                 defaults in the classifier (``dg_epochs=300``, ``finetune_epochs=300``,
                 ``learning_rate=0.2``, ``rule_base='pfrb'``, ``pfrb_max_rules=300``, and
@@ -263,6 +266,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             pfrb_max_rules=resolved_pfrb_max_rules,
             patience=patience,
             restore_best=restore_best,
+            device=device,
             trainer=trainer,
         )
 
@@ -468,6 +472,7 @@ class DGTSKRegressor(_BaseRegressorEstimator):
         optimizer_type: str = "sgd",
         structural_pruning: bool = True,
         freeze_antecedents_finetune: bool = True,
+        device: str = "cpu",
     ) -> None:
         """Initialise a DG-TSK regressor.
 
@@ -512,6 +517,8 @@ class DGTSKRegressor(_BaseRegressorEstimator):
                 pruning after threshold search.
             freeze_antecedents_finetune: If ``True`` (default), freeze MF
                 parameters and feature gates during fine-tuning.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
         """
         self.use_en_frb = bool(use_en_frb)
         self.dg_epochs = int(dg_epochs)
@@ -541,6 +548,7 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
             trainer=trainer,
         )
 

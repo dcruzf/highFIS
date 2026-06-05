@@ -140,6 +140,7 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         zeta_theta: float = 0.3,
         structural_pruning: bool = True,
         trainer: BaseTrainer | None = None,
+        device: str = "cpu",
         paper_strict: bool = False,
     ) -> None:
         """Initialise an FSRE-ADATSK classifier.
@@ -185,6 +186,8 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
             trainer: Optional custom BaseTrainer.
                 When ``None`` (default) an FSRETrainer is built automatically
                 from this estimator's hyperparameters.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
             paper_strict: If ``True``, enforce paper-strict defaults.
 
         Raises:
@@ -246,6 +249,7 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
             trainer=trainer,
         )
 
@@ -407,6 +411,7 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
         zeta_theta: float = 0.3,
         structural_pruning: bool = True,
         trainer: BaseTrainer | None = None,
+        device: str = "cpu",
     ) -> None:
         """Initialise an FSRE-ADATSK regressor.
 
@@ -448,6 +453,8 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
             trainer: Optional custom BaseTrainer.
                 When ``None`` (default) an FSRETrainer is built automatically
                 from this estimator's hyperparameters.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
 
         Raises:
             ValueError: If ``lambda_init <= 0``.
@@ -480,6 +487,7 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
             trainer=trainer,
         )
 

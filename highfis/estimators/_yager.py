@@ -133,6 +133,7 @@ class AYATSKClassifier(_BaseClassifierEstimator):
         restore_best: bool = True,
         weight_decay: float = 0.0,
         k: float = 10.0,
+        device: str = "cpu",
         paper_strict: bool = False,
     ) -> None:
         """Initialise an AYATSK classifier.
@@ -162,6 +163,8 @@ class AYATSKClassifier(_BaseClassifierEstimator):
                 model weights after training.
             weight_decay: L2 weight decay for consequent parameters.
             k: CEMF lower-bound control parameter. Must be ``> 1``.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
             paper_strict: If ``True``, enforce AYATSK paper defaults for
                 classifier hyperparameters.
         """
@@ -203,6 +206,7 @@ class AYATSKClassifier(_BaseClassifierEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
         self.k = float(k)
         self.paper_strict = bool(paper_strict)
@@ -308,6 +312,7 @@ class AYATSKRegressor(_BaseRegressorEstimator):
         restore_best: bool = True,
         weight_decay: float = 0.0,
         k: float = 10.0,
+        device: str = "cpu",
     ) -> None:
         """Initialise an AYATSK regressor.
 
@@ -334,6 +339,8 @@ class AYATSKRegressor(_BaseRegressorEstimator):
                 model weights after training.
             weight_decay: L2 weight decay for consequent parameters.
             k: CEMF lower-bound control parameter. Must be ``> 1``.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
         """
         if float(k) <= 1.0:
             raise ValueError("k must be > 1.0")
@@ -356,6 +363,7 @@ class AYATSKRegressor(_BaseRegressorEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
         self.k = float(k)
 
