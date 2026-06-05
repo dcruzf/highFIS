@@ -12,36 +12,36 @@
         <meta name="author" content="Daniel Franca">
       
       
-        <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/models/admtsk/">
+        <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/api/">
       
       
-        <link rel="prev" href="../hdfis/">
+        <link rel="prev" href="../guides/tuning/">
       
       
-        <link rel="next" href="../adptsk/">
+        <link rel="next" href="./estimators/">
       
       
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="zensical-0.0.44">
     
     
       
-        <title>ADMTSK - highFIS Docs</title>
+        <title>API Reference - highFIS Docs</title>
       
     
     
       
         
       
-      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.fba56155.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/modern/main.fba56155.min.css">
       
         
           
         
-        <link rel="stylesheet" href="../../assets/stylesheets/modern/palette.dfe2e883.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/modern/palette.dfe2e883.min.css">
       
       
 
@@ -60,7 +60,7 @@
       
     
     
-    <script>__md_scope=new URL("../..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    <script>__md_scope=new URL("..",location),__md_scope.pathname.endsWith("/")||(__md_scope=new URL(__md_scope.pathname+"/",location)),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,_=__md_scope)=>JSON.parse(t.getItem(_.pathname+"."+e)),__md_set=(e,t,_=localStorage,a=__md_scope)=>{try{_.setItem(a.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
     
       
 
@@ -85,7 +85,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#admtsk" class="md-skip">
+        <a href="#api-reference" class="md-skip">
           Skip to content
         </a>
       
@@ -105,7 +105,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="highFIS Docs" class="md-header__button md-logo" aria-label="highFIS Docs" data-md-component="logo">
+    <a href="./.." title="highFIS Docs" class="md-header__button md-logo" aria-label="highFIS Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
@@ -125,7 +125,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              ADMTSK
+              API Reference
             
           </span>
         </div>
@@ -203,13 +203,99 @@
   
   
     <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
+      <a href="./.." class="md-tabs__link">
         
   
   highFIS
 
       </a>
     </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+      
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      <li class="md-tabs__item">
+        <a href="../models/" class="md-tabs__link">
+          
+  
+  Models
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+      
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      <li class="md-tabs__item">
+        <a href="../guides/optimisers/" class="md-tabs__link">
+          
+  
+  User Guides
+
+        </a>
+      </li>
+    
   
 
       
@@ -258,93 +344,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
-          
-  
-  Models
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-      
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../guides/optimisers/" class="md-tabs__link">
-          
-  
-  User Guides
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-      
-      
-        
-          
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../api/" class="md-tabs__link">
+        <a href="././" class="md-tabs__link">
           
   
   API Reference
@@ -361,7 +361,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../contributing/" class="md-tabs__link">
+      <a href="../contributing/" class="md-tabs__link">
         
   
   Contributing
@@ -401,7 +401,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="highFIS Docs" class="md-nav__button md-logo" aria-label="highFIS Docs" data-md-component="logo">
+    <a href="./.." title="highFIS Docs" class="md-nav__button md-logo" aria-label="highFIS Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
@@ -431,7 +431,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="./.." class="md-nav__link">
         
   
   
@@ -448,6 +448,152 @@
   
 
       </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../models/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Model Families
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="../guides/optimisers/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  User Guides
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
     </li>
   
 
@@ -511,18 +657,18 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="././" class="md-nav__link md-nav__link--active">
               
   
   
   <span class="md-ellipsis">
     
   
-  Models
+  API Reference
 
     
   </span>
@@ -532,18 +678,18 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="">
+              <label class="md-nav__link md-nav__link--active" for="__nav_4" id="__nav_4_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_2">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
   
-  Models
+  API Reference
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
@@ -557,14 +703,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../tsk-vanilla/" class="md-nav__link">
+      <a href="./estimators/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  Vanilla TSK
+  Estimators
 
     
   </span>
@@ -584,14 +730,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../logtsk/" class="md-nav__link">
+      <a href="./models/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  LogTSK
+  Models
 
     
   </span>
@@ -611,14 +757,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../htsk/" class="md-nav__link">
+      <a href="./layers/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  HTSK
+  Layers
 
     
   </span>
@@ -638,14 +784,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../dombitsk/" class="md-nav__link">
+      <a href="./memberships/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  DombiTSK
+  Memberships
 
     
   </span>
@@ -665,14 +811,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../adatsk/" class="md-nav__link">
+      <a href="./t_norms/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  ADATSK
+  T-Norms
 
     
   </span>
@@ -692,14 +838,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../fsre-adatsk/" class="md-nav__link">
+      <a href="./defuzzifiers/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  FSRE-ADATSK
+  Defuzzifiers
 
     
   </span>
@@ -719,14 +865,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../dg-tsk/" class="md-nav__link">
+      <a href="./metrics/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  DG-TSK
+  Metrics
 
     
   </span>
@@ -746,14 +892,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../dg-aletsk/" class="md-nav__link">
+      <a href="./clustering/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  DG-ALETSK
+  Clustering
 
     
   </span>
@@ -773,14 +919,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../ayatsk/" class="md-nav__link">
+      <a href="./base/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  AYATSK
+  Base
 
     
   </span>
@@ -800,275 +946,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../hdfis/" class="md-nav__link">
+      <a href="./gates/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  HDFIS
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  ADMTSK
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="././" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  ADMTSK
-
-    
-  </span>
-  
-  
-
-      </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Reference
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mathematical-formulation" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Mathematical Formulation
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Mathematical Formulation">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#antecedent" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Antecedent
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#adaptive-lambda" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Adaptive lambda
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#defuzzification" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Defuzzification
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#consequent" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Consequent
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#code-paper-correspondence" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Code ↔ Paper Correspondence
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#implementation-notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Implementation notes
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#model-classes" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Model classes
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#estimator-wrappers" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Estimator wrappers
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#membership-functions" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Membership functions
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#training-in-the-paper-vs-highfis" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Training in the paper vs. highFIS
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#alignment-with-the-paper" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Alignment with the paper
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#scope-note" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Scope note
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../adptsk/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  ADPTSK
+  Gates
 
     
   </span>
@@ -1088,14 +973,68 @@
   
   
     <li class="md-nav__item">
-      <a href="../mhtsk/" class="md-nav__link">
+      <a href="./optimisers/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-  MHTSK
+  Optimisers
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Persistence
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./protocols/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Protocols
 
     
   </span>
@@ -1121,154 +1060,8 @@
   
   
   
-    
-    
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-      
-      
-        
-      
-    
-    
-      
-        
-        
-      
-    
-    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
-      
-        
-  
-  
-  
-    <a href="../../guides/optimisers/" class="md-nav__link">
-      
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  User Guides
-
-    
-  </span>
-  
-  
-
-      
-        <span class="md-nav__icon md-icon"></span>
-      
-    </a>
-  
-
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-      
-        
-          
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-    
-    
-    
-      
-      
-        
-      
-    
-    
-      
-        
-        
-      
-    
-    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
-      
-        
-  
-  
-  
-    <a href="../../api/" class="md-nav__link">
-      
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  API Reference
-
-    
-  </span>
-  
-  
-
-      
-        <span class="md-nav__icon md-icon"></span>
-      
-    </a>
-  
-
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
     <li class="md-nav__item">
-      <a href="../../contributing/" class="md-nav__link">
+      <a href="../contributing/" class="md-nav__link">
         
   
   
@@ -1312,7 +1105,7 @@
   
   
     <li class="md-path__item">
-      <a href="../.." class="md-path__link">
+      <a href="./.." class="md-path__link">
         
   
   <span class="md-ellipsis">
@@ -1366,11 +1159,11 @@
     
     
       <li class="md-path__item">
-        <a href="../" class="md-path__link">
+        <a href="././" class="md-path__link">
           
   
   <span class="md-ellipsis">
-    Models
+    API Reference
   </span>
 
         </a>
@@ -1391,190 +1184,48 @@
     
       
     
-    <a href="https://github.com/dcruzf/highFIS/raw/master/docs/models/admtsk.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/dcruzf/highFIS/raw/master/docs/api/index.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="admtsk">ADMTSK</h1>
-<p>ADMTSK is an adaptive Dombi TSK fuzzy system designed for high-dimensional inference.
-It combines a Dombi T-norm antecedent with a positive lower-bound Composite Gaussian
-membership function (GaussianPiMF) and normalized first-order consequents.</p>
-<h2 id="reference">Reference</h2>
-<blockquote>
-<p>G. Xue, L. Hu, J. Wang and S. Ablameyko, "ADMTSK: A High-Dimensional Takagi–Sugeno–Kang Fuzzy System Based on Adaptive Dombi T-Norm," in IEEE Transactions on Fuzzy Systems, vol. 33, no. 6, pp. 1767-1780, June 2025, doi: <a href="https://doi.org/10.1109/TFUZZ.2025.3535640">10.1109/TFUZZ.2025.3535640</a>.</p>
-</blockquote>
-<h2 id="mathematical-formulation">Mathematical Formulation</h2>
-<h3 id="antecedent">Antecedent</h3>
-<p>The ADMTSK antecedent uses GaussianPiMF with a positive lower bound:</p>
-<div class="arithmatex">\[
-\mu_{r,d}(x_d) = \exp\left(-1 + \exp\left(-\frac{(x_d - m_{r,d})^2}{2\sigma_{r,d}^2}\right)\right)
-\tag{1}
-\]</div>
-<p>This GaussianPiMF produces membership values in <span class="arithmatex">\((1/e, 1]\)</span> and avoids zero-valued
-inputs to the Dombi T-norm.</p>
-<p>The rule firing strength is computed by a Dombi T-norm:</p>
-<div class="arithmatex">\[
-\varphi_r(\mathbf{x}) = \frac{1}{1 + \left[ \sum_{d=1}^{D} \left(\frac{1}{\mu_{r,d}(x_d)} - 1\right)^\lambda \right]^{1/\lambda}}
-\tag{2}
-\]</div>
-<h3 id="adaptive-lambda">Adaptive lambda</h3>
-<p>ADMTSK chooses the Dombi parameter <span class="arithmatex">\(\lambda\)</span> adaptively according to the input
-feature dimension <span class="arithmatex">\(D\)</span> and the membership lower bound <span class="arithmatex">\(\varepsilon\)</span>:</p>
-<div class="arithmatex">\[
-\lambda = \frac{\ln D}{\ln(K - \varepsilon) - \ln(1 - \varepsilon)}
-\tag{3}
-\]</div>
-<p>In highFIS, this is implemented with a default <span class="arithmatex">\(K = 10\)</span> and
-<span class="arithmatex">\(\varepsilon = 1/e\)</span>.</p>
-<h3 id="defuzzification">Defuzzification</h3>
-<p>Normalized rule strengths are computed as in standard first-order TSK:</p>
-<div class="arithmatex">\[
-\bar{\varphi}_r(\mathbf{x}) = \frac{\varphi_r(\mathbf{x})}{\sum_{i=1}^{R} \varphi_i(\mathbf{x})}
-\tag{4}
-\]</div>
-<h3 id="consequent">Consequent</h3>
-<p>The model output is a weighted sum of first-order consequents:</p>
-<div class="arithmatex">\[
-\hat{y}^c(\mathbf{x}) = \sum_{r=1}^{R} \bar{\varphi}_r(\mathbf{x}) \left(b_{r,0}^c + \sum_{d=1}^{D} b_{r,d}^c x_d\right)
-\tag{5}
-\]</div>
-<h2 id="code-paper-correspondence">Code ↔ Paper Correspondence</h2>
-<table>
-<thead>
-<tr>
-<th>Equation</th>
-<th>Class / Method</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>(1)</td>
-<td><code>GaussianPiMF</code></td>
-<td>Composite Gaussian membership function with positive lower bound</td>
-</tr>
-<tr>
-<td>(2)</td>
-<td><code>AdaptiveDombiTNorm</code></td>
-<td>Adaptive Dombi T-norm aggregation over antecedent degrees</td>
-</tr>
-<tr>
-<td>(3)</td>
-<td><code>AdaptiveDombiTNorm.__init__</code></td>
-<td>Computes scalar <span class="arithmatex">\(\lambda\)</span> from <span class="arithmatex">\(D\)</span>, <span class="arithmatex">\(\varepsilon\)</span>, and <span class="arithmatex">\(K\)</span></td>
-</tr>
-<tr>
-<td>(4)</td>
-<td><code>SumBasedDefuzzifier</code></td>
-<td>Normalizes firing strengths into rule weights</td>
-</tr>
-<tr>
-<td>(5)</td>
-<td><code>ClassificationConsequentLayer</code> / <code>RegressionConsequentLayer</code></td>
-<td>First-order consequent computation</td>
-</tr>
-</tbody>
-</table>
-<h2 id="implementation-notes">Implementation notes</h2>
-<p>In highFIS, ADMTSK is implemented as two model classes:</p>
+<h1 id="api-reference">API Reference</h1>
+<p>Welcome to the <strong>highFIS</strong> API Reference. This section contains the complete reference documentation for all public modules, classes, and helper functions in the library.</p>
+<p>The <code>highFIS</code> codebase is structured to decouple PyTorch model definitions from high-level <code>scikit-learn</code> estimators and optimization drivers.</p>
+<hr />
+<h2 id="1-top-level-estimators">1. Top-Level Estimators</h2>
+<p>For most machine learning tasks, you will interact with the scikit-learn compatible estimator wrappers. These wrappers handle the fit-predict cycle, metric evaluations, validation splits, and persistence.</p>
 <ul>
-<li><code>ADMTSKClassifierModel</code></li>
-<li><code>ADMTSKRegressorModel</code></li>
+<li><a href="estimators/"><code>highfis.estimators</code></a> — Estimators Reference: Scikit-learn compatible classifiers (e.g., <code>HTSKClassifier</code>, <code>DGTSKClassifier</code>) and regressors (e.g., <code>HTSKRegressor</code>, <code>DGTSKRegressor</code>).</li>
 </ul>
-<p>These classes accept an <code>input_mfs</code> mapping of feature names to membership
-functions. When used through the estimator wrappers, input Gaussian MFs are
-converted to <code>GaussianPiMF</code> automatically.</p>
-<p>The adaptive lambda strategy is enabled by default through the <code>adaptive</code>
-parameter. When <code>adaptive=False</code>, ADMTSK falls back to a fixed Dombi parameter
-<code>lambda_</code>.</p>
-<p>ADMTSK also follows the paper's CoCo-FRB design by default; the model's
-rule base is set to <code>rule_base='coco'</code> unless explicitly overridden.</p>
-<p>The default settings are:</p>
+<hr />
+<h2 id="2-core-architectures">2. Core Architectures</h2>
+<p>If you are developing custom neural architectures or need direct access to the raw PyTorch models, use the core model definitions:</p>
 <ul>
-<li><code>adaptive=True</code></li>
-<li><code>lambda_=1.0</code></li>
-<li><code>lower_bound=1/e</code></li>
-<li><code>K=10.0</code></li>
-<li><code>rule_base='coco'</code></li>
-<li><code>n_mfs=3</code>, <code>mf_init='grid'</code></li>
-<li>paper-initialized antecedents with centers <code>[0.0, 0.5, 1.0]</code> and <code>sigma=1.0</code></li>
-<li><code>epochs=50</code>, <code>batch_size=None</code></li>
-<li><code>ADAM</code> optimizer (paper-style default in ADMTSK path)</li>
-<li>zero-initialized consequent weights and biases</li>
+<li><a href="models/"><code>highfis.models</code></a> — Model Architectures: PyTorch <code>nn.Module</code> classes representing TSK model variants (e.g., <code>HTSKModel</code>, <code>LogTSKModel</code>, <code>DGTSKModel</code>).</li>
+<li><a href="base/"><code>highfis.base</code></a> — Base TSK: Unified PyTorch training hooks and shared base classes.</li>
 </ul>
-<h2 id="model-classes">Model classes</h2>
+<hr />
+<h2 id="3-layer-primitives">3. Layer Primitives</h2>
+<p>highFIS builds neuro-fuzzy systems by combining custom PyTorch layer modules:</p>
 <ul>
-<li><code>ADMTSKClassifierModel</code> — classifier variant of ADMTSK.</li>
-<li><code>ADMTSKRegressorModel</code> — regressor variant of ADMTSK.</li>
+<li><a href="layers/"><code>highfis.layers</code></a> — Layer Modules: Core layers including <code>FuzzificationLayer</code>, <code>RuleLayer</code>, and consequent layers.</li>
+<li><a href="memberships/"><code>highfis.memberships</code></a> — Membership Functions: Individual membership functions (e.g., <code>GaussianMF</code>, <code>GaussianPiMF</code>, <code>CompositeGMF</code>).</li>
+<li><a href="t_norms/"><code>highfis.t_norms</code></a> — T-Norms: Logical antecedent aggregation (e.g., Product, Minimum, Dombi, Yager, and adaptive softmin T-norms).</li>
+<li><a href="defuzzifiers/"><code>highfis.defuzzifiers</code></a> — Defuzzifiers: Normalization engines that map rule activation weights to output weights.</li>
+<li><a href="gates/"><code>highfis.gates</code></a> — Gating Modules: Structural pruning gates used for feature selection and rule extraction.</li>
 </ul>
-<p>Both use the same antecedent and consequent structure as standard TSK, while
-replacing the product antecedent with adaptive Dombi aggregation and using
-GaussianPiMF antecedents.</p>
-<h2 id="estimator-wrappers">Estimator wrappers</h2>
+<hr />
+<h2 id="4-utilities-and-protocols">4. Utilities and Protocols</h2>
 <ul>
-<li><code>ADMTSKClassifier</code></li>
-<li><code>ADMTSKRegressor</code></li>
+<li><a href="optimisers/"><code>highfis.optim</code></a> — Optimizers &amp; Trainers: Decoupled training drivers like <code>GradientTrainer</code>, <code>DGTrainer</code>, and <code>FSRETrainer</code>.</li>
+<li><a href="clustering/"><code>highfis.clustering</code></a> — Clustering &amp; Initialization: Algorithms for initializing fuzzy membership centers (e.g. k-means, grid, P-FRB).</li>
+<li><a href="persistence/"><code>highfis.persistence</code></a> — Checkpoint Serialization: Versioned, secure checkpoint saving and loading utilities.</li>
+<li><a href="metrics/"><code>highfis.metrics</code></a> — Evaluation Metrics: Custom statistical metrics for regression and classification validation.</li>
+<li><a href="protocols/"><code>highfis.protocols</code></a> — Type Protocols: Structural typing interfaces ensuring API compatibility.</li>
 </ul>
-<p>These wrappers provide sklearn-compatible <code>fit</code>/<code>predict</code> APIs and build the
-inferential pipeline from high-level settings such as <code>n_mfs</code>, <code>mf_init</code>,
-<code>sigma_scale</code>, and adaptive lambda parameters.</p>
-<p><code>ADMTSKClassifier</code> now also supports <code>paper_strict=True</code> to enforce a
-classifier-only strict protocol aligned to the paper defaults.
-When enabled, the estimator requires and enforces:</p>
-<ul>
-<li><code>n_mfs=3</code></li>
-<li><code>mf_init='grid'</code></li>
-<li><code>sigma_scale=1.0</code></li>
-<li><code>rule_base='coco'</code></li>
-<li><code>adaptive=True</code></li>
-<li><code>lambda_=1.0</code></li>
-<li><code>lower_bound=1/e</code></li>
-<li><code>k=10.0</code></li>
-<li><code>zero_consequent_init=True</code></li>
-</ul>
-<p>Any conflicting override raises <code>ValueError</code> with a <code>paper_strict requires ...</code>
-message so experiments do not silently drift from the paper protocol.
-This strict mode is intentionally scoped to the classifier path.</p>
-<p>When the estimator constructs input membership functions it converts the
-initial Gaussian MFs into <code>GaussianPiMF</code>, matching the paper's positive lower
-bound membership design.</p>
-<h2 id="membership-functions">Membership functions</h2>
-<p>ADMTSK is designed around the Gaussian Pi MF (GaussianPiMF):</p>
-<ul>
-<li>positive lower bound avoids zero membership values,</li>
-<li>enables stable Dombi computation in high dimensions,</li>
-<li>improves robustness in adaptive lambda selection.</li>
-</ul>
-<p>The estimator wrappers default to <code>GaussianPiMF</code> for the ADMTSK pipeline.</p>
-<h2 id="training-in-the-paper-vs-highfis">Training in the paper vs. highFIS</h2>
-<p>The ADMTSK paper describes end-to-end gradient-based training with adaptive
-Dombi lambda and GaussianPiMF antecedents. In highFIS, the default ADMTSK
-path follows the paper-oriented setup: CoCo-FRB with 3 rules, paper
-antecedent initialization (<code>[0, 0.5, 1]</code>, <code>sigma=1</code>), zero-initialized
-consequents, MSE objective for classification and Adam-based optimization.</p>
-<p>Optional overrides remain available through estimator arguments to support
-non-paper experimental variants.</p>
-<p>The highFIS implementation preserves the paper's main design:</p>
-<ul>
-<li>adaptive Dombi T-norm antecedent,</li>
-<li>GaussianPiMF antecedent membership functions,</li>
-<li>first-order TSK consequents,</li>
-<li>normalized rule strengths via sum-based defuzzification.</li>
-</ul>
-<h2 id="alignment-with-the-paper">Alignment with the paper</h2>
-<p>This implementation mirrors the paper by:</p>
-<ul>
-<li>using <code>GaussianPiMF</code> as the positive lower bound membership function,</li>
-<li>computing a scalar adaptive <code>lambda</code> from feature dimension and lower bound,</li>
-<li>using a Dombi T-norm aggregation for antecedent rule firing strengths,</li>
-<li>keeping first-order consequents and standard sum normalization.</li>
-</ul>
-<h2 id="scope-note">Scope note</h2>
-<p><code>ADMTSK</code> and <code>ADATSK</code> are different model families. This page documents only
-the ADMTSK protocol from the 2025 paper.</p>
 
 
 
@@ -1614,7 +1265,7 @@ the ADMTSK protocol from the 2025 paper.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../hdfis/" class="md-footer__link md-footer__link--prev" aria-label="Previous: HDFIS">
+          <a href="../guides/tuning/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Hyperparameter Tuning and Scikit-Learn Integration">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1624,20 +1275,20 @@ the ADMTSK protocol from the 2025 paper.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                HDFIS
+                Hyperparameter Tuning and Scikit-Learn Integration
               </div>
             </div>
           </a>
         
         
           
-          <a href="../adptsk/" class="md-footer__link md-footer__link--next" aria-label="Next: ADPTSK">
+          <a href="./estimators/" class="md-footer__link md-footer__link--next" aria-label="Next: Estimators">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                ADPTSK
+                Estimators
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -1697,12 +1348,12 @@ the ADMTSK protocol from the 2025 paper.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["announce.dismiss","content.action.view","content.code.annotate","content.code.copy","content.code.select","content.footnote.tooltips","content.tabs.link","content.tooltips","navigation.expand","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.path","navigation.prune","navigation.sections","navigation.tabs","navigation.tabs.sticky","navigation.top","navigation.tracking","search.highlight","toc.follow","toc.integrate"],"search":"../../assets/javascripts/workers/search.e2d2d235.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"provider":"mike"}}</script>
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["announce.dismiss","content.action.view","content.code.annotate","content.code.copy","content.code.select","content.footnote.tooltips","content.tabs.link","content.tooltips","navigation.expand","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.path","navigation.prune","navigation.sections","navigation.tabs","navigation.tabs.sticky","navigation.top","navigation.tracking","search.highlight","toc.follow","toc.integrate"],"search":"../assets/javascripts/workers/search.e2d2d235.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"provider":"mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.6e5f0216.min.js"></script>
+      <script src="../assets/javascripts/bundle.6e5f0216.min.js"></script>
       
-        <script src="../../javascripts/mathjax.js"></script>
+        <script src="../javascripts/mathjax.js"></script>
       
         <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
       

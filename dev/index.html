@@ -16,14 +16,14 @@
       
       
       
-        <link rel="next" href="./models/tsk-vanilla/">
+        <link rel="next" href="./models/">
       
       
         
       
       
       <link rel="icon" href="./assets/images/favicon.png">
-      <meta name="generator" content="zensical-0.0.43">
+      <meta name="generator" content="zensical-0.0.44">
     
     
       
@@ -206,7 +206,7 @@
       <a href="" class="md-tabs__link">
         
   
-  HighFIS
+  highFIS
 
       </a>
     </li>
@@ -220,6 +220,10 @@
   
     
       
+      
+        
+          
+        
       
         
       
@@ -252,7 +256,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="./models/tsk-vanilla/" class="md-tabs__link">
+        <a href="./models/" class="md-tabs__link">
           
   
   Models
@@ -279,6 +283,42 @@
       
         
       
+    
+    
+    
+    
+      <li class="md-tabs__item">
+        <a href="./guides/optimisers/" class="md-tabs__link">
+          
+  
+  User Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+      
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
         
       
         
@@ -302,7 +342,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="./api/estimators/" class="md-tabs__link">
+        <a href="./api/" class="md-tabs__link">
           
   
   API Reference
@@ -407,7 +447,7 @@
   <span class="md-ellipsis">
     
   
-  HighFIS
+  highFIS
 
     
   </span>
@@ -426,7 +466,7 @@
   <span class="md-ellipsis">
     
   
-  HighFIS
+  highFIS
 
     
   </span>
@@ -496,17 +536,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#model-selection-guide" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Model selection guide
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#documentation" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -546,6 +575,10 @@
     
       
         
+          
+        
+      
+        
       
         
       
@@ -591,14 +624,14 @@
   
   
   
-    <a href="./models/tsk-vanilla/" class="md-nav__link">
+    <a href="./models/" class="md-nav__link">
       
   
   
   <span class="md-ellipsis">
     
   
-  Models
+  Model Families
 
     
   </span>
@@ -633,6 +666,72 @@
       
         
       
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+    <a href="./guides/optimisers/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  User Guides
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
         
       
         
@@ -671,7 +770,7 @@
   
   
   
-    <a href="./api/estimators/" class="md-nav__link">
+    <a href="./api/" class="md-nav__link">
       
   
   
@@ -787,17 +886,33 @@ import an estimator directly from <code>highfis</code> for sklearn-compatible tr
 <h2 id="quick-start">Quick Start</h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>highfis
 </span></code></pre></div>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKClassifier</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">HTSKClassifier</span><span class="p">(</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">n_rules</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">mf_init</span><span class="o">=</span><span class="s2">&quot;kmeans&quot;</span><span class="p">,</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">epochs</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span>
-</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span>
-</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
-</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="p">)</span>
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test accuracy: </span><span class="si">{</span><span class="n">clf</span><span class="o">.</span><span class="n">score</span><span class="p">(</span><span class="n">X_test</span><span class="p">,</span><span class="w"> </span><span class="n">y_test</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_classification</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.model_selection</span><span class="w"> </span><span class="kn">import</span> <span class="n">train_test_split</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.preprocessing</span><span class="w"> </span><span class="kn">import</span> <span class="n">MinMaxScaler</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKClassifier</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="c1"># 1. Generate synthetic data</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">make_classification</span><span class="p">(</span><span class="n">n_samples</span><span class="o">=</span><span class="mi">800</span><span class="p">,</span> <span class="n">n_features</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">n_informative</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="c1"># 2. Scale features (essential for fuzzy membership functions)</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="n">scaler</span> <span class="o">=</span> <span class="n">MinMaxScaler</span><span class="p">()</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="n">X_train_scaled</span> <span class="o">=</span> <span class="n">scaler</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">X_train</span><span class="p">)</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="n">X_test_scaled</span> <span class="o">=</span> <span class="n">scaler</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="c1"># 3. Fit the high-dimensional HTSK classifier</span>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">HTSKClassifier</span><span class="p">(</span>
+</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    <span class="n">n_mfs</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>                  <span class="c1"># Number of clusters (3 fuzzy rules)</span>
+</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>    <span class="n">mf_init</span><span class="o">=</span><span class="s2">&quot;kmeans&quot;</span><span class="p">,</span>         <span class="c1"># Initialise MFs using K-Means clustering</span>
+</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>    <span class="n">epochs</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
+</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>    <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="p">)</span>
+</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train_scaled</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+</span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a>
+</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="c1"># 4. Evaluate performance</span>
+</span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="n">test_accuracy</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">score</span><span class="p">(</span><span class="n">X_test_scaled</span><span class="p">,</span> <span class="n">y_test</span><span class="p">)</span>
+</span><span id="__span-1-27"><a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Test accuracy: </span><span class="si">{</span><span class="n">test_accuracy</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <h2 id="models-available">Models Available</h2>
 <p>highFIS includes the following concrete TSK model families:</p>
@@ -831,18 +946,6 @@ import an estimator directly from <code>highfis</code> for sklearn-compatible tr
   rule extraction and scalable TSK learning.</li>
 </ul>
 <p>Each model family exposes both classifier and regressor variants.</p>
-<h2 id="model-selection-guide">Model selection guide</h2>
-<ul>
-<li>Choose <code>TSK</code> for a baseline vanilla fuzzy model.</li>
-<li>Choose <code>HTSK</code> or <code>LogTSK</code> for high-dimensional problems where numerical
-  stability is critical.</li>
-<li>Choose <code>DombiTSK</code> or <code>AYATSK</code> when you want more control over antecedent
-  aggregation behavior.</li>
-<li>Choose <code>HDFIS</code> when you need high-dimensional inference with either a
-  dimension-dependent product antecedent or a frozen minimum antecedent.</li>
-<li>Choose <code>ADATSK</code>, <code>FSRE-ADATSK</code>, <code>DGTSK</code>, or <code>DGALETSK</code> when you need
-  adaptive sparsity, feature gating, or rule extraction.</li>
-</ul>
 <h2 id="documentation">Documentation</h2>
 <table>
 <thead>
@@ -857,12 +960,24 @@ import an estimator directly from <code>highfis</code> for sklearn-compatible tr
 <td>Installation and first model run.</td>
 </tr>
 <tr>
-<td><a href="api/models/">Models</a></td>
-<td>Model constructors and usage notes.</td>
+<td><a href="models/">Model Families</a></td>
+<td>Guide to the 13 available neuro-fuzzy model architectures.</td>
+</tr>
+<tr>
+<td><a href="guides/optimisers/">User Guides</a></td>
+<td>Guides for optimization, introspection, initialization, and tuning.</td>
+</tr>
+<tr>
+<td><a href="api/">API Reference</a></td>
+<td>Complete reference documentation for all public modules.</td>
 </tr>
 <tr>
 <td><a href="api/estimators/">Estimators</a></td>
 <td>sklearn-compatible estimator reference.</td>
+</tr>
+<tr>
+<td><a href="api/models/">Models</a></td>
+<td>Model constructors and usage notes.</td>
 </tr>
 <tr>
 <td><a href="api/layers/">Layers</a></td>
@@ -903,8 +1018,7 @@ import an estimator directly from <code>highfis</code> for sklearn-compatible tr
 </tbody>
 </table>
 <h2 id="get-started">Get Started</h2>
-<p>Import estimators directly from <code>highfis</code> for sklearn-compatible usage, or
-access PyTorch model classes via <code>highfis.models</code> for custom training loops.</p>
+<p>Import <a href="api/estimators/">estimators</a> directly from <code>highfis</code> for sklearn-compatible usage, or access PyTorch <a href="api/models/">model classes</a> via <code>highfis.models</code> for custom training loops.</p>
 
 
 
@@ -948,13 +1062,13 @@ access PyTorch model classes via <code>highfis.models</code> for custom training
         
         
           
-          <a href="./models/tsk-vanilla/" class="md-footer__link md-footer__link--next" aria-label="Next: Vanilla TSK">
+          <a href="./models/" class="md-footer__link md-footer__link--next" aria-label="Next: Model Families">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Vanilla TSK
+                Model Families
               </div>
             </div>
             <div class="md-footer__button md-icon">

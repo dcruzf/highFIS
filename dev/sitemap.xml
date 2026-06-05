@@ -4,6 +4,9 @@
         <loc>https://dcruzf.github.io/highFIS/dev/</loc>
       </url>
       <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/models/</loc>
+      </url>
+      <url>
         <loc>https://dcruzf.github.io/highFIS/dev/models/tsk-vanilla/</loc>
       </url>
       <url>
@@ -41,6 +44,21 @@
       </url>
       <url>
         <loc>https://dcruzf.github.io/highFIS/dev/models/mhtsk/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/guides/optimisers/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/guides/introspection/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/guides/initialization/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/guides/tuning/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/api/</loc>
       </url>
       <url>
         <loc>https://dcruzf.github.io/highFIS/dev/api/estimators/</loc>
