@@ -88,7 +88,7 @@ $$
   `lambda_ > 0` in the antecedent and default to `SumBasedDefuzzifier`.
 - `DombiTSKClassifier` and `DombiTSKRegressor` are
   sklearn-compatible wrappers that build the rule base and membership
-  functions from `input_configs`, `n_rules`, `mf_init`, and `sigma_scale`.
+  functions from `input_configs`, `n_mfs`, `mf_init`, and `sigma_scale`.
 - The estimators default to `mf_init="kmeans"` and `sigma_scale=1.0`.
 - The default `rule_base` for estimator-built models is `"coco"` with
   `mf_init="kmeans"` and `"cartesian"` with `mf_init="grid"`.

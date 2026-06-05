@@ -60,7 +60,7 @@ Clustering-based initialization places membership functions on the centroids of 
 
 *   **Behavior**: A clustering algorithm is run on the training matrix $X$ to find $K$ centroids. Each centroid represents a prototypical sample.
 *   **Rule Base**: This mode defaults to the `coco` (Co-occurrence) rule base. Each cluster is translated directly into a single fuzzy rule.
-*   **Rule Count**: Regardless of the number of input dimensions $D$, the system only instantiates $K$ rules (where $K$ is set via `n_rules` or `n_mfs`). This is the standard initialization strategy for high-dimensional datasets.
+*   **Rule Count**: Regardless of the number of input dimensions $D$, the system only instantiates $K$ rules (where $K$ is set via `n_mfs`). This is the standard initialization strategy for high-dimensional datasets.
 
 ### Built-in Clustering Algorithms
 *   `"kmeans"`: Standard K-Means clustering (full-batch).

@@ -139,14 +139,15 @@ the best thresholds, `fit_finetune` converts the model to first-order and retrai
 the pruned model (antecedents can be frozen or unfrozen via `freeze_antecedents`).
 
 ```python
-from highfis import DGTSKClassifier, GaussianMF
+from highfis.models import DGTSKClassifierModel
+from highfis.memberships import GaussianMF
 
 input_mfs = {
     "x1": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
     "x2": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
 }
 
-model = DGTSKClassifier(
+model = DGTSKClassifierModel(
     input_mfs,
     n_classes=2,
     gate_fea="gate_m",
@@ -155,8 +156,7 @@ model = DGTSKClassifier(
 )
 
 # Optional: P-FRB one-hot initialisation (paper eq. 24).
-# Requires that the number of training samples >= n_rules.
-model.model_.init_consequents_from_labels(y_train_t)
+model.init_consequents_from_labels(y_train_t)
 
 history = model.fit_dg_phase(X_train, y_train, epochs=30, learning_rate=1e-3)
 
@@ -185,14 +185,15 @@ candidate's LSE-fitted model is the final result — **do not call `fit_finetune
 which would reset those weights.
 
 ```python
-from highfis import DGTSKRegressor, GaussianMF
+from highfis.models import DGTSKRegressorModel
+from highfis.memberships import GaussianMF
 
 input_mfs = {
     "x1": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
     "x2": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
 }
 
-model = DGTSKRegressor(
+model = DGTSKRegressorModel(
     input_mfs,
     gate_fea="gate_m",
     gate_rule="gate_m",

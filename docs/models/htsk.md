@@ -94,7 +94,7 @@ $$
 
 - `HTSKClassifier` and `HTSKRegressor` are sklearn-like
   wrappers around the low-level model classes.
-- They build Gaussian membership functions from `input_configs` or `n_rules`,
+- They build Gaussian membership functions from `input_configs` or `n_mfs`,
   `mf_init`, and `sigma_scale`.
 - The estimators expose the standard hyperparameters used in the paper,
   including `epochs`, `learning_rate`, `batch_size`, `shuffle`, and

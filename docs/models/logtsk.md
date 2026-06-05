@@ -82,7 +82,7 @@ This is the repository's LogTSK implementation.
 - `LogTSKClassifier` and `LogTSKRegressor` are sklearn-like
   wrappers around the low-level model classes.
 - They build the rule base and Gaussian membership functions from
-  `input_configs` or the high-level `n_rules`, `mf_init`, and `sigma_scale`
+  `input_configs` or the high-level `n_mfs`, `mf_init`, and `sigma_scale`
   parameters.
 - The default `sigma_scale=1.0` is recommended because the log-space
   defuzzifier is scale-invariant.
