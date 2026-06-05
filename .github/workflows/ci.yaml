@@ -38,4 +38,4 @@ jobs:
         if: runner.os == 'Linux' && matrix.python-version == '3.11'
         run: hatch run all
       - name: Run tests
-        run: hatch test -c
+        run: hatch test -c -py ${{ matrix.python-version }}
