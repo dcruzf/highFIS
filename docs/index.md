@@ -41,17 +41,33 @@ pip install highfis
 ```
 
 ```python
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
 from highfis import HTSKClassifier
 
+# 1. Generate synthetic data
+X, y = make_classification(n_samples=800, n_features=10, n_informative=8, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+
+# 2. Scale features (essential for fuzzy membership functions)
+scaler = MinMaxScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# 3. Fit the high-dimensional HTSK classifier
 clf = HTSKClassifier(
-    n_rules=10,
-    mf_init="kmeans",
-    epochs=150,
-    learning_rate=1e-3,
+    n_mfs=3,                  # Number of clusters (3 fuzzy rules)
+    mf_init="kmeans",         # Initialise MFs using K-Means clustering
+    epochs=100,
+    learning_rate=0.01,
     random_state=42,
 )
-clf.fit(X_train, y_train)
-print(f"Test accuracy: {clf.score(X_test, y_test):.4f}")
+clf.fit(X_train_scaled, y_train)
+
+# 4. Evaluate performance
+test_accuracy = clf.score(X_test_scaled, y_test)
+print(f"Test accuracy: {test_accuracy:.2%}")
 ```
 
 ## Models Available
@@ -88,25 +104,16 @@ highFIS includes the following concrete TSK model families:
 
 Each model family exposes both classifier and regressor variants.
 
-## Model selection guide
-
-- Choose `TSK` for a baseline vanilla fuzzy model.
-- Choose `HTSK` or `LogTSK` for high-dimensional problems where numerical
-  stability is critical.
-- Choose `DombiTSK` or `AYATSK` when you want more control over antecedent
-  aggregation behavior.
-- Choose `HDFIS` when you need high-dimensional inference with either a
-  dimension-dependent product antecedent or a frozen minimum antecedent.
-- Choose `ADATSK`, `FSRE-ADATSK`, `DGTSK`, or `DGALETSK` when you need
-  adaptive sparsity, feature gating, or rule extraction.
-
 ## Documentation
 
 | Topic | Description |
 |---|---|
 | [Quick Start](#quick-start) | Installation and first model run. |
-| [Models](api/models.md) | Model constructors and usage notes. |
+| [Model Families](models/index.md) | Guide to the 13 available neuro-fuzzy model architectures. |
+| [User Guides](guides/optimisers.md) | Guides for optimization, introspection, initialization, and tuning. |
+| [API Reference](api/index.md) | Complete reference documentation for all public modules. |
 | [Estimators](api/estimators.md) | sklearn-compatible estimator reference. |
+| [Models](api/models.md) | Model constructors and usage notes. |
 | [Layers](api/layers.md) | Layer primitives for fuzzy pipelines. |
 | [Defuzzifiers](api/defuzzifiers.md) | Normalization strategies. |
 | [T-Norms](api/t_norms.md) | Built-in and custom aggregation functions. |
@@ -119,5 +126,4 @@ Each model family exposes both classifier and regressor variants.
 
 ## Get Started
 
-Import estimators directly from `highfis` for sklearn-compatible usage, or
-access PyTorch model classes via `highfis.models` for custom training loops.
+Import [estimators](api/estimators.md) directly from `highfis` for sklearn-compatible usage, or access PyTorch [model classes](api/models.md) via `highfis.models` for custom training loops.
