@@ -3287,3 +3287,34 @@ def test_membership_functions_initialization_caching() -> None:
 
     # Cache should now have 2 entries (cache miss due to n_mfs change)
     assert len(_MF_INITIALIZATION_CACHE) == 2
+
+
+def test_membership_functions_initialization_caching_eviction() -> None:
+    from highfis.estimators._base import _MF_INITIALIZATION_CACHE
+
+    x, _ = _make_dataset(40)
+
+    # Clear cache
+    _MF_INITIALIZATION_CACHE.clear()
+
+    # Fill cache up to the 128 limit with distinct keys (by varying random_state)
+    for rs in range(1, 129):
+        est = HTSKClassifier(n_mfs=2, mf_init="kmeans", epochs=1, random_state=rs, batch_size=16)
+        est._build_input_mfs(x)
+
+    assert len(_MF_INITIALIZATION_CACHE) == 128
+
+    # Get the keys in the cache
+    keys_before = list(_MF_INITIALIZATION_CACHE.keys())
+
+    # Add one more (129th) entry, which should trigger eviction of the oldest entry (the first one)
+    est_new = HTSKClassifier(n_mfs=2, mf_init="kmeans", epochs=1, random_state=129, batch_size=16)
+    est_new._build_input_mfs(x)
+
+    # Size should still be 128
+    assert len(_MF_INITIALIZATION_CACHE) == 128
+
+    # The oldest key (keys_before[0]) should no longer be in the cache
+    assert keys_before[0] not in _MF_INITIALIZATION_CACHE
+    # The second oldest key (keys_before[1]) should still be there
+    assert keys_before[1] in _MF_INITIALIZATION_CACHE

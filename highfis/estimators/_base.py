@@ -660,6 +660,9 @@ def _build_input_mfs_cached(
 
     # Serialize the resulting MFs to store in the cache
     serialized_config = serialize_input_mfs(input_mfs)
+    if len(_MF_INITIALIZATION_CACHE) >= 128:
+        oldest_key = next(iter(_MF_INITIALIZATION_CACHE))
+        _MF_INITIALIZATION_CACHE.pop(oldest_key)
     _MF_INITIALIZATION_CACHE[cache_key] = (serialized_config, feature_names, effective_rule_base)
 
     return input_mfs, feature_names, effective_rule_base
