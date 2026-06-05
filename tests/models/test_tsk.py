@@ -77,7 +77,7 @@ class TestTSKClassifierModelFit:
         x = torch.randn(20, 2)
         y = torch.randint(0, 2, (20,), dtype=torch.long)
         history = model.fit(x, y, epochs=4, learning_rate=1e-2, batch_size=5)
-        assert set(history.keys()) == {"train", "ur", "val", "stopped_epoch"}
+        assert set(history.keys()) == {"train", "ur", "stopped_epoch"}
         assert len(history["train"]) == 4
 
     def test_fit_with_custom_mse_criterion(self) -> None:
@@ -168,7 +168,7 @@ class TestTSKRegressorFit:
         x = torch.randn(20, 2)
         y = torch.randn(20)
         history = model.fit(x, y, epochs=4, learning_rate=1e-2, batch_size=5)
-        assert set(history.keys()) == {"train", "ur", "val", "stopped_epoch"}
+        assert set(history.keys()) == {"train", "ur", "stopped_epoch"}
         assert len(history["train"]) == 4
 
     def test_fit_loss_decreases(self) -> None:

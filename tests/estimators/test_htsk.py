@@ -201,7 +201,7 @@ def test_htsk_paper_strict_fit_does_not_auto_split_data() -> None:
     x, y = _make_dataset(40)
     est = HTSKClassifier(paper_strict=True, random_state=0)
     est.fit(x, y)
-    assert len(est.history_["val"]) == 0
+    assert "val" not in est.history_
 
 
 def test_htsk_paper_strict_regressor_uses_strict_trainer() -> None:
@@ -458,9 +458,9 @@ def test_estimator_passes_restore_best_to_model_fit() -> None:
         def _default_criterion(self) -> nn.Module:
             return nn.MSELoss()
 
-        def fit(self, *args: object, **kwargs: object) -> dict[str, list[float]]:
+        def fit(self, *args: object, **kwargs: object) -> dict[str, Any]:
             self.fit_kwargs = kwargs
-            return {"train": [], "ur": [], "val": []}
+            return {"train": [], "ur": [], "stopped_epoch": 0}
 
     class SpyEstimator(HTSKClassifier):
         def _build_model(
@@ -913,7 +913,7 @@ def test_regressor_estimator_no_val_runs_full_epochs() -> None:
     est.fit(x, y)
 
     assert est.history_["stopped_epoch"] == 10
-    assert len(est.history_["val"]) == 0
+    assert "val" not in est.history_
 
 
 def test_regressor_estimator_sigma_scale_auto() -> None:

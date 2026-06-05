@@ -106,11 +106,20 @@ def test_fsre_adatsk_classifier_paper_strict_low_dim_zeta_fit() -> None:
 
 
 def test_fsre_adatsk_classifier_paper_strict_high_dim_zeta_fit() -> None:
+    from highfis.memberships import GaussianMF
+
+    # Build a minimal 1-MF stub for all 1000 features to avoid expensive MF init.
+    _minimal_mfs = {f"x{i}": [GaussianMF(mean=0.5, sigma=0.1)] for i in range(1000)}
+    _minimal_return = (_minimal_mfs, [f"x{i}" for i in range(1000)], "coco")
+
     clf = FSREADATSKClassifier(paper_strict=True, fs_epochs=1, re_epochs=1, finetune_epochs=1)
     x = np.random.default_rng(0).uniform(0, 1, size=(2, 1000))
     y = np.array([0, 1])
 
-    with patch("highfis.optim.FSRETrainer.fit", return_value={"train": [], "stopped_epoch": 0}):
+    with (
+        patch("highfis.estimators._fsre.FSREADATSKClassifier._build_input_mfs", return_value=_minimal_return),
+        patch("highfis.optim.FSRETrainer.fit", return_value={"train": [], "stopped_epoch": 0}),
+    ):
         clf.fit(x, y)
     assert clf.zeta_lambda == 0.4
     assert clf.zeta_theta == 0.5
@@ -120,6 +129,7 @@ def test_fsre_adatsk_classifier_paper_strict_high_dim_zeta_fit() -> None:
     )
     with (
         pytest.raises(ValueError, match=r"paper_strict requires zeta_lambda=0\.4 for high-dimensional data"),
+        patch("highfis.estimators._fsre.FSREADATSKClassifier._build_input_mfs", return_value=_minimal_return),
         patch("highfis.optim.FSRETrainer.fit", return_value={"train": [], "stopped_epoch": 0}),
     ):
         clf_bad_explicit.fit(x, y)

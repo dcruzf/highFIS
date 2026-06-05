@@ -526,7 +526,9 @@ class BaseTSK(nn.Module):
             }
             maximize = primary_metric in _MAXIMIZE_METRICS
 
-        history: dict[str, Any] = {"train": [], "ur": [], "val": []}
+        history: dict[str, Any] = {"train": [], "ur": []}
+        if has_val:
+            history["val"] = []
         best_metric = float("-inf")
         epochs_no_improve = 0
         best_state: dict[str, Any] | None = None
@@ -560,7 +562,7 @@ class BaseTSK(nn.Module):
             if has_val and x_val is not None and y_val is not None:
                 self.eval()
                 val_info = self._evaluate_validation(train_criterion, x_val, y_val)
-                history["val"].append(val_info.get("val_loss", 0.0))
+                history["val"].append(val_info["val_loss"])
 
                 # Evaluate metrics on val set
                 if metrics_list:
