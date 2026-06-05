@@ -235,6 +235,7 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         k: float = 1.0,
         eps: float | None = None,
         zero_consequent_init: bool = True,
+        device: str = "cpu",
         paper_strict: bool = False,
     ) -> None:
         """Initialise an ADPTSK classifier estimator.
@@ -277,6 +278,8 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
             eps: Optional lower bound for Gaussian PIMF values.
             zero_consequent_init: If ``True`` (default), initialize
                 consequent parameters to zeros.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
             paper_strict: If ``True``, enforce ADPTSK paper protocol
                 defaults in the classifier (``n_mfs=3``, ``mf_init='grid'``,
                 ``sigma_scale=1.0``, ``rule_base='coco'``, ``kappa=690``,
@@ -325,6 +328,7 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
         self.kappa = float(kappa)
         self.xi = float(xi)
@@ -371,6 +375,7 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         *,
         x_val: object | None = None,
         y_val: object | None = None,
+        metrics: list[str] | None = None,
     ) -> ADPTSKClassifier:
         original_batch_size = self.batch_size
         try:
@@ -379,7 +384,7 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
                 if x_val is not None:
                     _validate_adptsk_paper_strict_input_range(x_val, arg_name="x_val")
             self.batch_size = self._resolve_default_batch_size(int(np.asarray(y).shape[0]))
-            return cast(ADPTSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val))
+            return cast(ADPTSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics))
         finally:
             self.batch_size = original_batch_size
 
@@ -450,6 +455,7 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         k: float = 1.0,
         eps: float | None = None,
         zero_consequent_init: bool = True,
+        device: str = "cpu",
     ) -> None:
         """Initialise an ADPTSK regressor estimator.
 
@@ -491,6 +497,8 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
             eps: Optional lower bound for Gaussian PIMF values.
             zero_consequent_init: If ``True`` (default), initialize
                 consequent parameters to zeros.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
         """
         super().__init__(
             input_configs=input_configs,
@@ -511,6 +519,7 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
         self.kappa = float(kappa)
         self.xi = float(xi)
@@ -556,11 +565,12 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         *,
         x_val: object | None = None,
         y_val: object | None = None,
+        metrics: list[str] | None = None,
     ) -> ADPTSKRegressor:
         original_batch_size = self.batch_size
         try:
             self.batch_size = self._resolve_default_batch_size(int(np.asarray(y).shape[0]))
-            return cast(ADPTSKRegressor, super().fit(x, y, x_val=x_val, y_val=y_val))
+            return cast(ADPTSKRegressor, super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics))
         finally:
             self.batch_size = original_batch_size
 
@@ -624,6 +634,7 @@ class ADATSKClassifier(_BaseClassifierEstimator):
         weight_decay: float = 0.0,
         freeze_antecedent_in_high_dim: bool = True,
         high_dim_threshold: int = 1000,
+        device: str = "cpu",
         paper_strict: bool = False,
     ) -> None:
         """Initialise an ADATSK classifier.
@@ -654,6 +665,8 @@ class ADATSKClassifier(_BaseClassifierEstimator):
                 antecedent parameters when ``n_features >= high_dim_threshold``.
             high_dim_threshold: Feature-count threshold used to trigger
                 antecedent freezing (default ``1000``).
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
             paper_strict: If ``True``, enforce paper-strict defaults.
         """
         (
@@ -693,6 +706,7 @@ class ADATSKClassifier(_BaseClassifierEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
         self.freeze_antecedent_in_high_dim = bool(freeze_antecedent_in_high_dim)
         self.high_dim_threshold = int(high_dim_threshold)
@@ -705,13 +719,14 @@ class ADATSKClassifier(_BaseClassifierEstimator):
         *,
         x_val: object | None = None,
         y_val: object | None = None,
+        metrics: list[str] | None = None,
     ) -> ADATSKClassifier:
         """Fit the ADATSK classifier estimator, checking input range if strict."""
         if self.paper_strict:
             _validate_adptsk_paper_strict_input_range(x, arg_name="x")
             if x_val is not None:
                 _validate_adptsk_paper_strict_input_range(x_val, arg_name="x_val")
-        return cast(ADATSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val))
+        return cast(ADATSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics))
 
     def _build_model(
         self,
@@ -792,6 +807,7 @@ class ADATSKRegressor(_BaseRegressorEstimator):
         weight_decay: float = 0.0,
         freeze_antecedent_in_high_dim: bool = True,
         high_dim_threshold: int = 1000,
+        device: str = "cpu",
     ) -> None:
         """Initialise an ADATSK regressor.
 
@@ -819,6 +835,8 @@ class ADATSKRegressor(_BaseRegressorEstimator):
                 antecedent parameters when ``n_features >= high_dim_threshold``.
             high_dim_threshold: Feature-count threshold used to trigger
                 antecedent freezing (default ``1000``).
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
         """
         super().__init__(
             input_configs=input_configs,
@@ -838,6 +856,7 @@ class ADATSKRegressor(_BaseRegressorEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
         self.freeze_antecedent_in_high_dim = bool(freeze_antecedent_in_high_dim)
         self.high_dim_threshold = int(high_dim_threshold)

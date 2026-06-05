@@ -74,7 +74,7 @@ $$
 - `TSKClassifier` and `TSKRegressor` default to `SumBasedDefuzzifier`.
 - The highFIS estimator wrappers `TSKClassifier` and
   `TSKRegressor` construct the Gaussian antecedent MFs from
-  `input_configs`, `n_rules`, `mf_init`, and `sigma_scale`.
+  `input_configs`, `n_mfs`, `mf_init`, and `sigma_scale`.
 - `GaussianMF` stores a raw parameter that is transformed with `softplus`
   to guarantee $\sigma > 0$.
 - `SumBasedDefuzzifier` clamps rule weights to a small floor before

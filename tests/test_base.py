@@ -139,6 +139,18 @@ class TestBaseTSK:
         history = model.fit(x, y, epochs=1, optimizer=optimizer)
         assert "train" in history
 
+    def test_fit_evaluates_custom_metrics(self) -> None:
+        model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
+        x = torch.randn(20, 2)
+        y = torch.randint(0, 2, (20,))
+        history = model.fit(x, y, epochs=2, metrics=["accuracy", "f1_macro"], x_val=x, y_val=y)
+        assert "train_accuracy" in history
+        assert "train_f1_macro" in history
+        assert "val_accuracy" in history
+        assert "val_f1_macro" in history
+        assert len(history["train_accuracy"]) == 2
+        assert len(history["val_f1_macro"]) == 2
+
     def test_rejects_empty_input_mfs(self) -> None:
         with pytest.raises(ValueError, match="input_mfs must not be empty"):
             _ConcreteClassifier({}, n_classes=2)
@@ -177,3 +189,55 @@ class TestHelpers:
     def test_iter_minibatch_rejects_zero_batch(self) -> None:
         with pytest.raises(ValueError, match="batch_size must be > 0"):
             _iter_minibatch_indices(10, 0, False)
+
+
+class _ConcreteRegressor(BaseTSK):
+    """Minimal concrete regressor subclass for testing."""
+
+    def _build_consequent_layer(self) -> nn.Module:
+        from highfis.layers import RegressionConsequentLayer
+
+        return RegressionConsequentLayer(self.n_rules, self.n_inputs)
+
+    def _default_criterion(self) -> nn.Module:
+        return nn.MSELoss()
+
+
+def test_get_consequent_weights_none() -> None:
+    model = _ConcreteClassifier(_make_input_mfs(), n_classes=3)
+    model.consequent_layer = nn.Identity()
+    assert model.get_consequent_weights() is None
+
+
+def test_get_task_by_class_name() -> None:
+    class DummyClassifier(BaseTSK):
+        def _build_consequent_layer(self) -> nn.Module:
+            return nn.Identity()
+
+        def _default_criterion(self) -> nn.Module:
+            return nn.MSELoss()
+
+    model = DummyClassifier(_make_input_mfs())
+    assert model._get_task() == "classification"
+
+
+def test_predict_numpy_regression_squeezed() -> None:
+    model = _ConcreteRegressor(_make_input_mfs())
+    x = torch.randn(10, 2)
+    out = model._predict_numpy(x)
+    assert out.shape == (10,)
+
+
+def test_predict_numpy_regression_not_squeezed() -> None:
+    from unittest.mock import patch
+
+    model = _ConcreteRegressor(_make_input_mfs())
+    x = torch.randn(10, 2)
+
+    with patch.object(model, "forward", return_value=torch.randn(10)):
+        out = model._predict_numpy(x)
+        assert out.shape == (10,)
+
+    with patch.object(model, "forward", return_value=torch.randn(10, 2)):
+        out2 = model._predict_numpy(x)
+        assert out2.shape == (10, 2)

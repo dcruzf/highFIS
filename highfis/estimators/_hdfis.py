@@ -98,6 +98,7 @@ class HDFISProdClassifier(_BaseClassifierEstimator):
         weight_decay: float = 1e-8,
         xi: float = 745.0,
         rho: float | None = None,
+        device: str = "cpu",
         paper_strict: bool = False,
     ) -> None:
         r"""Initialise an HDFIS-prod classifier estimator.
@@ -133,6 +134,8 @@ class HDFISProdClassifier(_BaseClassifierEstimator):
                 $\rho$ when *rho* is ``None``. Must be greater than 1.
             rho: Scale exponent for the dimension-dependent Gaussian MF.
                 When ``None``, computed as ``1 - log(xi) / log(D)``.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
             paper_strict: If ``True``, enforce the paper protocol defaults
                 used in HDFIS_2023 experiments (grid init, CoCo rule base,
                 3 rules, batch size 64), use strict DMF equation mode, and
@@ -164,6 +167,7 @@ class HDFISProdClassifier(_BaseClassifierEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
         self.xi = float(xi)
         self.rho = rho
@@ -243,6 +247,7 @@ class HDFISProdRegressor(_BaseRegressorEstimator):
         weight_decay: float = 1e-8,
         xi: float = 745.0,
         rho: float | None = None,
+        device: str = "cpu",
         paper_strict: bool = False,
     ) -> None:
         r"""Initialise an HDFIS-prod regressor estimator.
@@ -276,6 +281,8 @@ class HDFISProdRegressor(_BaseRegressorEstimator):
                 $\rho$ when *rho* is ``None``. Must be greater than 1.
             rho: Scale exponent for the dimension-dependent Gaussian MF.
                 When ``None``, computed as ``1 - log(xi) / log(D)``.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
             paper_strict: If ``True``, enforce the paper protocol defaults
                 used in HDFIS_2023 experiments (grid init, CoCo rule base,
                 3 rules, batch size 64), use strict DMF equation mode, and
@@ -306,6 +313,7 @@ class HDFISProdRegressor(_BaseRegressorEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
         self.xi = float(xi)
         self.rho = rho
@@ -385,9 +393,44 @@ class HDFISMinClassifier(_BaseClassifierEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
+        device: str = "cpu",
         paper_strict: bool = False,
     ) -> None:
-        """Initialise an HDFIS-min classifier estimator."""
+        """Initialise an HDFIS-min classifier estimator.
+
+        Args:
+            input_configs: Per-feature :class:`InputConfig` list.
+            n_mfs: Number of MFs/rules for grid/k-means initialisation.
+                Defaults to ``5`` in regular mode and ``3`` in
+                ``paper_strict`` mode.
+            mf_init: MF initialisation strategy. Defaults to ``"kmeans"`` in
+                regular mode and ``"grid"`` in ``paper_strict`` mode.
+            sigma_scale: Sigma scale factor. ``1.0`` recommended.
+            random_state: Seed for reproducibility.
+            epochs: Maximum training epochs (default ``10``).
+            learning_rate: Adam learning rate (default ``0.01``).
+            verbose: Print per-epoch progress.
+            rule_base: ``"coco"`` or ``"cartesian"``. Defaults to model
+                defaults in regular mode and is fixed to ``"coco"`` in
+                ``paper_strict`` mode.
+            batch_size: Mini-batch size. Defaults to ``512`` in regular mode
+                and ``64`` in ``paper_strict`` mode.
+            shuffle: Reshuffle each epoch.
+            ur_weight: Uncertainty regularisation weight.
+            ur_target: Uncertainty regularisation target.
+            consequent_batch_norm: Batch normalisation on consequent layers.
+            pfrb_max_rules: Maximum number of point-based FRB rules when
+                ``rule_base='pfrb'``. ``None`` uses all training samples.
+            patience: Early-stopping patience (default ``20``).
+                Set to ``None`` to disable early stopping.
+            restore_best: Restore best validation weights after training.
+            weight_decay: L2 weight decay for consequent parameters.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
+            paper_strict: If ``True``, enforce the paper protocol defaults
+                used in HDFIS_2023 experiments (grid init, CoCo rule base,
+                3 rules, batch size 64) and zero-initialize consequents.
+        """
         resolved_n_mfs, resolved_mf_init, resolved_rule_base, resolved_batch_size = _resolve_hdfis_paper_strict_config(
             paper_strict=bool(paper_strict),
             n_mfs=n_mfs,
@@ -414,6 +457,7 @@ class HDFISMinClassifier(_BaseClassifierEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
         self.paper_strict = bool(paper_strict)
 
@@ -476,9 +520,42 @@ class HDFISMinRegressor(_BaseRegressorEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
+        device: str = "cpu",
         paper_strict: bool = False,
     ) -> None:
-        """Initialise an HDFIS-min regressor estimator."""
+        """Initialise an HDFIS-min regressor estimator.
+
+        Args:
+            input_configs: Per-feature :class:`InputConfig` list.
+            n_mfs: Number of MFs/rules for grid/k-means initialisation.
+                Defaults to ``5`` in regular mode and ``3`` in
+                ``paper_strict`` mode.
+            mf_init: MF initialisation strategy. Defaults to ``"kmeans"`` in
+                regular mode and ``"grid"`` in ``paper_strict`` mode.
+            sigma_scale: Sigma scale factor. ``1.0`` recommended.
+            random_state: Seed for reproducibility.
+            epochs: Maximum training epochs (default ``10``).
+            learning_rate: Adam learning rate (default ``0.01``).
+            verbose: Print per-epoch progress.
+            rule_base: ``"coco"`` or ``"cartesian"``. Defaults to model
+                defaults in regular mode and is fixed to ``"coco"`` in
+                ``paper_strict`` mode.
+            batch_size: Mini-batch size. Defaults to ``512`` in regular mode
+                and ``64`` in ``paper_strict`` mode.
+            shuffle: Reshuffle each epoch.
+            ur_weight: Uncertainty regularisation weight.
+            ur_target: Uncertainty regularisation target.
+            consequent_batch_norm: Batch normalisation on consequent layers.
+            patience: Early-stopping patience (default ``20``).
+                Set to ``None`` to disable early stopping.
+            restore_best: Restore best validation weights after training.
+            weight_decay: L2 weight decay for consequent parameters.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
+            paper_strict: If ``True``, enforce the paper protocol defaults
+                used in HDFIS_2023 experiments (grid init, CoCo rule base,
+                3 rules, batch size 64) and zero-initialize consequents.
+        """
         resolved_n_mfs, resolved_mf_init, resolved_rule_base, resolved_batch_size = _resolve_hdfis_paper_strict_config(
             paper_strict=bool(paper_strict),
             n_mfs=n_mfs,
@@ -504,6 +581,7 @@ class HDFISMinRegressor(_BaseRegressorEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
         self.paper_strict = bool(paper_strict)
 

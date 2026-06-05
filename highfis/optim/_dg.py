@@ -150,6 +150,7 @@ class DGTrainer(BaseTrainer):
         *,
         x_val: Tensor | None = None,
         y_val: Tensor | None = None,
+        metrics: list[str] | None = None,
     ) -> dict[str, Any]:
         """Execute the three-phase DG training procedure.
 
@@ -162,6 +163,7 @@ class DGTrainer(BaseTrainer):
             x_val: Validation inputs (used for threshold-search scoring).
                 When ``None``, training data is used for threshold selection.
             y_val: Validation targets.
+            metrics: Optional list of metric names to evaluate.
 
         Returns:
             Dictionary with keys:
@@ -191,6 +193,7 @@ class DGTrainer(BaseTrainer):
             y_val=y_val,
             patience=self.dg_patience,
             weight_decay=float(self.dg_weight_decay),
+            metrics=metrics,
         )
 
         # ── Phase 2: Threshold search + pruning ───────────────────────────
@@ -238,6 +241,7 @@ class DGTrainer(BaseTrainer):
             patience=self.finetune_patience,
             restore_best=bool(self.finetune_restore_best),
             weight_decay=float(self.finetune_weight_decay),
+            metrics=metrics,
         )
 
         return {

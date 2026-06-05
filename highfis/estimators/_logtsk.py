@@ -66,6 +66,7 @@ class LogTSKClassifier(_BaseClassifierEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
+        device: str = "cpu",
         paper_strict: bool = False,
     ) -> None:
         """Initialise a LogTSK classifier.
@@ -90,6 +91,8 @@ class LogTSKClassifier(_BaseClassifierEstimator):
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
             weight_decay: L2 weight decay for consequent parameters.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
             paper_strict: Enforce HTSK_2021 protocol defaults.
         """
         (
@@ -128,6 +131,7 @@ class LogTSKClassifier(_BaseClassifierEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
         self.paper_strict = bool(paper_strict)
 
@@ -207,6 +211,7 @@ class LogTSKRegressor(_BaseRegressorEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
+        device: str = "cpu",
         paper_strict: bool = False,
     ) -> None:
         """Initialise a LogTSK regressor.
@@ -231,6 +236,8 @@ class LogTSKRegressor(_BaseRegressorEstimator):
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
             weight_decay: L2 weight decay for consequent parameters.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
             paper_strict: Enforce HTSK_2021 protocol defaults.
         """
         (
@@ -269,6 +276,7 @@ class LogTSKRegressor(_BaseRegressorEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
         self.paper_strict = bool(paper_strict)
 

@@ -46,8 +46,9 @@ Copyright &copy; 2026 highFIS contributors
 #
 # Read more: https://zensical.org/docs/setup/navigation/
 nav = [
-    { "HighFIS" = "index.md" },
+    { "highFIS" = "index.md" },
     { "Models" = [
+        "models/index.md",
         "models/tsk-vanilla.md",
         "models/logtsk.md",
         "models/htsk.md",
@@ -62,7 +63,14 @@ nav = [
         "models/adptsk.md",
         "models/mhtsk.md",
      ] },
+    { "User Guides" = [
+        "guides/optimisers.md",
+        "guides/introspection.md",
+        "guides/initialization.md",
+        "guides/tuning.md",
+     ] },
     { "API Reference" = [
+        "api/index.md",
         "api/estimators.md",
         "api/models.md",
         "api/layers.md",

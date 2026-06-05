@@ -170,6 +170,7 @@ class _MHTSKPaperStrictTrainer(GradientTrainer):
         *,
         x_val: torch.Tensor | None = None,
         y_val: torch.Tensor | None = None,
+        metrics: list[str] | None = None,
     ) -> dict[str, Any]:
         consequent_params = list(model.consequent_layer.parameters())
         if model.consequent_bn is not None:
@@ -192,6 +193,7 @@ class _MHTSKPaperStrictTrainer(GradientTrainer):
             patience=self.patience,
             restore_best=bool(self.restore_best),
             weight_decay=float(self.weight_decay),
+            metrics=metrics,
         )
 
 
@@ -250,6 +252,7 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
+        device: str = "cpu",
         paper_strict: bool = False,
     ) -> None:
         """Initialize a MHTSK classifier estimator.
@@ -286,6 +289,8 @@ class MHTSKClassifier(_BaseClassifierEstimator):
             patience: Early-stopping patience for validation.
             restore_best: Whether to restore the best validation model weights after training.
             weight_decay: Weight decay coefficient for the optimizer.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
             paper_strict: If ``True``, apply paper-derived defaults for MHTSK
                 scale and extraction parameters when omitted.
         """
@@ -335,6 +340,7 @@ class MHTSKClassifier(_BaseClassifierEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
         self.n_heads = int(n_heads) if n_heads is not None else None
         self.head_size = int(head_size) if head_size is not None else None
@@ -423,7 +429,15 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         self._mhtsk_rule_feature_mask = self._mhtsk_rule_feature_mask[rule_indices]
         self.model_ = self._build_model(input_mfs, len(self.classes_), self.rule_base_)
 
-    def fit(self, x: Any, y: Any, *, x_val: Any | None = None, y_val: Any | None = None) -> Self:
+    def fit(
+        self,
+        x: Any,
+        y: Any,
+        *,
+        x_val: Any | None = None,
+        y_val: Any | None = None,
+        metrics: list[str] | None = None,
+    ) -> Self:
         """Train the MHTSK classifier and optionally extract rules.
 
         After the base training step, if ``rule_extraction`` is enabled, the
@@ -432,7 +446,7 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         second training pass is performed on the reduced model.
         """
         x_arr, y_arr = check_X_y(x, y)
-        super().fit(x, y, x_val=x_val, y_val=y_val)
+        super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics)
 
         if not bool(self.rule_extraction):
             return self
@@ -537,6 +551,7 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
+        device: str = "cpu",
         paper_strict: bool = False,
     ) -> None:
         """Initialize a MHTSK regressor estimator.
@@ -572,6 +587,8 @@ class MHTSKRegressor(_BaseRegressorEstimator):
             patience: Early-stopping patience for validation.
             restore_best: Whether to restore the best validation model weights after training.
             weight_decay: Weight decay coefficient for the optimizer.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
             paper_strict: If ``True``, apply paper-derived defaults for MHTSK
                 scale and extraction parameters when omitted.
 
@@ -623,6 +640,7 @@ class MHTSKRegressor(_BaseRegressorEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
         self.n_heads = int(n_heads) if n_heads is not None else None
         self.head_size = int(head_size) if head_size is not None else None
@@ -696,7 +714,15 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         self._mhtsk_rule_feature_mask = self._mhtsk_rule_feature_mask[rule_indices]
         self.model_ = self._build_regressor_model(input_mfs, self.rule_base_, None)
 
-    def fit(self, x: Any, y: Any, *, x_val: Any | None = None, y_val: Any | None = None) -> Self:
+    def fit(
+        self,
+        x: Any,
+        y: Any,
+        *,
+        x_val: Any | None = None,
+        y_val: Any | None = None,
+        metrics: list[str] | None = None,
+    ) -> Self:
         """Train the MHTSK regressor and optionally extract rules.
 
         After the base training step, if ``rule_extraction`` is enabled, rules
@@ -705,7 +731,7 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         training pass is performed on the reduced model.
         """
         x_arr, y_arr = check_X_y(x, y)
-        super().fit(x, y, x_val=x_val, y_val=y_val)
+        super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics)
 
         if not bool(self.rule_extraction):
             return self

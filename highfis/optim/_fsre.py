@@ -180,6 +180,7 @@ class FSRETrainer(BaseTrainer):
         *,
         x_val: Tensor | None = None,
         y_val: Tensor | None = None,
+        metrics: list[str] | None = None,
     ) -> dict[str, Any]:
         """Execute the three-phase FSRE training procedure (Algorithm 1).
 
@@ -191,6 +192,7 @@ class FSRETrainer(BaseTrainer):
             x_val: Validation inputs (used for early stopping).
                 When ``None``, no external validation is performed.
             y_val: Validation targets.
+            metrics: Optional list of metric names to evaluate.
 
         Returns:
             Dictionary with keys:
@@ -223,6 +225,7 @@ class FSRETrainer(BaseTrainer):
             y_val=y_val,
             patience=self.fs_patience,
             weight_decay=float(self.fs_weight_decay),
+            metrics=metrics,
         )
 
         # ── Feature threshold & selection (paper eq. 28) ──────────────────
@@ -256,6 +259,7 @@ class FSRETrainer(BaseTrainer):
             y_val=y_val,
             patience=self.re_patience,
             weight_decay=float(self.re_weight_decay),
+            metrics=metrics,
         )
 
         # ── Rule threshold & selection (paper eq. 29) ─────────────────────
@@ -289,6 +293,7 @@ class FSRETrainer(BaseTrainer):
             patience=self.finetune_patience,
             restore_best=bool(self.finetune_restore_best),
             weight_decay=float(self.finetune_weight_decay),
+            metrics=metrics,
         )
 
         return {
