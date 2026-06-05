@@ -159,7 +159,7 @@ def test_dgaletsk_classifier_default_pfrb_max_rules_policy() -> None:
 
 
 def test_dgaletsk_classifier_pre_train_hook_initializes_pfrb_consequents_from_labels() -> None:
-    x, y = _make_dataset(30)
+    x, y = _make_dataset(5)
     est = DGALETSKClassifier(rule_base="pfrb", pfrb_max_rules=None)
     input_mfs, _, rule_base = est._build_input_mfs(x)
     model = cast(Any, est._build_model(input_mfs, n_classes=2, rule_base=rule_base))

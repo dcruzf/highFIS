@@ -54,6 +54,7 @@ class TestBaseTSK:
         y = torch.randint(0, 2, (20,))
         history = model.fit(x, y, epochs=5)
         assert "train" in history
+        assert "val" not in history
         assert len(history["train"]) == 5
 
     def test_fit_with_validation(self) -> None:
