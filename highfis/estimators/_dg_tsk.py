@@ -277,6 +277,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         *,
         x_val: Any | None = None,
         y_val: Any | None = None,
+        metrics: list[str] | None = None,
     ) -> DGTSKClassifier:
         """Train the DG-TSK classifier.
 
@@ -287,7 +288,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             _validate_dg_tsk_paper_strict_input_range(x, arg_name="x")
             if x_val is not None:
                 _validate_dg_tsk_paper_strict_input_range(x_val, arg_name="x_val")
-        return cast(DGTSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val))
+        return cast(DGTSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics))
 
     def _build_model(
         self,

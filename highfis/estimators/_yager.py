@@ -237,6 +237,7 @@ class AYATSKClassifier(_BaseClassifierEstimator):
         *,
         x_val: object | None = None,
         y_val: object | None = None,
+        metrics: list[str] | None = None,
     ) -> AYATSKClassifier:
         original_batch_size = self.batch_size
         try:
@@ -250,7 +251,7 @@ class AYATSKClassifier(_BaseClassifierEstimator):
                     UserWarning,
                     stacklevel=2,
                 )
-            return super().fit(x, y, x_val=x_val, y_val=y_val)
+            return super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics)
         finally:
             self.batch_size = original_batch_size
 
@@ -393,13 +394,14 @@ class AYATSKRegressor(_BaseRegressorEstimator):
         *,
         x_val: object | None = None,
         y_val: object | None = None,
+        metrics: list[str] | None = None,
     ) -> AYATSKRegressor:
         original_batch_size = self.batch_size
         try:
             n_samples = int(np.asarray(y).shape[0])
             if original_batch_size is None:
                 self.batch_size = self._resolve_default_batch_size(n_samples)
-            return super().fit(x, y, x_val=x_val, y_val=y_val)
+            return super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics)
         finally:
             self.batch_size = original_batch_size
 

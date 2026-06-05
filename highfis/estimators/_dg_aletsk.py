@@ -325,6 +325,7 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         *,
         x_val: Any | None = None,
         y_val: Any | None = None,
+        metrics: list[str] | None = None,
     ) -> DGALETSKClassifier:
         """Train the DG-ALETSK classifier.
 
@@ -340,7 +341,7 @@ class DGALETSKClassifier(FSREADATSKClassifier):
                     _validate_dg_aletsk_paper_strict_input_range(x_val, arg_name="x_val")
                 self.batch_size = max(1, round(0.1 * float(np.asarray(y).shape[0])))
                 self.paper_strict = False
-            return cast(DGALETSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val))
+            return cast(DGALETSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics))
         finally:
             self.batch_size = original_batch_size
             self.paper_strict = original_paper_strict
@@ -526,10 +527,11 @@ class DGALETSKRegressor(FSREADATSKRegressor):
         *,
         x_val: Any | None = None,
         y_val: Any | None = None,
+        metrics: list[str] | None = None,
     ) -> DGALETSKRegressor:
         """Train the DG-ALETSK regressor.
 
         Validation data should be supplied using ``x_val`` and ``y_val``
         when available.
         """
-        return cast(DGALETSKRegressor, super().fit(x, y, x_val=x_val, y_val=y_val))
+        return cast(DGALETSKRegressor, super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics))

@@ -872,6 +872,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         *,
         x_val: Any | None = None,
         y_val: Any | None = None,
+        metrics: list[str] | None = None,
     ) -> Self:
         """Train the TSK classifier on labeled samples.
 
@@ -913,7 +914,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         self.rule_base_ = effective_rule_base
         self._pre_train_hook(self.model_, x_t, y_t)
         _trainer = self.trainer if self.trainer is not None else self._get_trainer()
-        self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t)
+        self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
         return self
 
     def _build_checkpoint_base(
@@ -1357,6 +1358,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         *,
         x_val: Any | None = None,
         y_val: Any | None = None,
+        metrics: list[str] | None = None,
     ) -> Self:
         """Train the TSK regressor on labeled samples.
 
@@ -1392,7 +1394,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         self.rule_base_ = effective_rule_base
         self._pre_train_hook(self.model_, x_t, y_t)
         _trainer = self.trainer if self.trainer is not None else self._get_trainer()
-        self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t)
+        self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
         return self
 
     def _build_checkpoint_base(

@@ -375,6 +375,7 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         *,
         x_val: object | None = None,
         y_val: object | None = None,
+        metrics: list[str] | None = None,
     ) -> ADPTSKClassifier:
         original_batch_size = self.batch_size
         try:
@@ -383,7 +384,7 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
                 if x_val is not None:
                     _validate_adptsk_paper_strict_input_range(x_val, arg_name="x_val")
             self.batch_size = self._resolve_default_batch_size(int(np.asarray(y).shape[0]))
-            return cast(ADPTSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val))
+            return cast(ADPTSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics))
         finally:
             self.batch_size = original_batch_size
 
@@ -564,11 +565,12 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         *,
         x_val: object | None = None,
         y_val: object | None = None,
+        metrics: list[str] | None = None,
     ) -> ADPTSKRegressor:
         original_batch_size = self.batch_size
         try:
             self.batch_size = self._resolve_default_batch_size(int(np.asarray(y).shape[0]))
-            return cast(ADPTSKRegressor, super().fit(x, y, x_val=x_val, y_val=y_val))
+            return cast(ADPTSKRegressor, super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics))
         finally:
             self.batch_size = original_batch_size
 
@@ -717,13 +719,14 @@ class ADATSKClassifier(_BaseClassifierEstimator):
         *,
         x_val: object | None = None,
         y_val: object | None = None,
+        metrics: list[str] | None = None,
     ) -> ADATSKClassifier:
         """Fit the ADATSK classifier estimator, checking input range if strict."""
         if self.paper_strict:
             _validate_adptsk_paper_strict_input_range(x, arg_name="x")
             if x_val is not None:
                 _validate_adptsk_paper_strict_input_range(x_val, arg_name="x_val")
-        return cast(ADATSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val))
+        return cast(ADATSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics))
 
     def _build_model(
         self,

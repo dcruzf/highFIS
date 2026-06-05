@@ -77,6 +77,7 @@ class _HTSKPaperStrictTrainer(GradientTrainer):
         *,
         x_val: torch.Tensor | None = None,
         y_val: torch.Tensor | None = None,
+        metrics: list[str] | None = None,
     ) -> dict[str, Any]:
         effective_batch_size = self.batch_size
         if effective_batch_size is not None and int(effective_batch_size) > int(x.shape[0]):
@@ -100,6 +101,7 @@ class _HTSKPaperStrictTrainer(GradientTrainer):
             patience=self.patience,
             restore_best=bool(self.restore_best),
             weight_decay=float(self.weight_decay),
+            metrics=metrics,
         )
 
 

@@ -260,6 +260,7 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         *,
         x_val: object | None = None,
         y_val: object | None = None,
+        metrics: list[str] | None = None,
     ) -> FSREADATSKClassifier:
         """Fit the FSRE-ADATSK classifier estimator, checking input range and zetas if strict."""
         x_arr = check_array(x)
@@ -288,7 +289,7 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
                             "paper_strict requires zeta_theta=0.5 for high-dimensional data (>=1000 features)"
                         )
 
-        return cast(FSREADATSKClassifier, super().fit(x_arr, y, x_val=x_val, y_val=y_val))
+        return cast(FSREADATSKClassifier, super().fit(x_arr, y, x_val=x_val, y_val=y_val, metrics=metrics))
 
     def _build_model(
         self,

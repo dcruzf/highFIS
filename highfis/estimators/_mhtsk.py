@@ -170,6 +170,7 @@ class _MHTSKPaperStrictTrainer(GradientTrainer):
         *,
         x_val: torch.Tensor | None = None,
         y_val: torch.Tensor | None = None,
+        metrics: list[str] | None = None,
     ) -> dict[str, Any]:
         consequent_params = list(model.consequent_layer.parameters())
         if model.consequent_bn is not None:
@@ -192,6 +193,7 @@ class _MHTSKPaperStrictTrainer(GradientTrainer):
             patience=self.patience,
             restore_best=bool(self.restore_best),
             weight_decay=float(self.weight_decay),
+            metrics=metrics,
         )
 
 
@@ -427,7 +429,15 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         self._mhtsk_rule_feature_mask = self._mhtsk_rule_feature_mask[rule_indices]
         self.model_ = self._build_model(input_mfs, len(self.classes_), self.rule_base_)
 
-    def fit(self, x: Any, y: Any, *, x_val: Any | None = None, y_val: Any | None = None) -> Self:
+    def fit(
+        self,
+        x: Any,
+        y: Any,
+        *,
+        x_val: Any | None = None,
+        y_val: Any | None = None,
+        metrics: list[str] | None = None,
+    ) -> Self:
         """Train the MHTSK classifier and optionally extract rules.
 
         After the base training step, if ``rule_extraction`` is enabled, the
@@ -436,7 +446,7 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         second training pass is performed on the reduced model.
         """
         x_arr, y_arr = check_X_y(x, y)
-        super().fit(x, y, x_val=x_val, y_val=y_val)
+        super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics)
 
         if not bool(self.rule_extraction):
             return self
@@ -704,7 +714,15 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         self._mhtsk_rule_feature_mask = self._mhtsk_rule_feature_mask[rule_indices]
         self.model_ = self._build_regressor_model(input_mfs, self.rule_base_, None)
 
-    def fit(self, x: Any, y: Any, *, x_val: Any | None = None, y_val: Any | None = None) -> Self:
+    def fit(
+        self,
+        x: Any,
+        y: Any,
+        *,
+        x_val: Any | None = None,
+        y_val: Any | None = None,
+        metrics: list[str] | None = None,
+    ) -> Self:
         """Train the MHTSK regressor and optionally extract rules.
 
         After the base training step, if ``rule_extraction`` is enabled, rules
@@ -713,7 +731,7 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         training pass is performed on the reduced model.
         """
         x_arr, y_arr = check_X_y(x, y)
-        super().fit(x, y, x_val=x_val, y_val=y_val)
+        super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics)
 
         if not bool(self.rule_extraction):
             return self

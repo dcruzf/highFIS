@@ -139,6 +139,18 @@ class TestBaseTSK:
         history = model.fit(x, y, epochs=1, optimizer=optimizer)
         assert "train" in history
 
+    def test_fit_evaluates_custom_metrics(self) -> None:
+        model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
+        x = torch.randn(20, 2)
+        y = torch.randint(0, 2, (20,))
+        history = model.fit(x, y, epochs=2, metrics=["accuracy", "f1_macro"], x_val=x, y_val=y)
+        assert "train_accuracy" in history
+        assert "train_f1_macro" in history
+        assert "val_accuracy" in history
+        assert "val_f1_macro" in history
+        assert len(history["train_accuracy"]) == 2
+        assert len(history["val_f1_macro"]) == 2
+
     def test_rejects_empty_input_mfs(self) -> None:
         with pytest.raises(ValueError, match="input_mfs must not be empty"):
             _ConcreteClassifier({}, n_classes=2)
