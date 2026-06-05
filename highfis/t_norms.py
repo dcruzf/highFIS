@@ -118,7 +118,7 @@ class DombiTNorm(BaseTNorm):
         """Compute the Dombi aggregation over the specified dimension."""
         eps = torch.finfo(terms.dtype).eps if self.eps is None else self.eps
         clamped = terms.clamp(min=eps, max=1.0)
-        inv = (1.0 / clamped) - 1.0
+        inv = ((1.0 / clamped) - 1.0).clamp(min=eps)
         powered = torch.pow(inv, self.lambda_)
         summed = powered.sum(dim=dim)
         return 1.0 / (1.0 + torch.pow(summed, 1.0 / self.lambda_))
