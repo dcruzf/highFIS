@@ -78,6 +78,7 @@ class GradientTrainer(BaseTrainer):
         *,
         x_val: Tensor | None = None,
         y_val: Tensor | None = None,
+        metrics: list[str] | None = None,
     ) -> dict[str, Any]:
         """Train *model* for :attr:`epochs` epochs and return the history dict."""
         return model.fit(
@@ -96,4 +97,5 @@ class GradientTrainer(BaseTrainer):
             patience=self.patience,
             restore_best=bool(self.restore_best),
             weight_decay=float(self.weight_decay),
+            metrics=metrics,
         )

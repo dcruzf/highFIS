@@ -95,17 +95,16 @@ DEFAULT_CLASSIFICATION_METRICS: list[ClassificationMetric] = [
     "precision_macro",
     "recall_macro",
     "f1_macro",
-]
-DEFAULT_REGRESSION_METRICS: list[RegressionMetric] = ["mse", "mae", "rmse", "r2"]
-
-_CLASSIFICATION_METRIC_NAMES = set(DEFAULT_CLASSIFICATION_METRICS) | {
     "precision_micro",
     "recall_micro",
     "f1_micro",
     "confusion_matrix",
     "classes",
-}
-_REGRESSION_METRIC_NAMES = set(DEFAULT_REGRESSION_METRICS) | {
+]
+DEFAULT_REGRESSION_METRICS: list[RegressionMetric] = [
+    "mse",
+    "mae",
+    "rmse",
     "median_absolute_error",
     "mean_bias_error",
     "max_error",
@@ -115,7 +114,11 @@ _REGRESSION_METRIC_NAMES = set(DEFAULT_REGRESSION_METRICS) | {
     "smape",
     "msle",
     "pearson",
-}
+    "r2",
+]
+
+_CLASSIFICATION_METRIC_NAMES = set(DEFAULT_CLASSIFICATION_METRICS)
+_REGRESSION_METRIC_NAMES = set(DEFAULT_REGRESSION_METRICS)
 
 
 def _flatten_array(values: Any) -> np.ndarray:

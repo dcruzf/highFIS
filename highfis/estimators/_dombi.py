@@ -173,6 +173,7 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
         lambda_: float | None = None,
         lower_bound: float | None = None,
         zero_consequent_init: bool | None = None,
+        device: str = "cpu",
         paper_strict: bool = False,
     ) -> None:
         """Initialise a DombiTSK classifier.
@@ -204,6 +205,8 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
             lambda_: Dombi parameter ``λ > 0``.
             lower_bound: Lower bound for Composite GMF.
             zero_consequent_init: If ``True`` (default), initialize consequent parameters to zero.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
             paper_strict: If ``True``, enforce paper protocol defaults.
         """
         (
@@ -243,6 +246,7 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
         self.lambda_ = resolved_lambda
         self.lower_bound = resolved_lower_bound
@@ -333,6 +337,7 @@ class DombiTSKRegressor(_BaseRegressorEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
+        device: str = "cpu",
     ) -> None:
         """Initialise a DombiTSK regressor.
 
@@ -356,6 +361,8 @@ class DombiTSKRegressor(_BaseRegressorEstimator):
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
             weight_decay: L2 weight decay for consequent parameters.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
         """
         super().__init__(
             input_configs=input_configs,
@@ -375,6 +382,7 @@ class DombiTSKRegressor(_BaseRegressorEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
 
     def _build_regressor_model(
@@ -439,6 +447,7 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
         lower_bound: float = 1.0 / math.e,
         k: float = 10.0,
         zero_consequent_init: bool = True,
+        device: str = "cpu",
         paper_strict: bool = False,
     ) -> None:
         """Initialize an ADMTSK classifier estimator.
@@ -473,6 +482,8 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
             k: Heuristic constant used to compute adaptive lambda.
             zero_consequent_init: If True (default), initialize
                 consequent parameters to zero.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
             paper_strict: If ``True``, enforce paper protocol defaults
                 for ADMTSK classifier (``n_mfs=3``, ``mf_init='grid'``,
                 ``sigma_scale=1.0``, ``rule_base='coco'``,
@@ -525,6 +536,7 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
         self.adaptive = resolved_adaptive
         self.lambda_ = resolved_lambda_
@@ -623,6 +635,7 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
         lower_bound: float = 1.0 / math.e,
         k: float = 10.0,
         zero_consequent_init: bool = True,
+        device: str = "cpu",
     ) -> None:
         """Initialize an ADMTSK regressor estimator.
 
@@ -655,6 +668,8 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
             k: Heuristic constant used to compute adaptive lambda.
             zero_consequent_init: If True (default), initialize
                 consequent parameters to zero.
+            device: Target device for training and inference (e.g., ``"cpu"``,
+                ``"cuda"``, or ``"mps"``).
 
         Raises:
             ValueError: If estimator hyperparameters are invalid.
@@ -677,6 +692,7 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
         self.adaptive = bool(adaptive)
         self.lambda_ = float(lambda_)

@@ -206,3 +206,33 @@ class TestTSKRegressorFit:
         model.fit(x, y, epochs=200, learning_rate=5e-2)
         pred = model.predict(x)
         assert float(torch.abs(pred.mean() - 3.14)) < 1.0
+
+
+def test_tsk_classifier_invalid_n_classes() -> None:
+    with pytest.raises(ValueError, match="n_classes must be >= 2"):
+        TSKClassifierModel(_build_input_mfs(), n_classes=1)
+
+
+def test_tsk_regressor_forward_shape() -> None:
+    model = TSKRegressorModel(_build_input_mfs())
+    x = torch.randn(4, 3)
+    out = model.forward(x)
+    assert out.shape == (4, 1)
+
+
+def test_tsk_classifier_forward_shapes() -> None:
+    model = TSKClassifierModel(_build_input_mfs(), n_classes=2)
+    x = torch.randn(4, 3)
+    logits = model.forward(x)
+    assert logits.shape == (4, 2)
+    assert torch.allclose(torch.softmax(logits, dim=1).sum(dim=1), torch.ones(4), atol=1e-6)
+
+
+def test_tsk_classifier_default_criterion() -> None:
+    model = TSKClassifierModel(_build_input_mfs(), n_classes=2)
+    assert isinstance(model._default_criterion(), nn.CrossEntropyLoss)
+
+
+def test_tsk_regressor_default_criterion() -> None:
+    model = TSKRegressorModel(_build_input_mfs())
+    assert isinstance(model._default_criterion(), nn.MSELoss)

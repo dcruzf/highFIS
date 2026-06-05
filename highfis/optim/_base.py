@@ -29,6 +29,7 @@ class BaseTrainer(ABC):
         *,
         x_val: Tensor | None = None,
         y_val: Tensor | None = None,
+        metrics: list[str] | None = None,
     ) -> dict[str, Any]:
         """Train *model* on *(x, y)* and return a history dictionary.
 
@@ -38,6 +39,7 @@ class BaseTrainer(ABC):
             y: Training target tensor.
             x_val: Optional validation input tensor.
             y_val: Optional validation target tensor.
+            metrics: Optional list of metric names to evaluate.
 
         Returns:
             A dictionary with training history.  Keys depend on the concrete
