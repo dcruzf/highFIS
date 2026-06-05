@@ -10,12 +10,13 @@ permissions:
 jobs:
   tests:
     if: contains(github.event.head_commit.message, '[skip]') == false && github.event.action != 'closed'
-    name: Lint & Test Suite
+    name: Lint & Test Suite (${{ matrix.os }}, Python ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: ${{ github.event.pull_request.base.ref == 'main' && fromJson('["ubuntu-latest","macos-latest","windows-latest"]') || fromJson('["ubuntu-latest"]') }}
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
 
     defaults:
       run:
@@ -25,11 +26,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
       - name: Install Hatch
         uses: pypa/hatch@install
 
       - name: Run pre-commit hooks
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && matrix.python-version == '3.11'
         run: hatch run all
       - name: Run tests
-        run: hatch test -a -c
+        run: hatch test --py ${{ matrix.python-version }} -c
