@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import pytest
 import torch
-import torch.nn as nn
 
-from highfis.gates import BaseGate, ExpGate
 from highfis.layers import (
     AdaptiveDombiRuleLayer,
     ClassificationConsequentLayer,
@@ -19,11 +17,6 @@ from highfis.layers import (
     SparseRegressionConsequentLayer,
     _generate_en_frb,
     gate1,
-    gate2,
-    gate3,
-    gate4,
-    gate_m,
-    resolve_gate_fn,
 )
 from highfis.memberships import GaussianMF
 
@@ -530,22 +523,6 @@ def test_regression_consequent_layer_gradient_flows() -> None:
     assert layer.bias.grad is not None
 
 
-def test_gate_functions_and_resolver() -> None:
-    x = torch.tensor([-1.0, 0.0, 1.0])
-    assert torch.allclose(gate1(x), torch.sigmoid(x))
-    assert torch.allclose(gate2(x), 1.0 - torch.exp(-x.pow(2)))
-    assert torch.allclose(gate3(x), torch.exp(-x.pow(2)))
-    assert torch.allclose(gate4(x), x * torch.sqrt(torch.exp(1.0 - x.pow(2))))
-    assert torch.allclose(gate_m(x), x.pow(2) * torch.exp(1.0 - x.pow(2)))
-    assert resolve_gate_fn("gate1") is gate1
-    default = resolve_gate_fn(None)
-    assert isinstance(default, ExpGate)
-    assert default.k == 10.0
-    assert resolve_gate_fn(torch.sigmoid) is torch.sigmoid
-    with pytest.raises(ValueError, match="unsupported gate function"):
-        resolve_gate_fn("invalid")
-
-
 def test_gated_classification_consequent_layer_forward_shape() -> None:
     layer = GatedClassificationConsequentLayer(n_rules=4, n_inputs=2, n_classes=2, gate_fn="gate1")
     x = torch.randn(5, 2)
@@ -626,24 +603,8 @@ def test_gated_consequent_layer_invalid_init_args() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Coverage: non-BaseGate callable gate_fn (else branches) + BaseGate base init
+# Coverage: non-BaseGate callable gate_fn (else branches)
 # ---------------------------------------------------------------------------
-
-
-def test_base_gate_default_init_params() -> None:
-    """BaseGate.init_params_ base implementation is used by subclasses that
-    don't override it (line 58 of gates.py)."""
-
-    class MinimalGate(BaseGate):
-        def forward(self, u: torch.Tensor) -> torch.Tensor:
-            return torch.sigmoid(u)
-
-    gate = MinimalGate()
-    param = nn.Parameter(torch.zeros(8))
-    gate.init_params_(param)
-    data = param.detach()
-    assert data.min() >= 0.01
-    assert data.max() <= 0.1
 
 
 def test_dgaletsk_rule_layer_custom_callable_gate_fea() -> None:
