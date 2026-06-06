@@ -1567,11 +1567,8 @@ a regression consequent head and MSE loss.</p>
 <li>defaults to <code>rule_base="coco"</code>,</li>
 <li>applies paper-style batch sizing when <code>batch_size=None</code>,</li>
 <li>constructs <code>ADPTSKClassifierModel</code> with <code>kappa</code>, <code>xi</code>, <code>eps</code>, and
-  zero consequent initialization.</li>
+  zero consequent initialization. No automatic normalization is applied.</li>
 </ul>
-<p><code>paper_strict=True</code> (classifier-only) enforces the paper protocol defaults
-for hyperparameters and requires <code>X</code> (and <code>X_val</code>, when provided) to
-already be in <code>[0, 1]</code>. No automatic normalization is applied.</p>
 <h3 id="highfisestimatorsadptskregressor"><code>highfis.estimators.ADPTSKRegressor</code></h3>
 <p>This estimator is analogous to the classifier wrapper but builds
 <code>ADPTSKRegressorModel</code> for regression tasks.</p>

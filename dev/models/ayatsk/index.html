@@ -1366,7 +1366,7 @@
 
 
 <h1 id="ayatsk">AYATSK</h1>
-<p>AYATSK is a classification-focused TSK model from the 2025 paper by Xue, Yang, and Wang. In highFIS, <code>AYATSKClassifier(paper_strict=True)</code> enforces a paper-style classifier configuration with adaptive Yager T-norm, Composite Exponential membership functions (CEMF), and CoCo rule base defaults.</p>
+<p>AYATSK is a classification-focused TSK model from the 2025 paper by Xue, Yang, and Wang.</p>
 <h2 id="reference">Reference</h2>
 <blockquote>
 <p>G. Xue, Y. Yang and J. Wang, "Adaptive Yager T-Norm-Based Takagi–Sugeno–Kang Fuzzy Systems," in IEEE Transactions on Systems, Man, and Cybernetics: Systems, vol. 55, no. 12, pp. 9802-9815, Dec. 2025, doi: <a href="https://doi.org/10.1109/TSMC.2025.3621346">10.1109/TSMC.2025.3621346</a>.</p>
@@ -1460,13 +1460,11 @@ w_r = 1 - \left[\sum_{d=1}^{D} (1 - \mu_{r,d}(x_d))^{\lambda}\right]^{1/\lambda}
 <li><code>AYATSKClassifier</code> defaults to <code>n_mfs=3</code>, <code>mf_init="grid"</code>, <code>rule_base="coco"</code>, <code>epochs=200</code>, and <code>learning_rate=0.001</code>.</li>
 <li><code>AYATSKClassifier</code> and <code>AYATSKRegressor</code> expose <code>k</code> (CEMF parameter), with required constraint <code>k &gt; 1</code>.</li>
 <li>When <code>batch_size=None</code>, the AYATSK estimator uses full-batch for <code>N &lt; 500</code> and <code>0.1 * N</code> otherwise, matching the paper’s training policy.</li>
-<li>In <code>paper_strict=True</code>, <code>AYATSKClassifier</code> enforces paper defaults and emits a warning when mini-batch behavior may diverge from the paper’s high-dimensional experimental setting.</li>
 <li><code>AYATSKRegressor</code> remains available as a framework extension, but the paper itself evaluates classification only.</li>
 </ul>
 <h2 id="estimator-wrappers">Estimator wrappers</h2>
 <ul>
 <li><code>AYATSKClassifier</code> wraps <code>AYATSKClassifierModel</code> and supports classification with paper-style adaptive Yager aggregation.</li>
-<li><code>paper_strict=True</code> is classifier-only in the current implementation.</li>
 <li><code>AYATSKRegressor</code> wraps <code>AYATSKRegressorModel</code> for regression tasks, but this is outside the paper’s evaluated scope.</li>
 <li>Estimators accept the usual hyperparameters: <code>n_mfs</code>, <code>mf_init</code>, <code>sigma_scale</code>, <code>random_state</code>, <code>epochs</code>, <code>learning_rate</code>, <code>batch_size</code>, <code>shuffle</code>, <code>validation_data</code>, and <code>patience</code>.</li>
 <li><code>pfrb_max_rules</code> exists on the shared estimator base but is unused by AYATSK.</li>

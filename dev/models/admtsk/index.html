@@ -1520,9 +1520,7 @@ GaussianPiMF antecedents.</p>
 </ul>
 <p>These wrappers provide sklearn-compatible <code>fit</code>/<code>predict</code> APIs and build the
 inferential pipeline from high-level settings such as <code>n_mfs</code>, <code>mf_init</code>,
-<code>sigma_scale</code>, and adaptive lambda parameters.</p>
-<p><code>ADMTSKClassifier</code> now also supports <code>paper_strict=True</code> to enforce a
-classifier-only strict protocol aligned to the paper defaults.
+<code>sigma_scale</code>, and adaptive lambda parameters.
 When enabled, the estimator requires and enforces:</p>
 <ul>
 <li><code>n_mfs=3</code></li>
@@ -1532,12 +1530,10 @@ When enabled, the estimator requires and enforces:</p>
 <li><code>adaptive=True</code></li>
 <li><code>lambda_=1.0</code></li>
 <li><code>lower_bound=1/e</code></li>
-<li><code>k=10.0</code></li>
-<li><code>zero_consequent_init=True</code></li>
-</ul>
-<p>Any conflicting override raises <code>ValueError</code> with a <code>paper_strict requires ...</code>
+<li><code>k=10...</code>
 message so experiments do not silently drift from the paper protocol.
-This strict mode is intentionally scoped to the classifier path.</p>
+This strict mode is intentionally scoped to the classifier path.</li>
+</ul>
 <p>When the estimator constructs input membership functions it converts the
 initial Gaussian MFs into <code>GaussianPiMF</code>, matching the paper's positive lower
 bound membership design.</p>

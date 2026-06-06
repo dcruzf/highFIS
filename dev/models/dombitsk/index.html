@@ -1474,13 +1474,6 @@ regression.</p>
   <code>ADMTSKClassifier</code> wrapper class.</li>
 </ul>
 <h3 id="strict-paper-mode">Strict paper mode</h3>
-<ul>
-<li>Use <code>paper_strict=True</code> in <code>DombiTSKClassifier</code> to enforce the paper protocol defaults at the estimator level:
-  <code>n_mfs=3</code>, <code>mf_init="grid"</code>, <code>sigma_scale=1.0</code>, <code>rule_base="coco"</code>, <code>lambda_=1.0</code>, <code>lower_bound=1/e</code> (<span class="arithmatex">\(\approx 0.3679\)</span>), and <code>zero_consequent_init=True</code>.</li>
-<li>When <code>paper_strict=True</code>, conflicting values for these parameters raise <code>ValueError</code>.</li>
-<li>In <code>paper_strict</code> mode, Gaussian membership functions are automatically wrapped in <code>GaussianPiMF</code> (Composite Gaussian MF) with the paper-defined lower bound of <span class="arithmatex">\(1/e\)</span>.</li>
-<li>In <code>paper_strict</code> mode, the consequent linear layer weights and biases are initialized to exactly zero.</li>
-</ul>
 <h2 id="alignment-with-the-paper">Alignment with the paper</h2>
 <ul>
 <li>The paper defines a Dombi TSK baseline with Dombi antecedent aggregation and

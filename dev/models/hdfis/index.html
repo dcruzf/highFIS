@@ -1609,8 +1609,6 @@ standard Gaussian MFs and then freezes the antecedent parameters.</p>
 <h3 id="strict-paper-mode">Strict paper mode</h3>
 <p>highFIS provides an opt-in strict mode on HDFIS estimators:</p>
 <ul>
-<li><code>paper_strict=True</code> in <code>HDFISProdClassifier</code>, <code>HDFISProdRegressor</code>,
-  <code>HDFISMinClassifier</code>, and <code>HDFISMinRegressor</code>.</li>
 <li>In this mode, the estimator enforces the paper protocol defaults used in
   HDFIS_2023 experiments:</li>
 <li><code>mf_init="grid"</code></li>
@@ -1622,8 +1620,6 @@ standard Gaussian MFs and then freezes the antecedent parameters.</p>
 <li>For HDFIS-min, strict mode enables zero consequent initialization while
   keeping antecedent freezing.</li>
 </ul>
-<p>When <code>paper_strict=False</code> (default), highFIS uses library-oriented defaults
-for broader usability (for example, clustering-based initialization).</p>
 <h3 id="model-classes">Model classes</h3>
 <ul>
 <li><code>HDFISProdClassifierModel</code> and <code>HDFISProdRegressorModel</code> are concrete model classes
@@ -1669,7 +1665,6 @@ for broader usability (for example, clustering-based initialization).</p>
 <li><code>BaseTSK.fit()</code> supports mini-batch optimization, optional early stopping,
   uniform rule regularization, and weight decay across HDFIS estimators.</li>
 </ul>
-<p>Paper protocol is reproduced in highFIS through <code>paper_strict=True</code>.</p>
 <h2 id="alignment-with-the-paper">Alignment with the paper</h2>
 <ul>
 <li>Core architecture alignment (always):</li>
@@ -1677,8 +1672,6 @@ for broader usability (for example, clustering-based initialization).</p>
 <li>HDFIS-min uses minimum aggregation + frozen antecedents.</li>
 <li>Both use first-order TSK consequents and sum-based normalization.</li>
 <li>Experimental-protocol alignment (strict):</li>
-<li>Use <code>paper_strict=True</code> to enforce paper defaults and strict DMF equation
-    behavior.</li>
 <li>Non-strict defaults are practical library defaults and are not intended to
   be an exact replication of the paper protocol.</li>
 </ul>

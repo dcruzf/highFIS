@@ -1085,17 +1085,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#paper_strict-mode" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        <code>paper_strict</code> mode
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#key-estimator-parameters" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1566,20 +1555,6 @@ f^{r}(\mathbf{x}) = p^{r}_0 + \sum_{s \in \mathcal{S}_t} p^{r}_{s} x_s
 <li><code>highfis.estimators.MHTSKRegressor</code></li>
 </ul>
 <p>These sklearn-style wrappers build the MHTSK rule base from raw data and expose configurable scale parameter resolution.</p>
-<h3 id="paper_strict-mode"><code>paper_strict</code> mode</h3>
-<p>Both wrappers support <code>paper_strict=True</code> to enforce a constrained configuration aligned with the paper defaults used in highFIS:</p>
-<ul>
-<li>Fixed defaults and constraints: <code>n_mfs=3</code>, <code>fcm_m=2.0</code>, <code>rule_sigma=1.0</code>, <code>xi=743.0</code>, <code>instance_sample_fraction=0.8</code>.</li>
-<li>Dynamic scale policy from input dimension <code>D</code>:<ul>
-<li>If <code>D &lt;= 5000</code>: <code>S = max(1, round(0.02 * D))</code>, <code>T = 200</code>.</li>
-<li>If <code>D &gt; 5000</code>: <code>S = max(1, round(0.01 * D))</code>, <code>T = 300</code>.</li>
-<li><code>S</code> is additionally bounded by the numeric-underflow limit based on <code>xi</code> and <code>rule_sigma</code>.</li>
-</ul>
-</li>
-<li>Rule extraction defaults enabled: <code>rule_extraction=True</code>, <code>crcr_us=0.5</code> (and <code>crcr_s=0.5</code> for classifier), <code>retrain_after_extraction=True</code>.</li>
-<li>Consequent-only optimization in strict mode uses an Adam optimizer over consequent parameters.</li>
-</ul>
-<p><code>paper_strict=True</code> intentionally rejects incompatible overrides (for example, manual <code>n_heads</code>, <code>head_size</code>, or disabling extraction).</p>
 <p>No internal train/validation holdout split is performed by MHTSK estimators; validation data is only used when explicitly passed via <code>x_val</code> and <code>y_val</code>.</p>
 <h3 id="key-estimator-parameters">Key estimator parameters</h3>
 <ul>
