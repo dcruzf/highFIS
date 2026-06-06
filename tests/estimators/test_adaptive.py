@@ -165,3 +165,40 @@ def test_admtsk_regressor_estimator_fit_predict() -> None:
     est.fit(x, y)
     pred = est.predict(x)
     assert pred.shape == (x.shape[0],)
+
+
+def test_adptsk_default_profile() -> None:
+    x, y = _make_dataset(20)
+    # Add constant column to trigger x_max <= x_min (line 42)
+    x = np.hstack([x, np.ones((x.shape[0], 1))])
+    clf = ADPTSKClassifier(epochs=1)
+    clf.fit(x, y)
+    # Check that default grid init with 3 mfs works
+    assert clf.model_ is not None
+
+    x_reg, y_reg = _make_regression_dataset(20)
+    x_reg = np.hstack([x_reg, np.ones((x_reg.shape[0], 1))])
+    reg = ADPTSKRegressor(epochs=1)
+    reg.fit(x_reg, y_reg)
+    assert reg.model_ is not None
+
+
+def test_adptsk_nan_guards() -> None:
+    x, y = _make_dataset(10)
+    clf = ADPTSKClassifier(epochs=1)
+    clf.fit(x, y)
+
+    # Mock model predict_proba to return NaNs
+    clf.model_.predict_proba = lambda *args, **kwargs: torch.full((10, 2), float("nan"))  # type: ignore
+    proba = clf.predict_proba(x)
+    assert not np.any(np.isnan(proba))
+    assert np.allclose(proba, 0.5)
+
+    x_reg, y_reg = _make_regression_dataset(10)
+    reg = ADPTSKRegressor(epochs=1)
+    reg.fit(x_reg, y_reg)
+
+    reg.model_.predict = lambda *args, **kwargs: torch.full((10, 1), float("nan"))  # type: ignore
+    pred = reg.predict(x_reg)
+    assert not np.any(np.isnan(pred))
+    assert np.allclose(pred, 0.0)

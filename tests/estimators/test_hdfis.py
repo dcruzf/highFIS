@@ -44,3 +44,18 @@ def test_hdfis_min_regressor_estimator_builds_hdfis_min_model() -> None:
     est.fit(x, y)
     assert isinstance(est.model_, HDFISMinRegressorModel)
     assert all(not p.requires_grad for p in est.model_.membership_layer.parameters())
+
+
+def test_hdfis_feature_errors() -> None:
+    import pytest
+
+    x, y = _make_dataset(40)
+    x_1d = x[:, :1]
+
+    clf = HDFISProdClassifier(epochs=1)
+    with pytest.raises(ValueError, match="requires at least 2 features"):
+        clf.fit(x_1d, y)
+
+    reg = HDFISProdRegressor(epochs=1)
+    with pytest.raises(ValueError, match="requires at least 2 features"):
+        reg.fit(x_1d, y)

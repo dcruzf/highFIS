@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 import numpy as np
+import pytest
 
 from highfis import AYATSKClassifier, AYATSKRegressor
 
@@ -45,3 +44,43 @@ def test_ayatsk_regressor_estimator_fit_predict() -> None:
     est.fit(x, y)
     pred = est.predict(x)
     assert pred.shape == (x.shape[0],)
+
+
+def test_ayatsk_default_profile_and_errors() -> None:
+    # Test classifier default profile (grid init, n_mfs=3, default batch size)
+    x, y = _make_dataset(510)
+    clf = AYATSKClassifier(epochs=1)
+    clf.fit(x, y)
+    assert clf.model_ is not None
+
+    # Test classifier requires >= 2 features
+    x_1d = x[:, :1]
+    with pytest.raises(ValueError, match="requires at least 2 features"):
+        clf.fit(x_1d, y)
+
+    # Test classifier k must be > 1.0
+    clf_bad = AYATSKClassifier(k=0.5, epochs=1)
+    with pytest.raises(ValueError, match=r"k must be > 1.0"):
+        clf_bad.fit(x, y)
+
+    # Test regressor default profile (grid init, n_mfs=3, default batch size)
+    x_reg = np.random.default_rng(123).normal(size=(510, 3)).astype(np.float32)
+    y_reg = x_reg[:, 0] + 0.5 * x_reg[:, 1]
+    reg = AYATSKRegressor(epochs=1)
+    reg.fit(x_reg, y_reg)
+    assert reg.model_ is not None
+
+    # Test regressor requires >= 2 features
+    with pytest.raises(ValueError, match="requires at least 2 features"):
+        reg.fit(x_1d, y_reg)
+
+    # Test regressor k must be > 1.0
+    reg_bad = AYATSKRegressor(k=0.5, epochs=1)
+    with pytest.raises(ValueError, match=r"k must be > 1.0"):
+        reg_bad.fit(x_reg, y_reg)
+
+    # Test batch size resolution for small dataset (< 500 samples)
+    x_small, y_small = _make_dataset(40)
+    clf_small = AYATSKClassifier(epochs=1)
+    clf_small.fit(x_small, y_small)
+    assert clf_small.batch_size is None
