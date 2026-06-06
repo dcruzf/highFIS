@@ -81,8 +81,8 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
-        zeta_lambda: list[float] | None = _DG_ALETSK_PAPER_ZETA_GRID,
-        zeta_theta: list[float] | None = _DG_ALETSK_PAPER_ZETA_GRID,
+        zeta_lambda: list[float] | None = None,
+        zeta_theta: list[float] | None = None,
         use_lse: bool = False,
         trainer: BaseTrainer | None = None,
         optimizer_type: str = "sgd",
@@ -378,7 +378,7 @@ class DGALETSKRegressor(FSREADATSKRegressor):
             device=device,
         )
         self.dg_epochs = dg_epochs
-        self.use_lse = bool(use_lse)
+        self.use_lse = use_lse
         self.optimizer_type = optimizer_type
         self.freeze_antecedents_finetune = freeze_antecedents_finetune
         self.finetune_epochs = finetune_epochs
@@ -449,3 +449,9 @@ class DGALETSKRegressor(FSREADATSKRegressor):
         when available.
         """
         return cast(DGALETSKRegressor, super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics))
+
+    def __sklearn_tags__(self) -> Any:
+        """Mark as poor_score: DG-ALETSK is designed for high-dimensional data."""
+        tags = super().__sklearn_tags__()
+        tags.regressor_tags.poor_score = True
+        return tags

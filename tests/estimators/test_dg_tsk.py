@@ -324,7 +324,7 @@ def test_dgtsk_classifier_predict_proba_wrong_feature_count_raises() -> None:
         use_en_frb=True,
     )
     est.fit(x, y)
-    with pytest.raises(ValueError, match="expected"):
+    with pytest.raises(ValueError, match="features"):
         est.predict_proba(x[:, :2])
 
 
@@ -346,7 +346,7 @@ def test_dgtsk_regressor_predict_wrong_feature_count_raises() -> None:
         use_en_frb=True,
     )
     est.fit(x, y)
-    with pytest.raises(ValueError, match="expected"):
+    with pytest.raises(ValueError, match="features"):
         est.predict(x[:, :2])
 
 

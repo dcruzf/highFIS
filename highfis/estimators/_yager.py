@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -122,9 +123,6 @@ class AYATSKClassifier(_BaseClassifierEstimator):
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
         """
-        if k <= 1.0:
-            raise ValueError("k must be > 1.0")
-
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -152,6 +150,8 @@ class AYATSKClassifier(_BaseClassifierEstimator):
         self,
         x_arr: np.ndarray,
     ) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
+        if x_arr.shape[1] < 2:
+            raise ValueError(f"AYATSKClassifier requires at least 2 features; got n_features={x_arr.shape[1]}.")
         if (
             self.input_configs is None
             and isinstance(self.mf_init, str)
@@ -176,9 +176,12 @@ class AYATSKClassifier(_BaseClassifierEstimator):
         y_val: npt.ArrayLike | None = None,
         metrics: list[str] | None = None,
     ) -> AYATSKClassifier:
+        if float(self.k) <= 1.0:
+            raise ValueError("k must be > 1.0")
         original_batch_size = self.batch_size
         try:
-            n_samples = int(np.asarray(y).shape[0])
+            y_arr = np.asarray(y)
+            n_samples = y_arr.shape[0] if y_arr.ndim >= 1 else 0
             if original_batch_size is None:
                 self.batch_size = self._resolve_default_batch_size(n_samples)
             return super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics)
@@ -273,9 +276,6 @@ class AYATSKRegressor(_BaseRegressorEstimator):
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
         """
-        if k <= 1.0:
-            raise ValueError("k must be > 1.0")
-
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -302,6 +302,8 @@ class AYATSKRegressor(_BaseRegressorEstimator):
         self,
         x_arr: np.ndarray,
     ) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
+        if x_arr.shape[1] < 2:
+            raise ValueError(f"AYATSKRegressor requires at least 2 features; got n_features={x_arr.shape[1]}.")
         if (
             self.input_configs is None
             and isinstance(self.mf_init, str)
@@ -326,14 +328,23 @@ class AYATSKRegressor(_BaseRegressorEstimator):
         y_val: npt.ArrayLike | None = None,
         metrics: list[str] | None = None,
     ) -> AYATSKRegressor:
+        if float(self.k) <= 1.0:
+            raise ValueError("k must be > 1.0")
         original_batch_size = self.batch_size
         try:
-            n_samples = int(np.asarray(y).shape[0])
+            y_arr = np.asarray(y)
+            n_samples = y_arr.shape[0] if y_arr.ndim >= 1 else 0
             if original_batch_size is None:
                 self.batch_size = self._resolve_default_batch_size(n_samples)
             return super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics)
         finally:
             self.batch_size = original_batch_size
+
+    def __sklearn_tags__(self) -> Any:
+        """Mark as poor_score: AYATSK is designed for high-dimensional data."""
+        tags = super().__sklearn_tags__()
+        tags.regressor_tags.poor_score = True
+        return tags
 
     def _build_regressor_model(
         self,

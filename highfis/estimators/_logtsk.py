@@ -48,15 +48,15 @@ class LogTSKClassifier(_BaseClassifierEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int | None = None,
-        mf_init: str | None = None,
-        sigma_scale: float | str | None = None,
+        n_mfs: int = 5,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int | None = None,
-        learning_rate: float | None = None,
+        epochs: int = 100,
+        learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = None,
+        batch_size: int | None = 512,
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -75,7 +75,7 @@ class LogTSKClassifier(_BaseClassifierEstimator):
             sigma_scale: Sigma scale factor. ``1.0`` is recommended (the
                 log-space defuzzifier is scale-invariant).
             random_state: Seed for reproducibility.
-            epochs: Maximum training epochs (default ``10``).
+            epochs: Maximum training epochs (default ``100``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
@@ -93,15 +93,15 @@ class LogTSKClassifier(_BaseClassifierEstimator):
         """
         super().__init__(
             input_configs=input_configs,
-            n_mfs=5 if n_mfs is None else n_mfs,
-            mf_init="kmeans" if mf_init is None else mf_init,
-            sigma_scale=1.0 if sigma_scale is None else sigma_scale,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
             random_state=random_state,
-            epochs=100 if epochs is None else epochs,
-            learning_rate=1e-2 if learning_rate is None else learning_rate,
+            epochs=epochs,
+            learning_rate=learning_rate,
             verbose=verbose,
             rule_base=rule_base,
-            batch_size=512 if batch_size is None else batch_size,
+            batch_size=batch_size,
             shuffle=shuffle,
             ur_weight=ur_weight,
             ur_target=ur_target,
@@ -155,15 +155,15 @@ class LogTSKRegressor(_BaseRegressorEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int | None = None,
-        mf_init: str | None = None,
-        sigma_scale: float | str | None = None,
+        n_mfs: int = 5,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int | None = None,
-        learning_rate: float | None = None,
+        epochs: int = 100,
+        learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = None,
+        batch_size: int | None = 512,
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -182,7 +182,7 @@ class LogTSKRegressor(_BaseRegressorEstimator):
             sigma_scale: Sigma scale factor. ``1.0`` is recommended (the
                 log-space defuzzifier is scale-invariant).
             random_state: Seed for reproducibility.
-            epochs: Maximum training epochs (default ``10``).
+            epochs: Maximum training epochs (default ``100``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
@@ -200,15 +200,15 @@ class LogTSKRegressor(_BaseRegressorEstimator):
         """
         super().__init__(
             input_configs=input_configs,
-            n_mfs=5 if n_mfs is None else n_mfs,
-            mf_init="kmeans" if mf_init is None else mf_init,
-            sigma_scale=1.0 if sigma_scale is None else sigma_scale,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
             random_state=random_state,
-            epochs=100 if epochs is None else epochs,
-            learning_rate=1e-2 if learning_rate is None else learning_rate,
+            epochs=epochs,
+            learning_rate=learning_rate,
             verbose=verbose,
             rule_base=rule_base,
-            batch_size=512 if batch_size is None else batch_size,
+            batch_size=batch_size,
             shuffle=shuffle,
             ur_weight=ur_weight,
             ur_target=ur_target,

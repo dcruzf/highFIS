@@ -167,7 +167,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             epochs=dg_epochs,
             learning_rate=learning_rate,
             verbose=verbose,
-            rule_base=rule_base if rule_base is not None else "pfrb",
+            rule_base=rule_base,
             batch_size=batch_size,
             shuffle=shuffle,
             ur_weight=ur_weight,
@@ -317,18 +317,24 @@ class DGTSKClassifier(_BaseClassifierEstimator):
 
     def predict_proba(self, x: Any) -> np.ndarray:
         """Predict class probabilities, applying any surviving-feature pruning from fit()."""
-        from sklearn.utils.validation import check_array, check_is_fitted
+        from sklearn.utils.validation import check_is_fitted
 
         check_is_fitted(self, "model_")
-        x_arr = check_array(x)
-        if x_arr.shape[1] != self.n_features_in_:
-            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
+        from sklearn.utils.validation import validate_data
+
+        x_arr = validate_data(self, x, reset=False)
         x_model = _select_dgtsking_surviving_features(self, x_arr)
         device_str = str(self.device).lower()
         dtype = torch.float64 if "cpu" in device_str else torch.float32
         x_tensor = torch.as_tensor(x_model, dtype=dtype, device=torch.device(device_str))
         probs = cast(Any, self.model_).predict_proba(x_tensor)
         return probs.detach().cpu().numpy()
+
+    def __sklearn_tags__(self) -> Any:
+        """Mark as poor_score: DG-TSK is designed for high-dimensional data."""
+        tags = super().__sklearn_tags__()
+        tags.classifier_tags.poor_score = True
+        return tags
 
 
 class DGTSKRegressor(_BaseRegressorEstimator):
@@ -575,18 +581,22 @@ class DGTSKRegressor(_BaseRegressorEstimator):
 
     def predict(self, x: Any) -> np.ndarray:
         """Predict regression values, applying any surviving-feature pruning from fit()."""
-        from sklearn.utils.validation import check_array, check_is_fitted
+        from sklearn.utils.validation import check_is_fitted, validate_data
 
         check_is_fitted(self, "model_")
-        x_arr = check_array(x)
-        if x_arr.shape[1] != self.n_features_in_:
-            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
+        x_arr = validate_data(self, x, reset=False)
         x_model = _select_dgtsking_surviving_features(self, x_arr)
         device_str = str(self.device).lower()
         dtype = torch.float64 if "cpu" in device_str else torch.float32
         x_tensor = torch.as_tensor(x_model, dtype=dtype, device=torch.device(device_str))
         preds = cast(Any, self.model_).predict(x_tensor)
         return preds.detach().cpu().numpy()
+
+    def __sklearn_tags__(self) -> Any:
+        """Mark as poor_score: DG-TSK is designed for high-dimensional data."""
+        tags = super().__sklearn_tags__()
+        tags.regressor_tags.poor_score = True
+        return tags
 
 
 def _select_dgtsking_surviving_features(estimator: Any, x_arr: np.ndarray) -> np.ndarray:

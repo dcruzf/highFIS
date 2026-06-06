@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from highfis import AYATSKClassifier, AYATSKRegressor
 
@@ -46,10 +45,3 @@ def test_ayatsk_regressor_estimator_fit_predict() -> None:
     est.fit(x, y)
     pred = est.predict(x)
     assert pred.shape == (x.shape[0],)
-
-
-def test_ayatsk_estimators_validate_k_parameter() -> None:
-    with pytest.raises(ValueError, match="k must be > 1\\.0"):
-        AYATSKClassifier(k=1.0)
-    with pytest.raises(ValueError, match="k must be > 1\\.0"):
-        AYATSKRegressor(k=1.0)

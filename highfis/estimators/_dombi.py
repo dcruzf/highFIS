@@ -63,9 +63,9 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int | None = None,
-        mf_init: str | None = None,
-        sigma_scale: float | str | None = None,
+        n_mfs: int = 5,
+        mf_init: str = "kmeans",
+        sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         epochs: int = 100,
         learning_rate: float = 1e-2,
@@ -80,9 +80,9 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
-        lambda_: float | None = None,
-        lower_bound: float | None = None,
-        zero_consequent_init: bool | None = None,
+        lambda_: float = 1.0,
+        lower_bound: float = 1.0 / math.e,
+        zero_consequent_init: bool = True,
         device: str = "cpu",
     ) -> None:
         """Initialise a DombiTSK classifier.
@@ -96,7 +96,7 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
                 T-norm handles high-dimensional stability without inflating
                 sigma.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``10``).
+            epochs: Maximum training epochs (default ``100``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
@@ -117,23 +117,16 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
         """
-        resolved_n_mfs = 5 if n_mfs is None else n_mfs
-        resolved_mf_init = "kmeans" if mf_init is None else mf_init
-        resolved_sigma_scale = 1.0 if sigma_scale is None else sigma_scale
-        resolved_rule_base = rule_base
-        resolved_lambda = 1.0 if lambda_ is None else float(lambda_)
-        resolved_lower_bound = (1.0 / math.e) if lower_bound is None else float(lower_bound)
-        resolved_zero_consequent_init = True if zero_consequent_init is None else zero_consequent_init
         super().__init__(
             input_configs=input_configs,
-            n_mfs=resolved_n_mfs,
-            mf_init=resolved_mf_init,
-            sigma_scale=resolved_sigma_scale,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
             random_state=random_state,
             epochs=epochs,
             learning_rate=learning_rate,
             verbose=verbose,
-            rule_base=resolved_rule_base,
+            rule_base=rule_base,
             batch_size=batch_size,
             shuffle=shuffle,
             ur_weight=ur_weight,
@@ -145,9 +138,9 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
             weight_decay=weight_decay,
             device=device,
         )
-        self.lambda_ = resolved_lambda
-        self.lower_bound = resolved_lower_bound
-        self.zero_consequent_init = resolved_zero_consequent_init
+        self.lambda_ = lambda_
+        self.lower_bound = lower_bound
+        self.zero_consequent_init = zero_consequent_init
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         use_paper_default = (
@@ -161,14 +154,14 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
             input_mfs = _build_admtsk_default_input_mfs(x_arr.shape[1])
             effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
             return (
-                _wrap_composite_gaussian_input_mfs(input_mfs, eps=self.lower_bound),
+                _wrap_composite_gaussian_input_mfs(input_mfs, eps=float(self.lower_bound)),
                 feature_names,
                 effective_rule_base,
             )
 
         input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
         return (
-            _wrap_composite_gaussian_input_mfs(input_mfs, eps=self.lower_bound),
+            _wrap_composite_gaussian_input_mfs(input_mfs, eps=float(self.lower_bound)),
             feature_names,
             effective_rule_base,
         )
@@ -184,10 +177,14 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
-            lambda_=self.lambda_,
+            lambda_=float(self.lambda_),
             consequent_batch_norm=bool(self.consequent_batch_norm),
-            zero_consequent_init=self.zero_consequent_init,
+            zero_consequent_init=bool(self.zero_consequent_init),
         )
+
+    def __sklearn_is_fitted__(self) -> bool:
+        """Check fitted status via model_ only, ignoring lambda_ (trailing underscore)."""
+        return hasattr(self, "model_")
 
 
 class DombiTSKRegressor(_BaseRegressorEstimator):
@@ -383,21 +380,16 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
         Raises:
             ValueError: If estimator hyperparameters are invalid.
         """
-        resolved_n_mfs = n_mfs
-        resolved_mf_init = mf_init
-        resolved_sigma_scale = sigma_scale
-        resolved_rule_base = rule_base
-
         super().__init__(
             input_configs=input_configs,
-            n_mfs=resolved_n_mfs,
-            mf_init=resolved_mf_init,
-            sigma_scale=resolved_sigma_scale,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
+            sigma_scale=sigma_scale,
             random_state=random_state,
             epochs=epochs,
             learning_rate=learning_rate,
             verbose=verbose,
-            rule_base=resolved_rule_base,
+            rule_base=rule_base,
             batch_size=batch_size,
             shuffle=shuffle,
             ur_weight=ur_weight,
@@ -416,6 +408,8 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
         self.zero_consequent_init = zero_consequent_init
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
+        if x_arr.shape[1] < 2:
+            raise ValueError(f"ADMTSKClassifier requires at least 2 features; got n_features={x_arr.shape[1]}.")
         use_paper_default = (
             self.input_configs is None
             and isinstance(self.mf_init, str)
@@ -452,10 +446,14 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
             adaptive=bool(self.adaptive),
             lambda_=float(self.lambda_),
             lower_bound=float(self.lower_bound),
-            k=self.k,
+            k=float(self.k),
             consequent_batch_norm=bool(self.consequent_batch_norm),
             zero_consequent_init=bool(self.zero_consequent_init),
         )
+
+    def __sklearn_is_fitted__(self) -> bool:
+        """Check fitted status via model_ only, ignoring lambda_ (trailing underscore)."""
+        return hasattr(self, "model_")
 
 
 class ADMTSKRegressor(_BaseRegressorEstimator):
@@ -571,6 +569,8 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
         self.zero_consequent_init = zero_consequent_init
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
+        if x_arr.shape[1] < 2:
+            raise ValueError(f"ADMTSKRegressor requires at least 2 features; got n_features={x_arr.shape[1]}.")
         use_paper_default = (
             self.input_configs is None
             and isinstance(self.mf_init, str)
@@ -606,7 +606,11 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
             adaptive=bool(self.adaptive),
             lambda_=float(self.lambda_),
             lower_bound=float(self.lower_bound),
-            k=self.k,
+            k=float(self.k),
             consequent_batch_norm=bool(self.consequent_batch_norm),
             zero_consequent_init=bool(self.zero_consequent_init),
         )
+
+    def __sklearn_is_fitted__(self) -> bool:
+        """Check fitted status via model_ only, ignoring lambda_ (trailing underscore)."""
+        return hasattr(self, "model_")

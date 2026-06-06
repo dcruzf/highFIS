@@ -8,7 +8,7 @@ from typing import Any, cast
 import numpy as np
 import numpy.typing as npt
 import torch
-from sklearn.utils.validation import check_array, check_is_fitted
+from sklearn.utils.validation import check_is_fitted, validate_data
 
 from ..base import BaseTSK
 from ..memberships import MembershipFunction
@@ -199,9 +199,7 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
             Class probability array of shape ``(N, n_classes)``.
         """
         check_is_fitted(self, "model_")
-        x_arr = check_array(x)
-        if x_arr.shape[1] != self.n_features_in_:
-            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
+        x_arr = validate_data(self, x, reset=False)
         sf: list[int] | None = getattr(self, "history_", {}).get("surviving_feature_indices")
         if sf is None and "threshold" in getattr(self, "history_", {}):
             sf = self.history_["threshold"].get("surviving_feature_indices")
@@ -211,6 +209,12 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         x_tensor = torch.as_tensor(x_m, dtype=dtype, device=torch.device(device_str))
         probs = cast(Any, self.model_).predict_proba(x_tensor)
         return probs.detach().cpu().numpy()
+
+    def __sklearn_tags__(self) -> Any:
+        """Mark as poor_score: FSRE-ADATSK is designed for high-dimensional feature selection."""
+        tags = super().__sklearn_tags__()
+        tags.classifier_tags.poor_score = True
+        return tags
 
     def _get_trainer(self) -> BaseTrainer:
         """Return an FSRETrainer built from this estimator's parameters."""
@@ -400,9 +404,7 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
             Prediction array of shape ``(N,)``.
         """
         check_is_fitted(self, "model_")
-        x_arr = check_array(x)
-        if x_arr.shape[1] != self.n_features_in_:
-            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
+        x_arr = validate_data(self, x, reset=False)
         sf: list[int] | None = getattr(self, "history_", {}).get("surviving_feature_indices")
         if sf is None and "threshold" in getattr(self, "history_", {}):
             sf = self.history_["threshold"].get("surviving_feature_indices")

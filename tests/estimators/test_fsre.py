@@ -36,7 +36,7 @@ def test_fsre_adatsk_classifier_predict_proba_wrong_n_features() -> None:
     y = np.random.default_rng(0).integers(0, 2, size=20)
     clf = FSREADATSKClassifier(fs_epochs=1, re_epochs=1, finetune_epochs=1)
     clf.fit(X, y)
-    with pytest.raises(ValueError, match="expected"):
+    with pytest.raises(ValueError, match="features"):
         clf.predict_proba(X[:, :2])
 
 
@@ -45,7 +45,7 @@ def test_fsre_adatsk_regressor_predict_wrong_n_features() -> None:
     y = np.random.default_rng(1).standard_normal(20)
     reg = FSREADATSKRegressor(fs_epochs=1, re_epochs=1, finetune_epochs=1)
     reg.fit(X, y)
-    with pytest.raises(ValueError, match="expected"):
+    with pytest.raises(ValueError, match="features"):
         reg.predict(X[:, :2])
 
 

@@ -51,15 +51,15 @@ class HDFISProdClassifier(_BaseClassifierEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int | None = None,
-        mf_init: str | None = None,
+        n_mfs: int = 5,
+        mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         epochs: int = 100,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = None,
+        batch_size: int | None = 512,
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -81,7 +81,7 @@ class HDFISProdClassifier(_BaseClassifierEstimator):
             mf_init: MF initialisation strategy. Defaults to ``"kmeans"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for reproducibility.
-            epochs: Maximum training epochs (default ``10``).
+            epochs: Maximum training epochs (default ``100``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
@@ -105,15 +105,15 @@ class HDFISProdClassifier(_BaseClassifierEstimator):
         """
         super().__init__(
             input_configs=input_configs,
-            n_mfs=5 if n_mfs is None else n_mfs,
-            mf_init="kmeans" if mf_init is None else mf_init,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
             sigma_scale=sigma_scale,
             random_state=random_state,
             epochs=epochs,
             learning_rate=learning_rate,
             verbose=verbose,
             rule_base=rule_base,
-            batch_size=512 if batch_size is None else batch_size,
+            batch_size=batch_size,
             shuffle=shuffle,
             ur_weight=ur_weight,
             ur_target=ur_target,
@@ -128,6 +128,8 @@ class HDFISProdClassifier(_BaseClassifierEstimator):
         self.rho = rho
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
+        if x_arr.shape[1] < 2:
+            raise ValueError(f"HDFISProdClassifier requires at least 2 features; got n_features={x_arr.shape[1]}.")
         input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
         return (
             _wrap_dimension_dependent_gaussian_input_mfs(
@@ -182,15 +184,15 @@ class HDFISProdRegressor(_BaseRegressorEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int | None = None,
-        mf_init: str | None = None,
+        n_mfs: int = 5,
+        mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         epochs: int = 100,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = None,
+        batch_size: int | None = 512,
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -211,7 +213,7 @@ class HDFISProdRegressor(_BaseRegressorEstimator):
             mf_init: MF initialisation strategy. Defaults to ``"kmeans"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for reproducibility.
-            epochs: Maximum training epochs (default ``10``).
+            epochs: Maximum training epochs (default ``100``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
@@ -233,15 +235,15 @@ class HDFISProdRegressor(_BaseRegressorEstimator):
         """
         super().__init__(
             input_configs=input_configs,
-            n_mfs=5 if n_mfs is None else n_mfs,
-            mf_init="kmeans" if mf_init is None else mf_init,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
             sigma_scale=sigma_scale,
             random_state=random_state,
             epochs=epochs,
             learning_rate=learning_rate,
             verbose=verbose,
             rule_base=rule_base,
-            batch_size=512 if batch_size is None else batch_size,
+            batch_size=batch_size,
             shuffle=shuffle,
             ur_weight=ur_weight,
             ur_target=ur_target,
@@ -255,6 +257,8 @@ class HDFISProdRegressor(_BaseRegressorEstimator):
         self.rho = rho
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
+        if x_arr.shape[1] < 2:
+            raise ValueError(f"HDFISProdRegressor requires at least 2 features; got n_features={x_arr.shape[1]}.")
         input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
         return (
             _wrap_dimension_dependent_gaussian_input_mfs(
@@ -310,15 +314,15 @@ class HDFISMinClassifier(_BaseClassifierEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int | None = None,
-        mf_init: str | None = None,
+        n_mfs: int = 5,
+        mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         epochs: int = 100,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = None,
+        batch_size: int | None = 512,
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -338,7 +342,7 @@ class HDFISMinClassifier(_BaseClassifierEstimator):
             mf_init: MF initialisation strategy. Defaults to ``"kmeans"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for reproducibility.
-            epochs: Maximum training epochs (default ``10``).
+            epochs: Maximum training epochs (default ``100``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
@@ -358,15 +362,15 @@ class HDFISMinClassifier(_BaseClassifierEstimator):
         """
         super().__init__(
             input_configs=input_configs,
-            n_mfs=5 if n_mfs is None else n_mfs,
-            mf_init="kmeans" if mf_init is None else mf_init,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
             sigma_scale=sigma_scale,
             random_state=random_state,
             epochs=epochs,
             learning_rate=learning_rate,
             verbose=verbose,
             rule_base=rule_base,
-            batch_size=512 if batch_size is None else batch_size,
+            batch_size=batch_size,
             shuffle=shuffle,
             ur_weight=ur_weight,
             ur_target=ur_target,
@@ -421,15 +425,15 @@ class HDFISMinRegressor(_BaseRegressorEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int | None = None,
-        mf_init: str | None = None,
+        n_mfs: int = 5,
+        mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         epochs: int = 100,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = None,
+        batch_size: int | None = 512,
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -448,7 +452,7 @@ class HDFISMinRegressor(_BaseRegressorEstimator):
             mf_init: MF initialisation strategy. Defaults to ``"kmeans"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for reproducibility.
-            epochs: Maximum training epochs (default ``10``).
+            epochs: Maximum training epochs (default ``100``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
@@ -466,15 +470,15 @@ class HDFISMinRegressor(_BaseRegressorEstimator):
         """
         super().__init__(
             input_configs=input_configs,
-            n_mfs=5 if n_mfs is None else n_mfs,
-            mf_init="kmeans" if mf_init is None else mf_init,
+            n_mfs=n_mfs,
+            mf_init=mf_init,
             sigma_scale=sigma_scale,
             random_state=random_state,
             epochs=epochs,
             learning_rate=learning_rate,
             verbose=verbose,
             rule_base=rule_base,
-            batch_size=512 if batch_size is None else batch_size,
+            batch_size=batch_size,
             shuffle=shuffle,
             ur_weight=ur_weight,
             ur_target=ur_target,

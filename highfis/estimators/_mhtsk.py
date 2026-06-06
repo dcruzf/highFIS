@@ -57,20 +57,20 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int | None = None,
+        n_mfs: int = 3,
         n_heads: int | None = None,
         head_size: int | None = None,
         head_size_ratio: float | None = None,
-        fcm_m: float | None = None,
-        rule_sigma: float | None = None,
+        fcm_m: float = 2.0,
+        rule_sigma: float = 1.0,
         fcr_target: float | None = None,
         h_value: float | None = None,
-        xi: float | None = None,
-        instance_sample_fraction: float | None = None,
-        rule_extraction: bool | None = None,
-        crcr_us: float | None = None,
-        crcr_s: float | None = None,
-        retrain_after_extraction: bool | None = None,
+        xi: float = 743.0,
+        instance_sample_fraction: float = 0.8,
+        rule_extraction: bool = False,
+        crcr_us: float = 0.5,
+        crcr_s: float = 0.5,
+        retrain_after_extraction: bool = True,
         random_state: int | None = None,
         epochs: int = 100,
         learning_rate: float = 1e-2,
@@ -122,18 +122,9 @@ class MHTSKClassifier(_BaseClassifierEstimator):
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
         """
-        resolved_n_mfs = 3 if n_mfs is None else n_mfs
-        resolved_fcm_m = 2.0 if fcm_m is None else fcm_m
-        resolved_rule_sigma = 1.0 if rule_sigma is None else rule_sigma
-        resolved_xi = 743.0 if xi is None else xi
-        resolved_rule_extraction = False if rule_extraction is None else bool(rule_extraction)
-        resolved_crcr_us = 0.5 if crcr_us is None else crcr_us
-        resolved_crcr_s = 0.5 if crcr_s is None else crcr_s
-        resolved_retrain_after_extraction = True if retrain_after_extraction is None else bool(retrain_after_extraction)
-
         super().__init__(
             input_configs=input_configs,
-            n_mfs=resolved_n_mfs,
+            n_mfs=n_mfs,
             mf_init="fcm",
             sigma_scale=1.0,
             random_state=random_state,
@@ -152,20 +143,19 @@ class MHTSKClassifier(_BaseClassifierEstimator):
             weight_decay=weight_decay,
             device=device,
         )
-        self.n_heads = n_heads if n_heads is not None else None
-        self.head_size = head_size if head_size is not None else None
-        self.head_size_ratio = head_size_ratio if head_size_ratio is not None else None
-        self.fcm_m = float(resolved_fcm_m)
-        self.rule_sigma = float(resolved_rule_sigma)
-        self.fcr_target = fcr_target if fcr_target is not None else None
-        self.h_value = h_value if h_value is not None else None
-        self.xi = float(resolved_xi)
-        self.instance_sample_fraction = 0.8 if instance_sample_fraction is None else instance_sample_fraction
-        self.rule_extraction = bool(resolved_rule_extraction)
-        self.crcr_us = float(resolved_crcr_us)
-        self.crcr_s = float(resolved_crcr_s)
-        self.retrain_after_extraction = bool(resolved_retrain_after_extraction)
-        self._extracted_rule_indices_: list[int] | None = None
+        self.n_heads = n_heads
+        self.head_size = head_size
+        self.head_size_ratio = head_size_ratio
+        self.fcm_m = fcm_m
+        self.rule_sigma = rule_sigma
+        self.fcr_target = fcr_target
+        self.h_value = h_value
+        self.xi = xi
+        self.instance_sample_fraction = instance_sample_fraction
+        self.rule_extraction = rule_extraction
+        self.crcr_us = crcr_us
+        self.crcr_s = crcr_s
+        self.retrain_after_extraction = retrain_after_extraction
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:  # type: ignore[override]
         feature_names = self._resolve_feature_names(x_arr)
@@ -312,19 +302,19 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         self,
         *,
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int | None = None,
+        n_mfs: int = 3,
         n_heads: int | None = None,
         head_size: int | None = None,
         head_size_ratio: float | None = None,
-        fcm_m: float | None = None,
-        rule_sigma: float | None = None,
+        fcm_m: float = 2.0,
+        rule_sigma: float = 1.0,
         fcr_target: float | None = None,
         h_value: float | None = None,
-        xi: float | None = None,
-        instance_sample_fraction: float | None = None,
-        rule_extraction: bool | None = None,
-        crcr_us: float | None = None,
-        retrain_after_extraction: bool | None = None,
+        xi: float = 743.0,
+        instance_sample_fraction: float = 0.8,
+        rule_extraction: bool = False,
+        crcr_us: float = 0.5,
+        retrain_after_extraction: bool = True,
         random_state: int | None = None,
         epochs: int = 100,
         learning_rate: float = 1e-2,
@@ -379,17 +369,9 @@ class MHTSKRegressor(_BaseRegressorEstimator):
             The regressor supports only unsupervised rule extraction via
             ``crcr_us`` because no label-based Mann-Whitney selection is available.
         """
-        resolved_n_mfs = 3 if n_mfs is None else n_mfs
-        resolved_fcm_m = 2.0 if fcm_m is None else fcm_m
-        resolved_rule_sigma = 1.0 if rule_sigma is None else rule_sigma
-        resolved_xi = 743.0 if xi is None else xi
-        resolved_rule_extraction = False if rule_extraction is None else bool(rule_extraction)
-        resolved_crcr_us = 0.5 if crcr_us is None else crcr_us
-        resolved_retrain_after_extraction = True if retrain_after_extraction is None else bool(retrain_after_extraction)
-
         super().__init__(
             input_configs=input_configs,
-            n_mfs=resolved_n_mfs,
+            n_mfs=n_mfs,
             mf_init="fcm",
             sigma_scale=1.0,
             random_state=random_state,
@@ -408,19 +390,18 @@ class MHTSKRegressor(_BaseRegressorEstimator):
             weight_decay=weight_decay,
             device=device,
         )
-        self.n_heads = n_heads if n_heads is not None else None
-        self.head_size = head_size if head_size is not None else None
-        self.head_size_ratio = head_size_ratio if head_size_ratio is not None else None
-        self.fcm_m = float(resolved_fcm_m)
-        self.rule_sigma = float(resolved_rule_sigma)
-        self.fcr_target = fcr_target if fcr_target is not None else None
-        self.h_value = h_value if h_value is not None else None
-        self.xi = float(resolved_xi)
-        self.instance_sample_fraction = 0.8 if instance_sample_fraction is None else instance_sample_fraction
-        self.rule_extraction = bool(resolved_rule_extraction)
-        self.crcr_us = float(resolved_crcr_us)
-        self.retrain_after_extraction = bool(resolved_retrain_after_extraction)
-        self._extracted_rule_indices_: list[int] | None = None
+        self.n_heads = n_heads
+        self.head_size = head_size
+        self.head_size_ratio = head_size_ratio
+        self.fcm_m = fcm_m
+        self.rule_sigma = rule_sigma
+        self.fcr_target = fcr_target
+        self.h_value = h_value
+        self.xi = xi
+        self.instance_sample_fraction = instance_sample_fraction
+        self.rule_extraction = rule_extraction
+        self.crcr_us = crcr_us
+        self.retrain_after_extraction = retrain_after_extraction
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:  # type: ignore[override]
         feature_names = self._resolve_feature_names(x_arr)
