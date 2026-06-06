@@ -20,14 +20,12 @@ from highfis.t_norms import (
 
 def test_t_norm_prod_min_gmean_values() -> None:
     terms = torch.tensor([[0.25, 0.5], [0.4, 0.9]], dtype=torch.float32)
-
     prod = ProductTNorm()(terms, dim=1)
     tmin = MinimumTNorm()(terms, dim=1)
     gmean = GMeanTNorm()(terms, dim=1)
-
-    assert torch.allclose(prod, torch.tensor([0.125, 0.36]), atol=1e-6)
-    assert torch.allclose(tmin, torch.tensor([0.25, 0.4]), atol=1e-6)
-    assert torch.allclose(gmean, torch.tensor([0.35355338, 0.6]), atol=1e-6)
+    assert torch.allclose(prod, torch.tensor([0.125, 0.36]), atol=1e-06)
+    assert torch.allclose(tmin, torch.tensor([0.25, 0.4]), atol=1e-06)
+    assert torch.allclose(gmean, torch.tensor([0.35355338, 0.6]), atol=1e-06)
 
 
 def test_resolve_t_norm_returns_callable() -> None:
@@ -46,28 +44,28 @@ def test_t_norm_dombi_values() -> None:
     terms = torch.tensor([[0.25, 0.5], [0.4, 0.9]], dtype=torch.float32)
     out = DombiTNorm(lambda_=2.0)(terms, dim=1)
     expected = torch.tensor([0.2403, 0.3993], dtype=torch.float32)
-    assert torch.allclose(out, expected, atol=1e-4)
+    assert torch.allclose(out, expected, atol=0.0001)
 
 
 def test_t_norm_yager_values() -> None:
     terms = torch.tensor([[0.25, 0.5], [0.4, 0.9]], dtype=torch.float32)
     out = YagerTNorm(lambda_=2.0)(terms, dim=1)
     expected = 1.0 - torch.minimum((1.0 - terms).pow(2.0).sum(dim=1).pow(0.5), torch.tensor(1.0))
-    assert torch.allclose(out, expected, atol=1e-6)
+    assert torch.allclose(out, expected, atol=1e-06)
 
 
 def test_t_norm_yager_simple_values() -> None:
     terms = torch.tensor([[0.25, 0.5], [0.4, 0.9]], dtype=torch.float32)
     out = YagerSimpleTNorm(lambda_=2.0)(terms, dim=1)
     expected = 1.0 - (1.0 - terms).pow(2.0).sum(dim=1).pow(0.5)
-    assert torch.allclose(out, expected, atol=1e-6)
+    assert torch.allclose(out, expected, atol=1e-06)
 
 
 def test_yager_tnorm_forward() -> None:
     terms = torch.tensor([[0.25, 0.5], [0.4, 0.9]], dtype=torch.float32)
     out_cls = YagerTNorm(lambda_=2.0)(terms, dim=1)
     expected = 1.0 - torch.minimum((1.0 - terms).pow(2.0).sum(dim=1).pow(0.5), torch.tensor(1.0))
-    assert torch.allclose(out_cls, expected, atol=1e-6)
+    assert torch.allclose(out_cls, expected, atol=1e-06)
 
 
 def test_yager_simple_tnorm_class_matches_function() -> None:
@@ -137,7 +135,7 @@ def test_adaptive_dombi_tnorm_values() -> None:
 def test_adaptive_dombi_tnorm_rejects_invalid_arguments() -> None:
     with pytest.raises(ValueError, match="dimension must be > 1"):
         AdaptiveDombiTNorm(dimension=1, lower_bound=0.1)
-    with pytest.raises(ValueError, match=r"lower_bound must be in \[0, 1\)"):
+    with pytest.raises(ValueError, match="lower_bound must be in \\[0, 1\\)"):
         AdaptiveDombiTNorm(dimension=1000, lower_bound=1.0)
     with pytest.raises(ValueError, match="k must be > 1"):
         AdaptiveDombiTNorm(dimension=1000, lower_bound=0.1, k=1.0)

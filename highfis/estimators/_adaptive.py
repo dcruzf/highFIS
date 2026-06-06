@@ -6,6 +6,7 @@ from collections.abc import Mapping, Sequence
 from typing import cast
 
 import numpy as np
+import numpy.typing as npt
 import torch
 from torch import Tensor, nn
 
@@ -29,14 +30,20 @@ from ._base import (
 )
 
 
-def _build_adptsk_default_input_mfs(n_features: int) -> dict[str, list[GaussianMF]]:
-    """Build default ADPTSK Gaussian MFs before PIMF wrapping.
-
-    Uses three MFs per feature with centers [0.0, 0.5, 1.0] and sigma=1.0.
-    """
-    centers = [0.0, 0.5, 1.0]
-    sigma = 1.0
-    return {f"x{i + 1}": [GaussianMF(mean=center, sigma=sigma) for center in centers] for i in range(n_features)}
+def _build_adptsk_default_input_mfs(x_arr: np.ndarray) -> dict[str, list[GaussianMF]]:
+    """Build default ADPTSK Gaussian MFs before PIMF wrapping, scaled to input ranges."""
+    input_mfs = {}
+    n_features = x_arr.shape[1]
+    for i in range(n_features):
+        x_col = x_arr[:, i]
+        x_min = float(np.min(x_col))
+        x_max = float(np.max(x_col))
+        if x_max <= x_min:
+            x_max = x_min + 1.0
+        centers = [x_min, (x_min + x_max) / 2.0, x_max]
+        sigma = max(x_max - x_min, 1e-3)
+        input_mfs[f"x{i + 1}"] = [GaussianMF(mean=center, sigma=sigma) for center in centers]
+    return input_mfs
 
 
 def _set_sigma_to_one_and_freeze(mf: MembershipFunction) -> None:
@@ -84,106 +91,6 @@ def _wrap_adatsk_gaussian_input_mfs(
                 wrapped_mfs.append(mf)
         wrapped[name] = wrapped_mfs
     return wrapped
-
-
-def _resolve_adatsk_classifier_paper_strict_config(
-    *,
-    paper_strict: bool,
-    n_mfs: int,
-    mf_init: str,
-    sigma_scale: float | str,
-    rule_base: str | None,
-    epochs: int,
-    learning_rate: float,
-    batch_size: int | None,
-) -> tuple[int, str, float | str, str | None, int, float, int | None]:
-    """Resolve ADATSK classifier config with optional paper-strict checks."""
-    if not paper_strict:
-        return (
-            int(n_mfs),
-            str(mf_init),
-            sigma_scale,
-            rule_base,
-            int(epochs),
-            float(learning_rate),
-            batch_size if batch_size is None else int(batch_size),
-        )
-
-    if int(n_mfs) != 3:
-        raise ValueError("paper_strict requires n_mfs=3")
-    if str(mf_init).lower() != "grid":
-        raise ValueError("paper_strict requires mf_init='grid'")
-    if float(sigma_scale) != 1.0:
-        raise ValueError("paper_strict requires sigma_scale=1.0")
-    if rule_base is not None and str(rule_base).lower() != "coco":
-        raise ValueError("paper_strict requires rule_base='coco'")
-    if int(epochs) not in (1, 10, 200):
-        raise ValueError("paper_strict requires epochs=200")
-    if not np.isclose(float(learning_rate), 1e-2):
-        raise ValueError("paper_strict requires learning_rate=1e-2")
-    if batch_size is not None:
-        raise ValueError("paper_strict requires batch_size=None (full batch)")
-
-    return 3, "grid", 1.0, "coco", 200, 1e-2, None
-
-
-def _resolve_adptsk_classifier_paper_strict_config(
-    *,
-    paper_strict: bool,
-    n_mfs: int,
-    mf_init: str,
-    sigma_scale: float | str,
-    rule_base: str | None,
-    kappa: float,
-    xi: float,
-    k: float,
-    zero_consequent_init: bool,
-) -> tuple[int, str, float | str, str | None, float, float, float, bool]:
-    """Resolve ADPTSK classifier config with optional paper-strict checks."""
-    if not paper_strict:
-        return (
-            int(n_mfs),
-            str(mf_init),
-            sigma_scale,
-            rule_base,
-            float(kappa),
-            float(xi),
-            float(k),
-            bool(zero_consequent_init),
-        )
-
-    if int(n_mfs) != 3:
-        raise ValueError("paper_strict requires n_mfs=3")
-    if str(mf_init).lower() != "grid":
-        raise ValueError("paper_strict requires mf_init='grid'")
-    if float(sigma_scale) != 1.0:
-        raise ValueError("paper_strict requires sigma_scale=1.0")
-    if rule_base is not None and str(rule_base).lower() != "coco":
-        raise ValueError("paper_strict requires rule_base='coco'")
-    if float(kappa) != 690.0:
-        raise ValueError("paper_strict requires kappa=690.0")
-    if float(xi) != 730.0:
-        raise ValueError("paper_strict requires xi=730.0")
-    if float(k) != 1.0:
-        raise ValueError("paper_strict requires k=1.0")
-    if not bool(zero_consequent_init):
-        raise ValueError("paper_strict requires zero_consequent_init=True")
-
-    return 3, "grid", 1.0, "coco", 690.0, 730.0, 1.0, True
-
-
-def _validate_adptsk_paper_strict_input_range(x: object, *, arg_name: str = "x") -> None:
-    """Validate that ADPTSK strict-mode inputs are already in [0, 1]."""
-    x_arr = np.asarray(x)
-    if x_arr.size == 0:
-        return
-
-    x_min = float(np.nanmin(x_arr))
-    x_max = float(np.nanmax(x_arr))
-    if x_min < 0.0 or x_max > 1.0:
-        raise ValueError(
-            f"paper_strict requires {arg_name} to be linearly normalized to [0,1]; got min={x_min:.6g}, max={x_max:.6g}"
-        )
 
 
 class ADPTSKClassifier(_BaseClassifierEstimator):
@@ -236,7 +143,6 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         eps: float | None = None,
         zero_consequent_init: bool = True,
         device: str = "cpu",
-        paper_strict: bool = False,
     ) -> None:
         """Initialise an ADPTSK classifier estimator.
 
@@ -280,35 +186,7 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
                 consequent parameters to zeros.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
-            paper_strict: If ``True``, enforce ADPTSK paper protocol
-                defaults in the classifier (``n_mfs=3``, ``mf_init='grid'``,
-                ``sigma_scale=1.0``, ``rule_base='coco'``, ``kappa=690``,
-                ``xi=730``, ``k=1.0``, and ``zero_consequent_init=True``).
-                Input normalization and splitting remain external to the
-                estimator. In strict mode, ``fit`` validates that inputs are
-                already in ``[0, 1]``.
         """
-        (
-            n_mfs,
-            mf_init,
-            sigma_scale,
-            rule_base,
-            kappa,
-            xi,
-            k,
-            zero_consequent_init,
-        ) = _resolve_adptsk_classifier_paper_strict_config(
-            paper_strict=bool(paper_strict),
-            n_mfs=n_mfs,
-            mf_init=mf_init,
-            sigma_scale=sigma_scale,
-            rule_base=rule_base,
-            kappa=kappa,
-            xi=xi,
-            k=k,
-            zero_consequent_init=zero_consequent_init,
-        )
-
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -330,12 +208,11 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
             weight_decay=weight_decay,
             device=device,
         )
-        self.kappa = float(kappa)
-        self.xi = float(xi)
-        self.k = float(k)
+        self.kappa = kappa
+        self.xi = xi
+        self.k = k
         self.eps = eps
-        self.zero_consequent_init = bool(zero_consequent_init)
-        self.paper_strict = bool(paper_strict)
+        self.zero_consequent_init = zero_consequent_init
 
     def _resolve_default_batch_size(self, n_samples: int) -> int | None:
         """Resolve paper-style ADPTSK default batch sizing."""
@@ -354,7 +231,7 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         )
         if use_default_profile:
             feature_names = [f"x{i + 1}" for i in range(x_arr.shape[1])]
-            input_mfs = _build_adptsk_default_input_mfs(x_arr.shape[1])
+            input_mfs = _build_adptsk_default_input_mfs(x_arr)
             effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
             return (
                 _wrap_gaussian_pimf_input_mfs(input_mfs, k=self.k, eps=self.eps),
@@ -370,19 +247,15 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
 
     def fit(
         self,
-        x: object,
-        y: object,
+        x: npt.ArrayLike,
+        y: npt.ArrayLike,
         *,
-        x_val: object | None = None,
-        y_val: object | None = None,
+        x_val: npt.ArrayLike | None = None,
+        y_val: npt.ArrayLike | None = None,
         metrics: list[str] | None = None,
     ) -> ADPTSKClassifier:
         original_batch_size = self.batch_size
         try:
-            if self.paper_strict:
-                _validate_adptsk_paper_strict_input_range(x, arg_name="x")
-                if x_val is not None:
-                    _validate_adptsk_paper_strict_input_range(x_val, arg_name="x_val")
             self.batch_size = self._resolve_default_batch_size(int(np.asarray(y).shape[0]))
             return cast(ADPTSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics))
         finally:
@@ -521,11 +394,11 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
             weight_decay=weight_decay,
             device=device,
         )
-        self.kappa = float(kappa)
-        self.xi = float(xi)
-        self.k = float(k)
+        self.kappa = kappa
+        self.xi = xi
+        self.k = k
         self.eps = eps
-        self.zero_consequent_init = bool(zero_consequent_init)
+        self.zero_consequent_init = zero_consequent_init
 
     def _resolve_default_batch_size(self, n_samples: int) -> int | None:
         """Resolve paper-style ADPTSK default batch sizing."""
@@ -544,7 +417,7 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         )
         if use_default_profile:
             feature_names = [f"x{i + 1}" for i in range(x_arr.shape[1])]
-            input_mfs = _build_adptsk_default_input_mfs(x_arr.shape[1])
+            input_mfs = _build_adptsk_default_input_mfs(x_arr)
             effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
             return (
                 _wrap_gaussian_pimf_input_mfs(input_mfs, k=self.k, eps=self.eps),
@@ -560,11 +433,11 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
 
     def fit(
         self,
-        x: object,
-        y: object,
+        x: npt.ArrayLike,
+        y: npt.ArrayLike,
         *,
-        x_val: object | None = None,
-        y_val: object | None = None,
+        x_val: npt.ArrayLike | None = None,
+        y_val: npt.ArrayLike | None = None,
         metrics: list[str] | None = None,
     ) -> ADPTSKRegressor:
         original_batch_size = self.batch_size
@@ -620,7 +493,7 @@ class ADATSKClassifier(_BaseClassifierEstimator):
         mf_init: str = "grid",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 10,
+        epochs: int = 100,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = "coco",
@@ -635,7 +508,6 @@ class ADATSKClassifier(_BaseClassifierEstimator):
         freeze_antecedent_in_high_dim: bool = True,
         high_dim_threshold: int = 1000,
         device: str = "cpu",
-        paper_strict: bool = False,
     ) -> None:
         """Initialise an ADATSK classifier.
 
@@ -667,38 +539,26 @@ class ADATSKClassifier(_BaseClassifierEstimator):
                 antecedent freezing (default ``1000``).
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
-            paper_strict: If ``True``, enforce paper-strict defaults.
         """
-        (
-            n_mfs,
-            mf_init,
-            sigma_scale,
-            rule_base,
-            epochs,
-            learning_rate,
-            batch_size,
-        ) = _resolve_adatsk_classifier_paper_strict_config(
-            paper_strict=bool(paper_strict),
-            n_mfs=n_mfs,
-            mf_init=mf_init,
-            sigma_scale=sigma_scale,
-            rule_base=rule_base,
-            epochs=epochs,
-            learning_rate=learning_rate,
-            batch_size=batch_size,
-        )
+        resolved_n_mfs = n_mfs
+        resolved_mf_init = mf_init
+        resolved_sigma_scale = sigma_scale
+        resolved_rule_base = rule_base
+        resolved_epochs = epochs
+        resolved_learning_rate = learning_rate
+        resolved_batch_size = batch_size
 
         super().__init__(
             input_configs=input_configs,
-            n_mfs=n_mfs,
-            mf_init=mf_init,
-            sigma_scale=sigma_scale,
+            n_mfs=resolved_n_mfs,
+            mf_init=resolved_mf_init,
+            sigma_scale=resolved_sigma_scale,
             random_state=random_state,
-            epochs=epochs,
-            learning_rate=learning_rate,
+            epochs=resolved_epochs,
+            learning_rate=resolved_learning_rate,
             verbose=verbose,
-            rule_base=rule_base,
-            batch_size=batch_size,
+            rule_base=resolved_rule_base,
+            batch_size=resolved_batch_size,
             shuffle=shuffle,
             ur_weight=ur_weight,
             ur_target=ur_target,
@@ -708,24 +568,19 @@ class ADATSKClassifier(_BaseClassifierEstimator):
             weight_decay=weight_decay,
             device=device,
         )
-        self.freeze_antecedent_in_high_dim = bool(freeze_antecedent_in_high_dim)
-        self.high_dim_threshold = int(high_dim_threshold)
-        self.paper_strict = bool(paper_strict)
+        self.freeze_antecedent_in_high_dim = freeze_antecedent_in_high_dim
+        self.high_dim_threshold = high_dim_threshold
 
     def fit(
         self,
-        x: object,
-        y: object,
+        x: npt.ArrayLike,
+        y: npt.ArrayLike,
         *,
-        x_val: object | None = None,
-        y_val: object | None = None,
+        x_val: npt.ArrayLike | None = None,
+        y_val: npt.ArrayLike | None = None,
         metrics: list[str] | None = None,
     ) -> ADATSKClassifier:
-        """Fit the ADATSK classifier estimator, checking input range if strict."""
-        if self.paper_strict:
-            _validate_adptsk_paper_strict_input_range(x, arg_name="x")
-            if x_val is not None:
-                _validate_adptsk_paper_strict_input_range(x_val, arg_name="x_val")
+        """Fit the ADATSK classifier estimator."""
         return cast(ADATSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics))
 
     def _build_model(
@@ -793,7 +648,7 @@ class ADATSKRegressor(_BaseRegressorEstimator):
         mf_init: str = "grid",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 10,
+        epochs: int = 100,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = "coco",
@@ -858,8 +713,8 @@ class ADATSKRegressor(_BaseRegressorEstimator):
             weight_decay=weight_decay,
             device=device,
         )
-        self.freeze_antecedent_in_high_dim = bool(freeze_antecedent_in_high_dim)
-        self.high_dim_threshold = int(high_dim_threshold)
+        self.freeze_antecedent_in_high_dim = freeze_antecedent_in_high_dim
+        self.high_dim_threshold = high_dim_threshold
 
     def _build_regressor_model(
         self,

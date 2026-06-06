@@ -31,9 +31,7 @@ def _build_input_mfs() -> dict[str, list[GaussianMF]]:
 def test_membership_layer_forward_shapes() -> None:
     layer = MembershipLayer(_build_input_mfs())
     x = torch.tensor([[0.0, 0.0], [1.0, -1.0]], dtype=torch.float32)
-
     out = layer(x)
-
     assert set(out.keys()) == {"x1", "x2"}
     assert out["x1"].shape == (2, 2)
     assert out["x2"].shape == (2, 2)
@@ -43,7 +41,6 @@ def test_membership_layer_validates_input_shape() -> None:
     layer = MembershipLayer(_build_input_mfs())
     with pytest.raises(ValueError, match="expected x with 2 dims"):
         layer(torch.tensor([1.0, 2.0]))
-
     with pytest.raises(ValueError, match="expected 2 inputs"):
         layer(torch.randn(3, 3))
 
@@ -52,10 +49,8 @@ def test_rule_layer_cartesian_forward() -> None:
     m_layer = MembershipLayer(_build_input_mfs())
     r_layer = RuleLayer(["x1", "x2"], [2, 2], rule_base="cartesian", t_norm="prod")
     x = torch.randn(4, 2)
-
     mu = m_layer(x)
     w = r_layer(mu)
-
     assert r_layer.n_rules == 4
     assert w.shape == (4, 4)
     assert bool(torch.all(w >= 0.0))
@@ -65,15 +60,12 @@ def test_rule_layer_vectorized_forward_matches_manual() -> None:
     m_layer = MembershipLayer(_build_input_mfs())
     r_layer = RuleLayer(["x1", "x2"], [2, 2], rule_base="cartesian", t_norm="prod")
     x = torch.randn(3, 2)
-
     mu = m_layer(x)
     actual = r_layer(mu)
-
     expected = []
     for rule in r_layer.rules:
         terms = [mu[name][:, idx] for name, idx in zip(r_layer.input_names, rule, strict=False)]
         expected.append(torch.stack(terms, dim=1).prod(dim=1))
-
     expected_tensor = torch.stack(expected, dim=1)
     assert torch.allclose(actual, expected_tensor)
 
@@ -105,53 +97,32 @@ def test_classification_consequent_layer_forward_shape() -> None:
     layer = ClassificationConsequentLayer(n_rules=4, n_inputs=2, n_classes=3)
     x = torch.randn(5, 2)
     norm_w = torch.softmax(torch.randn(5, 4), dim=1)
-
     logits = layer(x, norm_w)
-
     assert logits.shape == (5, 3)
 
 
 def test_gated_classification_consequent_layer_fs_shared_lambda_false() -> None:
-    layer = GatedClassificationConsequentLayer(
-        n_rules=3,
-        n_inputs=2,
-        n_classes=2,
-        gate_fn=gate1,
-        shared_lambda=False,
-    )
+    layer = GatedClassificationConsequentLayer(n_rules=3, n_inputs=2, n_classes=2, gate_fn=gate1, shared_lambda=False)
     layer.mode = "fs"
     x = torch.randn(4, 2)
     norm_w = torch.softmax(torch.randn(4, 3), dim=1)
-
     logits = layer(x, norm_w)
-
     assert logits.shape == (4, 2)
 
 
 def test_gated_classification_consequent_layer_both_shared_lambda_true() -> None:
-    layer = GatedClassificationConsequentLayer(
-        n_rules=3,
-        n_inputs=2,
-        n_classes=2,
-        gate_fn=gate1,
-        shared_lambda=True,
-    )
+    layer = GatedClassificationConsequentLayer(n_rules=3, n_inputs=2, n_classes=2, gate_fn=gate1, shared_lambda=True)
     layer.mode = "both"
     x = torch.randn(4, 2)
     norm_w = torch.softmax(torch.randn(4, 3), dim=1)
-
     logits = layer(x, norm_w)
-
     assert logits.shape == (4, 2)
 
 
 def test_classification_consequent_layer_he_init() -> None:
     """Verify He (Kaiming) initialization on weight and zero bias."""
     layer = ClassificationConsequentLayer(n_rules=4, n_inputs=10, n_classes=3)
-    # Bias should be all zeros
     assert torch.allclose(layer.bias, torch.zeros_like(layer.bias))
-    # Weight std should be close to sqrt(2/fan_in) = sqrt(2/10) ≈ 0.447
-    # but can vary; just check it's not the default randn scale (~1.0)
     assert float(layer.weight.detach().std()) < 1.0
 
 
@@ -161,11 +132,9 @@ def test_sparse_classification_consequent_masks_weights() -> None:
     assert layer.rule_feature_mask.shape == (2, 2)
     assert layer.weight.shape == (2, 2, 2)
     assert layer.bias.shape == (2, 2)
-
     x = torch.randn(3, 2)
     norm_w = torch.softmax(torch.randn(3, 2), dim=1)
     logits = layer(x, norm_w)
-
     assert logits.shape == (3, 2)
 
 
@@ -175,11 +144,9 @@ def test_sparse_regression_consequent_masks_weights() -> None:
     assert layer.rule_feature_mask.shape == (2, 2)
     assert layer.weight.shape == (2, 2)
     assert layer.bias.shape == (2,)
-
     x = torch.randn(3, 2)
     norm_w = torch.softmax(torch.randn(3, 2), dim=1)
     output = layer(x, norm_w)
-
     assert output.shape == (3, 1)
 
 
@@ -187,18 +154,15 @@ def test_sparse_classification_consequent_invalid_init_and_forward_shape() -> No
     mask = torch.tensor([[True, False], [False, True]], dtype=torch.bool)
     with pytest.raises(ValueError, match="n_rules, n_inputs and n_classes must be positive"):
         SparseClassificationConsequentLayer(n_rules=0, n_inputs=2, n_classes=2, rule_feature_mask=mask)
-
     with pytest.raises(ValueError, match="rule_feature_mask must have shape"):
         SparseClassificationConsequentLayer(
             n_rules=2, n_inputs=2, n_classes=2, rule_feature_mask=torch.ones((1, 2), dtype=torch.bool)
         )
-
     layer = SparseClassificationConsequentLayer(n_rules=2, n_inputs=2, n_classes=2, rule_feature_mask=mask)
     x = torch.randn(3, 3)
     norm_w = torch.softmax(torch.randn(3, 2), dim=1)
     with pytest.raises(ValueError, match="expected x shape"):
         layer(x, norm_w)
-
     x = torch.randn(3, 2)
     norm_w = torch.randn(3, 1)
     with pytest.raises(ValueError, match="expected norm_w shape"):
@@ -209,16 +173,13 @@ def test_sparse_regression_consequent_invalid_init_and_forward_shape() -> None:
     mask = torch.tensor([[True, False], [False, True]], dtype=torch.bool)
     with pytest.raises(ValueError, match="n_rules and n_inputs must be positive"):
         SparseRegressionConsequentLayer(n_rules=0, n_inputs=2, rule_feature_mask=mask)
-
     with pytest.raises(ValueError, match="rule_feature_mask must have shape"):
         SparseRegressionConsequentLayer(n_rules=2, n_inputs=2, rule_feature_mask=torch.ones((1, 2), dtype=torch.bool))
-
     layer = SparseRegressionConsequentLayer(n_rules=2, n_inputs=2, rule_feature_mask=mask)
     x = torch.randn(3, 3)
     norm_w = torch.softmax(torch.randn(3, 2), dim=1)
     with pytest.raises(ValueError, match="expected x shape"):
         layer(x, norm_w)
-
     x = torch.randn(3, 2)
     norm_w = torch.randn(3, 1)
     with pytest.raises(ValueError, match="expected norm_w shape"):
@@ -231,11 +192,6 @@ def test_generate_en_frb_has_unique_rules() -> None:
     assert len(rules) >= 3
 
 
-# ---------------------------------------------------------------------------
-# MembershipLayer validation
-# ---------------------------------------------------------------------------
-
-
 def test_membership_layer_rejects_empty_dict() -> None:
     with pytest.raises(ValueError, match="input_mfs must not be empty"):
         MembershipLayer({})
@@ -244,11 +200,6 @@ def test_membership_layer_rejects_empty_dict() -> None:
 def test_membership_layer_rejects_empty_mf_list() -> None:
     with pytest.raises(ValueError, match="must define at least one membership function"):
         MembershipLayer({"x1": []})
-
-
-# ---------------------------------------------------------------------------
-# RuleLayer validation
-# ---------------------------------------------------------------------------
 
 
 def test_rule_layer_rejects_empty_input_names() -> None:
@@ -313,22 +264,16 @@ def test_rule_layer_custom_rejects_missing_rules() -> None:
 
 def test_rule_layer_custom_t_norm_fn_overrides_default() -> None:
     """Custom callable passed via t_norm uses the custom function."""
-    layer = RuleLayer(
-        ["x1", "x2"],
-        [2, 2],
-        t_norm=lambda t: t.prod(dim=-1),
-    )
+    layer = RuleLayer(["x1", "x2"], [2, 2], t_norm=lambda t: t.prod(dim=-1))
     m = MembershipLayer(_build_input_mfs())
     x = torch.randn(3, 2)
     w = layer(m(x))
-
     mu = m(x)
     expected = []
     for rule in layer.rules:
         terms = [mu[name][:, idx] for name, idx in zip(layer.input_names, rule, strict=False)]
         expected.append(torch.stack(terms, dim=1).prod(dim=1))
     expected_tensor = torch.stack(expected, dim=1)
-
     assert w.shape == expected_tensor.shape
     assert torch.allclose(w, expected_tensor)
 
@@ -338,10 +283,8 @@ def test_rule_layer_supports_fuco_alias() -> None:
     x = torch.randn(3, 2)
     m = MembershipLayer(_build_input_mfs())
     w = layer(m(x))
-
     cartesian = RuleLayer(["x1", "x2"], [2, 2], rule_base="cartesian")
     expected = cartesian(m(x))
-
     assert w.shape == (3, 4)
     assert torch.allclose(w, expected)
     w = layer(m(torch.randn(4, 2)))
@@ -352,10 +295,8 @@ def test_adaptive_dombi_rule_layer_forward_matches_manual() -> None:
     m_layer = MembershipLayer(_build_input_mfs())
     r_layer = AdaptiveDombiRuleLayer(["x1", "x2"], [2, 2], rule_base="cartesian", lambda_init=1.0)
     x = torch.rand(4, 2)
-
     mu = m_layer(x)
     actual = r_layer(mu)
-
     expected = []
     for rule_idx, rule in enumerate(r_layer.rules):
         terms = [mu[name][:, idx] for name, idx in zip(r_layer.input_names, rule, strict=False)]
@@ -364,14 +305,8 @@ def test_adaptive_dombi_rule_layer_forward_matches_manual() -> None:
         lam = r_layer.lambdas[rule_idx]
         sum_ratio = ratio.pow(lam).sum(dim=-1)
         expected.append((1.0 + sum_ratio).pow(-1.0 / lam))
-
     expected_tensor = torch.stack(expected, dim=1)
     assert torch.allclose(actual, expected_tensor)
-
-
-# ---------------------------------------------------------------------------
-# ClassificationConsequentLayer validation
-# ---------------------------------------------------------------------------
 
 
 def test_classification_consequent_layer_rejects_bad_x_shape() -> None:
@@ -438,12 +373,8 @@ def test_adp_softmin_rule_layer_forward_shape() -> None:
     from highfis.layers import ADPSoftminRuleLayer
 
     layer = ADPSoftminRuleLayer(["x1", "x2"], [2, 2])
-    membership_outputs = {
-        "x1": torch.tensor([[0.4, 0.8], [0.2, 0.9]]),
-        "x2": torch.tensor([[0.7, 0.3], [0.5, 0.4]]),
-    }
+    membership_outputs = {"x1": torch.tensor([[0.4, 0.8], [0.2, 0.9]]), "x2": torch.tensor([[0.7, 0.3], [0.5, 0.4]])}
     output = layer(membership_outputs)
-
     assert output.shape == (2, 4)
     assert torch.all(output > 0.0)
     assert torch.all(output < 1.0)
@@ -465,18 +396,11 @@ def test_adaptive_dombi_rule_layer_missing_membership_output_raises() -> None:
         layer({"x1": torch.rand(2, 2)})
 
 
-# ---------------------------------------------------------------------------
-# RegressionConsequentLayer
-# ---------------------------------------------------------------------------
-
-
 def test_regression_consequent_layer_forward_shape() -> None:
     layer = RegressionConsequentLayer(n_rules=4, n_inputs=2)
     x = torch.randn(5, 2)
     norm_w = torch.softmax(torch.randn(5, 4), dim=1)
-
     out = layer(x, norm_w)
-
     assert out.shape == (5, 1)
 
 
@@ -513,11 +437,9 @@ def test_regression_consequent_layer_gradient_flows() -> None:
     layer = RegressionConsequentLayer(n_rules=4, n_inputs=2)
     x = torch.randn(5, 2, requires_grad=True)
     norm_w = torch.softmax(torch.randn(5, 4), dim=1)
-
     out = layer(x, norm_w)
     loss = out.sum()
     loss.backward()
-
     assert x.grad is not None
     assert layer.weight.grad is not None
     assert layer.bias.grad is not None
@@ -527,7 +449,6 @@ def test_gated_classification_consequent_layer_forward_shape() -> None:
     layer = GatedClassificationConsequentLayer(n_rules=4, n_inputs=2, n_classes=2, gate_fn="gate1")
     x = torch.randn(5, 2)
     norm_w = torch.softmax(torch.randn(5, 4), dim=1)
-
     out = layer(x, norm_w)
     assert out.shape == (5, 2)
 
@@ -536,7 +457,6 @@ def test_gated_classification_zero_order_consequent_layer_forward_shape() -> Non
     layer = GatedClassificationZeroOrderConsequentLayer(n_rules=4, n_inputs=2, n_classes=2, gate_fn="gate2")
     x = torch.randn(5, 2)
     norm_w = torch.softmax(torch.randn(5, 4), dim=1)
-
     out = layer(x, norm_w)
     assert out.shape == (5, 2)
 
@@ -545,7 +465,6 @@ def test_gated_regression_consequent_layer_forward_shape() -> None:
     layer = GatedRegressionConsequentLayer(n_rules=4, n_inputs=2, gate_fn="gate3")
     x = torch.randn(5, 2)
     norm_w = torch.softmax(torch.randn(5, 4), dim=1)
-
     out = layer(x, norm_w)
     assert out.shape == (5, 1)
 
@@ -554,7 +473,6 @@ def test_gated_regression_zero_order_consequent_layer_forward_shape() -> None:
     layer = GatedRegressionZeroOrderConsequentLayer(n_rules=4, n_inputs=2, gate_fn="gate4")
     x = torch.randn(5, 2)
     norm_w = torch.softmax(torch.randn(5, 4), dim=1)
-
     out = layer(x, norm_w)
     assert out.shape == (5, 1)
 
@@ -602,17 +520,11 @@ def test_gated_consequent_layer_invalid_init_args() -> None:
         GatedRegressionConsequentLayer(n_rules=0, n_inputs=2)
 
 
-# ---------------------------------------------------------------------------
-# Coverage: non-BaseGate callable gate_fn (else branches)
-# ---------------------------------------------------------------------------
-
-
 def test_dgaletsk_rule_layer_custom_callable_gate_fea() -> None:
     """DGALETSKRuleLayer with a plain callable gate_fea hits the else branch."""
     from highfis.layers import DGALETSKRuleLayer
 
     layer = DGALETSKRuleLayer(["x1", "x2"], [2, 2], gate_fea=torch.sigmoid)
-    # else branch: lambda_gates initialised with uniform_(0.001, 0.01)
     assert layer.lambda_gates.min().detach() >= 0.001
     assert layer.lambda_gates.max().detach() <= 0.01
 
@@ -622,7 +534,6 @@ def test_dgtsk_rule_layer_custom_callable_gate_fea() -> None:
     from highfis.layers import DGTSKRuleLayer
 
     layer = DGTSKRuleLayer(["x1", "x2"], [2, 2], gate_fea=torch.sigmoid)
-    # else branch: lambda_gates initialised with uniform_(0.01, 0.1)
     assert layer.lambda_gates.min().detach() >= 0.01
     assert layer.lambda_gates.max().detach() <= 0.1
 
@@ -631,22 +542,18 @@ def test_gated_layers_custom_callable_gate_fn_init() -> None:
     """All four gated consequent layers with a plain callable hit their else branches."""
     x = torch.randn(5, 2)
     norm_w = torch.softmax(torch.randn(5, 4), dim=1)
-
     cl = GatedClassificationConsequentLayer(n_rules=4, n_inputs=2, n_classes=2, gate_fn=torch.sigmoid)
     assert cl.lambda_gates.min().detach() >= 0.01
     out = cl(x, norm_w)
     assert out.shape == (5, 2)
-
     czl = GatedClassificationZeroOrderConsequentLayer(n_rules=4, n_inputs=2, n_classes=2, gate_fn=torch.sigmoid)
     assert czl.theta_gates.min().detach() >= 0.01
     out = czl(x, norm_w)
     assert out.shape == (5, 2)
-
     rl = GatedRegressionConsequentLayer(n_rules=4, n_inputs=2, gate_fn=torch.sigmoid)
     assert rl.theta_gates.min().detach() >= 0.01
     out = rl(x, norm_w)
     assert out.shape == (5, 1)
-
     rzl = GatedRegressionZeroOrderConsequentLayer(n_rules=4, n_inputs=2, gate_fn=torch.sigmoid)
     assert rzl.theta_gates.min().detach().detach() >= 0.01
     out = rzl(x, norm_w)

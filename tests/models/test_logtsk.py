@@ -23,11 +23,6 @@ def _build_input_mfs(n_inputs: int = 3, n_mfs: int = 2) -> dict[str, list[Gaussi
     return {f"x{i + 1}": [GaussianMF(mean=float(j), sigma=1.0) for j in range(n_mfs)] for i in range(n_inputs)}
 
 
-# =====================================================================
-# LogTSKClassifierModel
-# =====================================================================
-
-
 class TestLogTSKClassifierInit:
     def test_rejects_empty_input_mfs(self) -> None:
         with pytest.raises(ValueError, match="input_mfs must not be empty"):
@@ -60,7 +55,7 @@ class TestLogTSKClassifierForward:
         model = LogTSKClassifierModel(_build_input_mfs(), n_classes=3)
         x = torch.randn(8, 3)
         proba = model.predict_proba(x)
-        assert torch.allclose(proba.sum(dim=1), torch.ones(8), atol=1e-6)
+        assert torch.allclose(proba.sum(dim=1), torch.ones(8), atol=1e-06)
 
     def test_predict_returns_class_indices(self) -> None:
         model = LogTSKClassifierModel(_build_input_mfs(), n_classes=3)
@@ -73,7 +68,7 @@ class TestLogTSKClassifierForward:
         model = LogTSKClassifierModel(_build_input_mfs(), n_classes=2)
         x = torch.randn(6, 3)
         norm_w = model.forward_antecedents(x)
-        assert torch.allclose(norm_w.sum(dim=1), torch.ones(6), atol=1e-6)
+        assert torch.allclose(norm_w.sum(dim=1), torch.ones(6), atol=1e-06)
 
 
 class TestLogTSKClassifierMath:
@@ -86,12 +81,10 @@ class TestLogTSKClassifierMath:
         """
         defuzz = InvLogDefuzzifier()
         torch.manual_seed(0)
-        # Values in [0.4, 0.9] — safely above eps even after cubing
         w = torch.rand(10, 4) * 0.5 + 0.4
         out1 = defuzz(w)
-        # w^3 → Z_r scaled by 3: should give identical normalized output
         out2 = defuzz(w**3.0)
-        assert torch.allclose(out1, out2, atol=1e-5), (
+        assert torch.allclose(out1, out2, atol=1e-05), (
             "InvLogDefuzzifier is not scale-invariant: outputs differ after scaling Z_r by k"
         )
 
@@ -103,33 +96,26 @@ class TestLogTSKClassifierMath:
         """
         from highfis.defuzzifiers import SoftmaxLogDefuzzifier
 
-        N, R, D = 20, 4, 100
+        N, R, D = (20, 4, 100)
         w_high = torch.full((N, 1), 0.9) ** D
         w_low = torch.full((N, R - 1), 0.5) ** D
         w = torch.cat([w_high, w_low], dim=1)
-
         inv_log_defuzz = InvLogDefuzzifier()
         softmax_defuzz = SoftmaxLogDefuzzifier()
-
         norm_inv = inv_log_defuzz(w)
         norm_soft = softmax_defuzz(w)
-
         max_inv = norm_inv.max(dim=1).values.mean().item()
         max_soft = norm_soft.max(dim=1).values.mean().item()
-
-        # Softmax should be very close to 1 (saturated); InvLog should not
         assert max_soft > 0.97, f"Expected softmax saturation, got {max_soft:.4f}"
         assert max_inv < 0.99, f"Expected InvLog not saturated, got {max_inv:.4f}"
 
     def test_inv_log_defuzzifier_values(self) -> None:
         """Verify numerics for a known small case."""
         defuzz = InvLogDefuzzifier()
-        # Two rules: w1=e^{-1}, w2=e^{-2} → Z1=-1, Z2=-2
-        # 1/|Z1|=1, 1/|Z2|=0.5 → normalized: [2/3, 1/3]
-        w = torch.tensor([[torch.e**-1, torch.e**-2]])
+        w = torch.tensor([[torch.e ** (-1), torch.e ** (-2)]])
         out = defuzz(w)
         expected = torch.tensor([[2.0 / 3.0, 1.0 / 3.0]])
-        assert torch.allclose(out, expected, atol=1e-5)
+        assert torch.allclose(out, expected, atol=1e-05)
 
     def test_high_dimensional_pipeline_no_underflow(self) -> None:
         """LogTSKClassifierModel must not collapse to uniform weights for D=784.
@@ -140,15 +126,11 @@ class TestLogTSKClassifierMath:
         this by computing exp(mean(log(mu))) instead of product(mu).
         """
         torch.manual_seed(0)
-        D, N, R = 784, 30, 5
-        # Spread MF centers widely so rules have distinct firing levels
+        D, N, R = (784, 30, 5)
         input_mfs = {f"x{i}": [GaussianMF(mean=float(j - 2), sigma=0.5) for j in range(R)] for i in range(D)}
         model = LogTSKClassifierModel(input_mfs, n_classes=2, rule_base="coco")
-
         x = torch.randn(N, D)
-        raw_w = model.rule_layer(model.membership_layer(x))  # (N, R), before defuzz
-
-        # With gmean (the fix), raw firing levels must not all be exactly 0
+        raw_w = model.rule_layer(model.membership_layer(x))
         zero_frac = (raw_w == 0.0).float().mean().item()
         assert zero_frac == 0.0, (
             f"LogTSK raw firing levels are {zero_frac * 100:.1f}% zero — underflow not fixed (prod t-norm still used?)"
@@ -161,7 +143,7 @@ class TestLogTSKClassifierFit:
         model = LogTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
         x = torch.randn(20, 2)
         y = torch.randint(0, 2, (20,), dtype=torch.long)
-        history = model.fit(x, y, epochs=4, learning_rate=1e-2, batch_size=5)
+        history = model.fit(x, y, epochs=4, learning_rate=0.01, batch_size=5)
         assert len(history["train"]) == 4
 
     def test_early_stopping_with_val_data(self) -> None:
@@ -171,21 +153,8 @@ class TestLogTSKClassifierFit:
         y = torch.randint(0, 2, (30,), dtype=torch.long)
         x_val = torch.randn(10, 2)
         y_val = torch.randint(0, 2, (10,), dtype=torch.long)
-        history = model.fit(
-            x,
-            y,
-            epochs=500,
-            x_val=x_val,
-            y_val=y_val,
-            patience=5,
-            learning_rate=1e-2,
-        )
+        history = model.fit(x, y, epochs=500, x_val=x_val, y_val=y_val, patience=5, learning_rate=0.01)
         assert history["stopped_epoch"] < 500
-
-
-# =====================================================================
-# LogTSKRegressorModel
-# =====================================================================
 
 
 class TestLogTSKRegressorInit:
@@ -222,7 +191,7 @@ class TestLogTSKRegressorForward:
         model = LogTSKRegressorModel(_build_input_mfs())
         x = torch.randn(6, 3)
         norm_w = model.forward_antecedents(x)
-        assert torch.allclose(norm_w.sum(dim=1), torch.ones(6), atol=1e-6)
+        assert torch.allclose(norm_w.sum(dim=1), torch.ones(6), atol=1e-06)
 
 
 class TestLogTSKRegressorFit:
@@ -231,7 +200,7 @@ class TestLogTSKRegressorFit:
         model = LogTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
         x = torch.randn(20, 2)
         y = torch.randn(20)
-        history = model.fit(x, y, epochs=4, learning_rate=1e-2, batch_size=5)
+        history = model.fit(x, y, epochs=4, learning_rate=0.01, batch_size=5)
         assert len(history["train"]) == 4
 
     def test_fit_loss_decreases(self) -> None:
@@ -239,7 +208,7 @@ class TestLogTSKRegressorFit:
         model = LogTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
         x = torch.randn(40, 2)
         y = x[:, 0] + 0.5 * x[:, 1]
-        history = model.fit(x, y, epochs=50, learning_rate=1e-2)
+        history = model.fit(x, y, epochs=50, learning_rate=0.01)
         assert history["train"][-1] < history["train"][0]
 
     def test_early_stopping_with_val_data(self) -> None:
@@ -249,13 +218,5 @@ class TestLogTSKRegressorFit:
         y = x[:, 0] + 0.5 * x[:, 1]
         x_val = torch.randn(10, 2)
         y_val = x_val[:, 0] + 0.5 * x_val[:, 1]
-        history = model.fit(
-            x,
-            y,
-            epochs=2000,
-            x_val=x_val,
-            y_val=y_val,
-            patience=15,
-            learning_rate=5e-2,
-        )
+        history = model.fit(x, y, epochs=2000, x_val=x_val, y_val=y_val, patience=15, learning_rate=0.05)
         assert history["stopped_epoch"] < 2000

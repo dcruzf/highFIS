@@ -104,20 +104,6 @@ These classes extend `BaseTSKClassifierModel` and `BaseTSKRegressorModel`, respe
 
 These sklearn-style wrappers build the MHTSK rule base from raw data and expose configurable scale parameter resolution.
 
-### `paper_strict` mode
-
-Both wrappers support `paper_strict=True` to enforce a constrained configuration aligned with the paper defaults used in highFIS:
-
-- Fixed defaults and constraints: `n_mfs=3`, `fcm_m=2.0`, `rule_sigma=1.0`, `xi=743.0`, `instance_sample_fraction=0.8`.
-- Dynamic scale policy from input dimension `D`:
-	- If `D <= 5000`: `S = max(1, round(0.02 * D))`, `T = 200`.
-	- If `D > 5000`: `S = max(1, round(0.01 * D))`, `T = 300`.
-	- `S` is additionally bounded by the numeric-underflow limit based on `xi` and `rule_sigma`.
-- Rule extraction defaults enabled: `rule_extraction=True`, `crcr_us=0.5` (and `crcr_s=0.5` for classifier), `retrain_after_extraction=True`.
-- Consequent-only optimization in strict mode uses an Adam optimizer over consequent parameters.
-
-`paper_strict=True` intentionally rejects incompatible overrides (for example, manual `n_heads`, `head_size`, or disabling extraction).
-
 No internal train/validation holdout split is performed by MHTSK estimators; validation data is only used when explicitly passed via `x_val` and `y_val`.
 
 ### Key estimator parameters

@@ -33,68 +33,6 @@ from ._base import (
 )
 
 
-def _validate_dg_tsk_paper_strict_input_range(x: object, *, arg_name: str = "x") -> None:
-    """Validate that DG-TSK strict-mode inputs are already in [0, 1]."""
-    x_arr = np.asarray(x)
-    if x_arr.size == 0:
-        return
-
-    x_min = float(np.nanmin(x_arr))
-    x_max = float(np.nanmax(x_arr))
-    if x_min < 0.0 or x_max > 1.0:
-        raise ValueError(
-            f"paper_strict requires {arg_name} to be linearly normalized to [0,1]; got min={x_min:.6g}, max={x_max:.6g}"
-        )
-
-
-def _resolve_dg_tsk_paper_strict_config(
-    *,
-    paper_strict: bool,
-    dg_epochs: int,
-    finetune_epochs: int,
-    learning_rate: float,
-    rule_base: str | None,
-    zeta_lambda: list[float] | None,
-    zeta_theta: list[float] | None,
-    pfrb_max_rules: int | None,
-    batch_size: int | None,
-) -> tuple[int, int, float, str, list[float], list[float], int | None, int | None]:
-    if not paper_strict:
-        return (
-            int(dg_epochs),
-            int(finetune_epochs),
-            float(learning_rate),
-            rule_base if rule_base is not None else "pfrb",
-            [0.5] if zeta_lambda is None else list(zeta_lambda),
-            [0.01] if zeta_theta is None else list(zeta_theta),
-            pfrb_max_rules,
-            batch_size,
-        )
-
-    # If parameters are their non-strict defaults or their strict values, resolve to strict.
-    if int(dg_epochs) not in (10, 300):
-        raise ValueError("paper_strict requires dg_epochs=300")
-    if int(finetune_epochs) not in (200, 300):
-        raise ValueError("paper_strict requires finetune_epochs=300")
-    if not (np.isclose(float(learning_rate), 1e-2) or np.isclose(float(learning_rate), 0.2)):
-        raise ValueError("paper_strict requires learning_rate=0.2")
-    if rule_base is not None and str(rule_base).lower() != "pfrb":
-        raise ValueError("paper_strict requires rule_base='pfrb'")
-    if pfrb_max_rules is not None and int(pfrb_max_rules) != 300:
-        raise ValueError("paper_strict requires pfrb_max_rules=300")
-    if batch_size not in (512, None):
-        raise ValueError("paper_strict requires batch_size=None (full batch)")
-
-    resolved_zeta_lambda = [0.5] if zeta_lambda is None else list(zeta_lambda)
-    resolved_zeta_theta = [0.01] if zeta_theta is None else list(zeta_theta)
-    if resolved_zeta_lambda != [0.5]:
-        raise ValueError("paper_strict requires zeta_lambda=[0.5]")
-    if resolved_zeta_theta != [0.01]:
-        raise ValueError("paper_strict requires zeta_theta=[0.01]")
-
-    return 300, 300, 0.2, "pfrb", [0.5], [0.01], 300, None
-
-
 class DGTSKClassifier(_BaseClassifierEstimator):
     """DG-TSK classifier with M-gate antecedent and point-based FRB (P-FRB).
 
@@ -134,7 +72,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        dg_epochs: int = 10,
+        dg_epochs: int = 100,
         finetune_epochs: int = 200,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
@@ -156,7 +94,6 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         structural_pruning: bool = True,
         freeze_antecedents_finetune: bool = False,
         device: str = "cpu",
-        paper_strict: bool = False,
     ) -> None:
         """Initialise a DG-TSK classifier.
 
@@ -211,59 +148,32 @@ class DGTSKClassifier(_BaseClassifierEstimator):
                 to optimize antecedents and consequents in fine-tuning.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
-            paper_strict: If ``True``, enforce DG-TSK paper protocol
-                defaults in the classifier (``dg_epochs=300``, ``finetune_epochs=300``,
-                ``learning_rate=0.2``, ``rule_base='pfrb'``, ``pfrb_max_rules=300``, and
-                ``batch_size=None``). In strict mode, ``fit`` validates that
-                inputs are already in ``[0, 1]``.
         """
-        (
-            resolved_dg_epochs,
-            resolved_finetune_epochs,
-            resolved_learning_rate,
-            resolved_rule_base,
-            resolved_zeta_lambda,
-            resolved_zeta_theta,
-            resolved_pfrb_max_rules,
-            resolved_batch_size,
-        ) = _resolve_dg_tsk_paper_strict_config(
-            paper_strict=bool(paper_strict),
-            dg_epochs=dg_epochs,
-            finetune_epochs=finetune_epochs,
-            learning_rate=learning_rate,
-            rule_base=rule_base,
-            zeta_lambda=zeta_lambda,
-            zeta_theta=zeta_theta,
-            pfrb_max_rules=pfrb_max_rules,
-            batch_size=batch_size,
-        )
-
-        self.use_en_frb = bool(use_en_frb)
-        self.dg_epochs = resolved_dg_epochs
-        self.finetune_epochs = resolved_finetune_epochs
-        self.zeta_lambda = resolved_zeta_lambda
-        self.zeta_theta = resolved_zeta_theta
-        self.use_lse = bool(use_lse)
-        self.optimizer_type = str(optimizer_type)
-        self.structural_pruning = bool(structural_pruning)
-        self.freeze_antecedents_finetune = bool(freeze_antecedents_finetune)
-        self.paper_strict = bool(paper_strict)
+        self.use_en_frb = use_en_frb
+        self.dg_epochs = dg_epochs
+        self.finetune_epochs = finetune_epochs
+        self.zeta_lambda = zeta_lambda
+        self.zeta_theta = zeta_theta
+        self.use_lse = use_lse
+        self.optimizer_type = optimizer_type
+        self.structural_pruning = structural_pruning
+        self.freeze_antecedents_finetune = freeze_antecedents_finetune
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
             mf_init=mf_init,
             sigma_scale=sigma_scale,
             random_state=random_state,
-            epochs=resolved_dg_epochs,
-            learning_rate=resolved_learning_rate,
+            epochs=dg_epochs,
+            learning_rate=learning_rate,
             verbose=verbose,
-            rule_base=resolved_rule_base,
-            batch_size=resolved_batch_size,
+            rule_base=rule_base if rule_base is not None else "pfrb",
+            batch_size=batch_size,
             shuffle=shuffle,
             ur_weight=ur_weight,
             ur_target=ur_target,
             consequent_batch_norm=consequent_batch_norm,
-            pfrb_max_rules=resolved_pfrb_max_rules,
+            pfrb_max_rules=pfrb_max_rules,
             patience=patience,
             restore_best=restore_best,
             device=device,
@@ -284,10 +194,6 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         Validation data should be supplied using ``x_val`` and ``y_val``
         when available.
         """
-        if self.paper_strict:
-            _validate_dg_tsk_paper_strict_input_range(x, arg_name="x")
-            if x_val is not None:
-                _validate_dg_tsk_paper_strict_input_range(x_val, arg_name="x_val")
         return cast(DGTSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics))
 
     def _build_model(
@@ -308,6 +214,8 @@ class DGTSKClassifier(_BaseClassifierEstimator):
 
     def _get_trainer(self) -> DGTrainer:
         """Return a :class:`~highfis.optim.DGTrainer` built from this estimator's params."""
+        resolved_zeta_lambda = [0.5] if self.zeta_lambda is None else list(self.zeta_lambda)
+        resolved_zeta_theta = [0.01] if self.zeta_theta is None else list(self.zeta_theta)
         return DGTrainer(
             dg_epochs=int(self.dg_epochs),
             dg_learning_rate=float(self.learning_rate),
@@ -317,8 +225,8 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             dg_weight_decay=float(self.weight_decay),
             dg_ur_weight=float(self.ur_weight),
             dg_ur_target=self.ur_target,
-            zeta_lambda=self.zeta_lambda,
-            zeta_theta=self.zeta_theta,
+            zeta_lambda=resolved_zeta_lambda,
+            zeta_theta=resolved_zeta_theta,
             use_lse=bool(self.use_lse),
             finetune_epochs=int(self.finetune_epochs),
             finetune_learning_rate=float(self.learning_rate),
@@ -416,7 +324,10 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         if x_arr.shape[1] != self.n_features_in_:
             raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
         x_model = _select_dgtsking_surviving_features(self, x_arr)
-        probs = cast(Any, self.model_).predict_proba(self._as_tensor_x(x_model, torch.device(str(self.device))))
+        device_str = str(self.device).lower()
+        dtype = torch.float64 if "cpu" in device_str else torch.float32
+        x_tensor = torch.as_tensor(x_model, dtype=dtype, device=torch.device(device_str))
+        probs = cast(Any, self.model_).predict_proba(x_tensor)
         return probs.detach().cpu().numpy()
 
 
@@ -452,7 +363,7 @@ class DGTSKRegressor(_BaseRegressorEstimator):
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        dg_epochs: int = 10,
+        dg_epochs: int = 100,
         finetune_epochs: int = 200,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
@@ -521,15 +432,15 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
         """
-        self.use_en_frb = bool(use_en_frb)
-        self.dg_epochs = int(dg_epochs)
-        self.finetune_epochs = int(finetune_epochs)
+        self.use_en_frb = use_en_frb
+        self.dg_epochs = dg_epochs
+        self.finetune_epochs = finetune_epochs
         self.zeta_lambda = zeta_lambda
         self.zeta_theta = zeta_theta
-        self.use_lse = bool(use_lse)
-        self.optimizer_type = str(optimizer_type)
-        self.structural_pruning = bool(structural_pruning)
-        self.freeze_antecedents_finetune = bool(freeze_antecedents_finetune)
+        self.use_lse = use_lse
+        self.optimizer_type = optimizer_type
+        self.structural_pruning = structural_pruning
+        self.freeze_antecedents_finetune = freeze_antecedents_finetune
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -564,12 +475,14 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             input_mfs,
             rule_base=rule_base,
             consequent_batch_norm=bool(self.consequent_batch_norm),
-            use_en_frb=self.use_en_frb,
+            use_en_frb=bool(self.use_en_frb),
             optimizer_type=self.optimizer_type,
         )
 
     def _get_trainer(self) -> DGTrainer:
         """Return a :class:`~highfis.optim.DGTrainer` built from this estimator's params."""
+        resolved_zeta_lambda = [0.5] if self.zeta_lambda is None else list(self.zeta_lambda)
+        resolved_zeta_theta = [0.01] if self.zeta_theta is None else list(self.zeta_theta)
         return DGTrainer(
             dg_epochs=int(self.dg_epochs),
             dg_learning_rate=float(self.learning_rate),
@@ -579,8 +492,8 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             dg_weight_decay=float(self.weight_decay),
             dg_ur_weight=float(self.ur_weight),
             dg_ur_target=self.ur_target,
-            zeta_lambda=self.zeta_lambda,
-            zeta_theta=self.zeta_theta,
+            zeta_lambda=resolved_zeta_lambda,
+            zeta_theta=resolved_zeta_theta,
             use_lse=bool(self.use_lse),
             finetune_epochs=int(self.finetune_epochs),
             finetune_learning_rate=float(self.learning_rate),
@@ -669,8 +582,11 @@ class DGTSKRegressor(_BaseRegressorEstimator):
         if x_arr.shape[1] != self.n_features_in_:
             raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
         x_model = _select_dgtsking_surviving_features(self, x_arr)
-        pred = cast(Any, self.model_).predict(self._as_tensor_x(x_model, torch.device(str(self.device))))
-        return pred.detach().cpu().numpy()
+        device_str = str(self.device).lower()
+        dtype = torch.float64 if "cpu" in device_str else torch.float32
+        x_tensor = torch.as_tensor(x_model, dtype=dtype, device=torch.device(device_str))
+        preds = cast(Any, self.model_).predict(x_tensor)
+        return preds.detach().cpu().numpy()
 
 
 def _select_dgtsking_surviving_features(estimator: Any, x_arr: np.ndarray) -> np.ndarray:

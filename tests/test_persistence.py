@@ -34,10 +34,8 @@ class TestPersistenceIO:
     def test_roundtrip(self, tmp_path: Path) -> None:
         payload = _valid_payload()
         path = tmp_path / "ckpt.pt"
-
         save_checkpoint(path, payload)
         loaded = load_checkpoint(path)
-
         assert loaded["format"] == CHECKPOINT_FORMAT
         assert loaded["format_version"] == CHECKPOINT_FORMAT_VERSION
         assert loaded["estimator_class"] == "FakeEstimator"
@@ -46,16 +44,13 @@ class TestPersistenceIO:
     def test_load_non_dict_raises(self, tmp_path: Path) -> None:
         path = tmp_path / "bad.pt"
         torch.save([1, 2, 3], path)
-
         with pytest.raises(ValueError, match="invalid checkpoint: expected a dictionary payload"):
             load_checkpoint(path)
 
     def test_save_checkpoint_creates_parent_dirs(self, tmp_path: Path) -> None:
         payload = _valid_payload()
         path = tmp_path / "nested" / "checkpoint" / "ckpt.pt"
-
         save_checkpoint(path, payload)
-
         assert path.exists()
         assert load_checkpoint(path) == payload
 
@@ -63,9 +58,7 @@ class TestPersistenceIO:
         payload = _valid_payload()
         path = tmp_path / "ckpt.pt"
         torch.save(payload, path)
-
         calls: list[dict] = []
-
         _original_load = torch.load
 
         def capturing_load(source, map_location, weights_only):
@@ -74,33 +67,25 @@ class TestPersistenceIO:
 
         monkeypatch.setattr(torch, "load", capturing_load)
         load_checkpoint(path)
-
         assert calls == [{"weights_only": True}]
 
-    @pytest.mark.parametrize(
-        "missing_key",
-        ["estimator_params", "model_init", "model_state_dict", "fitted_attrs"],
-    )
+    @pytest.mark.parametrize("missing_key", ["estimator_params", "model_init", "model_state_dict", "fitted_attrs"])
     def test_validate_checkpoint_payload_missing_required_keys(self, missing_key: str) -> None:
         payload = _valid_payload()
         payload.pop(missing_key)
-
         with pytest.raises(ValueError, match=f"invalid checkpoint: missing '{missing_key}'"):
             validate_checkpoint_payload(payload, expected_estimator_class="FakeEstimator")
 
     def test_validate_checkpoint_payload(self) -> None:
         payload = _valid_payload()
         validate_checkpoint_payload(payload, expected_estimator_class="FakeEstimator")
-
         payload["format"] = "other"
         with pytest.raises(ValueError, match="invalid checkpoint format"):
             validate_checkpoint_payload(payload, expected_estimator_class="FakeEstimator")
-
         payload = _valid_payload()
         payload["format_version"] = "999"
         with pytest.raises(ValueError, match="unsupported checkpoint version"):
             validate_checkpoint_payload(payload, expected_estimator_class="FakeEstimator")
-
         payload = _valid_payload()
         payload["estimator_class"] = "WrongClass"
         with pytest.raises(ValueError, match="checkpoint was created for"):
@@ -116,13 +101,10 @@ class TestEstimatorPersistence:
     def test_tsk_classifier_save_load_roundtrip(self, tmp_path: Path) -> None:
         x = np.array([[0.0, 0.0], [1.0, 1.0], [0.5, -0.5]], dtype=float)
         y = np.array([0, 1, 0], dtype=int)
-
         model = TSKClassifier(epochs=1, n_mfs=2, random_state=0, verbose=False)
         model.fit(x, y)
-
         path = tmp_path / "tsk_classifier.pt"
         model.save(str(path))
-
         loaded = TSKClassifier.load(str(path))
         assert loaded.n_features_in_ == model.n_features_in_
         assert np.array_equal(loaded.classes_, model.classes_)
@@ -132,30 +114,24 @@ class TestEstimatorPersistence:
     def test_tsk_regressor_save_load_roundtrip(self, tmp_path: Path) -> None:
         x = np.array([[0.0], [1.0], [2.0]], dtype=float)
         y = np.array([0.0, 1.0, 2.0], dtype=float)
-
         model = TSKRegressor(epochs=1, n_mfs=2, random_state=0, verbose=False)
         model.fit(x, y)
-
         path = tmp_path / "tsk_regressor.pt"
         model.save(str(path))
-
         loaded = TSKRegressor.load(str(path))
         assert loaded.n_features_in_ == model.n_features_in_
         assert np.array_equal(loaded.feature_names_in_, model.feature_names_in_)
-        assert np.allclose(loaded.predict(x), model.predict(x), atol=1e-6)
+        assert np.allclose(loaded.predict(x), model.predict(x), atol=1e-06)
 
     def test_tsk_classifier_with_input_configs_save_load_roundtrip(self, tmp_path: Path) -> None:
         rng = np.random.default_rng(0)
         x = rng.normal(size=(20, 2)).astype(np.float32)
         y = (x[:, 0] > 0).astype(int)
         configs = [InputConfig(name="a", n_mfs=2), InputConfig(name="b", n_mfs=2)]
-
         model = TSKClassifier(input_configs=configs, epochs=1, random_state=0, verbose=False)
         model.fit(x, y)
-
         path = tmp_path / "tsk_clf_inputcfg.pt"
         model.save(str(path))
-
         loaded = TSKClassifier.load(str(path))
         assert loaded.n_features_in_ == model.n_features_in_
         assert np.array_equal(loaded.predict(x), model.predict(x))
@@ -165,13 +141,10 @@ class TestEstimatorPersistence:
         x = rng.normal(size=(20, 1)).astype(np.float32)
         y = x[:, 0] * 2.0
         configs = [InputConfig(name="x", n_mfs=2)]
-
         model = TSKRegressor(input_configs=configs, epochs=1, random_state=0, verbose=False)
         model.fit(x, y)
-
         path = tmp_path / "tsk_reg_inputcfg.pt"
         model.save(str(path))
-
         loaded = TSKRegressor.load(str(path))
         assert loaded.n_features_in_ == model.n_features_in_
-        assert np.allclose(loaded.predict(x), model.predict(x), atol=1e-6)
+        assert np.allclose(loaded.predict(x), model.predict(x), atol=1e-06)

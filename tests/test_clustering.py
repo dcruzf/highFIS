@@ -38,7 +38,7 @@ def test_fcm_class_methods_compute_membership() -> None:
     labels = model.fit_predict(x)
     assert labels.shape == (4,)
     assert model.membership_ is not None
-    assert torch.allclose(model.membership_.sum(dim=1), torch.ones(4), atol=1e-5)
+    assert torch.allclose(model.membership_.sum(dim=1), torch.ones(4), atol=1e-05)
     predictions = model.predict(x)
     assert torch.equal(labels, predictions)
 
@@ -137,7 +137,6 @@ def test_resolve_clusterer_supports_minibatch_kmeans_and_fcm() -> None:
     assert isinstance(model, MiniBatchKMeans)
     assert model.n_clusters == 2
     assert model.random_state == 7
-
     model = _resolve_clusterer("fcm", n_clusters=3, random_state=8)
     assert isinstance(model, FuzzyCMeans)
     assert model.n_clusters == 3
@@ -172,7 +171,7 @@ def test_fcm_zero_distance_branch() -> None:
     assert model.cluster_centers_ is not None
     assert model.cluster_centers_.shape == (2, 2)
     assert model.membership_ is not None
-    assert torch.allclose(model.membership_.sum(dim=1), torch.ones(3), atol=1e-5)
+    assert torch.allclose(model.membership_.sum(dim=1), torch.ones(3), atol=1e-05)
 
 
 def test_fcm_runs_complete_iterations_without_early_stop() -> None:
@@ -183,4 +182,4 @@ def test_fcm_runs_complete_iterations_without_early_stop() -> None:
     assert model.cluster_centers_ is not None
     assert model.cluster_centers_.shape == (2, 2)
     assert model.membership_ is not None
-    assert torch.allclose(model.membership_.sum(dim=1), torch.ones(3), atol=1e-5)
+    assert torch.allclose(model.membership_.sum(dim=1), torch.ones(3), atol=1e-05)

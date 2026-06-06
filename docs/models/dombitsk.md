@@ -100,11 +100,6 @@ $$
 
 ### Strict paper mode
 
-- Use `paper_strict=True` in `DombiTSKClassifier` to enforce the paper protocol defaults at the estimator level:
-  `n_mfs=3`, `mf_init="grid"`, `sigma_scale=1.0`, `rule_base="coco"`, `lambda_=1.0`, `lower_bound=1/e` ($\approx 0.3679$), and `zero_consequent_init=True`.
-- When `paper_strict=True`, conflicting values for these parameters raise `ValueError`.
-- In `paper_strict` mode, Gaussian membership functions are automatically wrapped in `GaussianPiMF` (Composite Gaussian MF) with the paper-defined lower bound of $1/e$.
-- In `paper_strict` mode, the consequent linear layer weights and biases are initialized to exactly zero.
 
 ## Alignment with the paper
 

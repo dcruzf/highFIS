@@ -127,8 +127,6 @@ $$
 
 highFIS provides an opt-in strict mode on HDFIS estimators:
 
-- `paper_strict=True` in `HDFISProdClassifier`, `HDFISProdRegressor`,
-  `HDFISMinClassifier`, and `HDFISMinRegressor`.
 - In this mode, the estimator enforces the paper protocol defaults used in
   HDFIS_2023 experiments:
   - `mf_init="grid"`
@@ -139,9 +137,6 @@ highFIS provides an opt-in strict mode on HDFIS estimators:
   denominator (`D^rho + sigma^2`) and zero consequent initialization.
 - For HDFIS-min, strict mode enables zero consequent initialization while
   keeping antecedent freezing.
-
-When `paper_strict=False` (default), highFIS uses library-oriented defaults
-for broader usability (for example, clustering-based initialization).
 
 ### Model classes
 
@@ -188,8 +183,6 @@ for broader usability (for example, clustering-based initialization).
 - `BaseTSK.fit()` supports mini-batch optimization, optional early stopping,
   uniform rule regularization, and weight decay across HDFIS estimators.
 
-Paper protocol is reproduced in highFIS through `paper_strict=True`.
-
 ## Alignment with the paper
 
 - Core architecture alignment (always):
@@ -197,8 +190,6 @@ Paper protocol is reproduced in highFIS through `paper_strict=True`.
   - HDFIS-min uses minimum aggregation + frozen antecedents.
   - Both use first-order TSK consequents and sum-based normalization.
 - Experimental-protocol alignment (strict):
-  - Use `paper_strict=True` to enforce paper defaults and strict DMF equation
-    behavior.
 - Non-strict defaults are practical library defaults and are not intended to
   be an exact replication of the paper protocol.
 

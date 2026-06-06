@@ -90,18 +90,49 @@ class BaseTSKClassifierModel(BaseTSK):
     def _evaluate_validation(
         self, criterion: Callable[[Tensor, Tensor], Tensor], x_val: Tensor, y_val: Tensor
     ) -> dict[str, float]:
-        """Evaluate validation set using accuracy as the early-stopping metric."""
-        with torch.no_grad():
-            logits = self.forward(x_val)
-            val_loss = float(self._compute_loss(criterion, logits, y_val).item())
-            val_acc = float((logits.argmax(dim=1) == y_val).float().mean().item())
-        return {"val_loss": val_loss, "val_acc": val_acc, "metric": val_acc}
+        """Evaluate validation set using accuracy as the early-stopping metric.
+
+        Uses minibatch iteration to avoid OOM.
+        """
+        was_training = self.training
+        self.eval()
+        try:
+            with torch.no_grad():
+                outputs = []
+                n_samples = x_val.shape[0]
+                batch_size = 1024
+                for start in range(0, n_samples, batch_size):
+                    end = min(start + batch_size, n_samples)
+                    out_b = self.forward(x_val[start:end])
+                    outputs.append(out_b)
+                logits = torch.cat(outputs, dim=0)
+                val_loss = float(self._compute_loss(criterion, logits, y_val).item())
+                val_acc = float((logits.argmax(dim=1) == y_val).float().mean().item())
+            return {"val_loss": val_loss, "val_acc": val_acc, "metric": val_acc}
+        finally:
+            self.train(was_training)
 
     def predict_proba(self, x: Tensor) -> Tensor:
         """Return class probabilities computed with softmax."""
         with torch.no_grad():
-            logits = self.forward(x)
-            return torch.softmax(logits, dim=1)
+            if x.dtype == torch.float64:
+                was_training = self.training
+                self.double()
+                try:
+                    self.eval()
+                    logits = self.forward(x)
+                    return torch.softmax(logits, dim=1)
+                finally:
+                    self.float()
+                    self.train(was_training)
+            else:
+                was_training = self.training
+                try:
+                    self.eval()
+                    logits = self.forward(x)
+                    return torch.softmax(logits, dim=1)
+                finally:
+                    self.train(was_training)
 
     def predict(self, x: Tensor) -> Tensor:
         """Return predicted class indices."""
@@ -119,4 +150,19 @@ class BaseTSKRegressorModel(BaseTSK):
     def predict(self, x: Tensor) -> Tensor:
         """Return predicted values as a 1-D tensor."""
         with torch.no_grad():
-            return self.forward(x).squeeze(1)
+            if x.dtype == torch.float64:
+                was_training = self.training
+                self.double()
+                try:
+                    self.eval()
+                    return self.forward(x).squeeze(1)
+                finally:
+                    self.float()
+                    self.train(was_training)
+            else:
+                was_training = self.training
+                try:
+                    self.eval()
+                    return self.forward(x).squeeze(1)
+                finally:
+                    self.train(was_training)

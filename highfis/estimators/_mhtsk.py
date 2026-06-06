@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from collections.abc import Mapping, Sequence
 from typing import Any, Self
 
@@ -18,8 +17,6 @@ from ..models import (
     MHTSKClassifierModel,
     MHTSKRegressorModel,
 )
-from ..optim._base import BaseTrainer
-from ..optim._gradient import GradientTrainer
 from ._base import (
     InputConfig,
     _BaseClassifierEstimator,
@@ -29,172 +26,6 @@ from ._base import (
     _extract_mhtsk_rule_indices_unsupervised,
     _resolve_mhtsk_scale_parameters,
 )
-
-
-def _resolve_mhtsk_paper_strict_classifier_config(
-    *,
-    paper_strict: bool,
-    n_mfs: int | None,
-    n_heads: int | None,
-    head_size: int | None,
-    head_size_ratio: float | None,
-    fcm_m: float | None,
-    rule_sigma: float | None,
-    fcr_target: float | None,
-    h_value: float | None,
-    xi: float | None,
-    instance_sample_fraction: float | None,
-    rule_extraction: bool | None,
-    crcr_us: float | None,
-    crcr_s: float | None,
-    retrain_after_extraction: bool | None,
-) -> tuple[int, float, float, float, bool, float, float, bool]:
-    if not paper_strict:
-        return (
-            3 if n_mfs is None else int(n_mfs),
-            2.0 if fcm_m is None else float(fcm_m),
-            1.0 if rule_sigma is None else float(rule_sigma),
-            743.0 if xi is None else float(xi),
-            False if rule_extraction is None else bool(rule_extraction),
-            0.5 if crcr_us is None else float(crcr_us),
-            0.5 if crcr_s is None else float(crcr_s),
-            True if retrain_after_extraction is None else bool(retrain_after_extraction),
-        )
-
-    if n_mfs is not None and int(n_mfs) != 3:
-        raise ValueError("paper_strict requires n_mfs=3")
-    if n_heads is not None:
-        raise ValueError("paper_strict computes n_heads from input dimension")
-    if head_size is not None:
-        raise ValueError("paper_strict computes head_size from input dimension")
-    if head_size_ratio is not None:
-        raise ValueError("paper_strict requires head_size_ratio=None")
-    if fcm_m is not None and float(fcm_m) != 2.0:
-        raise ValueError("paper_strict requires fcm_m=2.0")
-    if rule_sigma is not None and float(rule_sigma) != 1.0:
-        raise ValueError("paper_strict requires rule_sigma=1.0")
-    if fcr_target is not None:
-        raise ValueError("paper_strict requires fcr_target=None")
-    if h_value is not None:
-        raise ValueError("paper_strict requires h_value=None")
-    if xi is not None and float(xi) != 743.0:
-        raise ValueError("paper_strict requires xi=743.0")
-    if instance_sample_fraction is not None and float(instance_sample_fraction) != 0.8:
-        raise ValueError("paper_strict requires instance_sample_fraction=0.8")
-    if rule_extraction is not None and not bool(rule_extraction):
-        raise ValueError("paper_strict requires rule_extraction=True")
-    if crcr_us is not None and float(crcr_us) != 0.5:
-        raise ValueError("paper_strict requires crcr_us=0.5")
-    if crcr_s is not None and float(crcr_s) != 0.5:
-        raise ValueError("paper_strict requires crcr_s=0.5")
-    if retrain_after_extraction is not None and not bool(retrain_after_extraction):
-        raise ValueError("paper_strict requires retrain_after_extraction=True")
-
-    return 3, 2.0, 1.0, 743.0, True, 0.5, 0.5, True
-
-
-def _resolve_mhtsk_paper_strict_regressor_config(
-    *,
-    paper_strict: bool,
-    n_mfs: int | None,
-    n_heads: int | None,
-    head_size: int | None,
-    head_size_ratio: float | None,
-    fcm_m: float | None,
-    rule_sigma: float | None,
-    fcr_target: float | None,
-    h_value: float | None,
-    xi: float | None,
-    instance_sample_fraction: float | None,
-    rule_extraction: bool | None,
-    crcr_us: float | None,
-    retrain_after_extraction: bool | None,
-) -> tuple[int, float, float, float, bool, float, bool]:
-    if not paper_strict:
-        return (
-            3 if n_mfs is None else int(n_mfs),
-            2.0 if fcm_m is None else float(fcm_m),
-            1.0 if rule_sigma is None else float(rule_sigma),
-            743.0 if xi is None else float(xi),
-            False if rule_extraction is None else bool(rule_extraction),
-            0.5 if crcr_us is None else float(crcr_us),
-            True if retrain_after_extraction is None else bool(retrain_after_extraction),
-        )
-
-    if n_mfs is not None and int(n_mfs) != 3:
-        raise ValueError("paper_strict requires n_mfs=3")
-    if n_heads is not None:
-        raise ValueError("paper_strict computes n_heads from input dimension")
-    if head_size is not None:
-        raise ValueError("paper_strict computes head_size from input dimension")
-    if head_size_ratio is not None:
-        raise ValueError("paper_strict requires head_size_ratio=None")
-    if fcm_m is not None and float(fcm_m) != 2.0:
-        raise ValueError("paper_strict requires fcm_m=2.0")
-    if rule_sigma is not None and float(rule_sigma) != 1.0:
-        raise ValueError("paper_strict requires rule_sigma=1.0")
-    if fcr_target is not None:
-        raise ValueError("paper_strict requires fcr_target=None")
-    if h_value is not None:
-        raise ValueError("paper_strict requires h_value=None")
-    if xi is not None and float(xi) != 743.0:
-        raise ValueError("paper_strict requires xi=743.0")
-    if instance_sample_fraction is not None and float(instance_sample_fraction) != 0.8:
-        raise ValueError("paper_strict requires instance_sample_fraction=0.8")
-    if rule_extraction is not None and not bool(rule_extraction):
-        raise ValueError("paper_strict requires rule_extraction=True")
-    if crcr_us is not None and float(crcr_us) != 0.5:
-        raise ValueError("paper_strict requires crcr_us=0.5")
-    if retrain_after_extraction is not None and not bool(retrain_after_extraction):
-        raise ValueError("paper_strict requires retrain_after_extraction=True")
-
-    return 3, 2.0, 1.0, 743.0, True, 0.5, True
-
-
-def _strict_mhtsk_scale_from_dimension(n_features: int, *, sigma: float, xi: float) -> tuple[int, int]:
-    base_head_size = max(1, round(n_features * 0.02)) if n_features <= 5000 else max(1, round(n_features * 0.01))
-    max_head_size = min(n_features, max(1, math.floor(2.0 * xi * sigma * sigma)))
-    head_size = min(base_head_size, max_head_size)
-    n_heads = 200 if n_features <= 5000 else 300
-    return head_size, n_heads
-
-
-class _MHTSKPaperStrictTrainer(GradientTrainer):
-    """Strict trainer that updates only consequent parameters using Adam."""
-
-    def fit(
-        self,
-        model: BaseTSK,
-        x: torch.Tensor,
-        y: torch.Tensor,
-        *,
-        x_val: torch.Tensor | None = None,
-        y_val: torch.Tensor | None = None,
-        metrics: list[str] | None = None,
-    ) -> dict[str, Any]:
-        consequent_params = list(model.consequent_layer.parameters())
-        if model.consequent_bn is not None:
-            consequent_params.extend(model.consequent_bn.parameters())
-        optimizer = torch.optim.Adam(consequent_params, lr=float(self.learning_rate))
-        return model.fit(
-            x,
-            y,
-            epochs=int(self.epochs),
-            learning_rate=float(self.learning_rate),
-            criterion=self.loss,
-            optimizer=optimizer,
-            batch_size=self.batch_size,
-            shuffle=bool(self.shuffle),
-            ur_weight=float(self.ur_weight),
-            ur_target=self.ur_target,
-            verbose=self.verbose,
-            x_val=x_val,
-            y_val=y_val,
-            patience=self.patience,
-            restore_best=bool(self.restore_best),
-            weight_decay=float(self.weight_decay),
-            metrics=metrics,
-        )
 
 
 class MHTSKClassifier(_BaseClassifierEstimator):
@@ -241,7 +72,7 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         crcr_s: float | None = None,
         retrain_after_extraction: bool | None = None,
         random_state: int | None = None,
-        epochs: int = 10,
+        epochs: int = 100,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         batch_size: int | None = 512,
@@ -253,7 +84,6 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         restore_best: bool = True,
         weight_decay: float = 1e-8,
         device: str = "cpu",
-        paper_strict: bool = False,
     ) -> None:
         """Initialize a MHTSK classifier estimator.
 
@@ -291,35 +121,15 @@ class MHTSKClassifier(_BaseClassifierEstimator):
             weight_decay: Weight decay coefficient for the optimizer.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
-            paper_strict: If ``True``, apply paper-derived defaults for MHTSK
-                scale and extraction parameters when omitted.
         """
-        (
-            resolved_n_mfs,
-            resolved_fcm_m,
-            resolved_rule_sigma,
-            resolved_xi,
-            resolved_rule_extraction,
-            resolved_crcr_us,
-            resolved_crcr_s,
-            resolved_retrain_after_extraction,
-        ) = _resolve_mhtsk_paper_strict_classifier_config(
-            paper_strict=bool(paper_strict),
-            n_mfs=n_mfs,
-            n_heads=n_heads,
-            head_size=head_size,
-            head_size_ratio=head_size_ratio,
-            fcm_m=fcm_m,
-            rule_sigma=rule_sigma,
-            fcr_target=fcr_target,
-            h_value=h_value,
-            xi=xi,
-            instance_sample_fraction=instance_sample_fraction,
-            rule_extraction=rule_extraction,
-            crcr_us=crcr_us,
-            crcr_s=crcr_s,
-            retrain_after_extraction=retrain_after_extraction,
-        )
+        resolved_n_mfs = 3 if n_mfs is None else n_mfs
+        resolved_fcm_m = 2.0 if fcm_m is None else fcm_m
+        resolved_rule_sigma = 1.0 if rule_sigma is None else rule_sigma
+        resolved_xi = 743.0 if xi is None else xi
+        resolved_rule_extraction = False if rule_extraction is None else bool(rule_extraction)
+        resolved_crcr_us = 0.5 if crcr_us is None else crcr_us
+        resolved_crcr_s = 0.5 if crcr_s is None else crcr_s
+        resolved_retrain_after_extraction = True if retrain_after_extraction is None else bool(retrain_after_extraction)
 
         super().__init__(
             input_configs=input_configs,
@@ -342,37 +152,33 @@ class MHTSKClassifier(_BaseClassifierEstimator):
             weight_decay=weight_decay,
             device=device,
         )
-        self.n_heads = int(n_heads) if n_heads is not None else None
-        self.head_size = int(head_size) if head_size is not None else None
-        self.head_size_ratio = float(head_size_ratio) if head_size_ratio is not None else None
+        self.n_heads = n_heads if n_heads is not None else None
+        self.head_size = head_size if head_size is not None else None
+        self.head_size_ratio = head_size_ratio if head_size_ratio is not None else None
         self.fcm_m = float(resolved_fcm_m)
         self.rule_sigma = float(resolved_rule_sigma)
-        self.fcr_target = float(fcr_target) if fcr_target is not None else None
-        self.h_value = float(h_value) if h_value is not None else None
+        self.fcr_target = fcr_target if fcr_target is not None else None
+        self.h_value = h_value if h_value is not None else None
         self.xi = float(resolved_xi)
-        self.instance_sample_fraction = 0.8 if instance_sample_fraction is None else float(instance_sample_fraction)
+        self.instance_sample_fraction = 0.8 if instance_sample_fraction is None else instance_sample_fraction
         self.rule_extraction = bool(resolved_rule_extraction)
         self.crcr_us = float(resolved_crcr_us)
         self.crcr_s = float(resolved_crcr_s)
         self.retrain_after_extraction = bool(resolved_retrain_after_extraction)
-        self.paper_strict = bool(paper_strict)
         self._extracted_rule_indices_: list[int] | None = None
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:  # type: ignore[override]
         feature_names = self._resolve_feature_names(x_arr)
-        if self.paper_strict:
-            head_size, n_heads = _strict_mhtsk_scale_from_dimension(x_arr.shape[1], sigma=self.rule_sigma, xi=self.xi)
-        else:
-            head_size, n_heads = _resolve_mhtsk_scale_parameters(
-                n_features=x_arr.shape[1],
-                head_size=self.head_size,
-                head_size_ratio=self.head_size_ratio,
-                n_heads=self.n_heads,
-                fcr_target=self.fcr_target,
-                h_value=self.h_value,
-                sigma=self.rule_sigma,
-                xi=self.xi,
-            )
+        head_size, n_heads = _resolve_mhtsk_scale_parameters(
+            n_features=x_arr.shape[1],
+            head_size=self.head_size,
+            head_size_ratio=self.head_size_ratio,
+            n_heads=self.n_heads,
+            fcr_target=self.fcr_target,
+            h_value=self.h_value,
+            sigma=self.rule_sigma,
+            xi=self.xi,
+        )
         input_mfs, rules, rule_feature_mask = _build_mhtsk_input_mfs(
             x_arr,
             feature_names=feature_names,
@@ -387,22 +193,6 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         self._mhtsk_rules = rules
         self._mhtsk_rule_feature_mask = torch.as_tensor(rule_feature_mask, dtype=torch.bool)
         return input_mfs, feature_names, "custom"
-
-    def _get_trainer(self) -> BaseTrainer:
-        if not self.paper_strict:
-            return super()._get_trainer()
-        return _MHTSKPaperStrictTrainer(
-            epochs=int(self.epochs),
-            learning_rate=float(self.learning_rate),
-            batch_size=self.batch_size,
-            shuffle=bool(self.shuffle),
-            patience=self.patience,
-            restore_best=bool(self.restore_best),
-            weight_decay=float(self.weight_decay),
-            ur_weight=float(self.ur_weight),
-            ur_target=self.ur_target,
-            verbose=self.verbose,
-        )
 
     def _build_model(
         self,
@@ -473,26 +263,22 @@ class MHTSKClassifier(_BaseClassifierEstimator):
                     self._label_encoder_.transform(np.asarray(y_v_arr)),
                     dtype=torch.long,
                 )
-            if self.paper_strict:
-                trainer = self._get_trainer()
-                self.history_ = trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t)
-            else:
-                self.history_ = self.model_.fit(
-                    x_t,
-                    y_t,
-                    epochs=int(self.epochs),
-                    learning_rate=float(self.learning_rate),
-                    batch_size=self.batch_size,
-                    shuffle=bool(self.shuffle),
-                    ur_weight=float(self.ur_weight),
-                    ur_target=self.ur_target,
-                    verbose=self.verbose,
-                    x_val=x_val_t,
-                    y_val=y_val_t,
-                    patience=self.patience,
-                    restore_best=self.restore_best,
-                    weight_decay=float(self.weight_decay),
-                )
+            self.history_ = self.model_.fit(
+                x_t,
+                y_t,
+                epochs=int(self.epochs),
+                learning_rate=float(self.learning_rate),
+                batch_size=self.batch_size,
+                shuffle=bool(self.shuffle),
+                ur_weight=float(self.ur_weight),
+                ur_target=self.ur_target,
+                verbose=self.verbose,
+                x_val=x_val_t,
+                y_val=y_val_t,
+                patience=self.patience,
+                restore_best=self.restore_best,
+                weight_decay=float(self.weight_decay),
+            )
         return self
 
 
@@ -540,7 +326,7 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         crcr_us: float | None = None,
         retrain_after_extraction: bool | None = None,
         random_state: int | None = None,
-        epochs: int = 10,
+        epochs: int = 100,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         batch_size: int | None = 512,
@@ -552,7 +338,6 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         restore_best: bool = True,
         weight_decay: float = 1e-8,
         device: str = "cpu",
-        paper_strict: bool = False,
     ) -> None:
         """Initialize a MHTSK regressor estimator.
 
@@ -589,37 +374,18 @@ class MHTSKRegressor(_BaseRegressorEstimator):
             weight_decay: Weight decay coefficient for the optimizer.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
-            paper_strict: If ``True``, apply paper-derived defaults for MHTSK
-                scale and extraction parameters when omitted.
 
         Notes:
             The regressor supports only unsupervised rule extraction via
             ``crcr_us`` because no label-based Mann-Whitney selection is available.
         """
-        (
-            resolved_n_mfs,
-            resolved_fcm_m,
-            resolved_rule_sigma,
-            resolved_xi,
-            resolved_rule_extraction,
-            resolved_crcr_us,
-            resolved_retrain_after_extraction,
-        ) = _resolve_mhtsk_paper_strict_regressor_config(
-            paper_strict=bool(paper_strict),
-            n_mfs=n_mfs,
-            n_heads=n_heads,
-            head_size=head_size,
-            head_size_ratio=head_size_ratio,
-            fcm_m=fcm_m,
-            rule_sigma=rule_sigma,
-            fcr_target=fcr_target,
-            h_value=h_value,
-            xi=xi,
-            instance_sample_fraction=instance_sample_fraction,
-            rule_extraction=rule_extraction,
-            crcr_us=crcr_us,
-            retrain_after_extraction=retrain_after_extraction,
-        )
+        resolved_n_mfs = 3 if n_mfs is None else n_mfs
+        resolved_fcm_m = 2.0 if fcm_m is None else fcm_m
+        resolved_rule_sigma = 1.0 if rule_sigma is None else rule_sigma
+        resolved_xi = 743.0 if xi is None else xi
+        resolved_rule_extraction = False if rule_extraction is None else bool(rule_extraction)
+        resolved_crcr_us = 0.5 if crcr_us is None else crcr_us
+        resolved_retrain_after_extraction = True if retrain_after_extraction is None else bool(retrain_after_extraction)
 
         super().__init__(
             input_configs=input_configs,
@@ -642,36 +408,32 @@ class MHTSKRegressor(_BaseRegressorEstimator):
             weight_decay=weight_decay,
             device=device,
         )
-        self.n_heads = int(n_heads) if n_heads is not None else None
-        self.head_size = int(head_size) if head_size is not None else None
-        self.head_size_ratio = float(head_size_ratio) if head_size_ratio is not None else None
+        self.n_heads = n_heads if n_heads is not None else None
+        self.head_size = head_size if head_size is not None else None
+        self.head_size_ratio = head_size_ratio if head_size_ratio is not None else None
         self.fcm_m = float(resolved_fcm_m)
         self.rule_sigma = float(resolved_rule_sigma)
-        self.fcr_target = float(fcr_target) if fcr_target is not None else None
-        self.h_value = float(h_value) if h_value is not None else None
+        self.fcr_target = fcr_target if fcr_target is not None else None
+        self.h_value = h_value if h_value is not None else None
         self.xi = float(resolved_xi)
-        self.instance_sample_fraction = 0.8 if instance_sample_fraction is None else float(instance_sample_fraction)
+        self.instance_sample_fraction = 0.8 if instance_sample_fraction is None else instance_sample_fraction
         self.rule_extraction = bool(resolved_rule_extraction)
         self.crcr_us = float(resolved_crcr_us)
         self.retrain_after_extraction = bool(resolved_retrain_after_extraction)
-        self.paper_strict = bool(paper_strict)
         self._extracted_rule_indices_: list[int] | None = None
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:  # type: ignore[override]
         feature_names = self._resolve_feature_names(x_arr)
-        if self.paper_strict:
-            head_size, n_heads = _strict_mhtsk_scale_from_dimension(x_arr.shape[1], sigma=self.rule_sigma, xi=self.xi)
-        else:
-            head_size, n_heads = _resolve_mhtsk_scale_parameters(
-                n_features=x_arr.shape[1],
-                head_size=self.head_size,
-                head_size_ratio=self.head_size_ratio,
-                n_heads=self.n_heads,
-                fcr_target=self.fcr_target,
-                h_value=self.h_value,
-                sigma=self.rule_sigma,
-                xi=self.xi,
-            )
+        head_size, n_heads = _resolve_mhtsk_scale_parameters(
+            n_features=x_arr.shape[1],
+            head_size=self.head_size,
+            head_size_ratio=self.head_size_ratio,
+            n_heads=self.n_heads,
+            fcr_target=self.fcr_target,
+            h_value=self.h_value,
+            sigma=self.rule_sigma,
+            xi=self.xi,
+        )
         input_mfs, rules, rule_feature_mask = _build_mhtsk_input_mfs(
             x_arr,
             feature_names=feature_names,
@@ -686,22 +448,6 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         self._mhtsk_rules = rules
         self._mhtsk_rule_feature_mask = torch.as_tensor(rule_feature_mask, dtype=torch.bool)
         return input_mfs, feature_names, "custom"
-
-    def _get_trainer(self) -> BaseTrainer:
-        if not self.paper_strict:
-            return super()._get_trainer()
-        return _MHTSKPaperStrictTrainer(
-            epochs=int(self.epochs),
-            learning_rate=float(self.learning_rate),
-            batch_size=self.batch_size,
-            shuffle=bool(self.shuffle),
-            patience=self.patience,
-            restore_best=bool(self.restore_best),
-            weight_decay=float(self.weight_decay),
-            ur_weight=float(self.ur_weight),
-            ur_target=self.ur_target,
-            verbose=self.verbose,
-        )
 
     def _build_extracted_model(
         self,
@@ -755,26 +501,22 @@ class MHTSKRegressor(_BaseRegressorEstimator):
                 x_v_arr, y_v_arr = check_X_y(x_val, y_val)
                 x_val_t = self._as_tensor_x(x_v_arr)
                 y_val_t = torch.as_tensor(np.asarray(y_v_arr, dtype=np.float32), dtype=torch.float32)
-            if self.paper_strict:
-                trainer = self._get_trainer()
-                self.history_ = trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t)
-            else:
-                self.history_ = self.model_.fit(
-                    x_t,
-                    y_t,
-                    epochs=int(self.epochs),
-                    learning_rate=float(self.learning_rate),
-                    batch_size=self.batch_size,
-                    shuffle=bool(self.shuffle),
-                    ur_weight=float(self.ur_weight),
-                    ur_target=self.ur_target,
-                    verbose=self.verbose,
-                    x_val=x_val_t,
-                    y_val=y_val_t,
-                    patience=self.patience,
-                    restore_best=self.restore_best,
-                    weight_decay=float(self.weight_decay),
-                )
+            self.history_ = self.model_.fit(
+                x_t,
+                y_t,
+                epochs=int(self.epochs),
+                learning_rate=float(self.learning_rate),
+                batch_size=self.batch_size,
+                shuffle=bool(self.shuffle),
+                ur_weight=float(self.ur_weight),
+                ur_target=self.ur_target,
+                verbose=self.verbose,
+                x_val=x_val_t,
+                y_val=y_val_t,
+                patience=self.patience,
+                restore_best=self.restore_best,
+                weight_decay=float(self.weight_decay),
+            )
         return self
 
     def _build_regressor_model(

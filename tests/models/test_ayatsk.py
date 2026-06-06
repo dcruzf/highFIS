@@ -16,24 +16,20 @@ def _build_input_mfs(n_inputs: int = 3, n_mfs: int = 2) -> dict[str, list[Gaussi
 def test_ayatsk_classifier_forward_predict_shapes() -> None:
     model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3)
     x = torch.randn(8, 3)
-
     logits = model.forward(x)
     proba = model.predict_proba(x)
     pred = model.predict(x)
-
     assert logits.shape == (8, 3)
     assert proba.shape == (8, 3)
     assert pred.shape == (8,)
-    assert torch.allclose(proba.sum(dim=1), torch.ones(8), atol=1e-6)
+    assert torch.allclose(proba.sum(dim=1), torch.ones(8), atol=1e-06)
 
 
 def test_ayatsk_regressor_forward_predict_shape() -> None:
     model = AYATSKRegressorModel(_build_input_mfs(), rule_base="coco")
     x = torch.randn(6, 3)
-
     output = model.forward(x)
     pred = model.predict(x)
-
     assert output.shape == (6, 1)
     assert pred.shape == (6,)
 
@@ -55,7 +51,7 @@ def test_ayatsk_classifier_default_criterion_is_mse() -> None:
 
 def test_ayatsk_classifier_default_optimizer_is_adam() -> None:
     model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3)
-    optimizer = model._build_optimizer(None, learning_rate=1e-3, weight_decay=0.0)
+    optimizer = model._build_optimizer(None, learning_rate=0.001, weight_decay=0.0)
     assert isinstance(optimizer, torch.optim.Adam)
 
 
@@ -77,7 +73,7 @@ def test_ayatsk_classifier_uses_adaptive_yager_lambda() -> None:
 
 def test_ayatsk_regressor_default_optimizer_is_adam() -> None:
     model = AYATSKRegressorModel(_build_input_mfs(), rule_base="coco")
-    optimizer = model._build_optimizer(None, learning_rate=1e-3, weight_decay=0.0)
+    optimizer = model._build_optimizer(None, learning_rate=0.001, weight_decay=0.0)
     assert isinstance(optimizer, torch.optim.Adam)
 
 
@@ -94,7 +90,7 @@ def test_ayatsk_regressor_zero_initializes_consequents() -> None:
 def test_adaptive_yager_lambda_validates_inputs() -> None:
     with pytest.raises(ValueError, match="dimension must be > 1"):
         _adaptive_yager_lambda(1, 0.2)
-    with pytest.raises(ValueError, match=r"lower_bound must be in \(0, 1\)"):
+    with pytest.raises(ValueError, match="lower_bound must be in \\(0, 1\\)"):
         _adaptive_yager_lambda(3, 1.0)
 
 
@@ -107,29 +103,25 @@ def test_yager_zero_initialize_consequents_handles_missing_params() -> None:
 
 def test_ayatsk_classifier_optimizer_passthrough() -> None:
     model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3)
-    provided = torch.optim.SGD(model.parameters(), lr=1e-2)
-    optimizer = model._build_optimizer(provided, learning_rate=1e-3, weight_decay=1e-4)
-
+    provided = torch.optim.SGD(model.parameters(), lr=0.01)
+    optimizer = model._build_optimizer(provided, learning_rate=0.001, weight_decay=0.0001)
     assert optimizer is provided
 
 
 def test_ayatsk_regressor_optimizer_passthrough() -> None:
     model = AYATSKRegressorModel(_build_input_mfs(), rule_base="coco")
-    provided = torch.optim.SGD(model.parameters(), lr=1e-2)
-    optimizer = model._build_optimizer(provided, learning_rate=1e-3, weight_decay=1e-4)
-
+    provided = torch.optim.SGD(model.parameters(), lr=0.01)
+    optimizer = model._build_optimizer(provided, learning_rate=0.001, weight_decay=0.0001)
     assert optimizer is provided
 
 
 def test_ayatsk_classifier_optimizer_with_consequent_batch_norm() -> None:
     model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3, consequent_batch_norm=True)
-    optimizer = model._build_optimizer(None, learning_rate=1e-3, weight_decay=0.0)
-
+    optimizer = model._build_optimizer(None, learning_rate=0.001, weight_decay=0.0)
     assert isinstance(optimizer, torch.optim.Adam)
 
 
 def test_ayatsk_regressor_optimizer_with_consequent_batch_norm() -> None:
     model = AYATSKRegressorModel(_build_input_mfs(), rule_base="coco", consequent_batch_norm=True)
-    optimizer = model._build_optimizer(None, learning_rate=1e-3, weight_decay=0.0)
-
+    optimizer = model._build_optimizer(None, learning_rate=0.001, weight_decay=0.0)
     assert isinstance(optimizer, torch.optim.Adam)

@@ -61,16 +61,21 @@ def _uniform_regularization_loss(normalized_weights: Tensor, target: float | Non
     return torch.sum((avg_activation - target_tensor) ** 2)
 
 
-def _iter_minibatch_indices(n_samples: int, batch_size: int | None, shuffle: bool) -> list[Tensor]:
-    """Create mini-batch index tensors for one epoch."""
+def _iter_minibatch_indices(
+    n_samples: int,
+    batch_size: int | None,
+    shuffle: bool,
+    device: torch.device | str | None = None,
+) -> list[Tensor]:
+    """Create mini-batch index tensors for one epoch directly on target device."""
     if batch_size is None:
-        return [torch.arange(n_samples)]
+        return [torch.arange(n_samples, device=device)]
     if batch_size <= 0:
         raise ValueError("batch_size must be > 0 when provided")
     if batch_size >= n_samples:
-        return [torch.arange(n_samples)]
+        return [torch.arange(n_samples, device=device)]
 
-    order = torch.randperm(n_samples) if shuffle else torch.arange(n_samples)
+    order = torch.randperm(n_samples, device=device) if shuffle else torch.arange(n_samples, device=device)
     batches: list[Tensor] = []
     for start in range(0, n_samples, batch_size):
         end = min(start + batch_size, n_samples)
@@ -259,11 +264,24 @@ class BaseTSK(nn.Module):
 
         The ``'metric'`` value is used for early-stopping comparison.
         By default it is the negated validation loss (higher is better).
+        Uses minibatch iteration to avoid OOM.
         """
-        with torch.no_grad():
-            output = self.forward(x_val)
-            val_loss = float(self._compute_loss(criterion, output, y_val).item())
-        return {"val_loss": val_loss, "metric": -val_loss}
+        was_training = self.training
+        self.eval()
+        try:
+            with torch.no_grad():
+                outputs = []
+                n_samples = x_val.shape[0]
+                batch_size = 1024
+                for start in range(0, n_samples, batch_size):
+                    end = min(start + batch_size, n_samples)
+                    out_b = self.forward(x_val[start:end])
+                    outputs.append(out_b)
+                output = torch.cat(outputs, dim=0)
+                val_loss = float(self._compute_loss(criterion, output, y_val).item())
+            return {"val_loss": val_loss, "metric": -val_loss}
+        finally:
+            self.train(was_training)
 
     # ------------------------------------------------------------------
     # Private fit helpers
@@ -337,9 +355,9 @@ class BaseTSK(nn.Module):
         """
         batch_losses: list[float] = []
         batch_ur_losses: list[float] = []
-        for batch_idx in _iter_minibatch_indices(x.shape[0], batch_size=batch_size, shuffle=shuffle):
-            x_b = x.index_select(0, batch_idx.to(device=x.device))
-            y_b = y.index_select(0, batch_idx.to(device=y.device))
+        for batch_idx in _iter_minibatch_indices(x.shape[0], batch_size=batch_size, shuffle=shuffle, device=x.device):
+            x_b = x.index_select(0, batch_idx)
+            y_b = y.index_select(0, batch_idx)
 
             optimizer.zero_grad(set_to_none=True)
             output, norm_w = self._forward_train(x_b)
@@ -425,12 +443,19 @@ class BaseTSK(nn.Module):
         return "regression"
 
     def _predict_numpy(self, x: Tensor) -> np.ndarray:
-        """Helper to get numpy predictions of the model on *x*."""
+        """Helper to get numpy predictions of the model on *x* using minibatch iteration."""
         was_training = self.training
         self.eval()
         try:
             with torch.no_grad():
-                output = self.forward(x)
+                outputs = []
+                n_samples = x.shape[0]
+                batch_size = 1024
+                for start in range(0, n_samples, batch_size):
+                    end = min(start + batch_size, n_samples)
+                    out_b = self.forward(x[start:end])
+                    outputs.append(out_b)
+                output = torch.cat(outputs, dim=0)
                 if self._get_task() == "classification":
                     return output.argmax(dim=1).cpu().numpy()
                 else:

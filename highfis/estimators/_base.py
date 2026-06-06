@@ -9,11 +9,13 @@ from dataclasses import dataclass
 from typing import Any, Self, cast
 
 import numpy as np
+import numpy.typing as npt
 import torch
 from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
-from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
+from sklearn.utils.multiclass import type_of_target
+from sklearn.utils.validation import check_is_fitted, validate_data
 from torch import Tensor
 
 from ..base import BaseTSK
@@ -228,7 +230,7 @@ def _resolve_clusterer(
         c.n_clusters = n_clusters
         c.random_state = random_state
         return c
-    init_str = str(mf_init).lower()
+    init_str = mf_init.lower()
     if init_str == "kmeans":
         return KMeans(n_clusters=n_clusters, n_init=1, max_iter=100, random_state=random_state)
     if init_str == "minibatch_kmeans":
@@ -293,7 +295,7 @@ def _build_mhtsk_input_mfs(
             mf_list = input_mfs[feature_names[feature_idx]]
             start_index = len(mf_list)
             for k in range(n_clusters):
-                mf_list.append(GaussianMF(mean=float(centers[k, j]), sigma=float(rule_sigma)))
+                mf_list.append(GaussianMF(mean=float(centers[k, j]), sigma=rule_sigma))
             feature_indices[feature_idx] = list(range(start_index, start_index + n_clusters))
 
         for k in range(n_clusters):
@@ -455,10 +457,10 @@ def _extract_mhtsk_rule_indices(
         return []
 
     unsupervised_scores = torch.max(norm_w, dim=0).values
-    selected_us = _select_rule_indices(unsupervised_scores, float(crcr_us))
+    selected_us = _select_rule_indices(unsupervised_scores, crcr_us)
 
     selected_s: list[int] = []
-    if y is not None and y.ndim == 1 and len(torch.unique(y)) > 1 and float(crcr_s) > 0.0:
+    if y is not None and y.ndim == 1 and len(torch.unique(y)) > 1 and crcr_s > 0.0:
         unique_labels = torch.unique(y)
         groups: list[np.ndarray] = []
         for label in unique_labels:
@@ -473,7 +475,7 @@ def _extract_mhtsk_rule_indices(
                     p_val = _mann_whitney_p_value(groups[i][:, r], groups[j][:, r])
                     p_min = min(p_min, p_val)
             supervised_scores[r] = 1.0 - p_min
-        selected_s = _select_rule_indices(supervised_scores, float(crcr_s))
+        selected_s = _select_rule_indices(supervised_scores, crcr_s)
 
     selected_indices = sorted(set(selected_us) | set(selected_s))
     if len(selected_indices) == 0 and n_rules > 0:
@@ -482,7 +484,7 @@ def _extract_mhtsk_rule_indices(
 
 
 def _extract_mhtsk_rule_indices_unsupervised(norm_w: Tensor, crcr_us: float) -> list[int]:
-    return _select_rule_indices(torch.max(norm_w, dim=0).values, float(crcr_us))
+    return _select_rule_indices(torch.max(norm_w, dim=0).values, crcr_us)
 
 
 def _build_pfrb_input_mfs(
@@ -527,7 +529,6 @@ def _wrap_dimension_dependent_gaussian_input_mfs(
     dimension: int,
     xi: float = 745.0,
     rho: float | None = None,
-    paper_strict_equation: bool = False,
 ) -> dict[str, list[GaussianMF]]:
     return {
         name: cast(
@@ -539,7 +540,6 @@ def _wrap_dimension_dependent_gaussian_input_mfs(
                     dimension=dimension,
                     xi=xi,
                     rho=rho,
-                    paper_strict_equation=paper_strict_equation,
                 )
                 for mf in mfs
             ],
@@ -581,7 +581,7 @@ def _wrap_gaussian_pimf_input_mfs(
                 GaussianPiMF(
                     mean=cast(GaussianMF, mf).mean.detach().item(),
                     sigma=cast(GaussianMF, mf).sigma.detach().item(),
-                    k=float(k),
+                    k=k,
                     eps=eps if eps is not None else mf.eps,
                 )
                 for mf in mfs
@@ -665,10 +665,12 @@ def _build_input_mfs_cached(
         _MF_INITIALIZATION_CACHE.pop(oldest_key)
     _MF_INITIALIZATION_CACHE[cache_key] = (serialized_config, feature_names, effective_rule_base)
 
+    # Reconstruct from serialized_config to match cached hits precisely
+    input_mfs = deserialize_input_mfs(serialized_config)
     return input_mfs, feature_names, effective_rule_base
 
 
-class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[misc]
+class _BaseClassifierEstimator(ClassifierMixin, BaseEstimator):  # type: ignore[misc]
     """Abstract base class for all highFIS TSK classifier estimators.
 
     Implements the full scikit-learn estimator protocol — ``fit``,
@@ -701,7 +703,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         mf_init: str | KMeans | MiniBatchKMeans | FuzzyCMeans = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 10,
+        epochs: int = 100,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
@@ -852,6 +854,8 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
                 or inference methods to keep all tensors on the same device
                 as the model.
         """
+        if not x.flags.writeable:
+            x = x.copy()
         return torch.as_tensor(x, dtype=torch.float32, device=device)
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
@@ -949,11 +953,11 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
 
     def fit(
         self,
-        x: Any,
-        y: Any,
+        x: npt.ArrayLike,
+        y: npt.ArrayLike,
         *,
-        x_val: Any | None = None,
-        y_val: Any | None = None,
+        x_val: npt.ArrayLike | None = None,
+        y_val: npt.ArrayLike | None = None,
         metrics: list[str] | None = None,
     ) -> Self:
         """Train the TSK classifier on labeled samples.
@@ -961,7 +965,19 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         Validation data should be supplied using ``x_val`` and ``y_val``
         when available.
         """
-        x_arr, y_arr = check_X_y(x, y)
+        x_arr, y_arr = validate_data(self, x, y, reset=True)
+        n_samples = x_arr.shape[0]
+        n_mfs_val = getattr(self, "n_mfs", 3)
+        n_mfs_val = 3 if n_mfs_val is None else n_mfs_val
+        mf_init_val = getattr(self, "mf_init", "kmeans")
+        required_samples = 2 if mf_init_val == "grid" else max(2, n_mfs_val)
+        if n_samples < required_samples:
+            raise ValueError(
+                f"Found array with {n_samples} sample(s). Estimator requires at least {required_samples} samples."
+            )
+        target_type = type_of_target(y_arr)
+        if target_type in ("continuous", "continuous-multioutput"):
+            raise ValueError(f"Unknown label type: {target_type}")
 
         if self.random_state is not None:
             torch.manual_seed(int(self.random_state))
@@ -984,10 +1000,10 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         # Prepare validation tensors if provided via fit.
         x_val_t: torch.Tensor | None = None
         y_val_t: torch.Tensor | None = None
-        if (x_val is None) ^ (y_val is None):
+        if (x_val is None) != (y_val is None):
             raise ValueError("x_val and y_val must be provided together")
         if x_val is not None and y_val is not None:
-            x_v_arr, y_v_arr = check_X_y(x_val, y_val)
+            x_v_arr, y_v_arr = validate_data(self, x_val, y_val, reset=False)
             x_val_t = self._as_tensor_x(x_v_arr, _device)
             y_val_idx = le.transform(np.asarray(y_v_arr))
             y_val_t = torch.as_tensor(y_val_idx, dtype=torch.long, device=_device)
@@ -1072,22 +1088,23 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         estimator.history_ = cast(dict[str, Any], checkpoint.get("history", {}))
         return estimator
 
-    def predict_proba(self, x: Any) -> np.ndarray:
+    def predict_proba(self, x: npt.ArrayLike) -> np.ndarray:
         """Predict class probabilities for input samples."""
         check_is_fitted(self, "model_")
-        x_arr = check_array(x)
-        if x_arr.shape[1] != self.n_features_in_:
-            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
-        probs = cast(Any, self.model_).predict_proba(self._as_tensor_x(x_arr, torch.device(str(self.device))))
+        x_arr = validate_data(self, x, reset=False)
+        device_str = str(self.device).lower()
+        dtype = torch.float64 if "cpu" in device_str else torch.float32
+        x_tensor = torch.as_tensor(x_arr, dtype=dtype, device=torch.device(device_str))
+        probs = cast(Any, self.model_).predict_proba(x_tensor)
         return probs.detach().cpu().numpy()
 
-    def predict(self, x: Any) -> np.ndarray:
+    def predict(self, x: npt.ArrayLike) -> np.ndarray:
         """Predict class labels for input samples."""
         proba = self.predict_proba(x)
         y_idx = np.argmax(proba, axis=1)
         return np.asarray(self._label_encoder_.inverse_transform(y_idx))
 
-    def score(self, X: Any, y: Any, sample_weight: Any = None) -> float:
+    def score(self, X: npt.ArrayLike, y: npt.ArrayLike, sample_weight: npt.ArrayLike | None = None) -> float:
         """Return classification accuracy on the provided dataset."""
         y_true = np.asarray(y)
         y_pred = self.predict(X)
@@ -1095,10 +1112,10 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
 
     def evaluate(
         self,
-        X: Any,
-        y: Any,
+        X: npt.ArrayLike,
+        y: npt.ArrayLike,
         metrics: list[str] | None = None,
-        sample_weight: Any | None = None,
+        sample_weight: npt.ArrayLike | None = None,
     ) -> dict[str, Any]:
         """Compute classification evaluation metrics for the provided dataset."""
         y_true = np.asarray(y)
@@ -1116,12 +1133,10 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         check_is_fitted(self, "model_")
         return self.model_.get_mf_params()
 
-    def rule_activation(self, X: Any) -> np.ndarray:
+    def rule_activation(self, X: npt.ArrayLike) -> np.ndarray:
         """Return normalized rule activations for the provided inputs."""
         check_is_fitted(self, "model_")
-        x_arr = check_array(X)
-        if x_arr.shape[1] != self.n_features_in_:
-            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
+        x_arr = validate_data(self, X, reset=False)
 
         was_training = self.model_.training
         try:
@@ -1169,7 +1184,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         return _normalize_importance(importance)
 
 
-class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[misc]
+class _BaseRegressorEstimator(RegressorMixin, BaseEstimator):  # type: ignore[misc]
     """Abstract base class for all highFIS TSK regressor estimators.
 
     Implements the full scikit-learn estimator protocol — ``fit``,
@@ -1201,7 +1216,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         mf_init: str | KMeans | MiniBatchKMeans | FuzzyCMeans = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 10,
+        epochs: int = 100,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
@@ -1348,6 +1363,8 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
                 or inference methods to keep all tensors on the same device
                 as the model.
         """
+        if not x.flags.writeable:
+            x = x.copy()
         return torch.as_tensor(x, dtype=torch.float32, device=device)
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
@@ -1440,11 +1457,11 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
 
     def fit(
         self,
-        x: Any,
-        y: Any,
+        x: npt.ArrayLike,
+        y: npt.ArrayLike,
         *,
-        x_val: Any | None = None,
-        y_val: Any | None = None,
+        x_val: npt.ArrayLike | None = None,
+        y_val: npt.ArrayLike | None = None,
         metrics: list[str] | None = None,
     ) -> Self:
         """Train the TSK regressor on labeled samples.
@@ -1452,7 +1469,16 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         Validation data should be supplied using ``x_val`` and ``y_val``
         when available.
         """
-        x_arr, y_arr = check_X_y(x, y)
+        x_arr, y_arr = validate_data(self, x, y, reset=True)
+        n_samples = x_arr.shape[0]
+        n_mfs_val = getattr(self, "n_mfs", 3)
+        n_mfs_val = 3 if n_mfs_val is None else n_mfs_val
+        mf_init_val = getattr(self, "mf_init", "kmeans")
+        required_samples = 2 if mf_init_val == "grid" else max(2, n_mfs_val)
+        if n_samples < required_samples:
+            raise ValueError(
+                f"Found array with {n_samples} sample(s). Estimator requires at least {required_samples} samples."
+            )
 
         if self.random_state is not None:
             torch.manual_seed(int(self.random_state))
@@ -1470,10 +1496,10 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         # Prepare validation tensors if provided via fit.
         x_val_t: torch.Tensor | None = None
         y_val_t: torch.Tensor | None = None
-        if (x_val is None) ^ (y_val is None):
+        if (x_val is None) != (y_val is None):
             raise ValueError("x_val and y_val must be provided together")
         if x_val is not None and y_val is not None:
-            x_v_arr, y_v_arr = check_X_y(x_val, y_val)
+            x_v_arr, y_v_arr = validate_data(self, x_val, y_val, reset=False)
             x_val_t = self._as_tensor_x(x_v_arr, _device)
             y_val_t = torch.as_tensor(np.asarray(y_v_arr, dtype=np.float32), dtype=torch.float32, device=_device)
 
@@ -1550,21 +1576,22 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         estimator.history_ = cast(dict[str, Any], checkpoint.get("history", {}))
         return estimator
 
-    def predict(self, x: Any) -> np.ndarray:
+    def predict(self, x: npt.ArrayLike) -> np.ndarray:
         """Predict continuous target values for input samples."""
         check_is_fitted(self, "model_")
-        x_arr = check_array(x)
-        if x_arr.shape[1] != self.n_features_in_:
-            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
-        preds = cast(Any, self.model_).predict(self._as_tensor_x(x_arr, torch.device(str(self.device))))
+        x_arr = validate_data(self, x, reset=False)
+        device_str = str(self.device).lower()
+        dtype = torch.float64 if "cpu" in device_str else torch.float32
+        x_tensor = torch.as_tensor(x_arr, dtype=dtype, device=torch.device(device_str))
+        preds = cast(Any, self.model_).predict(x_tensor)
         return preds.detach().cpu().numpy()
 
     def evaluate(
         self,
-        X: Any,
-        y: Any,
+        X: npt.ArrayLike,
+        y: npt.ArrayLike,
         metrics: list[str] | None = None,
-        sample_weight: Any | None = None,
+        sample_weight: npt.ArrayLike | None = None,
     ) -> dict[str, Any]:
         """Compute regression evaluation metrics for the provided dataset."""
         y_true = np.asarray(y)
@@ -1582,12 +1609,10 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         check_is_fitted(self, "model_")
         return self.model_.get_mf_params()
 
-    def rule_activation(self, X: Any) -> np.ndarray:
+    def rule_activation(self, X: npt.ArrayLike) -> np.ndarray:
         """Return normalized rule activations for the provided inputs."""
         check_is_fitted(self, "model_")
-        x_arr = check_array(X)
-        if x_arr.shape[1] != self.n_features_in_:
-            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
+        x_arr = validate_data(self, X, reset=False)
 
         was_training = self.model_.training
         try:
