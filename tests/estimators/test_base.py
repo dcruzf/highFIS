@@ -17,6 +17,7 @@ from highfis.estimators._base import (
     _mann_whitney_p_value,
     _normalize_importance,
     _rankdata,
+    _resolve_mhtsk_scale_parameters,
     _select_rule_indices,
 )
 from highfis.memberships import GaussianMF
@@ -327,3 +328,66 @@ def test_regressor_sigma_scale_auto() -> None:
     x, y = _make_dataset(20)
     est = HTSKRegressor(sigma_scale="auto")
     est.fit(x, y)
+
+
+def test_resolve_mhtsk_scale_parameters_large_features() -> None:
+    # Test high feature count branch (n_features > 5000) for line 372
+    h, n = _resolve_mhtsk_scale_parameters(
+        n_features=6000,
+        head_size=None,
+        head_size_ratio=None,
+        n_heads=None,
+        fcr_target=0.85,
+        h_value=None,
+        sigma=10.0,
+        xi=1.0,
+    )
+    assert h == 60  # round(6000 * 0.01)
+    assert n > 0
+
+
+def test_fit_read_only_inputs_classifier() -> None:
+    # Test read-only array conversion for line 858
+    x, y = _make_dataset(20)
+    x = x.copy()
+    x.setflags(write=False)
+    est = HTSKClassifier(epochs=1)
+    est.fit(x, y)
+
+
+def test_fit_read_only_inputs_regressor() -> None:
+    # Test read-only array conversion for line 1367
+    from highfis import HTSKRegressor
+
+    x, y = _make_dataset(20)
+    x = x.copy()
+    x.setflags(write=False)
+    est = HTSKRegressor(epochs=1)
+    est.fit(x, y)
+
+
+def test_classifier_fit_too_few_samples() -> None:
+    # Test minimum samples exception for line 975
+    x, y = _make_dataset(1)  # only 1 sample
+    est = HTSKClassifier(epochs=1)
+    with pytest.raises(ValueError, match="requires at least 3 samples"):
+        est.fit(x, y)
+
+
+def test_classifier_fit_continuous_labels() -> None:
+    # Test label type exception for line 980
+    x, _ = _make_dataset(20)
+    y_continuous = np.random.randn(20)
+    est = HTSKClassifier(epochs=1)
+    with pytest.raises(ValueError, match="Unknown label type: continuous"):
+        est.fit(x, y_continuous)
+
+
+def test_regressor_fit_too_few_samples() -> None:
+    # Test minimum samples exception for line 1479
+    from highfis import HTSKRegressor
+
+    x, y = _make_dataset(1)  # only 1 sample
+    est = HTSKRegressor(epochs=1)
+    with pytest.raises(ValueError, match="requires at least 3 samples"):
+        est.fit(x, y)

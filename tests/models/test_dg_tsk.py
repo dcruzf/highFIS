@@ -501,3 +501,18 @@ def test_dg_tsk_fit_top_rules_selection(monkeypatch: pytest.MonkeyPatch) -> None
         x, y, inplace=True, structural=True, use_lse=True, zeta_lambda=[0.0], zeta_theta=[0.5], verbose=False
     )
     assert len(result["surviving_rule_indices"]) >= 3
+
+
+def test_dgtsk_classifier_search_thresholds_no_sr_fallback() -> None:
+    mfs = {
+        "x1": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
+        "x2": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
+    }
+    model = DGTSKClassifierModel(mfs, n_classes=2, rule_base="cartesian")
+    model.consequent_layer.theta_gates.data.copy_(torch.tensor([0.1, 0.5, 0.9, 1.2]))
+    x = torch.randn(5, 2)
+    y = torch.tensor([0, 1, 0, 1, 0], dtype=torch.long)
+    result = model.search_thresholds(
+        x, y, inplace=True, structural=True, use_lse=False, zeta_lambda=[0.0], zeta_theta=[1.0], verbose=False
+    )
+    assert len(result["surviving_rule_indices"]) == 3
