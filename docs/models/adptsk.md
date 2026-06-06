@@ -112,11 +112,7 @@ This estimator:
 - defaults to `rule_base="coco"`,
 - applies paper-style batch sizing when `batch_size=None`,
 - constructs `ADPTSKClassifierModel` with `kappa`, `xi`, `eps`, and
-  zero consequent initialization.
-
-`paper_strict=True` (classifier-only) enforces the paper protocol defaults
-for hyperparameters and requires `X` (and `X_val`, when provided) to
-already be in `[0, 1]`. No automatic normalization is applied.
+  zero consequent initialization. No automatic normalization is applied.
 
 ### `highfis.estimators.ADPTSKRegressor`
 

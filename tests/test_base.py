@@ -46,7 +46,7 @@ class TestBaseTSK:
         x = torch.randn(10, 2)
         norm_w = model.forward_antecedents(x)
         assert norm_w.shape == (10, model.n_rules)
-        assert torch.allclose(norm_w.sum(dim=1), torch.ones(10), atol=1e-5)
+        assert torch.allclose(norm_w.sum(dim=1), torch.ones(10), atol=1e-05)
 
     def test_fit_runs_without_validation(self) -> None:
         model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
@@ -106,10 +106,7 @@ class TestBaseTSK:
 
     def test_resolve_verbose_rejects_invalid_type(self) -> None:
         model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
-        with pytest.raises(
-            TypeError,
-            match=r"verbose must be an int in 0\.\.3 or a bool",
-        ):
+        with pytest.raises(TypeError, match="verbose must be an int in 0\\.\\.3 or a bool"):
             model._resolve_verbose(cast(Any, "yes"))
 
     def test_resolve_verbose_rejects_invalid_range(self) -> None:
@@ -134,7 +131,7 @@ class TestBaseTSK:
 
     def test_fit_uses_custom_optimizer(self) -> None:
         model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
-        optimizer = torch.optim.SGD(model.parameters(), lr=1e-2)
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
         x = torch.randn(20, 2)
         y = torch.randint(0, 2, (20,))
         history = model.fit(x, y, epochs=1, optimizer=optimizer)
@@ -169,12 +166,12 @@ class TestHelpers:
     def test_uniform_regularization_loss(self) -> None:
         w = torch.ones(10, 4) / 4.0
         loss = _uniform_regularization_loss(w)
-        assert float(loss.item()) == pytest.approx(0.0, abs=1e-6)
+        assert float(loss.item()) == pytest.approx(0.0, abs=1e-06)
 
     def test_uniform_regularization_loss_with_target(self) -> None:
         w = torch.ones(10, 4) / 4.0
         loss = _uniform_regularization_loss(w, target=0.25)
-        assert float(loss.item()) == pytest.approx(0.0, abs=1e-6)
+        assert float(loss.item()) == pytest.approx(0.0, abs=1e-06)
 
     def test_iter_minibatch_indices_no_batch(self) -> None:
         batches = _iter_minibatch_indices(100, None, False)
@@ -234,11 +231,9 @@ def test_predict_numpy_regression_not_squeezed() -> None:
 
     model = _ConcreteRegressor(_make_input_mfs())
     x = torch.randn(10, 2)
-
     with patch.object(model, "forward", return_value=torch.randn(10)):
         out = model._predict_numpy(x)
         assert out.shape == (10,)
-
     with patch.object(model, "forward", return_value=torch.randn(10, 2)):
         out2 = model._predict_numpy(x)
         assert out2.shape == (10, 2)

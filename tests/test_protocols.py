@@ -45,7 +45,6 @@ def test_consequent_fn_protocol() -> None:
 def test_protocol_stub_methods_execute() -> None:
     x = torch.randn(2, 3)
     w = torch.randn(2, 2)
-
     assert MembershipFn.__call__(cast(MembershipFn, None), x) is None
     assert TNorm.__call__(cast(TNorm, None), w) is None
     assert Defuzzifier.__call__(cast(Defuzzifier, None), w) is None

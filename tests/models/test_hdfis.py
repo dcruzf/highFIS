@@ -4,7 +4,7 @@ import pytest
 import torch
 from torch import nn
 
-from highfis.memberships import DimensionDependentGaussianMF, GaussianMF
+from highfis.memberships import GaussianMF
 from highfis.models import (
     HDFISMinClassifierModel,
     HDFISMinRegressorModel,
@@ -43,7 +43,6 @@ def test_hdfis_models_can_zero_initialize_consequents() -> None:
     reg = HDFISProdRegressorModel(_build_input_mfs(), zero_consequent_init=True)
     min_clf = HDFISMinClassifierModel(_build_input_mfs(), n_classes=2, zero_consequent_init=True)
     min_reg = HDFISMinRegressorModel(_build_input_mfs(), zero_consequent_init=True)
-
     clf_weight = getattr(clf.consequent_layer, "weight", None)
     clf_bias = getattr(clf.consequent_layer, "bias", None)
     reg_weight = getattr(reg.consequent_layer, "weight", None)
@@ -52,7 +51,6 @@ def test_hdfis_models_can_zero_initialize_consequents() -> None:
     min_clf_bias = getattr(min_clf.consequent_layer, "bias", None)
     min_reg_weight = getattr(min_reg.consequent_layer, "weight", None)
     min_reg_bias = getattr(min_reg.consequent_layer, "bias", None)
-
     assert isinstance(clf_weight, torch.Tensor)
     assert isinstance(clf_bias, torch.Tensor)
     assert isinstance(reg_weight, torch.Tensor)
@@ -76,28 +74,3 @@ def test_hdfis_zero_initialize_consequents_handles_missing_params() -> None:
         pass
 
     _hdfis_zero_initialize_consequents(DummyLayer())
-
-
-def test_dimension_dependent_gaussian_mf_paper_strict_equation_toggle() -> None:
-    strict = DimensionDependentGaussianMF(
-        mean=0.0,
-        sigma=1.0,
-        dimension=1000,
-        xi=745.0,
-        paper_strict_equation=True,
-        eps=1e-1,
-    )
-    stable = DimensionDependentGaussianMF(
-        mean=0.0,
-        sigma=1.0,
-        dimension=1000,
-        xi=745.0,
-        paper_strict_equation=False,
-        eps=1e-1,
-    )
-
-    x = torch.tensor([0.5], dtype=torch.float32)
-    y_strict = strict(x)
-    y_stable = stable(x)
-
-    assert bool(torch.all(y_stable >= y_strict))

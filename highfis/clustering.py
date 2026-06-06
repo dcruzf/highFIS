@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 import torch
 from torch import Generator, Tensor
 
@@ -29,6 +30,8 @@ def _as_tensor(x: Any) -> Tensor:
     Raises:
         ValueError: If the input tensor is not two-dimensional.
     """
+    if isinstance(x, np.ndarray) and not x.flags.writeable:
+        x = x.copy()
     tensor = torch.as_tensor(x)
     if tensor.ndim != 2:
         raise ValueError(f"expected input array with 2 dims, got {tensor.ndim}")

@@ -40,7 +40,7 @@ def test_gaussian_mf_forward_peaks_at_mean() -> None:
     x = torch.tensor([0.5], dtype=torch.float32)
     y = mf(x)
     assert y.shape == (1,)
-    assert torch.allclose(y, torch.tensor([1.0]), atol=1e-5)
+    assert torch.allclose(y, torch.tensor([1.0]), atol=1e-05)
 
 
 def test_gaussian_mf_outputs_in_unit_interval() -> None:
@@ -72,7 +72,7 @@ def test_dimension_dependent_gaussian_mf_forward_peaks_at_mean() -> None:
     x = torch.tensor([0.0], dtype=torch.float32)
     y = mf(x)
     assert y.shape == (1,)
-    assert torch.allclose(y, torch.tensor([1.0]), atol=1e-5)
+    assert torch.allclose(y, torch.tensor([1.0]), atol=1e-05)
 
 
 def test_dimension_dependent_gaussian_mf_outputs_in_unit_interval() -> None:
@@ -97,7 +97,7 @@ def test_composite_gmf_forward_lower_bound() -> None:
     assert y.shape == x.shape
     assert bool(torch.all(y > 0.0))
     assert bool(torch.all(y <= 1.0))
-    assert float(torch.min(y).item()) == pytest.approx(math.exp(-1.0), rel=1e-6)
+    assert float(torch.min(y).item()) == pytest.approx(math.exp(-1.0), rel=1e-06)
 
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
@@ -130,14 +130,14 @@ def test_composite_exponential_mf_forward_peaks_at_center() -> None:
     x = torch.tensor([0.5], dtype=torch.float32)
     y = mf(x)
     assert y.shape == (1,)
-    assert torch.allclose(y, torch.tensor([1.0]), atol=1e-5)
+    assert torch.allclose(y, torch.tensor([1.0]), atol=1e-05)
 
 
 def test_composite_exponential_mf_has_lower_bound() -> None:
     mf = CompositeExponentialMF(center=0.0, sigma=1.0, k=10.0)
     x = torch.tensor([10.0], dtype=torch.float32)
     y = mf(x)
-    assert torch.allclose(y, torch.tensor([0.1]), atol=1e-4)
+    assert torch.allclose(y, torch.tensor([0.1]), atol=0.0001)
 
 
 def test_composite_exponential_mf_outputs_in_unit_interval() -> None:
@@ -198,7 +198,7 @@ def test_s_shaped_mf_transitions_smoothly() -> None:
     x = torch.tensor([-0.5, 0.0, 0.5, 1.0, 1.5])
     y = mf(x)
     assert torch.allclose(y[0], torch.tensor(0.0))
-    assert torch.allclose(y[-2], torch.tensor(1.0), atol=1e-5)
+    assert torch.allclose(y[-2], torch.tensor(1.0), atol=1e-05)
     assert bool(torch.all(y >= 0.0))
     assert bool(torch.all(y <= 1.0))
 
@@ -207,7 +207,7 @@ def test_lin_s_shaped_mf_transitions_linearly() -> None:
     mf = LinSShapedMF(a=0.0, b=1.0)
     x = torch.tensor([0.0, 0.5, 1.0])
     y = mf(x)
-    assert torch.allclose(y, torch.tensor([0.0, 0.5, 1.0]), atol=1e-5)
+    assert torch.allclose(y, torch.tensor([0.0, 0.5, 1.0]), atol=1e-05)
 
 
 def test_z_shaped_mf_transitions_smoothly() -> None:
@@ -215,7 +215,7 @@ def test_z_shaped_mf_transitions_smoothly() -> None:
     x = torch.tensor([-0.5, 0.0, 0.5, 1.0, 1.5])
     y = mf(x)
     assert torch.allclose(y[0], torch.tensor(1.0))
-    assert torch.allclose(y[-2], torch.tensor(0.0), atol=1e-5)
+    assert torch.allclose(y[-2], torch.tensor(0.0), atol=1e-05)
     assert bool(torch.all(y >= 0.0))
     assert bool(torch.all(y <= 1.0))
 
@@ -224,7 +224,7 @@ def test_lin_z_shaped_mf_transitions_linearly() -> None:
     mf = LinZShapedMF(a=0.0, b=1.0)
     x = torch.tensor([0.0, 0.5, 1.0])
     y = mf(x)
-    assert torch.allclose(y, torch.tensor([1.0, 0.5, 0.0]), atol=1e-5)
+    assert torch.allclose(y, torch.tensor([1.0, 0.5, 0.0]), atol=1e-05)
 
 
 def test_pi_mf_has_flat_top() -> None:
@@ -232,7 +232,7 @@ def test_pi_mf_has_flat_top() -> None:
     x = torch.tensor([0.25, 0.75, 1.25])
     y = mf(x)
     assert y[0] < y[1]
-    assert float(y[1].detach()) == pytest.approx(1.0, rel=1e-5)
+    assert float(y[1].detach()) == pytest.approx(1.0, rel=1e-05)
     assert y[1] > y[2]
     assert bool(torch.all(y >= 0.0))
     assert bool(torch.all(y <= 1.0))
@@ -274,7 +274,7 @@ def test_gaussian_pimf_rejects_invalid_sigma() -> None:
 
 
 def test_gaussian_pimf_rejects_invalid_k() -> None:
-    with pytest.raises(ValueError, match=r"k must be in the interval \(0, 745\]"):
+    with pytest.raises(ValueError, match="k must be in the interval \\(0, 745\\]"):
         GaussianPiMF(mean=0.0, sigma=1.0, k=0.0)
 
 
@@ -299,7 +299,6 @@ def test_gaussian_pimf_infimum_positive() -> None:
                 "dimension": 1000.0,
                 "xi": 745.0,
                 "rho": float(1.0 - math.log(745.0) / math.log(1000.0)),
-                "paper_strict_equation": False,
             },
         ),
         (CompositeGaussianMF(mean=0.5, sigma=2.0), {"mean": 0.5, "sigma": 2.0}),
@@ -355,7 +354,6 @@ def test_tsk_regressor_get_mf_params_returns_sane_structure() -> None:
     input_mfs = {"x1": [GaussianMF(mean=0.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.5)]}
     model = TSKRegressorModel(input_mfs)
     params = model.get_mf_params()
-
     assert set(params) == {"x1"}
     assert isinstance(params["x1"], list)
     assert len(params["x1"]) == 2
@@ -368,19 +366,19 @@ class TestTriangularMF:
     def test_peak_at_center(self) -> None:
         mf = TriangularMF(left=-1.0, center=0.0, right=1.0)
         y = mf(torch.tensor([0.0]))
-        assert torch.allclose(y, torch.tensor([1.0]), atol=1e-4)
+        assert torch.allclose(y, torch.tensor([1.0]), atol=0.0001)
 
     def test_zero_outside_support(self) -> None:
         mf = TriangularMF(left=-1.0, center=0.0, right=1.0)
         y = mf(torch.tensor([-2.0, 2.0]))
-        assert torch.allclose(y, torch.zeros(2), atol=1e-4)
+        assert torch.allclose(y, torch.zeros(2), atol=0.0001)
 
     def test_output_in_unit_interval(self) -> None:
         mf = TriangularMF(left=-1.0, center=0.0, right=1.0)
         x = torch.linspace(-2.0, 2.0, 50)
         y = mf(x)
         assert bool(torch.all(y >= 0.0))
-        assert bool(torch.all(y <= 1.0 + 1e-5))
+        assert bool(torch.all(y <= 1.0 + 1e-05))
 
     def test_rejects_invalid_order(self) -> None:
         with pytest.raises(ValueError, match="must satisfy left <= center <= right"):
@@ -395,19 +393,19 @@ class TestTrapezoidalMF:
     def test_flat_top(self) -> None:
         mf = TrapezoidalMF(a=-2.0, b=-1.0, c=1.0, d=2.0)
         y = mf(torch.tensor([0.0, -0.5, 0.5]))
-        assert torch.allclose(y, torch.ones(3), atol=1e-4)
+        assert torch.allclose(y, torch.ones(3), atol=0.0001)
 
     def test_zero_outside_support(self) -> None:
         mf = TrapezoidalMF(a=-2.0, b=-1.0, c=1.0, d=2.0)
         y = mf(torch.tensor([-3.0, 3.0]))
-        assert torch.allclose(y, torch.zeros(2), atol=1e-4)
+        assert torch.allclose(y, torch.zeros(2), atol=0.0001)
 
     def test_output_in_unit_interval(self) -> None:
         mf = TrapezoidalMF(a=-2.0, b=-1.0, c=1.0, d=2.0)
         x = torch.linspace(-4.0, 4.0, 50)
         y = mf(x)
         assert bool(torch.all(y >= 0.0))
-        assert bool(torch.all(y <= 1.0 + 1e-5))
+        assert bool(torch.all(y <= 1.0 + 1e-05))
 
     def test_rejects_invalid_order(self) -> None:
         with pytest.raises(ValueError, match="must satisfy a <= b <= c <= d"):
@@ -422,14 +420,14 @@ class TestBellMF:
     def test_peak_at_center(self) -> None:
         mf = BellMF(a=1.0, b=2.0, center=0.0)
         y = mf(torch.tensor([0.0]))
-        assert torch.allclose(y, torch.tensor([1.0]), atol=1e-4)
+        assert torch.allclose(y, torch.tensor([1.0]), atol=0.0001)
 
     def test_output_in_unit_interval(self) -> None:
         mf = BellMF(a=1.0, b=2.0, center=0.0)
         x = torch.linspace(-5.0, 5.0, 50)
         y = mf(x)
         assert bool(torch.all(y >= 0.0))
-        assert bool(torch.all(y <= 1.0 + 1e-5))
+        assert bool(torch.all(y <= 1.0 + 1e-05))
 
     def test_rejects_non_positive_a(self) -> None:
         with pytest.raises(ValueError, match="a must be positive"):
@@ -444,7 +442,7 @@ class TestSigmoidalMF:
     def test_half_at_center(self) -> None:
         mf = SigmoidalMF(a=10.0, center=0.0)
         y = mf(torch.tensor([0.0]))
-        assert torch.allclose(y, torch.tensor([0.5]), atol=1e-4)
+        assert torch.allclose(y, torch.tensor([0.5]), atol=0.0001)
 
     def test_approaches_one_far_right(self) -> None:
         mf = SigmoidalMF(a=10.0, center=0.0)
@@ -461,4 +459,4 @@ class TestSigmoidalMF:
         x = torch.linspace(-5.0, 5.0, 50)
         y = mf(x)
         assert bool(torch.all(y >= 0.0))
-        assert bool(torch.all(y <= 1.0 + 1e-5))
+        assert bool(torch.all(y <= 1.0 + 1e-05))
