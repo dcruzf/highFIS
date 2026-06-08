@@ -262,6 +262,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             if is_first_order and hasattr(self.model_.consequent_layer, "mode")  # type: ignore[attr-defined]
             else None
         )
+        _fnames: np.ndarray | None = getattr(self, "feature_names_in_", None)
         checkpoint = self._build_checkpoint_base(
             model_init={
                 "input_mfs_config": serialize_input_mfs(self.model_.input_mfs),  # type: ignore[attr-defined]
@@ -272,7 +273,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             },
             fitted_attrs={
                 "n_features_in": int(self.n_features_in_),
-                "feature_names_in": self.feature_names_in_.tolist(),
+                "feature_names_in": _fnames.tolist() if _fnames is not None else None,
                 "classes": self.classes_.tolist(),
             },
         )
@@ -305,7 +306,10 @@ class DGTSKClassifier(_BaseClassifierEstimator):
 
         fitted = checkpoint["fitted_attrs"]
         estimator.n_features_in_ = int(fitted["n_features_in"])
-        estimator.feature_names_in_ = np.asarray(fitted["feature_names_in"], dtype=object)
+        if fitted.get("feature_names_in") is not None:
+            estimator.feature_names_in_ = np.asarray(fitted["feature_names_in"], dtype=object)
+        elif hasattr(estimator, "feature_names_in_"):
+            delattr(estimator, "feature_names_in_")
         from sklearn.preprocessing import LabelEncoder
 
         estimator.classes_ = np.asarray(fitted["classes"], dtype=object)
@@ -535,6 +539,7 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             if is_first_order and hasattr(self.model_.consequent_layer, "mode")  # type: ignore[attr-defined]
             else None
         )
+        _fnames: np.ndarray | None = getattr(self, "feature_names_in_", None)
         checkpoint = self._build_checkpoint_base(
             model_init={
                 "input_mfs_config": serialize_input_mfs(self.model_.input_mfs),  # type: ignore[attr-defined]
@@ -544,7 +549,7 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             },
             fitted_attrs={
                 "n_features_in": int(self.n_features_in_),
-                "feature_names_in": self.feature_names_in_.tolist(),
+                "feature_names_in": _fnames.tolist() if _fnames is not None else None,
             },
         )
         save_checkpoint(path, checkpoint)
@@ -575,7 +580,10 @@ class DGTSKRegressor(_BaseRegressorEstimator):
 
         fitted = checkpoint["fitted_attrs"]
         estimator.n_features_in_ = int(fitted["n_features_in"])
-        estimator.feature_names_in_ = np.asarray(fitted["feature_names_in"], dtype=object)
+        if fitted.get("feature_names_in") is not None:
+            estimator.feature_names_in_ = np.asarray(fitted["feature_names_in"], dtype=object)
+        elif hasattr(estimator, "feature_names_in_"):
+            delattr(estimator, "feature_names_in_")
         estimator.history_ = cast(dict[str, Any], checkpoint.get("history", {}))
         return estimator
 

@@ -694,6 +694,7 @@ class _BaseClassifierEstimator(ClassifierMixin, BaseEstimator):  # type: ignore[
     """
 
     model_: BaseTSK
+    feature_names_in_: np.ndarray | None
 
     def __init__(
         self,
@@ -985,10 +986,9 @@ class _BaseClassifierEstimator(ClassifierMixin, BaseEstimator):  # type: ignore[
         le = LabelEncoder()
         y_idx = le.fit_transform(np.asarray(y_arr))
 
-        input_mfs, feature_names, effective_rule_base = self._build_input_mfs(x_arr)
+        input_mfs, _, effective_rule_base = self._build_input_mfs(x_arr)
 
         self.n_features_in_ = x_arr.shape[1]
-        self.feature_names_in_ = np.asarray(feature_names, dtype=object)
         self.classes_ = le.classes_
         self._label_encoder_ = le
 
@@ -1044,6 +1044,7 @@ class _BaseClassifierEstimator(ClassifierMixin, BaseEstimator):  # type: ignore[
 
     def save(self, path: str) -> None:
         """Persist estimator configuration, model weights and fitted metadata."""
+        _fnames: np.ndarray | None = getattr(self, "feature_names_in_", None)
         checkpoint = self._build_checkpoint_base(
             model_init={
                 "input_mfs_config": serialize_input_mfs(self.model_.input_mfs),
@@ -1052,7 +1053,7 @@ class _BaseClassifierEstimator(ClassifierMixin, BaseEstimator):  # type: ignore[
             },
             fitted_attrs={
                 "n_features_in": int(self.n_features_in_),
-                "feature_names_in": self.feature_names_in_.tolist(),
+                "feature_names_in": _fnames.tolist() if _fnames is not None else None,
                 "classes": self.classes_.tolist(),
             },
         )
@@ -1080,7 +1081,10 @@ class _BaseClassifierEstimator(ClassifierMixin, BaseEstimator):  # type: ignore[
 
         fitted = checkpoint["fitted_attrs"]
         estimator.n_features_in_ = int(fitted["n_features_in"])
-        estimator.feature_names_in_ = np.asarray(fitted["feature_names_in"], dtype=object)
+        if fitted.get("feature_names_in") is not None:
+            estimator.feature_names_in_ = np.asarray(fitted["feature_names_in"], dtype=object)
+        elif hasattr(estimator, "feature_names_in_"):
+            delattr(estimator, "feature_names_in_")
         estimator.classes_ = np.asarray(fitted["classes"], dtype=object)
         label_encoder = LabelEncoder()
         label_encoder.classes_ = estimator.classes_
@@ -1207,6 +1211,7 @@ class _BaseRegressorEstimator(RegressorMixin, BaseEstimator):  # type: ignore[mi
     """
 
     model_: BaseTSK
+    feature_names_in_: np.ndarray | None
 
     def __init__(
         self,
@@ -1483,10 +1488,9 @@ class _BaseRegressorEstimator(RegressorMixin, BaseEstimator):  # type: ignore[mi
         if self.random_state is not None:
             torch.manual_seed(int(self.random_state))
 
-        input_mfs, feature_names, effective_rule_base = self._build_input_mfs(x_arr)
+        input_mfs, _, effective_rule_base = self._build_input_mfs(x_arr)
 
         self.n_features_in_ = x_arr.shape[1]
-        self.feature_names_in_ = np.asarray(feature_names, dtype=object)
 
         _device = torch.device(str(self.device))
         self.model_ = self._build_regressor_model(input_mfs, effective_rule_base).to(_device)
@@ -1539,6 +1543,7 @@ class _BaseRegressorEstimator(RegressorMixin, BaseEstimator):  # type: ignore[mi
 
     def save(self, path: str) -> None:
         """Persist estimator configuration, model weights and fitted metadata."""
+        _fnames: np.ndarray | None = getattr(self, "feature_names_in_", None)
         checkpoint = self._build_checkpoint_base(
             model_init={
                 "input_mfs_config": serialize_input_mfs(self.model_.input_mfs),
@@ -1546,7 +1551,7 @@ class _BaseRegressorEstimator(RegressorMixin, BaseEstimator):  # type: ignore[mi
             },
             fitted_attrs={
                 "n_features_in": int(self.n_features_in_),
-                "feature_names_in": self.feature_names_in_.tolist(),
+                "feature_names_in": _fnames.tolist() if _fnames is not None else None,
             },
         )
         save_checkpoint(path, checkpoint)
@@ -1572,7 +1577,10 @@ class _BaseRegressorEstimator(RegressorMixin, BaseEstimator):  # type: ignore[mi
 
         fitted = checkpoint["fitted_attrs"]
         estimator.n_features_in_ = int(fitted["n_features_in"])
-        estimator.feature_names_in_ = np.asarray(fitted["feature_names_in"], dtype=object)
+        if fitted.get("feature_names_in") is not None:
+            estimator.feature_names_in_ = np.asarray(fitted["feature_names_in"], dtype=object)
+        elif hasattr(estimator, "feature_names_in_"):
+            delattr(estimator, "feature_names_in_")
         estimator.history_ = cast(dict[str, Any], checkpoint.get("history", {}))
         return estimator
 
@@ -1658,8 +1666,3 @@ class _BaseRegressorEstimator(RegressorMixin, BaseEstimator):  # type: ignore[mi
             raise ValueError("unsupported consequent weight shape for feature importance")
 
         return _normalize_importance(importance)
-
-
-# =====================================================================
-# HTSK Estimators
-# =====================================================================
