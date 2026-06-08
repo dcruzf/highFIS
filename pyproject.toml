@@ -132,9 +132,6 @@ isort = { known-first-party = ["highfis", "tests"] }
 [tool.pytest.ini_options]
 testpaths = "tests"
 xfail_strict = true
-filterwarnings = [
-    "ignore:X does not have valid feature names:UserWarning",
-]
 
 [tool.coverage.run]
 source = ["highfis"]

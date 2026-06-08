@@ -314,7 +314,10 @@ def test_estimator_fit_with_input_configs_grid_resolve_config() -> None:
     configs = [InputConfig(name=f"f{i}", n_mfs=2) for i in range(3)]
     est = HTSKClassifier(input_configs=configs, mf_init="grid", epochs=2, random_state=0, batch_size=16)
     est.fit(x, y)
-    assert list(est.feature_names_in_) == ["f0", "f1", "f2"]
+    # input_configs names flow into the model's MFs, not feature_names_in_
+    # (feature_names_in_ is only set by sklearn when fit receives a DataFrame)
+    assert not hasattr(est, "feature_names_in_")
+    assert list(est.model_.input_mfs.keys()) == ["f0", "f1", "f2"]
 
 
 def test_estimator_fit_with_input_configs_kmeans_resolve_names() -> None:
@@ -322,7 +325,9 @@ def test_estimator_fit_with_input_configs_kmeans_resolve_names() -> None:
     configs = [InputConfig(name=f"g{i}", n_mfs=3) for i in range(3)]
     est = HTSKClassifier(input_configs=configs, mf_init="kmeans", epochs=2, random_state=0, batch_size=16)
     est.fit(x, y)
-    assert list(est.feature_names_in_) == ["g0", "g1", "g2"]
+    # input_configs names flow into the model's MFs, not feature_names_in_
+    assert not hasattr(est, "feature_names_in_")
+    assert list(est.model_.input_mfs.keys()) == ["g0", "g1", "g2"]
 
 
 def test_estimator_predict_proba_wrong_feature_count() -> None:
@@ -613,7 +618,9 @@ def test_regressor_estimator_fit_with_input_configs_grid() -> None:
     configs = [InputConfig(name=f"f{i}", n_mfs=2) for i in range(3)]
     est = HTSKRegressor(input_configs=configs, mf_init="grid", epochs=2, random_state=0, batch_size=16)
     est.fit(x, y)
-    assert list(est.feature_names_in_) == ["f0", "f1", "f2"]
+    # input_configs names flow into the model's MFs, not feature_names_in_
+    assert not hasattr(est, "feature_names_in_")
+    assert list(est.model_.input_mfs.keys()) == ["f0", "f1", "f2"]
 
 
 def test_regressor_estimator_fit_with_input_configs_kmeans() -> None:
@@ -621,4 +628,6 @@ def test_regressor_estimator_fit_with_input_configs_kmeans() -> None:
     configs = [InputConfig(name=f"g{i}", n_mfs=3) for i in range(3)]
     est = HTSKRegressor(input_configs=configs, mf_init="kmeans", epochs=2, random_state=0, batch_size=16)
     est.fit(x, y)
-    assert list(est.feature_names_in_) == ["g0", "g1", "g2"]
+    # input_configs names flow into the model's MFs, not feature_names_in_
+    assert not hasattr(est, "feature_names_in_")
+    assert list(est.model_.input_mfs.keys()) == ["g0", "g1", "g2"]
