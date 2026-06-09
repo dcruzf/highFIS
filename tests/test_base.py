@@ -10,8 +10,14 @@ import pytest
 import torch
 from torch import nn
 
-from highfis.base import BaseTSK, _iter_minibatch_indices, _uniform_regularization_loss
 from highfis.memberships import GaussianMF
+from highfis.models._base import BaseTSK
+from highfis.optim._utils import (
+    _iter_minibatch_indices,
+    _log,
+    _resolve_verbose,
+    _uniform_regularization_loss,
+)
 
 
 class _ConcreteClassifier(BaseTSK):
@@ -49,29 +55,35 @@ class TestBaseTSK:
         assert torch.allclose(norm_w.sum(dim=1), torch.ones(10), atol=1e-05)
 
     def test_resolve_verbose_rejects_invalid_type(self) -> None:
-        model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
         with pytest.raises(TypeError, match="verbose must be an int in 0\\.\\.3 or a bool"):
-            model._resolve_verbose(cast(Any, "yes"))
+            _resolve_verbose(cast(Any, "yes"))
 
     def test_resolve_verbose_rejects_invalid_range(self) -> None:
-        model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
         with pytest.raises(ValueError, match="verbose must be between 0 and 3"):
-            model._resolve_verbose(4)
+            _resolve_verbose(4)
 
     def test_log_verbose_logs_message(self) -> None:
-        model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
-        model._log("verbose test", verbose=True)
+        logger = logging.getLogger("test_logger")
+        logger.handlers.clear()
+        stream_handler = logging.StreamHandler(sys.stdout)
+        logger.addHandler(stream_handler)
+        logger.setLevel(logging.INFO)
+        _log(logger, "verbose test", verbose=True)
 
     def test_log_verbose_outputs_to_stdout(self) -> None:
-        model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
-        model._log("verbose test", verbose=True)
-        assert model.logger.handlers
-        assert isinstance(model.logger.handlers[0], logging.StreamHandler)
-        assert model.logger.handlers[0].stream is sys.stdout
+        logger = logging.getLogger("test_logger")
+        logger.handlers.clear()
+        stream_handler = logging.StreamHandler(sys.stdout)
+        logger.addHandler(stream_handler)
+        logger.setLevel(logging.INFO)
+        _log(logger, "verbose test", verbose=True)
+        assert logger.handlers
+        assert isinstance(logger.handlers[0], logging.StreamHandler)
+        assert logger.handlers[0].stream is sys.stdout
 
     def test_log_non_verbose_returns_without_logging(self) -> None:
-        model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
-        model._log("quiet test", verbose=False)
+        logger = logging.getLogger("test_logger")
+        _log(logger, "quiet test", verbose=False)
 
     def test_rejects_empty_input_mfs(self) -> None:
         with pytest.raises(ValueError, match="input_mfs must not be empty"):

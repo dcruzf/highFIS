@@ -10,9 +10,9 @@ import numpy.typing as npt
 import torch
 from sklearn.utils.validation import check_is_fitted, validate_data
 
-from ..base import BaseTSK
 from ..memberships import MembershipFunction
 from ..models import (
+    BaseTSK,
     FSREADATSKClassifierModel,
     FSREADATSKRegressorModel,
 )

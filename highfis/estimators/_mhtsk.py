@@ -9,11 +9,11 @@ import numpy as np
 import torch
 from sklearn.utils.validation import check_X_y
 
-from ..base import BaseTSK
 from ..memberships import (
     MembershipFunction,
 )
 from ..models import (
+    BaseTSK,
     MHTSKClassifierModel,
     MHTSKRegressorModel,
 )

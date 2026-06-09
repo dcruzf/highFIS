@@ -11,8 +11,15 @@ import torch
 from torch import Tensor, nn
 from tqdm.auto import trange
 
-from ..base import BaseTSK, _iter_minibatch_indices, _uniform_regularization_loss
+from ..models._base import BaseTSK
 from ._base import BaseTrainer
+from ._utils import (
+    _get_optimizer_config,
+    _iter_minibatch_indices,
+    _log,
+    _resolve_verbose,
+    _uniform_regularization_loss,
+)
 
 
 class GradientTrainer(BaseTrainer):
@@ -120,7 +127,7 @@ class GradientTrainer(BaseTrainer):
         best_metric = float("-inf")
         epochs_no_improve = 0
         best_state: dict[str, Any] | None = None
-        verbose_level = model._resolve_verbose(self.verbose)
+        verbose_level = _resolve_verbose(self.verbose)
 
         model.train()
         pbar = None
@@ -192,7 +199,8 @@ class GradientTrainer(BaseTrainer):
 
                 if self.patience is not None and epochs_no_improve >= self.patience:
                     if verbose_level >= 2:
-                        model._log(
+                        _log(
+                            model.logger,
                             "early stopping at epoch %s (patience=%s)",
                             epoch + 1,
                             self.patience,
@@ -249,7 +257,7 @@ class GradientTrainer(BaseTrainer):
     ) -> torch.optim.Optimizer:
         if optimizer is not None:
             return optimizer
-        opt_class, param_groups = model._get_optimizer_config(learning_rate, weight_decay)
+        opt_class, param_groups = _get_optimizer_config(model, learning_rate, weight_decay)
         return cast(Any, opt_class)(param_groups, lr=learning_rate)
 
     def _compute_loss(
@@ -389,7 +397,7 @@ class GradientTrainer(BaseTrainer):
             for k, v in val_info.items():
                 if k != "metric":
                     log_parts.append(f"{k}={v:.6f}" if isinstance(v, float) else f"{k}={v}")
-            model._log(" ".join(log_parts), verbose=verbose_level)
+            _log(model.logger, " ".join(log_parts), verbose=verbose_level)
 
     def _log_epoch_no_val(
         self,
@@ -406,7 +414,8 @@ class GradientTrainer(BaseTrainer):
                 raise RuntimeError("progress bar unavailable for verbose level 1")
             pbar.set_postfix_str(f"loss={train_loss:.4f}")
         if verbose_level >= 2 and (verbose_level == 3 or ((epoch + 1) % max(epochs // 10, 1) == 0 or epoch == 0)):
-            model._log(
+            _log(
+                model.logger,
                 "epoch=%s/%s loss=%.6f",
                 epoch + 1,
                 epochs,

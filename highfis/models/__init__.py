@@ -9,6 +9,7 @@ from ._adaptive import (
     ADPTSKClassifierModel,
     ADPTSKRegressorModel,
 )
+from ._base import BaseTSK
 from ._common import (
     BaseTSKClassifierModel,
     BaseTSKRegressorModel,
@@ -66,6 +67,7 @@ __all__: list[str] = [
     "ADPTSKRegressorModel",
     "AYATSKClassifierModel",
     "AYATSKRegressorModel",
+    "BaseTSK",
     "BaseTSKClassifierModel",
     "BaseTSKRegressorModel",
     "DGALETSKClassifierModel",

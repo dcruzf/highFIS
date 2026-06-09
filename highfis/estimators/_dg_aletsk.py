@@ -8,9 +8,9 @@ from typing import Any, cast
 import numpy as np
 from torch import Tensor
 
-from ..base import BaseTSK
 from ..memberships import MembershipFunction
 from ..models import (
+    BaseTSK,
     DGALETSKClassifierModel,
     DGALETSKRegressorModel,
 )

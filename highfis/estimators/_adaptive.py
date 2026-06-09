@@ -10,7 +10,6 @@ import numpy.typing as npt
 import torch
 from torch import Tensor, nn
 
-from ..base import BaseTSK
 from ..memberships import (
     ADATSKGaussianMF,
     GaussianMF,
@@ -21,6 +20,7 @@ from ..models import (
     ADATSKRegressorModel,
     ADPTSKClassifierModel,
     ADPTSKRegressorModel,
+    BaseTSK,
 )
 from ._base import (
     InputConfig,

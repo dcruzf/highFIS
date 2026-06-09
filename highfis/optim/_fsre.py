@@ -8,7 +8,7 @@ from typing import Any, cast
 import torch
 from torch import Tensor
 
-from ..base import BaseTSK
+from ..models import BaseTSK
 from ..models._common import _threshold_from_zeta
 from ._base import BaseTrainer
 from ._protocols import FSREModelProtocol

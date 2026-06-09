@@ -7,7 +7,7 @@ from typing import Any, cast
 
 from torch import Tensor
 
-from ..base import BaseTSK
+from ..models import BaseTSK
 from ._base import BaseTrainer
 from ._protocols import DGModelProtocol, FirstOrderModelProtocol
 

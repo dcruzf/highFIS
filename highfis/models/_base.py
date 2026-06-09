@@ -34,50 +34,18 @@ from __future__ import annotations
 import logging
 import sys
 from abc import abstractmethod
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
-import torch
 from torch import Tensor, nn
 
-from .defuzzifiers import SoftmaxLogDefuzzifier
-from .layers import MembershipLayer, RuleLayer
-from .memberships import MembershipFunction
-from .protocols import Defuzzifier
-from .t_norms import TNormFn
+from ..defuzzifiers import SoftmaxLogDefuzzifier
+from ..layers import MembershipLayer, RuleLayer
+from ..memberships import MembershipFunction
+from ..protocols import Defuzzifier
+from ..t_norms import TNormFn
 
 logger: logging.Logger = logging.getLogger(__name__)
-
-
-def _uniform_regularization_loss(normalized_weights: Tensor, target: float | None = None) -> Tensor:
-    """Penalize deviation from a uniform average rule activation distribution."""
-    n_rules = normalized_weights.shape[1]
-    target_value = (1.0 / float(n_rules)) if target is None else float(target)
-    target_tensor = normalized_weights.new_full((n_rules,), target_value)
-    avg_activation = normalized_weights.mean(dim=0)
-    return torch.sum((avg_activation - target_tensor) ** 2)
-
-
-def _iter_minibatch_indices(
-    n_samples: int,
-    batch_size: int | None,
-    shuffle: bool,
-    device: torch.device | str | None = None,
-) -> list[Tensor]:
-    """Create mini-batch index tensors for one epoch directly on target device."""
-    if batch_size is None:
-        return [torch.arange(n_samples, device=device)]
-    if batch_size <= 0:
-        raise ValueError("batch_size must be > 0 when provided")
-    if batch_size >= n_samples:
-        return [torch.arange(n_samples, device=device)]
-
-    order = torch.randperm(n_samples, device=device) if shuffle else torch.arange(n_samples, device=device)
-    batches: list[Tensor] = []
-    for start in range(0, n_samples, batch_size):
-        end = min(start + batch_size, n_samples)
-        batches.append(order[start:end])
-    return batches
 
 
 class BaseTSK(nn.Module):
@@ -209,60 +177,6 @@ class BaseTSK(nn.Module):
         """Full forward pass through the TSK pipeline."""
         output, _ = self._forward_train(x)
         return output
-
-    # ------------------------------------------------------------------
-    # Training helpers (may be overridden)
-    # ------------------------------------------------------------------
-
-    def _compute_loss(
-        self,
-        criterion: Callable[[Tensor, Tensor], Tensor],
-        output: Tensor,
-        target: Tensor,
-    ) -> Tensor:
-        """Compute the main task loss.  Override for custom target preparation."""
-        return criterion(output, target)
-
-    def _log(
-        self,
-        message: str,
-        *args: Any,
-        level: int = logging.INFO,
-        verbose: bool | int = False,
-        min_level: int = 2,
-        **kwargs: Any,
-    ) -> None:
-        """Log a message when verbose mode is enabled."""
-        if self._resolve_verbose(verbose) < min_level:
-            return
-        self.logger.log(level, message, *args, **kwargs)
-
-    def _resolve_verbose(self, verbose: bool | int = False) -> int:
-        """Normalize verbose settings to a numeric verbosity level."""
-        if isinstance(verbose, bool):
-            return 1 if verbose else 0
-        if not isinstance(verbose, int):
-            raise TypeError("verbose must be an int in 0..3 or a bool")
-        if verbose < 0 or verbose > 3:
-            raise ValueError("verbose must be between 0 and 3")
-        return verbose
-
-    def _get_optimizer_config(
-        self,
-        learning_rate: float,
-        weight_decay: float,
-    ) -> tuple[type[torch.optim.Optimizer], list[dict[str, Any]]]:
-        """Return the optimizer class and parameter groups for this model."""
-        ante_params = list(self.membership_layer.parameters())
-        rule_params = list(self.rule_layer.parameters())
-        cons_params = list(self.consequent_layer.parameters())
-        if self.consequent_bn is not None:
-            cons_params.extend(self.consequent_bn.parameters())
-        return torch.optim.AdamW, [
-            {"params": ante_params, "weight_decay": 0.0},
-            {"params": rule_params, "weight_decay": 0.0},
-            {"params": cons_params, "weight_decay": weight_decay},
-        ]
 
 
 __all__: list[str] = ["BaseTSK"]

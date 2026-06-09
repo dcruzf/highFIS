@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any
 
 import torch
 from torch import nn
@@ -107,22 +106,6 @@ class ADATSKClassifierModel(BaseTSKClassifierModel):
 
     default_criterion = nn.MSELoss
 
-    def _get_optimizer_config(
-        self,
-        learning_rate: float,
-        weight_decay: float,
-    ) -> tuple[type[torch.optim.Optimizer], list[dict[str, Any]]]:
-        ante_params = list(self.membership_layer.parameters())
-        rule_params = list(self.rule_layer.parameters())
-        cons_params = list(self.consequent_layer.parameters())
-        if self.consequent_bn is not None:
-            cons_params.extend(self.consequent_bn.parameters())
-        return torch.optim.SGD, [
-            {"params": ante_params},
-            {"params": rule_params},
-            {"params": cons_params},
-        ]
-
 
 class ADATSKRegressorModel(BaseTSKRegressorModel):
     r"""TSK regressor with adaptive softmin antecedent (ADATSK).
@@ -184,22 +167,6 @@ class ADATSKRegressorModel(BaseTSKRegressorModel):
         return RegressionConsequentLayer(self.n_rules, self.n_inputs)
 
     default_criterion = nn.MSELoss
-
-    def _get_optimizer_config(
-        self,
-        learning_rate: float,
-        weight_decay: float,
-    ) -> tuple[type[torch.optim.Optimizer], list[dict[str, Any]]]:
-        ante_params = list(self.membership_layer.parameters())
-        rule_params = list(self.rule_layer.parameters())
-        cons_params = list(self.consequent_layer.parameters())
-        if self.consequent_bn is not None:
-            cons_params.extend(self.consequent_bn.parameters())
-        return torch.optim.SGD, [
-            {"params": ante_params},
-            {"params": rule_params},
-            {"params": cons_params},
-        ]
 
 
 class ADPTSKClassifierModel(BaseTSKClassifierModel):
@@ -301,22 +268,6 @@ class ADPTSKClassifierModel(BaseTSKClassifierModel):
 
     default_criterion = nn.MSELoss
 
-    def _get_optimizer_config(
-        self,
-        learning_rate: float,
-        weight_decay: float,
-    ) -> tuple[type[torch.optim.Optimizer], list[dict[str, Any]]]:
-        ante_params = list(self.membership_layer.parameters())
-        rule_params = list(self.rule_layer.parameters())
-        cons_params = list(self.consequent_layer.parameters())
-        if self.consequent_bn is not None:
-            cons_params.extend(self.consequent_bn.parameters())
-        return torch.optim.Adam, [
-            {"params": ante_params},
-            {"params": rule_params},
-            {"params": cons_params},
-        ]
-
 
 class ADPTSKRegressorModel(BaseTSKRegressorModel):
     r"""TSK regressor with adaptive double-parameter softmin antecedent (ADPTSK).
@@ -410,19 +361,3 @@ class ADPTSKRegressorModel(BaseTSKRegressorModel):
         return RegressionConsequentLayer(self.n_rules, self.n_inputs)
 
     default_criterion = nn.MSELoss
-
-    def _get_optimizer_config(
-        self,
-        learning_rate: float,
-        weight_decay: float,
-    ) -> tuple[type[torch.optim.Optimizer], list[dict[str, Any]]]:
-        ante_params = list(self.membership_layer.parameters())
-        rule_params = list(self.rule_layer.parameters())
-        cons_params = list(self.consequent_layer.parameters())
-        if self.consequent_bn is not None:
-            cons_params.extend(self.consequent_bn.parameters())
-        return torch.optim.Adam, [
-            {"params": ante_params},
-            {"params": rule_params},
-            {"params": cons_params},
-        ]

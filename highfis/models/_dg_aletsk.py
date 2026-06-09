@@ -119,15 +119,6 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
 
     default_criterion = nn.MSELoss
 
-    def _get_optimizer_config(
-        self,
-        learning_rate: float,
-        weight_decay: float,
-    ) -> tuple[type[torch.optim.Optimizer], list[dict[str, Any]]]:
-        if self._optimizer_type == "sgd":
-            return torch.optim.SGD, [{"params": list(self.parameters())}]
-        return super()._get_optimizer_config(learning_rate, weight_decay)
-
     def convert_to_first_order(self) -> None:
         """Convert the DG phase zero-order consequent to first-order form."""
         previous = self.consequent_layer
@@ -343,7 +334,7 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
 
                 score = candidate._evaluate_threshold_score(x_eval, y_eval)
                 if verbose:
-                    self._log("zeta_lambda=%s zeta_theta=%s score=%.6f", zeta_l, zeta_t, score, verbose=True)
+                    self.logger.info("zeta_lambda=%s zeta_theta=%s score=%.6f", zeta_l, zeta_t, score)
 
                 if score > best_score:
                     best_score = score
@@ -505,15 +496,6 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
         return layer
 
     default_criterion = nn.MSELoss
-
-    def _get_optimizer_config(
-        self,
-        learning_rate: float,
-        weight_decay: float,
-    ) -> tuple[type[torch.optim.Optimizer], list[dict[str, Any]]]:
-        if self._optimizer_type == "sgd":
-            return torch.optim.SGD, [{"params": list(self.parameters())}]
-        return super()._get_optimizer_config(learning_rate, weight_decay)
 
     def convert_to_first_order(self) -> None:
         """Convert the DG phase zero-order consequent to first-order form."""
@@ -718,7 +700,7 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
 
                 score = candidate._evaluate_threshold_score(x_eval, y_eval)
                 if verbose:
-                    self._log("zeta_lambda=%s zeta_theta=%s score=%.6f", zeta_l, zeta_t, score, verbose=True)
+                    self.logger.info("zeta_lambda=%s zeta_theta=%s score=%.6f", zeta_l, zeta_t, score)
 
                 if score > best_score:
                     best_score = score

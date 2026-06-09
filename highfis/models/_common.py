@@ -7,7 +7,7 @@ from collections.abc import Sequence
 import torch
 from torch import Tensor, nn
 
-from ..base import BaseTSK
+from ._base import BaseTSK
 
 
 def _threshold_from_zeta(gate_values: Tensor, zeta: float) -> float:

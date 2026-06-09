@@ -18,7 +18,6 @@ from sklearn.utils.multiclass import type_of_target
 from sklearn.utils.validation import check_is_fitted, validate_data
 from torch import Tensor
 
-from ..base import BaseTSK
 from ..clustering import FuzzyCMeans, KMeans, MiniBatchKMeans
 from ..memberships import (
     ConstantMF,
@@ -28,6 +27,7 @@ from ..memberships import (
     MembershipFunction,
 )
 from ..metrics import compute_metrics
+from ..models import BaseTSK
 from ..optim._base import BaseTrainer
 from ..optim._gradient import GradientTrainer
 from ..persistence import (

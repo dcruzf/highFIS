@@ -6,11 +6,11 @@ from collections.abc import Mapping, Sequence
 
 import numpy as np
 
-from ..base import BaseTSK
 from ..memberships import (
     MembershipFunction,
 )
 from ..models import (
+    BaseTSK,
     HDFISMinClassifierModel,
     HDFISMinRegressorModel,
     HDFISProdClassifierModel,

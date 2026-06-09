@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from ..base import BaseTSK
 from ..memberships import (
     MembershipFunction,
 )
 from ..models import (
+    BaseTSK,
     HTSKClassifierModel,
     HTSKRegressorModel,
     TSKClassifierModel,
