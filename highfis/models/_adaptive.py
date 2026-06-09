@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from typing import Any
 
 import torch
 from torch import nn
@@ -104,31 +105,23 @@ class ADATSKClassifierModel(BaseTSKClassifierModel):
     def _build_consequent_layer(self) -> nn.Module:
         return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
 
-    def _default_criterion(self) -> nn.Module:
-        return nn.MSELoss()
+    default_criterion = nn.MSELoss
 
-    def _build_optimizer(
+    def _get_optimizer_config(
         self,
-        optimizer: torch.optim.Optimizer | None,
         learning_rate: float,
         weight_decay: float,
-    ) -> torch.optim.Optimizer:
-        """Return *optimizer* unchanged, or build a paper-style SGD optimizer."""
-        if optimizer is not None:
-            return optimizer
+    ) -> tuple[type[torch.optim.Optimizer], list[dict[str, Any]]]:
         ante_params = list(self.membership_layer.parameters())
         rule_params = list(self.rule_layer.parameters())
         cons_params = list(self.consequent_layer.parameters())
         if self.consequent_bn is not None:
             cons_params.extend(self.consequent_bn.parameters())
-        return torch.optim.SGD(
-            [
-                {"params": ante_params},
-                {"params": rule_params},
-                {"params": cons_params},
-            ],
-            lr=learning_rate,
-        )
+        return torch.optim.SGD, [
+            {"params": ante_params},
+            {"params": rule_params},
+            {"params": cons_params},
+        ]
 
 
 class ADATSKRegressorModel(BaseTSKRegressorModel):
@@ -190,31 +183,23 @@ class ADATSKRegressorModel(BaseTSKRegressorModel):
     def _build_consequent_layer(self) -> nn.Module:
         return RegressionConsequentLayer(self.n_rules, self.n_inputs)
 
-    def _default_criterion(self) -> nn.Module:
-        return nn.MSELoss()
+    default_criterion = nn.MSELoss
 
-    def _build_optimizer(
+    def _get_optimizer_config(
         self,
-        optimizer: torch.optim.Optimizer | None,
         learning_rate: float,
         weight_decay: float,
-    ) -> torch.optim.Optimizer:
-        """Return *optimizer* unchanged, or build a paper-style SGD optimizer."""
-        if optimizer is not None:
-            return optimizer
+    ) -> tuple[type[torch.optim.Optimizer], list[dict[str, Any]]]:
         ante_params = list(self.membership_layer.parameters())
         rule_params = list(self.rule_layer.parameters())
         cons_params = list(self.consequent_layer.parameters())
         if self.consequent_bn is not None:
             cons_params.extend(self.consequent_bn.parameters())
-        return torch.optim.SGD(
-            [
-                {"params": ante_params},
-                {"params": rule_params},
-                {"params": cons_params},
-            ],
-            lr=learning_rate,
-        )
+        return torch.optim.SGD, [
+            {"params": ante_params},
+            {"params": rule_params},
+            {"params": cons_params},
+        ]
 
 
 class ADPTSKClassifierModel(BaseTSKClassifierModel):
@@ -314,31 +299,23 @@ class ADPTSKClassifierModel(BaseTSKClassifierModel):
     def _build_consequent_layer(self) -> nn.Module:
         return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
 
-    def _default_criterion(self) -> nn.Module:
-        return nn.MSELoss()
+    default_criterion = nn.MSELoss
 
-    def _build_optimizer(
+    def _get_optimizer_config(
         self,
-        optimizer: torch.optim.Optimizer | None,
         learning_rate: float,
         weight_decay: float,
-    ) -> torch.optim.Optimizer:
-        """Return *optimizer* unchanged, or build a paper-style Adam optimizer."""
-        if optimizer is not None:
-            return optimizer
+    ) -> tuple[type[torch.optim.Optimizer], list[dict[str, Any]]]:
         ante_params = list(self.membership_layer.parameters())
         rule_params = list(self.rule_layer.parameters())
         cons_params = list(self.consequent_layer.parameters())
         if self.consequent_bn is not None:
             cons_params.extend(self.consequent_bn.parameters())
-        return torch.optim.Adam(
-            [
-                {"params": ante_params},
-                {"params": rule_params},
-                {"params": cons_params},
-            ],
-            lr=learning_rate,
-        )
+        return torch.optim.Adam, [
+            {"params": ante_params},
+            {"params": rule_params},
+            {"params": cons_params},
+        ]
 
 
 class ADPTSKRegressorModel(BaseTSKRegressorModel):
@@ -432,28 +409,20 @@ class ADPTSKRegressorModel(BaseTSKRegressorModel):
     def _build_consequent_layer(self) -> nn.Module:
         return RegressionConsequentLayer(self.n_rules, self.n_inputs)
 
-    def _default_criterion(self) -> nn.Module:
-        return nn.MSELoss()
+    default_criterion = nn.MSELoss
 
-    def _build_optimizer(
+    def _get_optimizer_config(
         self,
-        optimizer: torch.optim.Optimizer | None,
         learning_rate: float,
         weight_decay: float,
-    ) -> torch.optim.Optimizer:
-        """Return *optimizer* unchanged, or build a paper-style Adam optimizer."""
-        if optimizer is not None:
-            return optimizer
+    ) -> tuple[type[torch.optim.Optimizer], list[dict[str, Any]]]:
         ante_params = list(self.membership_layer.parameters())
         rule_params = list(self.rule_layer.parameters())
         cons_params = list(self.consequent_layer.parameters())
         if self.consequent_bn is not None:
             cons_params.extend(self.consequent_bn.parameters())
-        return torch.optim.Adam(
-            [
-                {"params": ante_params},
-                {"params": rule_params},
-                {"params": cons_params},
-            ],
-            lr=learning_rate,
-        )
+        return torch.optim.Adam, [
+            {"params": ante_params},
+            {"params": rule_params},
+            {"params": cons_params},
+        ]

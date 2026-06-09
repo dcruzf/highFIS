@@ -39,22 +39,6 @@ def test_ayatsk_classifier_init_validates_n_classes() -> None:
         AYATSKClassifierModel(_build_input_mfs(), n_classes=1)
 
 
-def test_ayatsk_regressor_default_criterion() -> None:
-    model = AYATSKRegressorModel(_build_input_mfs(), rule_base="coco")
-    assert isinstance(model._default_criterion(), nn.MSELoss)
-
-
-def test_ayatsk_classifier_default_criterion_is_mse() -> None:
-    model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3)
-    assert isinstance(model._default_criterion(), nn.MSELoss)
-
-
-def test_ayatsk_classifier_default_optimizer_is_adam() -> None:
-    model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3)
-    optimizer = model._build_optimizer(None, learning_rate=0.001, weight_decay=0.0)
-    assert isinstance(optimizer, torch.optim.Adam)
-
-
 def test_ayatsk_classifier_zero_initializes_consequents() -> None:
     model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3)
     weight = getattr(model.consequent_layer, "weight", None)
@@ -69,12 +53,6 @@ def test_ayatsk_classifier_uses_adaptive_yager_lambda() -> None:
     model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3)
     assert model.lambda_ > 0.0
     assert model.lower_bound_ > 0.0
-
-
-def test_ayatsk_regressor_default_optimizer_is_adam() -> None:
-    model = AYATSKRegressorModel(_build_input_mfs(), rule_base="coco")
-    optimizer = model._build_optimizer(None, learning_rate=0.001, weight_decay=0.0)
-    assert isinstance(optimizer, torch.optim.Adam)
 
 
 def test_ayatsk_regressor_zero_initializes_consequents() -> None:
@@ -99,29 +77,3 @@ def test_yager_zero_initialize_consequents_handles_missing_params() -> None:
         pass
 
     _zero_initialize_consequents(DummyLayer())
-
-
-def test_ayatsk_classifier_optimizer_passthrough() -> None:
-    model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3)
-    provided = torch.optim.SGD(model.parameters(), lr=0.01)
-    optimizer = model._build_optimizer(provided, learning_rate=0.001, weight_decay=0.0001)
-    assert optimizer is provided
-
-
-def test_ayatsk_regressor_optimizer_passthrough() -> None:
-    model = AYATSKRegressorModel(_build_input_mfs(), rule_base="coco")
-    provided = torch.optim.SGD(model.parameters(), lr=0.01)
-    optimizer = model._build_optimizer(provided, learning_rate=0.001, weight_decay=0.0001)
-    assert optimizer is provided
-
-
-def test_ayatsk_classifier_optimizer_with_consequent_batch_norm() -> None:
-    model = AYATSKClassifierModel(_build_input_mfs(), n_classes=3, consequent_batch_norm=True)
-    optimizer = model._build_optimizer(None, learning_rate=0.001, weight_decay=0.0)
-    assert isinstance(optimizer, torch.optim.Adam)
-
-
-def test_ayatsk_regressor_optimizer_with_consequent_batch_norm() -> None:
-    model = AYATSKRegressorModel(_build_input_mfs(), rule_base="coco", consequent_batch_norm=True)
-    optimizer = model._build_optimizer(None, learning_rate=0.001, weight_decay=0.0)
-    assert isinstance(optimizer, torch.optim.Adam)

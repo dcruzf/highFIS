@@ -37,7 +37,6 @@ from abc import abstractmethod
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, cast
 
-import numpy as np
 import torch
 from torch import Tensor, nn
 
@@ -84,10 +83,10 @@ def _iter_minibatch_indices(
 class BaseTSK(nn.Module):
     """Abstract base for TSK fuzzy models.
 
-    Subclasses must implement :meth:`_build_consequent_layer` and
-    :meth:`_default_criterion`.  Optionally override :meth:`_compute_loss`
-    and :meth:`_evaluate_validation` for task-specific logic.
+    Subclasses must implement :meth:`_build_consequent_layer`.
     """
+
+    default_criterion: type[nn.Module]
 
     def __init__(
         self,
@@ -162,10 +161,6 @@ class BaseTSK(nn.Module):
     @abstractmethod
     def _build_consequent_layer(self) -> nn.Module:
         """Return the task-specific consequent layer."""
-
-    @abstractmethod
-    def _default_criterion(self) -> nn.Module:
-        """Return the default loss function for this task."""
 
     # ------------------------------------------------------------------
     # Shared forward pipeline
@@ -252,216 +247,22 @@ class BaseTSK(nn.Module):
             raise ValueError("verbose must be between 0 and 3")
         return verbose
 
-    def _evaluate_validation(
+    def _get_optimizer_config(
         self,
-        criterion: Callable[[Tensor, Tensor], Tensor],
-        x_val: Tensor,
-        y_val: Tensor,
-    ) -> dict[str, float]:
-        """Evaluate on validation set.  Return dict with at least ``'metric'``.
-
-        The ``'metric'`` value is used for early-stopping comparison.
-        By default it is the negated validation loss (higher is better).
-        Uses minibatch iteration to avoid OOM.
-        """
-        was_training = self.training
-        self.eval()
-        try:
-            with torch.no_grad():
-                outputs = []
-                n_samples = x_val.shape[0]
-                batch_size = 1024
-                for start in range(0, n_samples, batch_size):
-                    end = min(start + batch_size, n_samples)
-                    out_b = self.forward(x_val[start:end])
-                    outputs.append(out_b)
-                output = torch.cat(outputs, dim=0)
-                val_loss = float(self._compute_loss(criterion, output, y_val).item())
-            return {"val_loss": val_loss, "metric": -val_loss}
-        finally:
-            self.train(was_training)
-
-    # ------------------------------------------------------------------
-    # Private fit helpers
-    # ------------------------------------------------------------------
-
-    def _validate_fit_inputs(
-        self,
-        x: Tensor,
-        y: Tensor,
-        x_val: Tensor | None,
-        y_val: Tensor | None,
-        ur_weight: float,
-        ur_target: float | None,
-    ) -> bool:
-        """Validate all inputs to :meth:`fit` and return ``has_val``."""
-        if x.ndim != 2 or x.shape[1] != self.n_inputs:
-            raise ValueError(f"expected x shape (batch, {self.n_inputs}), got {tuple(x.shape)}")
-        if y.ndim != 1:
-            raise ValueError("expected y shape (batch,)")
-        if ur_weight < 0.0:
-            raise ValueError("ur_weight must be >= 0")
-        if ur_target is not None and not (0.0 < ur_target <= 1.0):
-            raise ValueError("ur_target must be in (0, 1] when provided")
-
-        has_val = x_val is not None and y_val is not None
-        if has_val and x_val is not None and y_val is not None:
-            if x_val.ndim != 2 or x_val.shape[1] != self.n_inputs:
-                raise ValueError(f"expected x_val shape (batch, {self.n_inputs}), got {tuple(x_val.shape)}")
-            if y_val.ndim != 1:
-                raise ValueError("expected y_val shape (batch,)")
-        return has_val
-
-    def _build_optimizer(
-        self,
-        optimizer: torch.optim.Optimizer | None,
         learning_rate: float,
         weight_decay: float,
-    ) -> torch.optim.Optimizer:
-        """Return *optimizer* unchanged, or build a default AdamW."""
-        if optimizer is not None:
-            return optimizer
+    ) -> tuple[type[torch.optim.Optimizer], list[dict[str, Any]]]:
+        """Return the optimizer class and parameter groups for this model."""
         ante_params = list(self.membership_layer.parameters())
         rule_params = list(self.rule_layer.parameters())
         cons_params = list(self.consequent_layer.parameters())
         if self.consequent_bn is not None:
             cons_params.extend(self.consequent_bn.parameters())
-        return torch.optim.AdamW(
-            [
-                {"params": ante_params, "weight_decay": 0.0},
-                {"params": rule_params, "weight_decay": 0.0},
-                {"params": cons_params, "weight_decay": weight_decay},
-            ],
-            lr=learning_rate,
-        )
-
-    def _run_minibatch_epoch(
-        self,
-        x: Tensor,
-        y: Tensor,
-        criterion: Callable[[Tensor, Tensor], Tensor],
-        optimizer: torch.optim.Optimizer,
-        batch_size: int | None,
-        shuffle: bool,
-        ur_weight: float,
-        ur_target: float | None,
-    ) -> tuple[float, float]:
-        """Run one full epoch of mini-batch gradient updates.
-
-        Returns:
-            ``(mean_train_loss, mean_ur_loss)`` averaged over all batches.
-        """
-        batch_losses: list[float] = []
-        batch_ur_losses: list[float] = []
-        for batch_idx in _iter_minibatch_indices(x.shape[0], batch_size=batch_size, shuffle=shuffle, device=x.device):
-            x_b = x.index_select(0, batch_idx)
-            y_b = y.index_select(0, batch_idx)
-
-            optimizer.zero_grad(set_to_none=True)
-            output, norm_w = self._forward_train(x_b)
-            main_loss = self._compute_loss(criterion, output, y_b)
-
-            ur_loss = _uniform_regularization_loss(norm_w, target=ur_target)
-            total_loss = main_loss + float(ur_weight) * ur_loss
-            total_loss.backward()
-            optimizer.step()
-
-            batch_losses.append(float(total_loss.detach().item()))
-            batch_ur_losses.append(float(ur_loss.detach().item()))
-
-        train_loss = float(sum(batch_losses) / max(len(batch_losses), 1))
-        ur_loss_avg = float(sum(batch_ur_losses) / max(len(batch_ur_losses), 1))
-        return train_loss, ur_loss_avg
-
-    def _log_epoch_with_val(
-        self,
-        epoch: int,
-        epochs: int,
-        train_loss: float,
-        val_info: dict[str, Any],
-        verbose_level: int,
-        pbar: Any,
-    ) -> None:
-        """Emit epoch-level progress when a validation set is active."""
-        if verbose_level == 1:
-            if pbar is None:  # pragma: no cover
-                raise RuntimeError("progress bar unavailable for verbose level 1")
-            postfix = [
-                f"train={train_loss:.4f}",
-                f"val={val_info.get('val_loss', 0.0):.4f}",
-            ]
-            pbar.set_postfix_str(" ".join(postfix))
-        if verbose_level >= 2 and (verbose_level == 3 or ((epoch + 1) % max(epochs // 10, 1) == 0 or epoch == 0)):
-            log_parts = [
-                f"epoch={epoch + 1}/{epochs}",
-                f"train_loss={train_loss:.6f}",
-            ]
-            for k, v in val_info.items():
-                if k != "metric":
-                    log_parts.append(f"{k}={v:.6f}" if isinstance(v, float) else f"{k}={v}")
-            self._log(" ".join(log_parts), verbose=verbose_level)
-
-    def _log_epoch_no_val(
-        self,
-        epoch: int,
-        epochs: int,
-        train_loss: float,
-        verbose_level: int,
-        pbar: Any,
-    ) -> None:
-        """Emit epoch-level progress when no validation set is provided."""
-        if verbose_level == 1:
-            if pbar is None:  # pragma: no cover
-                raise RuntimeError("progress bar unavailable for verbose level 1")
-            pbar.set_postfix_str(f"loss={train_loss:.4f}")
-        if verbose_level >= 2 and (verbose_level == 3 or ((epoch + 1) % max(epochs // 10, 1) == 0 or epoch == 0)):
-            self._log(
-                "epoch=%s/%s loss=%.6f",
-                epoch + 1,
-                epochs,
-                train_loss,
-                verbose=verbose_level,
-            )
-
-    # ------------------------------------------------------------------
-    # Unified training loop
-    # ------------------------------------------------------------------
-
-    def _get_task(self) -> str:
-        """Return the task type of this model: 'classification' or 'regression'."""
-        from .models._common import BaseTSKClassifierModel
-
-        if isinstance(self, BaseTSKClassifierModel):
-            return "classification"
-        consequent_class = self.consequent_layer.__class__.__name__
-        if "Classification" in consequent_class:
-            return "classification"
-        if "Classifier" in self.__class__.__name__:
-            return "classification"
-        return "regression"
-
-    def _predict_numpy(self, x: Tensor) -> np.ndarray:
-        """Helper to get numpy predictions of the model on *x* using minibatch iteration."""
-        was_training = self.training
-        self.eval()
-        try:
-            with torch.no_grad():
-                outputs = []
-                n_samples = x.shape[0]
-                batch_size = 1024
-                for start in range(0, n_samples, batch_size):
-                    end = min(start + batch_size, n_samples)
-                    out_b = self.forward(x[start:end])
-                    outputs.append(out_b)
-                output = torch.cat(outputs, dim=0)
-                if self._get_task() == "classification":
-                    return output.argmax(dim=1).cpu().numpy()
-                else:
-                    if output.ndim > 1 and output.shape[1] == 1:
-                        output = output.squeeze(1)
-                    return output.cpu().numpy()
-        finally:
-            self.train(was_training)
+        return torch.optim.AdamW, [
+            {"params": ante_params, "weight_decay": 0.0},
+            {"params": rule_params, "weight_decay": 0.0},
+            {"params": cons_params, "weight_decay": weight_decay},
+        ]
 
 
 __all__: list[str] = ["BaseTSK"]

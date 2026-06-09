@@ -135,20 +135,16 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
         layer.mode = "re"
         return layer
 
-    def _default_criterion(self) -> nn.Module:
-        return nn.MSELoss()
+    default_criterion = nn.MSELoss
 
-    def _build_optimizer(
+    def _get_optimizer_config(
         self,
-        optimizer: torch.optim.Optimizer | None,
         learning_rate: float,
         weight_decay: float,
-    ) -> torch.optim.Optimizer:
-        if optimizer is not None:
-            return optimizer
+    ) -> tuple[type[torch.optim.Optimizer], list[dict[str, Any]]]:
         if self._optimizer_type == "sgd":
-            return torch.optim.SGD(self.parameters(), lr=learning_rate)
-        return super()._build_optimizer(optimizer, learning_rate, weight_decay)
+            return torch.optim.SGD, [{"params": list(self.parameters())}]
+        return super()._get_optimizer_config(learning_rate, weight_decay)
 
     def convert_to_first_order(self) -> None:
         """Convert the DG-TSK model from zero-order to first-order consequent."""
@@ -537,20 +533,16 @@ class DGTSKRegressorModel(BaseTSKRegressorModel):
         layer.mode = "re"
         return layer
 
-    def _default_criterion(self) -> nn.Module:
-        return nn.MSELoss()
+    default_criterion = nn.MSELoss
 
-    def _build_optimizer(
+    def _get_optimizer_config(
         self,
-        optimizer: torch.optim.Optimizer | None,
         learning_rate: float,
         weight_decay: float,
-    ) -> torch.optim.Optimizer:
-        if optimizer is not None:
-            return optimizer
+    ) -> tuple[type[torch.optim.Optimizer], list[dict[str, Any]]]:
         if self._optimizer_type == "sgd":
-            return torch.optim.SGD(self.parameters(), lr=learning_rate)
-        return super()._build_optimizer(optimizer, learning_rate, weight_decay)
+            return torch.optim.SGD, [{"params": list(self.parameters())}]
+        return super()._get_optimizer_config(learning_rate, weight_decay)
 
     def convert_to_first_order(self) -> None:
         """Convert the DG-TSK regressor from zero-order to first-order consequent."""

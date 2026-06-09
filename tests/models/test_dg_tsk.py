@@ -180,32 +180,6 @@ def test_dgtsk_classifier_init_consequents_from_labels_raises_on_first_order() -
         model.init_consequents_from_labels(torch.zeros(2, dtype=torch.long))
 
 
-def test_dgtsk_classifier_build_optimizer_passthrough() -> None:
-    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
-    custom_opt = torch.optim.Adam(model.parameters(), lr=0.001)
-    result = model._build_optimizer(custom_opt, 0.001, 0.0)
-    assert result is custom_opt
-
-
-def test_dgtsk_classifier_build_optimizer_adamw_fallback() -> None:
-    model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2, optimizer_type="adamw")
-    result = model._build_optimizer(None, 0.001, 0.0001)
-    assert isinstance(result, torch.optim.AdamW)
-
-
-def test_dgtsk_regressor_build_optimizer_passthrough() -> None:
-    model = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
-    custom_opt = torch.optim.Adam(model.parameters(), lr=0.001)
-    result = model._build_optimizer(custom_opt, 0.001, 0.0)
-    assert result is custom_opt
-
-
-def test_dgtsk_regressor_build_optimizer_adamw_fallback() -> None:
-    model = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), optimizer_type="adamw")
-    result = model._build_optimizer(None, 0.001, 0.0001)
-    assert isinstance(result, torch.optim.AdamW)
-
-
 def test_dgtsk_classifier_prune_structure_empty_features_raises() -> None:
     model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
     with pytest.raises(ValueError, match="surviving_features must not be empty"):

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 
 import torch
 from torch import Tensor, nn
@@ -79,38 +79,8 @@ def build_rule_feature_mask(rules: Sequence[Sequence[int]], dont_care_indices: S
 class BaseTSKClassifierModel(BaseTSK):
     """Abstract classifier base that provides task-specific training and inference helpers."""
 
-    def _compute_loss(self, criterion: Callable[[Tensor, Tensor], Tensor], output: Tensor, target: Tensor) -> Tensor:
-        """Compute classification loss, handling MSELoss one-hot encoding."""
-        if isinstance(criterion, nn.MSELoss):
-            one_hot = torch.zeros_like(output)
-            one_hot.scatter_(1, target.unsqueeze(1), 1.0)
-            return criterion(output, one_hot)
-        return criterion(output, target)
-
-    def _evaluate_validation(
-        self, criterion: Callable[[Tensor, Tensor], Tensor], x_val: Tensor, y_val: Tensor
-    ) -> dict[str, float]:
-        """Evaluate validation set using accuracy as the early-stopping metric.
-
-        Uses minibatch iteration to avoid OOM.
-        """
-        was_training = self.training
-        self.eval()
-        try:
-            with torch.no_grad():
-                outputs = []
-                n_samples = x_val.shape[0]
-                batch_size = 1024
-                for start in range(0, n_samples, batch_size):
-                    end = min(start + batch_size, n_samples)
-                    out_b = self.forward(x_val[start:end])
-                    outputs.append(out_b)
-                logits = torch.cat(outputs, dim=0)
-                val_loss = float(self._compute_loss(criterion, logits, y_val).item())
-                val_acc = float((logits.argmax(dim=1) == y_val).float().mean().item())
-            return {"val_loss": val_loss, "val_acc": val_acc, "metric": val_acc}
-        finally:
-            self.train(was_training)
+    task_type = "classification"
+    default_criterion = nn.CrossEntropyLoss
 
     def predict_proba(self, x: Tensor) -> Tensor:
         """Return class probabilities computed with softmax."""
@@ -143,9 +113,8 @@ class BaseTSKClassifierModel(BaseTSK):
 class BaseTSKRegressorModel(BaseTSK):
     """Abstract regressor base that provides task-specific training and inference helpers."""
 
-    def _compute_loss(self, criterion: Callable[[Tensor, Tensor], Tensor], output: Tensor, target: Tensor) -> Tensor:
-        """Compute regression loss, squeezing the output to 1-D."""
-        return criterion(output.squeeze(1), target)
+    task_type = "regression"
+    default_criterion = nn.MSELoss
 
     def predict(self, x: Tensor) -> Tensor:
         """Return predicted values as a 1-D tensor."""

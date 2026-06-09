@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pytest
 import torch
-from torch import nn
 
 from highfis.layers import (
     DGALETSKRuleLayer,
@@ -123,32 +122,6 @@ def test_dgaletsk_rule_layer_firing_strengths_in_unit_interval() -> None:
     assert f.shape == (1, 2)
     assert torch.allclose(f[0, 0], torch.tensor(0.3), atol=0.01)
     assert torch.allclose(f[0, 1], torch.tensor(0.6), atol=0.01)
-
-
-def test_dgaletsk_classifier_build_optimizer_passthrough() -> None:
-    model = DGALETSKClassifierModel(_build_input_mfs(), n_classes=2)
-    custom_opt = torch.optim.Adam(model.parameters(), lr=0.001)
-    result = model._build_optimizer(custom_opt, 0.001, 0.0)
-    assert result is custom_opt
-
-
-def test_dgaletsk_classifier_build_optimizer_adamw_fallback() -> None:
-    model = DGALETSKClassifierModel(_build_input_mfs(), n_classes=2, optimizer_type="adamw")
-    result = model._build_optimizer(None, 0.001, 0.0001)
-    assert isinstance(result, torch.optim.AdamW)
-
-
-def test_dgaletsk_regressor_build_optimizer_passthrough() -> None:
-    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
-    custom_opt = torch.optim.Adam(model.parameters(), lr=0.001)
-    result = model._build_optimizer(custom_opt, 0.001, 0.0)
-    assert result is custom_opt
-
-
-def test_dgaletsk_regressor_build_optimizer_adamw_fallback() -> None:
-    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), optimizer_type="adamw")
-    result = model._build_optimizer(None, 0.001, 0.0001)
-    assert isinstance(result, torch.optim.AdamW)
 
 
 def test_dgaletsk_classifier_prune_structure_empty_features_raises() -> None:
@@ -288,16 +261,6 @@ def test_dg_aletsk_regressor_convert_to_first_order_preserves_theta() -> None:
     assert isinstance(model.consequent_layer, GatedRegressionZeroOrderConsequentLayer)
     model.convert_to_first_order()
     assert isinstance(model.consequent_layer, GatedRegressionConsequentLayer)
-
-
-def test_dg_aletsk_classifier_default_criterion() -> None:
-    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
-    assert isinstance(model._default_criterion(), nn.MSELoss)
-
-
-def test_dg_aletsk_regressor_default_criterion() -> None:
-    model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
-    assert isinstance(model._default_criterion(), nn.MSELoss)
 
 
 def test_dg_aletsk_regressor_search_thresholds_verbose() -> None:
