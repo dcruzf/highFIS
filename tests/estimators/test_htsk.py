@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import tempfile
-from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any, cast
 
@@ -10,14 +9,11 @@ import pytest
 import torch
 from sklearn.exceptions import NotFittedError
 from sklearn.model_selection import KFold, StratifiedKFold, cross_val_score
-from torch import nn
 
 from highfis import HTSKClassifier, HTSKRegressor, TSKClassifier, TSKRegressor
-from highfis.base import BaseTSK
 from highfis.clustering import KMeans
 from highfis.estimators import InputConfig
 from highfis.estimators._base import _build_gaussian_input_mfs, _build_kmeans_input_mfs
-from highfis.memberships import MembershipFunction
 
 
 def _make_dataset(n_samples: int = 60) -> tuple[np.ndarray, np.ndarray]:
@@ -241,35 +237,29 @@ def test_estimator_restore_best_false_does_not_restore_best_model() -> None:
 
 
 def test_estimator_passes_restore_best_to_model_fit() -> None:
-    class SpyModel(BaseTSK):
-        def __init__(self, input_mfs: Mapping[str, Sequence[MembershipFunction]], rule_base: str) -> None:
-            super().__init__(input_mfs, rule_base=rule_base)
-            self.fit_kwargs: dict[str, object] | None = None
+    """Verify that the estimator passes restore_best to GradientTrainer."""
+    import highfis.estimators._base as _base_module
 
-        def _build_consequent_layer(self) -> nn.Module:
-            return nn.Linear(self.n_inputs, 1, bias=False)
+    captured_kwargs: dict[str, object] = {}
 
-        def _default_criterion(self) -> nn.Module:
-            return nn.MSELoss()
+    original_trainer_cls = _base_module.GradientTrainer
 
-        def fit(self, *args: object, **kwargs: object) -> dict[str, Any]:
-            self.fit_kwargs = kwargs
-            return {"train": [], "ur": [], "stopped_epoch": 0}
+    class SpyTrainer(original_trainer_cls):
+        def __init__(self, **kwargs: Any) -> None:
+            captured_kwargs.update(kwargs)
+            super().__init__(**kwargs)
 
-    class SpyEstimator(HTSKClassifier):
-        def _build_model(
-            self, input_mfs: Mapping[str, Sequence[MembershipFunction]], n_classes: int, rule_base: str
-        ) -> SpyModel:
-            return SpyModel(input_mfs, rule_base)
+    _base_module.GradientTrainer = SpyTrainer  # type: ignore
+    try:
+        x, y = _make_dataset(60)
+        est = HTSKClassifier(
+            n_mfs=2, mf_init="kmeans", epochs=1, learning_rate=0.01, random_state=7, patience=1, restore_best=False
+        )
+        est.fit(x, y)
+    finally:
+        _base_module.GradientTrainer = original_trainer_cls  # type: ignore[invalid-assignment]
 
-    x, y = _make_dataset(60)
-    est = SpyEstimator(
-        n_mfs=2, mf_init="kmeans", epochs=1, learning_rate=0.01, random_state=7, patience=1, restore_best=False
-    )
-    est.fit(x, y)
-    assert isinstance(est.model_, SpyModel)
-    assert est.model_.fit_kwargs is not None
-    assert est.model_.fit_kwargs["restore_best"] is False
+    assert captured_kwargs.get("restore_best") is False
 
 
 def test_estimator_sigma_scale_auto() -> None:

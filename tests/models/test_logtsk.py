@@ -137,26 +137,6 @@ class TestLogTSKClassifierMath:
         )
 
 
-class TestLogTSKClassifierFit:
-    def test_fit_returns_history(self) -> None:
-        torch.manual_seed(1)
-        model = LogTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
-        x = torch.randn(20, 2)
-        y = torch.randint(0, 2, (20,), dtype=torch.long)
-        history = model.fit(x, y, epochs=4, learning_rate=0.01, batch_size=5)
-        assert len(history["train"]) == 4
-
-    def test_early_stopping_with_val_data(self) -> None:
-        torch.manual_seed(42)
-        model = LogTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
-        x = torch.randn(30, 2)
-        y = torch.randint(0, 2, (30,), dtype=torch.long)
-        x_val = torch.randn(10, 2)
-        y_val = torch.randint(0, 2, (10,), dtype=torch.long)
-        history = model.fit(x, y, epochs=500, x_val=x_val, y_val=y_val, patience=5, learning_rate=0.01)
-        assert history["stopped_epoch"] < 500
-
-
 class TestLogTSKRegressorInit:
     def test_rejects_empty_input_mfs(self) -> None:
         with pytest.raises(ValueError, match="input_mfs must not be empty"):
@@ -192,31 +172,3 @@ class TestLogTSKRegressorForward:
         x = torch.randn(6, 3)
         norm_w = model.forward_antecedents(x)
         assert torch.allclose(norm_w.sum(dim=1), torch.ones(6), atol=1e-06)
-
-
-class TestLogTSKRegressorFit:
-    def test_fit_returns_history(self) -> None:
-        torch.manual_seed(1)
-        model = LogTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
-        x = torch.randn(20, 2)
-        y = torch.randn(20)
-        history = model.fit(x, y, epochs=4, learning_rate=0.01, batch_size=5)
-        assert len(history["train"]) == 4
-
-    def test_fit_loss_decreases(self) -> None:
-        torch.manual_seed(42)
-        model = LogTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
-        x = torch.randn(40, 2)
-        y = x[:, 0] + 0.5 * x[:, 1]
-        history = model.fit(x, y, epochs=50, learning_rate=0.01)
-        assert history["train"][-1] < history["train"][0]
-
-    def test_early_stopping_with_val_data(self) -> None:
-        torch.manual_seed(42)
-        model = LogTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
-        x = torch.randn(30, 2)
-        y = x[:, 0] + 0.5 * x[:, 1]
-        x_val = torch.randn(10, 2)
-        y_val = x_val[:, 0] + 0.5 * x_val[:, 1]
-        history = model.fit(x, y, epochs=2000, x_val=x_val, y_val=y_val, patience=15, learning_rate=0.05)
-        assert history["stopped_epoch"] < 2000

@@ -200,33 +200,33 @@ class FSRETrainer(BaseTrainer):
             - ``"fs"`` — history dict from phase 1 (FS phase).
             - ``"re"`` — history dict from phase 2 (RE phase).
             - ``"finetune"`` — history dict from phase 3 (fine-tune phase).
-                        - ``"surviving_feature_indices"`` — list of retained feature indices
-                            relative to the input ``x`` columns.
-                        - ``"surviving_rule_indices"`` — list of retained rule indices
-                            relative to the En-FRB rule count after phase 2.
+            - ``"surviving_feature_indices"`` — list of retained feature indices
+                relative to the input ``x`` columns.
+            - ``"surviving_rule_indices"`` — list of retained rule indices
+                relative to the En-FRB rule count after phase 2.
             - ``"tau_lambda"`` — applied feature-selection threshold.
             - ``"tau_theta"`` — applied rule-extraction threshold.
         """
+        from ._gradient import GradientTrainer
+
         fsre_model = cast(FSREModelProtocol, model)
 
         # ── Phase 1: Feature Selection ────────────────────────────────────
-        fs_history: dict[str, Any] = fsre_model.fit_fs(
-            x,
-            y,
+        # Set consequent to FS mode (only feature gates M(λ_d) active)
+        fsre_model.consequent_layer.mode = "fs"
+        fs_trainer = GradientTrainer(
             epochs=int(self.fs_epochs),
             learning_rate=float(self.fs_learning_rate),
-            criterion=self.loss,
+            loss=self.loss,
             batch_size=self.fs_batch_size,
             shuffle=bool(self.fs_shuffle),
             ur_weight=float(self.fs_ur_weight),
             ur_target=self.fs_ur_target,
             verbose=self.verbose,
-            x_val=x_val,
-            y_val=y_val,
             patience=self.fs_patience,
             weight_decay=float(self.fs_weight_decay),
-            metrics=metrics,
         )
+        fs_history: dict[str, Any] = fs_trainer.fit(model, x, y, x_val=x_val, y_val=y_val, metrics=metrics)
 
         # ── Feature threshold & selection (paper eq. 28) ──────────────────
         feat_gates: Tensor = fsre_model.get_feature_gate_values()
@@ -244,23 +244,21 @@ class FSRETrainer(BaseTrainer):
             x_fs, x_val_fs = x, x_val
 
         # ── Phase 2: Rule Extraction ──────────────────────────────────────
-        re_history: dict[str, Any] = fsre_model.fit_re(
-            x_fs,
-            y,
+        # Expand to En-FRB (rebuilds rule_layer and consequent_layer with mode="re")
+        fsre_model.expand_to_en_frb()
+        re_trainer = GradientTrainer(
             epochs=int(self.re_epochs),
             learning_rate=float(self.re_learning_rate),
-            criterion=self.loss,
+            loss=self.loss,
             batch_size=self.re_batch_size,
             shuffle=bool(self.re_shuffle),
             ur_weight=float(self.re_ur_weight),
             ur_target=self.re_ur_target,
             verbose=self.verbose,
-            x_val=x_val_fs,
-            y_val=y_val,
             patience=self.re_patience,
             weight_decay=float(self.re_weight_decay),
-            metrics=metrics,
         )
+        re_history: dict[str, Any] = re_trainer.fit(model, x_fs, y, x_val=x_val_fs, y_val=y_val, metrics=metrics)
 
         # ── Rule threshold & selection (paper eq. 29) ─────────────────────
         rule_gates: Tensor = fsre_model.get_rule_gate_values()
@@ -277,24 +275,22 @@ class FSRETrainer(BaseTrainer):
             fsre_model.prune_to_rules(sr)
 
         # ── Phase 3: Fine-tune ────────────────────────────────────────────
-        finetune_history: dict[str, Any] = fsre_model.fit_finetune(
-            x_fs,
-            y,
+        # Set consequent to finetune mode (no gates — plain TSK consequent)
+        fsre_model.consequent_layer.mode = "finetune"
+        ft_trainer = GradientTrainer(
             epochs=int(self.finetune_epochs),
             learning_rate=float(self.finetune_learning_rate),
-            criterion=self.loss,
+            loss=self.loss,
             batch_size=self.finetune_batch_size,
             shuffle=bool(self.finetune_shuffle),
             ur_weight=float(self.finetune_ur_weight),
             ur_target=self.finetune_ur_target,
             verbose=self.verbose,
-            x_val=x_val_fs,
-            y_val=y_val,
             patience=self.finetune_patience,
             restore_best=bool(self.finetune_restore_best),
             weight_decay=float(self.finetune_weight_decay),
-            metrics=metrics,
         )
+        finetune_history: dict[str, Any] = ft_trainer.fit(model, x_fs, y, x_val=x_val_fs, y_val=y_val, metrics=metrics)
 
         return {
             "fs": fs_history,

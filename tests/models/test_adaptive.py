@@ -53,18 +53,6 @@ def test_adatsk_regressor_forward_shape() -> None:
     assert output.shape == (5, 1)
 
 
-def test_adatsk_classifier_fit_returns_history() -> None:
-    torch.manual_seed(0)
-    model = ADATSKClassifierModel(_build_adatsk_input_mfs(n_inputs=2, n_rules=2), n_classes=2)
-    x = torch.randn(20, 2)
-    y = torch.randint(0, 2, (20,), dtype=torch.long)
-    history = model.fit(x, y, epochs=3, learning_rate=0.01, batch_size=5)
-    assert set(history.keys()) == {"train", "ur", "stopped_epoch"}
-    assert len(history["train"]) == 3
-    assert len(history["ur"]) == 3
-    assert history["stopped_epoch"] == 3
-
-
 def test_adatsk_classifier_uses_ada_softmin_rule_layer() -> None:
     model = ADATSKClassifierModel(_build_adatsk_input_mfs(), n_classes=2)
     assert isinstance(model.rule_layer, AdaSoftminRuleLayer)

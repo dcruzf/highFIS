@@ -65,50 +65,6 @@ class TestTSKClassifierModelForward:
         assert torch.allclose(norm_w.sum(dim=1), torch.ones(6), atol=1e-06)
 
 
-class TestTSKClassifierModelFit:
-    def test_fit_returns_history(self) -> None:
-        torch.manual_seed(1)
-        model = TSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
-        x = torch.randn(20, 2)
-        y = torch.randint(0, 2, (20,), dtype=torch.long)
-        history = model.fit(x, y, epochs=4, learning_rate=0.01, batch_size=5)
-        assert set(history.keys()) == {"train", "ur", "stopped_epoch"}
-        assert len(history["train"]) == 4
-
-    def test_fit_with_custom_mse_criterion(self) -> None:
-        torch.manual_seed(1)
-        model = TSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
-        x = torch.randn(16, 2)
-        y = torch.randint(0, 2, (16,), dtype=torch.long)
-        history = model.fit(x, y, epochs=3, criterion=nn.MSELoss())
-        assert len(history["train"]) == 3
-
-    def test_early_stopping_with_val_data(self) -> None:
-        torch.manual_seed(42)
-        model = TSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
-        x = torch.randn(30, 2)
-        y = torch.randint(0, 2, (30,), dtype=torch.long)
-        x_val = torch.randn(10, 2)
-        y_val = torch.randint(0, 2, (10,), dtype=torch.long)
-        history = model.fit(x, y, epochs=500, x_val=x_val, y_val=y_val, patience=5, learning_rate=0.01)
-        assert len(history["val_acc"]) == len(history["train"])
-        assert history["stopped_epoch"] < 500
-
-    def test_fit_validates_x_shape(self) -> None:
-        model = TSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
-        y = torch.randint(0, 2, (10,), dtype=torch.long)
-        with pytest.raises(ValueError, match="expected x shape"):
-            model.fit(torch.randn(10, 3), y, epochs=1)
-
-    def test_consequent_batch_norm(self) -> None:
-        torch.manual_seed(1)
-        model = TSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2, consequent_batch_norm=True)
-        x = torch.randn(20, 2)
-        y = torch.randint(0, 2, (20,), dtype=torch.long)
-        history = model.fit(x, y, epochs=2, batch_size=10)
-        assert len(history["train"]) == 2
-
-
 class TestTSKRegressorInit:
     def test_rejects_empty_input_mfs(self) -> None:
         with pytest.raises(ValueError, match="input_mfs must not be empty"):
@@ -137,45 +93,6 @@ class TestTSKRegressorForward:
         x = torch.randn(6, 3)
         norm_w = model.forward_antecedents(x)
         assert torch.allclose(norm_w.sum(dim=1), torch.ones(6), atol=1e-06)
-
-
-class TestTSKRegressorFit:
-    def test_fit_returns_history(self) -> None:
-        torch.manual_seed(1)
-        model = TSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
-        x = torch.randn(20, 2)
-        y = torch.randn(20)
-        history = model.fit(x, y, epochs=4, learning_rate=0.01, batch_size=5)
-        assert set(history.keys()) == {"train", "ur", "stopped_epoch"}
-        assert len(history["train"]) == 4
-
-    def test_fit_loss_decreases(self) -> None:
-        torch.manual_seed(42)
-        model = TSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
-        x = torch.randn(40, 2)
-        y = x[:, 0] + 0.5 * x[:, 1]
-        history = model.fit(x, y, epochs=50, learning_rate=0.01)
-        assert history["train"][-1] < history["train"][0]
-
-    def test_early_stopping_with_val_data(self) -> None:
-        torch.manual_seed(42)
-        model = TSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
-        x = torch.randn(30, 2)
-        y = x[:, 0] + 0.5 * x[:, 1]
-        x_val = torch.randn(10, 2)
-        y_val = x_val[:, 0] + 0.5 * x_val[:, 1]
-        history = model.fit(x, y, epochs=2000, x_val=x_val, y_val=y_val, patience=15, learning_rate=0.05)
-        assert len(history["val"]) > 0
-        assert history["stopped_epoch"] < 2000
-
-    def test_constant_targets(self) -> None:
-        torch.manual_seed(0)
-        model = TSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
-        x = torch.randn(20, 2)
-        y = torch.full((20,), 3.14)
-        model.fit(x, y, epochs=200, learning_rate=0.05)
-        pred = model.predict(x)
-        assert float(torch.abs(pred.mean() - 3.14)) < 1.0
 
 
 def test_tsk_classifier_invalid_n_classes() -> None:

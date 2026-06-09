@@ -12,6 +12,7 @@ from torch import nn
 
 from highfis.base import BaseTSK, _iter_minibatch_indices, _uniform_regularization_loss
 from highfis.memberships import GaussianMF
+from highfis.optim import GradientTrainer
 
 
 class _ConcreteClassifier(BaseTSK):
@@ -52,7 +53,7 @@ class TestBaseTSK:
         model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
         x = torch.randn(20, 2)
         y = torch.randint(0, 2, (20,))
-        history = model.fit(x, y, epochs=5)
+        history = GradientTrainer(epochs=5).fit(model, x, y)
         assert "train" in history
         assert "val" not in history
         assert len(history["train"]) == 5
@@ -61,14 +62,14 @@ class TestBaseTSK:
         model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
         x = torch.randn(20, 2)
         y = torch.randint(0, 2, (20,))
-        history = model.fit(x, y, epochs=5, x_val=x, y_val=y, patience=3)
+        history = GradientTrainer(epochs=5, patience=3).fit(model, x, y, x_val=x, y_val=y)
         assert "val" in history
 
     def test_fit_with_validation_patience_none(self) -> None:
         model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
         x = torch.randn(20, 2)
         y = torch.randint(0, 2, (20,))
-        history = model.fit(x, y, epochs=5, x_val=x, y_val=y, patience=None)
+        history = GradientTrainer(epochs=5, patience=None).fit(model, x, y, x_val=x, y_val=y)
         assert len(history["train"]) == 5
         assert len(history["val"]) == 5
         assert history["stopped_epoch"] == 5
@@ -77,7 +78,7 @@ class TestBaseTSK:
         model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
         x = torch.randn(20, 2)
         y = torch.randint(0, 2, (20,))
-        history = model.fit(x, y, epochs=5, x_val=x, y_val=y, patience=1, restore_best=False)
+        history = GradientTrainer(epochs=5, patience=1, restore_best=False).fit(model, x, y, x_val=x, y_val=y)
         assert len(history["train"]) == 5
         assert len(history["val"]) == 5
         assert history["stopped_epoch"] == 5
@@ -86,21 +87,21 @@ class TestBaseTSK:
         model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
         x = torch.randn(20, 2)
         y = torch.randint(0, 2, (20,))
-        history = model.fit(x, y, epochs=3, verbose=1)
+        history = GradientTrainer(epochs=3, verbose=1).fit(model, x, y)
         assert len(history["train"]) == 3
 
     def test_fit_verbose_level_three_logs_every_epoch(self) -> None:
         model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
         x = torch.randn(20, 2)
         y = torch.randint(0, 2, (20,))
-        history = model.fit(x, y, epochs=3, verbose=3)
+        history = GradientTrainer(epochs=3, verbose=3).fit(model, x, y)
         assert len(history["train"]) == 3
 
     def test_fit_verbose_level_one_with_validation_uses_progress_bar(self, capfd) -> None:
         model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
         x = torch.randn(20, 2)
         y = torch.randint(0, 2, (20,))
-        history = model.fit(x, y, epochs=3, verbose=1, x_val=x, y_val=y)
+        history = GradientTrainer(epochs=3, verbose=1).fit(model, x, y, x_val=x, y_val=y)
         capfd.readouterr()
         assert len(history["train"]) == 3
 
@@ -134,14 +135,14 @@ class TestBaseTSK:
         optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
         x = torch.randn(20, 2)
         y = torch.randint(0, 2, (20,))
-        history = model.fit(x, y, epochs=1, optimizer=optimizer)
+        history = GradientTrainer(epochs=1).fit(model, x, y, optimizer=optimizer)
         assert "train" in history
 
     def test_fit_evaluates_custom_metrics(self) -> None:
         model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
         x = torch.randn(20, 2)
         y = torch.randint(0, 2, (20,))
-        history = model.fit(x, y, epochs=2, metrics=["accuracy", "f1_macro"], x_val=x, y_val=y)
+        history = GradientTrainer(epochs=2).fit(model, x, y, metrics=["accuracy", "f1_macro"], x_val=x, y_val=y)
         assert "train_accuracy" in history
         assert "train_f1_macro" in history
         assert "val_accuracy" in history

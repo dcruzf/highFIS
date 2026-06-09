@@ -15,15 +15,6 @@ class DGModelProtocol(Protocol):
     DGALETSKClassifierModel, and DGALETSKRegressorModel.
     """
 
-    def fit_dg_phase(
-        self,
-        x: Tensor,
-        y: Tensor,
-        **kwargs: Any,
-    ) -> dict[str, Any]:
-        """Execute phase-1 (data-guided) training."""
-        ...  # pragma: no cover
-
     def search_thresholds(
         self,
         x: Tensor,
@@ -38,17 +29,6 @@ class DGModelProtocol(Protocol):
         structural: bool = True,
     ) -> dict[str, Any]:
         """Search pruning thresholds and optionally apply the best candidate."""
-        ...  # pragma: no cover
-
-    def fit_finetune(
-        self,
-        x: Tensor,
-        y: Tensor,
-        *,
-        freeze_antecedents: bool = True,
-        **kwargs: Any,
-    ) -> dict[str, Any]:
-        """Execute phase-3 (fine-tune) training."""
         ...  # pragma: no cover
 
 
@@ -68,11 +48,19 @@ class FirstOrderModelProtocol(Protocol):
         ...  # pragma: no cover
 
 
+class _HasConsequentMode(Protocol):
+    """Protocol for consequent layers that expose a ``mode`` attribute."""
+
+    mode: str
+
+
 class FSREModelProtocol(Protocol):
     """Structural protocol for models that support three-phase FSRE training.
 
     Satisfied by FSREADATSKClassifierModel and FSREADATSKRegressorModel.
     """
+
+    consequent_layer: _HasConsequentMode
 
     def get_feature_gate_values(self) -> Tensor:
         """Return M(λ_d) gate activations of shape ``(n_inputs,)``."""
@@ -82,16 +70,8 @@ class FSREModelProtocol(Protocol):
         """Return M(θ_r) gate activations of shape ``(n_rules,)``."""
         ...  # pragma: no cover
 
-    def fit_fs(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Execute phase-1 (feature-selection) training."""
-        ...  # pragma: no cover
-
-    def fit_re(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Execute phase-2 (rule-extraction) training."""
-        ...  # pragma: no cover
-
-    def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Execute phase-3 (fine-tune) training."""
+    def expand_to_en_frb(self) -> None:
+        """Switch to Enhanced Fuzzy Rule Base for the RE phase."""
         ...  # pragma: no cover
 
     def prune_to_features(self, surviving_features: list[int]) -> None:

@@ -31,7 +31,6 @@ Optional overridable hooks:
 
 from __future__ import annotations
 
-import copy
 import logging
 import sys
 from abc import abstractmethod
@@ -41,7 +40,6 @@ from typing import Any, cast
 import numpy as np
 import torch
 from torch import Tensor, nn
-from tqdm.auto import trange
 
 from .defuzzifiers import SoftmaxLogDefuzzifier
 from .layers import MembershipLayer, RuleLayer
@@ -464,182 +462,6 @@ class BaseTSK(nn.Module):
                     return output.cpu().numpy()
         finally:
             self.train(was_training)
-
-    def fit(
-        self,
-        x: Tensor,
-        y: Tensor,
-        epochs: int = 200,
-        learning_rate: float = 1e-3,
-        criterion: Callable[[Tensor, Tensor], Tensor] | None = None,
-        optimizer: torch.optim.Optimizer | None = None,
-        batch_size: int | None = None,
-        shuffle: bool = True,
-        ur_weight: float = 0.0,
-        ur_target: float | None = None,
-        verbose: bool | int = False,
-        x_val: Tensor | None = None,
-        y_val: Tensor | None = None,
-        patience: int | None = 20,
-        restore_best: bool = True,
-        weight_decay: float = 1e-8,
-        metrics: list[str] | None = None,
-    ) -> dict[str, Any]:
-        """Train the model with optional early stopping.
-
-        When *x_val* and *y_val* are provided the model evaluates a
-        task-specific metric (via :meth:`_evaluate_validation`) after every
-        epoch and applies early stopping when the metric has not improved for
-        *patience* consecutive epochs.
-        By default the best model weights from validation are restored when
-        ``restore_best=True``.
-
-        Args:
-            x: Training inputs of shape ``(N, D)``.
-            y: Training targets.
-            epochs: Number of epochs to train.
-            learning_rate: Optimizer learning rate.
-            criterion: Optional loss function.  Defaults to
-                :meth:`_default_criterion`.
-            optimizer: Optional optimizer instance.  Defaults to AdamW.
-            batch_size: Optional mini-batch size.  When ``None``, full-batch
-                training is performed.
-            shuffle: If ``True``, shuffle training samples every epoch.
-            ur_weight: Weight coefficient for uniform regularization.
-            ur_target: Target value for uniform regularization.
-            verbose: Verbosity level (0, 1, 2, or 3).
-            x_val: Optional validation inputs.
-            y_val: Optional validation targets.
-            patience: Number of validation epochs to wait without improvement
-                before stopping.  When ``None``, early stopping is disabled.
-            restore_best: If ``True`` (default), restore the model weights
-                from the best validation epoch when early stopping is used.
-            weight_decay: L2 weight decay applied to consequent parameters
-                by the default AdamW optimizer.
-            metrics: Optional list of metric names to evaluate on the train
-                and validation sets after each epoch.
-
-        Returns:
-            Dictionary mapping history keys to sequences of floats.
-        """
-        from .metrics import compute_metrics
-
-        has_val = self._validate_fit_inputs(x, y, x_val, y_val, ur_weight, ur_target)
-        train_criterion = criterion or self._default_criterion()
-        train_optimizer = self._build_optimizer(optimizer, learning_rate, weight_decay)
-
-        # Resolve/normalize metrics
-        task = self._get_task()
-        metrics_list: list[str] = []
-        if metrics is not None:
-            metrics_list = [metrics] if isinstance(metrics, str) else list(metrics)
-
-        if metrics_list:
-            primary_metric = metrics_list[0]
-            _MAXIMIZE_METRICS = {
-                "accuracy",
-                "balanced_accuracy",
-                "precision_macro",
-                "recall_macro",
-                "f1_macro",
-                "precision_micro",
-                "recall_micro",
-                "f1_micro",
-                "r2",
-                "explained_variance",
-                "pearson",
-            }
-            maximize = primary_metric in _MAXIMIZE_METRICS
-
-        history: dict[str, Any] = {"train": [], "ur": []}
-        if has_val:
-            history["val"] = []
-        best_metric = float("-inf")
-        epochs_no_improve = 0
-        best_state: dict[str, Any] | None = None
-        verbose_level = self._resolve_verbose(verbose)
-
-        self.train()
-        pbar = None
-        if verbose_level == 1:
-            pbar = trange(epochs, desc="Training", leave=False)
-            epoch_iterator = pbar
-        else:
-            epoch_iterator = range(epochs)
-
-        stopped_epoch = 0
-        for epoch in epoch_iterator:
-            stopped_epoch = epoch + 1
-            epoch_train_loss, epoch_ur_loss = self._run_minibatch_epoch(
-                x, y, train_criterion, train_optimizer, batch_size, shuffle, ur_weight, ur_target
-            )
-            history["train"].append(epoch_train_loss)
-            history["ur"].append(epoch_ur_loss)
-
-            # Evaluate metrics on train set
-            if metrics_list:
-                train_preds = self._predict_numpy(x)
-                train_targets = y.cpu().numpy()
-                train_metrics = compute_metrics(cast(Any, task), train_targets, train_preds, metrics=metrics_list)
-                for m in metrics_list:
-                    history.setdefault(f"train_{m}", []).append(train_metrics[m])
-
-            if has_val and x_val is not None and y_val is not None:
-                self.eval()
-                val_info = self._evaluate_validation(train_criterion, x_val, y_val)
-                history["val"].append(val_info["val_loss"])
-
-                # Evaluate metrics on val set
-                if metrics_list:
-                    val_preds = self._predict_numpy(x_val)
-                    val_targets = y_val.cpu().numpy()
-                    val_metrics = compute_metrics(cast(Any, task), val_targets, val_preds, metrics=metrics_list)
-                    for m in metrics_list:
-                        history.setdefault(f"val_{m}", []).append(val_metrics[m])
-                        val_info[f"val_{m}"] = val_metrics[m]
-
-                    # Update the metric used for early stopping
-                    metric_val = val_metrics[primary_metric]
-                    metric = metric_val if maximize else -metric_val
-                    val_info["metric"] = metric
-                else:
-                    metric = val_info["metric"]
-
-                for k, v in val_info.items():
-                    if k not in ("val_loss", "metric") and k not in [f"val_{m}" for m in metrics_list]:
-                        history.setdefault(k, []).append(v)
-                self.train()
-
-                if metric > best_metric:
-                    best_metric = metric
-                    epochs_no_improve = 0
-                    best_state = copy.deepcopy(self.state_dict())
-                else:
-                    epochs_no_improve += 1
-
-                self._log_epoch_with_val(epoch, epochs, epoch_train_loss, val_info, verbose_level, pbar)
-
-                if patience is not None and epochs_no_improve >= patience:
-                    if verbose_level >= 2:
-                        self._log(
-                            "early stopping at epoch %s (patience=%s)",
-                            epoch + 1,
-                            patience,
-                            verbose=verbose_level,
-                        )
-                    break
-            else:
-                self._log_epoch_no_val(epoch, epochs, epoch_train_loss, verbose_level, pbar)
-
-        if pbar is not None:
-            pbar.close()
-
-        if restore_best and best_state is not None:
-            self.load_state_dict(best_state)
-
-        history["stopped_epoch"] = stopped_epoch
-
-        return history
 
 
 __all__: list[str] = ["BaseTSK"]
