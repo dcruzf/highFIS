@@ -55,6 +55,20 @@ class BaseTSK(nn.Module):
     """
 
     default_criterion: type[nn.Module]
+    task_type: str
+    _optimizer_type: str = "adamw"
+
+    input_mfs: Mapping[str, Sequence[MembershipFunction]]
+    input_names: list[str]
+    n_inputs: int
+    membership_layer: MembershipLayer
+    rule_layer: RuleLayer
+    n_rules: int
+    defuzzifier: Defuzzifier
+    consequent_batch_norm: bool
+    consequent_bn: nn.BatchNorm1d | None
+    consequent_layer: nn.Module
+    logger: logging.Logger
 
     def __init__(
         self,

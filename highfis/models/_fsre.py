@@ -100,6 +100,10 @@ class FSREADATSKClassifierModel(BaseTSKClassifierModel):
         layer.mode = "fs"
         return layer
 
+    def set_consequent_mode(self, mode: str) -> None:
+        """Set training mode for the consequent layer."""
+        self.consequent_layer.mode = mode
+
     def _default_criterion(self) -> nn.Module:
         return nn.CrossEntropyLoss()
 
@@ -265,6 +269,10 @@ class FSREADATSKRegressorModel(BaseTSKRegressorModel):
         layer = GatedRegressionConsequentLayer(self.n_rules, self.n_inputs, shared_lambda=True)
         layer.mode = "fs"
         return layer
+
+    def set_consequent_mode(self, mode: str) -> None:
+        """Set training mode for the consequent layer."""
+        self.consequent_layer.mode = mode
 
     def _default_criterion(self) -> nn.Module:
         return nn.MSELoss()

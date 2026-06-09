@@ -79,10 +79,8 @@ def _get_optimizer_config(
             {"params": rule_params, "weight_decay": weight_decay},
             {"params": cons_params, "weight_decay": weight_decay},
         ]
-    elif "DGTSK" in class_name or "DGALETSK" in class_name:
-        optimizer_type = getattr(model, "_optimizer_type", None)
-        if optimizer_type == "sgd":
-            return torch.optim.SGD, [{"params": list(model.parameters())}]
+    elif model._optimizer_type == "sgd":
+        return torch.optim.SGD, [{"params": list(model.parameters())}]
 
     # Default: AdamW
     return torch.optim.AdamW, [

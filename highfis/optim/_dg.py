@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, cast
+from typing import Any
 
 from torch import Tensor
 
@@ -179,12 +179,13 @@ class DGTrainer(BaseTrainer):
         zeta_lambda = self.zeta_lambda if self.zeta_lambda is not None else _DEFAULT_ZETA
         zeta_theta = self.zeta_theta if self.zeta_theta is not None else _DEFAULT_ZETA
 
-        dg_model = cast(DGModelProtocol, model)
+        if not isinstance(model, DGModelProtocol):
+            raise TypeError("model must implement DGModelProtocol")
 
         # ── Phase 1: DG training ──────────────────────────────────────────
         # DG-TSK freezes antecedent MFs; DG-ALETSK trains them jointly.
         # We freeze membership_layer params here (DGTrainer manages param state).
-        membership_params = list(model.membership_layer.parameters())  # type: ignore[union-attr]
+        membership_params = list(model.membership_layer.parameters())
         for p in membership_params:
             p.requires_grad_(False)
         try:
@@ -211,7 +212,7 @@ class DGTrainer(BaseTrainer):
         x_eval = x_val if x_val is not None else x
         y_eval = y_val if y_val is not None else y
 
-        threshold_result: dict[str, Any] = dg_model.search_thresholds(
+        threshold_result: dict[str, Any] = model.search_thresholds(
             x,
             y,
             zeta_lambda=zeta_lambda,
@@ -234,30 +235,27 @@ class DGTrainer(BaseTrainer):
 
         # ── Phase 3: Fine-tune ────────────────────────────────────────────
         # Ensure first-order consequent (may already be converted by search_thresholds).
-        if hasattr(model, "convert_to_first_order"):
+        if isinstance(model, FirstOrderModelProtocol):
             from ..layers import GatedClassificationZeroOrderConsequentLayer, GatedRegressionZeroOrderConsequentLayer
 
-            cons = getattr(model, "consequent_layer", None)
+            cons = model.consequent_layer
             if isinstance(cons, (GatedClassificationZeroOrderConsequentLayer, GatedRegressionZeroOrderConsequentLayer)):
-                cast(FirstOrderModelProtocol, model).convert_to_first_order()
+                model.convert_to_first_order()
 
         # Reset consequent weights to zero (paper: "all consequent parameters set to zero").
-        cons = getattr(model, "consequent_layer", None)
-        if cons is not None:
-            weight = getattr(cons, "weight", None)
-            bias = getattr(cons, "bias", None)
-            if isinstance(weight, Tensor):
-                nn.init.zeros_(weight)
-            if isinstance(bias, Tensor):
-                nn.init.zeros_(bias)
+        cons = model.consequent_layer
+        for name, param in cons.named_parameters():
+            if name in ("weight", "bias"):
+                nn.init.zeros_(param)
 
         # Freeze params per paper: antecedents + lambda_gates frozen during fine-tune.
         frozen: list[Any] = []
         if self.finetune_freeze_antecedents:
-            frozen.extend(model.membership_layer.parameters())  # type: ignore[union-attr]
-        rule_layer = getattr(model, "rule_layer", None)
-        if rule_layer is not None and hasattr(rule_layer, "lambda_gates"):
-            frozen.append(rule_layer.lambda_gates)
+            frozen.extend(model.membership_layer.parameters())
+        rule_layer = model.rule_layer
+        lambda_gates = getattr(rule_layer, "lambda_gates", None)
+        if isinstance(lambda_gates, Tensor):
+            frozen.append(lambda_gates)
 
         for p in frozen:
             p.requires_grad_(False)

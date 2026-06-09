@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, cast
+from typing import Any
 
 import torch
 from torch import Tensor
@@ -209,11 +209,12 @@ class FSRETrainer(BaseTrainer):
         """
         from ._gradient import GradientTrainer
 
-        fsre_model = cast(FSREModelProtocol, model)
+        if not isinstance(model, FSREModelProtocol):
+            raise TypeError("model must implement FSREModelProtocol")
 
         # ── Phase 1: Feature Selection ────────────────────────────────────
         # Set consequent to FS mode (only feature gates M(λ_d) active)
-        fsre_model.consequent_layer.mode = "fs"
+        model.set_consequent_mode("fs")
         fs_trainer = GradientTrainer(
             epochs=int(self.fs_epochs),
             learning_rate=float(self.fs_learning_rate),
@@ -229,7 +230,7 @@ class FSRETrainer(BaseTrainer):
         fs_history: dict[str, Any] = fs_trainer.fit(model, x, y, x_val=x_val, y_val=y_val, metrics=metrics)
 
         # ── Feature threshold & selection (paper eq. 28) ──────────────────
-        feat_gates: Tensor = fsre_model.get_feature_gate_values()
+        feat_gates: Tensor = model.get_feature_gate_values()
         tau_lambda: float = _threshold_from_zeta(feat_gates, float(self.zeta_lambda))
         sf: list[int] = [i for i, v in enumerate(feat_gates.tolist()) if v > tau_lambda]
         if not sf:
@@ -237,7 +238,7 @@ class FSRETrainer(BaseTrainer):
             sf = [int(feat_gates.argmax().item())]
 
         if self.structural_pruning:
-            fsre_model.prune_to_features(sf)
+            model.prune_to_features(sf)
             x_fs: Tensor = x[:, sf]
             x_val_fs: Tensor | None = x_val[:, sf] if x_val is not None else None
         else:
@@ -245,7 +246,7 @@ class FSRETrainer(BaseTrainer):
 
         # ── Phase 2: Rule Extraction ──────────────────────────────────────
         # Expand to En-FRB (rebuilds rule_layer and consequent_layer with mode="re")
-        fsre_model.expand_to_en_frb()
+        model.expand_to_en_frb()
         re_trainer = GradientTrainer(
             epochs=int(self.re_epochs),
             learning_rate=float(self.re_learning_rate),
@@ -261,22 +262,25 @@ class FSRETrainer(BaseTrainer):
         re_history: dict[str, Any] = re_trainer.fit(model, x_fs, y, x_val=x_val_fs, y_val=y_val, metrics=metrics)
 
         # ── Rule threshold & selection (paper eq. 29) ─────────────────────
-        rule_gates: Tensor = fsre_model.get_rule_gate_values()
+        rule_gates: Tensor = model.get_rule_gate_values()
         tau_theta: float = _threshold_from_zeta(rule_gates, float(self.zeta_theta))
         sr: list[int] = [r for r, v in enumerate(rule_gates.tolist()) if v > tau_theta]
 
         # Enforce lower bound: for classifiers ≥ n_classes rules (paper §III-C).
-        min_rules: int = int(getattr(model, "n_classes", 1))
+        from ..models._common import BaseTSKClassifierModel
+
+        min_rules: int = 1
+        if isinstance(model, BaseTSKClassifierModel):
+            min_rules = model.n_classes
         if len(sr) < min_rules:
             top_indices: list[int] = torch.topk(rule_gates, min_rules).indices.tolist()
             sr = sorted(top_indices)
 
         if self.structural_pruning:
-            fsre_model.prune_to_rules(sr)
+            model.prune_to_rules(sr)
 
-        # ── Phase 3: Fine-tune ────────────────────────────────────────────
         # Set consequent to finetune mode (no gates — plain TSK consequent)
-        fsre_model.consequent_layer.mode = "finetune"
+        model.set_consequent_mode("finetune")
         ft_trainer = GradientTrainer(
             epochs=int(self.finetune_epochs),
             learning_rate=float(self.finetune_learning_rate),

@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Protocol
+from typing import Any, Protocol, runtime_checkable
 
 from torch import Tensor
 
 
+@runtime_checkable
 class DGModelProtocol(Protocol):
     """Structural protocol for models that support three-phase DG training.
 
@@ -32,6 +33,7 @@ class DGModelProtocol(Protocol):
         ...  # pragma: no cover
 
 
+@runtime_checkable
 class PFRBModelProtocol(Protocol):
     """Protocol for DG-TSK models that support P-FRB consequent initialisation."""
 
@@ -40,6 +42,7 @@ class PFRBModelProtocol(Protocol):
         ...  # pragma: no cover
 
 
+@runtime_checkable
 class FirstOrderModelProtocol(Protocol):
     """Protocol for DG models that can convert to first-order consequents."""
 
@@ -48,19 +51,16 @@ class FirstOrderModelProtocol(Protocol):
         ...  # pragma: no cover
 
 
-class _HasConsequentMode(Protocol):
-    """Protocol for consequent layers that expose a ``mode`` attribute."""
-
-    mode: str
-
-
+@runtime_checkable
 class FSREModelProtocol(Protocol):
     """Structural protocol for models that support three-phase FSRE training.
 
     Satisfied by FSREADATSKClassifierModel and FSREADATSKRegressorModel.
     """
 
-    consequent_layer: _HasConsequentMode
+    def set_consequent_mode(self, mode: str) -> None:
+        """Set the training mode of the consequent layer (e.g. 'fs', 're', 'finetune')."""
+        ...  # pragma: no cover
 
     def get_feature_gate_values(self) -> Tensor:
         """Return M(λ_d) gate activations of shape ``(n_inputs,)``."""

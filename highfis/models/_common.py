@@ -81,6 +81,7 @@ class BaseTSKClassifierModel(BaseTSK):
 
     task_type = "classification"
     default_criterion = nn.CrossEntropyLoss
+    n_classes: int
 
     def predict_proba(self, x: Tensor) -> Tensor:
         """Return class probabilities computed with softmax."""

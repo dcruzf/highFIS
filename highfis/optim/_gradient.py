@@ -107,7 +107,7 @@ class GradientTrainer(BaseTrainer):
         )
 
         # Resolve/normalize metrics
-        task = getattr(model, "task_type", "regression")
+        task = model.task_type
         metrics_list: list[str] = []
         if metrics is not None:
             metrics_list = [metrics] if isinstance(metrics, str) else list(metrics)
@@ -274,7 +274,7 @@ class GradientTrainer(BaseTrainer):
         output: Tensor,
         target: Tensor,
     ) -> Tensor:
-        task = getattr(model, "task_type", "regression")
+        task = model.task_type
         if task == "classification":
             if isinstance(criterion, nn.MSELoss):
                 one_hot = torch.zeros_like(output)
@@ -286,7 +286,7 @@ class GradientTrainer(BaseTrainer):
 
     def _predict_numpy(self, model: BaseTSK, x: Tensor) -> np.ndarray:
         """Helper to get numpy predictions of the model on *x* using DataLoader."""
-        task = getattr(model, "task_type", "regression")
+        task = model.task_type
         was_training = model.training
         model.eval()
         try:
@@ -348,7 +348,7 @@ class GradientTrainer(BaseTrainer):
         y_val: Tensor,
     ) -> dict[str, float]:
         """Evaluate on validation set.  Return dict with at least ``'metric'``."""
-        task = getattr(model, "task_type", "regression")
+        task = model.task_type
         was_training = model.training
         model.eval()
         try:
