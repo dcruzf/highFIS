@@ -58,3 +58,19 @@ def test_htsk_regressor_forward_antecedents_row_sum_one() -> None:
     norm_w = model.forward_antecedents(x)
     assert norm_w.ndim == 2
     assert torch.allclose(norm_w.sum(dim=1), torch.ones(6), atol=1e-06)
+
+
+def test_htsk_default_criteria() -> None:
+    from torch import nn
+
+    from highfis.models import TSKClassifierModel, TSKRegressorModel
+
+    clf_h = HTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    reg_h = HTSKRegressorModel(_build_input_mfs())
+    clf_t = TSKClassifierModel(_build_input_mfs(), n_classes=2)
+    reg_t = TSKRegressorModel(_build_input_mfs())
+
+    assert isinstance(clf_h._default_criterion(), nn.CrossEntropyLoss)
+    assert isinstance(reg_h._default_criterion(), nn.MSELoss)
+    assert isinstance(clf_t._default_criterion(), nn.CrossEntropyLoss)
+    assert isinstance(reg_t._default_criterion(), nn.MSELoss)

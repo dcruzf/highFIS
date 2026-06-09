@@ -248,3 +248,64 @@ def test_dgtsk_classifier_search_thresholds_no_sr_fallback() -> None:
         x, y, inplace=True, structural=True, use_lse=False, zeta_lambda=[0.0], zeta_theta=[1.0], verbose=False
     )
     assert len(result["surviving_rule_indices"]) == 3
+
+
+def test_dgtsk_fit_first_order_consequents_lse_zero_order_raises() -> None:
+    # Classifier
+    clf = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    x = torch.randn(5, 3)
+    y = torch.randint(0, 2, (5,))
+    with pytest.raises(ValueError, match="convert_to_first_order\\(\\) must be called before LSE"):
+        clf._fit_first_order_consequents_lse(x, y)
+
+    # Regressor
+    reg = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    x_reg = torch.randn(5, 2)
+    y_reg = torch.randn(5)
+    with pytest.raises(ValueError, match="convert_to_first_order\\(\\) must be called before LSE"):
+        reg._fit_first_order_consequents_lse(x_reg, y_reg)
+
+
+def test_dgtsk_search_thresholds_defaults() -> None:
+    # Classifier
+    clf = DGTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    x = torch.randn(10, 2)
+    y = torch.randint(0, 2, (10,))
+    # Passing zeta_lambda=None and zeta_theta=None, inplace=False, verbose=True
+    res_clf = clf.search_thresholds(x, y, zeta_lambda=None, zeta_theta=None, inplace=False, verbose=True)
+    assert "best_score" in res_clf
+
+    # Regressor
+    reg = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    x_reg = torch.randn(10, 2)
+    y_reg = torch.randn(10)
+    res_reg = reg.search_thresholds(x_reg, y_reg, zeta_lambda=None, zeta_theta=None, inplace=False, verbose=True)
+    assert "best_score" in res_reg
+
+
+def test_dgtsk_search_thresholds_inplace_true_structural_false_use_lse_true() -> None:
+    # Classifier
+    clf = DGTSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    x = torch.randn(10, 2)
+    y = torch.randint(0, 2, (10,))
+    res_clf = clf.search_thresholds(
+        x, y, x_val=x, y_val=y, zeta_lambda=[0.5], zeta_theta=[0.5], inplace=True, structural=False, use_lse=True
+    )
+    assert "best_score" in res_clf
+
+    # Regressor
+    reg = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    x_reg = torch.randn(10, 2)
+    y_reg = torch.randn(10)
+    res_reg = reg.search_thresholds(
+        x_reg,
+        y_reg,
+        x_val=x_reg,
+        y_val=y_reg,
+        zeta_lambda=[0.5],
+        zeta_theta=[0.5],
+        inplace=True,
+        structural=False,
+        use_lse=True,
+    )
+    assert "best_score" in res_reg

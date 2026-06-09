@@ -69,3 +69,19 @@ def test_mhtsk_classifier_rejects_invalid_n_classes() -> None:
     rule_feature_mask = torch.tensor([[True, False], [False, True]], dtype=torch.bool)
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
         MHTSKClassifierModel(input_mfs, rule_feature_mask, rules, n_classes=1)
+
+
+def test_mhtsk_default_criteria() -> None:
+    from torch import nn
+
+    input_mfs = {
+        "x1": [GaussianMF(mean=-1.0, sigma=0.5), ConstantMF(1.0)],
+        "x2": [GaussianMF(mean=-1.0, sigma=0.5), ConstantMF(1.0)],
+    }
+    rules = [(0, 1), (1, 0)]
+    rule_feature_mask = torch.tensor([[True, False], [False, True]], dtype=torch.bool)
+    clf = MHTSKClassifierModel(input_mfs, rule_feature_mask, rules, n_classes=2)
+    reg = MHTSKRegressorModel(input_mfs, rule_feature_mask, rules)
+
+    assert isinstance(clf._default_criterion(), nn.CrossEntropyLoss)
+    assert isinstance(reg._default_criterion(), nn.MSELoss)

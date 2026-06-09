@@ -74,3 +74,15 @@ def test_hdfis_zero_initialize_consequents_handles_missing_params() -> None:
         pass
 
     _hdfis_zero_initialize_consequents(DummyLayer())
+
+
+def test_hdfis_default_criteria() -> None:
+    clf_p = HDFISProdClassifierModel(_build_input_mfs(), n_classes=2)
+    reg_p = HDFISProdRegressorModel(_build_input_mfs())
+    clf_m = HDFISMinClassifierModel(_build_input_mfs(), n_classes=2)
+    reg_m = HDFISMinRegressorModel(_build_input_mfs())
+
+    assert isinstance(clf_p._default_criterion(), nn.CrossEntropyLoss)
+    assert isinstance(reg_p._default_criterion(), nn.MSELoss)
+    assert isinstance(clf_m._default_criterion(), nn.CrossEntropyLoss)
+    assert isinstance(reg_m._default_criterion(), nn.MSELoss)

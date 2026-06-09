@@ -339,3 +339,43 @@ def test_dgaletsk_init_consequents_raises_after_conversion() -> None:
     model_dga.convert_to_first_order()
     with pytest.raises(ValueError, match="requires a zero-order consequent layer"):
         model_dga.init_consequents_from_labels(torch.tensor([0, 1]))
+
+
+def test_dgaletsk_fit_first_order_consequents_lse_zero_order_raises() -> None:
+    clf = DGALETSKClassifierModel(_build_input_mfs(), n_classes=2)
+    x = torch.randn(5, 3)
+    y = torch.randint(0, 2, (5,))
+    with pytest.raises(ValueError, match="convert_to_first_order\\(\\) must be called before LSE"):
+        clf._fit_first_order_consequents_lse(x, y)
+
+    reg = DGALETSKRegressorModel(_build_input_mfs())
+    x_reg = torch.randn(5, 3)
+    y_reg = torch.randn(5)
+    with pytest.raises(ValueError, match="convert_to_first_order\\(\\) must be called before LSE"):
+        reg._fit_first_order_consequents_lse(x_reg, y_reg)
+
+
+def test_dgaletsk_search_thresholds_inplace_true_structural_false_use_lse_true() -> None:
+    clf = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    x = torch.randn(10, 2)
+    y = torch.randint(0, 2, (10,))
+    res_clf = clf.search_thresholds(
+        x, y, x_val=x, y_val=y, zeta_lambda=[0.5], zeta_theta=[0.5], inplace=True, structural=False, use_lse=True
+    )
+    assert "best_score" in res_clf
+
+    reg = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    x_reg = torch.randn(10, 2)
+    y_reg = torch.randn(10)
+    res_reg = reg.search_thresholds(
+        x_reg,
+        y_reg,
+        x_val=x_reg,
+        y_val=y_reg,
+        zeta_lambda=[0.5],
+        zeta_theta=[0.5],
+        inplace=True,
+        structural=False,
+        use_lse=True,
+    )
+    assert "best_score" in res_reg

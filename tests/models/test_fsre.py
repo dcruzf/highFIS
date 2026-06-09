@@ -253,3 +253,11 @@ def test_prune_to_features_empty_raises_regressor() -> None:
 def test_fsre_adatsk_classifier_invalid_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
         FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=1)
+
+
+def test_fsre_adatsk_default_criterion() -> None:
+    model_clf = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    assert isinstance(model_clf._default_criterion(), nn.CrossEntropyLoss)
+
+    model_reg = FSREADATSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    assert isinstance(model_reg._default_criterion(), nn.MSELoss)

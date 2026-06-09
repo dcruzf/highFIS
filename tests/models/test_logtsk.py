@@ -172,3 +172,12 @@ class TestLogTSKRegressorForward:
         x = torch.randn(6, 3)
         norm_w = model.forward_antecedents(x)
         assert torch.allclose(norm_w.sum(dim=1), torch.ones(6), atol=1e-06)
+
+
+def test_logtsk_default_criteria() -> None:
+    from torch import nn
+
+    clf = LogTSKClassifierModel(_build_input_mfs(), n_classes=2)
+    reg = LogTSKRegressorModel(_build_input_mfs())
+    assert isinstance(clf._default_criterion(), nn.CrossEntropyLoss)
+    assert isinstance(reg._default_criterion(), nn.MSELoss)
