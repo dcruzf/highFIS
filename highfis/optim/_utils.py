@@ -21,28 +21,6 @@ def _uniform_regularization_loss(normalized_weights: Tensor, target: float | Non
     return torch.sum((avg_activation - target_tensor) ** 2)
 
 
-def _iter_minibatch_indices(
-    n_samples: int,
-    batch_size: int | None,
-    shuffle: bool,
-    device: torch.device | str | None = None,
-) -> list[Tensor]:
-    """Create mini-batch index tensors for one epoch directly on target device."""
-    if batch_size is None:
-        return [torch.arange(n_samples, device=device)]
-    if batch_size <= 0:
-        raise ValueError("batch_size must be > 0 when provided")
-    if batch_size >= n_samples:
-        return [torch.arange(n_samples, device=device)]
-
-    order = torch.randperm(n_samples, device=device) if shuffle else torch.arange(n_samples, device=device)
-    batches: list[Tensor] = []
-    for start in range(0, n_samples, batch_size):
-        end = min(start + batch_size, n_samples)
-        batches.append(order[start:end])
-    return batches
-
-
 def _resolve_verbose(verbose: bool | int = False) -> int:
     """Normalize verbose settings to a numeric verbosity level."""
     if isinstance(verbose, bool):

@@ -9,13 +9,13 @@ from typing import Any, cast
 import numpy as np
 import torch
 from torch import Tensor, nn
+from torch.utils.data import DataLoader, TensorDataset
 from tqdm.auto import trange
 
 from ..models._base import BaseTSK
 from ._base import BaseTrainer
 from ._utils import (
     _get_optimizer_config,
-    _iter_minibatch_indices,
     _log,
     _resolve_verbose,
     _uniform_regularization_loss,
@@ -98,6 +98,14 @@ class GradientTrainer(BaseTrainer):
         train_criterion = self.loss or model.default_criterion()
         train_optimizer = self._build_optimizer(model, optimizer, self.learning_rate, self.weight_decay)
 
+        dataset = TensorDataset(x, y)
+        actual_batch_size = len(dataset) if self.batch_size is None else self.batch_size
+        train_loader = DataLoader(
+            dataset,
+            batch_size=actual_batch_size,
+            shuffle=self.shuffle,
+        )
+
         # Resolve/normalize metrics
         task = getattr(model, "task_type", "regression")
         metrics_list: list[str] = []
@@ -142,12 +150,9 @@ class GradientTrainer(BaseTrainer):
             stopped_epoch = epoch + 1
             epoch_train_loss, epoch_ur_loss = self._run_minibatch_epoch(
                 model,
-                x,
-                y,
+                train_loader,
                 train_criterion,
                 train_optimizer,
-                self.batch_size,
-                self.shuffle,
                 self.ur_weight,
                 self.ur_target,
             )
@@ -239,6 +244,8 @@ class GradientTrainer(BaseTrainer):
             raise ValueError("ur_weight must be >= 0")
         if ur_target is not None and not (0.0 < ur_target <= 1.0):
             raise ValueError("ur_target must be in (0, 1] when provided")
+        if self.batch_size is not None and self.batch_size <= 0:
+            raise ValueError("batch_size must be > 0 when provided")
 
         has_val = x_val is not None and y_val is not None
         if has_val and x_val is not None and y_val is not None:
@@ -278,18 +285,17 @@ class GradientTrainer(BaseTrainer):
             return criterion(output.squeeze(1), target)
 
     def _predict_numpy(self, model: BaseTSK, x: Tensor) -> np.ndarray:
-        """Helper to get numpy predictions of the model on *x* using minibatch iteration."""
+        """Helper to get numpy predictions of the model on *x* using DataLoader."""
         task = getattr(model, "task_type", "regression")
         was_training = model.training
         model.eval()
         try:
             with torch.no_grad():
                 outputs = []
-                n_samples = x.shape[0]
-                batch_size = 1024
-                for start in range(0, n_samples, batch_size):
-                    end = min(start + batch_size, n_samples)
-                    out_b = model(x[start:end])
+                dataset = TensorDataset(x)
+                loader = DataLoader(dataset, batch_size=1024, shuffle=False)
+                for (x_b,) in loader:
+                    out_b = model(x_b)
                     outputs.append(out_b)
                 output = torch.cat(outputs, dim=0)
                 if task == "classification":
@@ -304,12 +310,9 @@ class GradientTrainer(BaseTrainer):
     def _run_minibatch_epoch(
         self,
         model: BaseTSK,
-        x: Tensor,
-        y: Tensor,
+        loader: DataLoader,
         criterion: Callable[[Tensor, Tensor], Tensor],
         optimizer: torch.optim.Optimizer,
-        batch_size: int | None,
-        shuffle: bool,
         ur_weight: float,
         ur_target: float | None,
     ) -> tuple[float, float]:
@@ -320,10 +323,7 @@ class GradientTrainer(BaseTrainer):
         """
         batch_losses: list[float] = []
         batch_ur_losses: list[float] = []
-        for batch_idx in _iter_minibatch_indices(x.shape[0], batch_size=batch_size, shuffle=shuffle, device=x.device):
-            x_b = x.index_select(0, batch_idx)
-            y_b = y.index_select(0, batch_idx)
-
+        for x_b, y_b in loader:
             optimizer.zero_grad(set_to_none=True)
             output, norm_w = model._forward_train(x_b)
             main_loss = self._compute_loss(model, criterion, output, y_b)
@@ -354,11 +354,10 @@ class GradientTrainer(BaseTrainer):
         try:
             with torch.no_grad():
                 outputs = []
-                n_samples = x_val.shape[0]
-                batch_size = 1024
-                for start in range(0, n_samples, batch_size):
-                    end = min(start + batch_size, n_samples)
-                    out_b = model(x_val[start:end])
+                dataset = TensorDataset(x_val)
+                loader = DataLoader(dataset, batch_size=1024, shuffle=False)
+                for (x_b,) in loader:
+                    out_b = model(x_b)
                     outputs.append(out_b)
                 output = torch.cat(outputs, dim=0)
                 val_loss = float(self._compute_loss(model, criterion, output, y_val).item())

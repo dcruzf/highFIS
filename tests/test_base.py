@@ -13,7 +13,6 @@ from torch import nn
 from highfis.memberships import GaussianMF
 from highfis.models._base import BaseTSK
 from highfis.optim._utils import (
-    _iter_minibatch_indices,
     _log,
     _resolve_verbose,
     _uniform_regularization_loss,
@@ -85,6 +84,16 @@ class TestBaseTSK:
         logger = logging.getLogger("test_logger")
         _log(logger, "quiet test", verbose=False)
 
+    def test_gradient_trainer_rejects_zero_batch_size(self) -> None:
+        from highfis.optim import GradientTrainer
+
+        model = _ConcreteClassifier(_make_input_mfs(), n_classes=2)
+        trainer = GradientTrainer(batch_size=0)
+        x = torch.randn(10, 2)
+        y = torch.randint(0, 2, (10,))
+        with pytest.raises(ValueError, match="batch_size must be > 0"):
+            trainer.fit(model, x, y)
+
     def test_rejects_empty_input_mfs(self) -> None:
         with pytest.raises(ValueError, match="input_mfs must not be empty"):
             _ConcreteClassifier({}, n_classes=2)
@@ -108,21 +117,6 @@ class TestHelpers:
         w = torch.ones(10, 4) / 4.0
         loss = _uniform_regularization_loss(w, target=0.25)
         assert float(loss.item()) == pytest.approx(0.0, abs=1e-06)
-
-    def test_iter_minibatch_indices_no_batch(self) -> None:
-        batches = _iter_minibatch_indices(100, None, False)
-        assert len(batches) == 1
-        assert len(batches[0]) == 100
-
-    def test_iter_minibatch_indices_with_batch(self) -> None:
-        batches = _iter_minibatch_indices(100, 30, False)
-        assert len(batches) == 4
-        total = sum(len(b) for b in batches)
-        assert total == 100
-
-    def test_iter_minibatch_rejects_zero_batch(self) -> None:
-        with pytest.raises(ValueError, match="batch_size must be > 0"):
-            _iter_minibatch_indices(10, 0, False)
 
 
 class _ConcreteRegressor(BaseTSK):
