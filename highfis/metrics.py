@@ -43,6 +43,7 @@ from __future__ import annotations
 from typing import Any, Literal, cast
 
 import numpy as np
+import torch
 from sklearn.metrics import (
     accuracy_score,
     balanced_accuracy_score,
@@ -280,6 +281,243 @@ class RegressionMetrics:
         return float(r2_score(y_true, y_pred, sample_weight=sample_weight))
 
 
+class ClassificationMetricsPytorch:
+    """Standard classification metrics using PyTorch."""
+
+    @staticmethod
+    def accuracy(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
+        """Return classification accuracy."""
+        if sample_weight is not None:
+            return (torch.sum((y_true == y_pred).float() * sample_weight) / torch.sum(sample_weight)).item()
+        return torch.mean((y_true == y_pred).float()).item()
+
+    @staticmethod
+    def balanced_accuracy(
+        y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None
+    ) -> float:
+        """Return the balanced accuracy score."""
+        classes = torch.unique(y_true)
+        recalls = []
+        for c in classes:
+            true_c = y_true == c
+            if true_c.sum() > 0:
+                if sample_weight is not None:
+                    w_c = sample_weight[true_c]
+                    recalls.append(torch.sum((y_pred[true_c] == c).float() * w_c) / torch.sum(w_c))
+                else:
+                    recalls.append(torch.mean((y_pred[true_c] == c).float()))
+        return torch.stack(recalls).mean().item() if recalls else 0.0
+
+    @staticmethod
+    def _precision_recall_f1_macro(
+        y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        classes = torch.unique(torch.cat([y_true, y_pred]))
+        precisions = []
+        recalls = []
+        f1s = []
+        for c in classes:
+            true_c = y_true == c
+            pred_c = y_pred == c
+            if sample_weight is not None:
+                tp = torch.sum((true_c & pred_c).float() * sample_weight)
+                fp = torch.sum((~true_c & pred_c).float() * sample_weight)
+                fn = torch.sum((true_c & ~pred_c).float() * sample_weight)
+            else:
+                tp = (true_c & pred_c).sum().float()
+                fp = (~true_c & pred_c).sum().float()
+                fn = (true_c & ~pred_c).sum().float()
+            prec = tp / (tp + fp) if (tp + fp) > 0 else torch.tensor(0.0, device=y_true.device)
+            rec = tp / (tp + fn) if (tp + fn) > 0 else torch.tensor(0.0, device=y_true.device)
+            f1 = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else torch.tensor(0.0, device=y_true.device)
+            precisions.append(prec)
+            recalls.append(rec)
+            f1s.append(f1)
+        return (
+            torch.stack(precisions).mean() if precisions else torch.tensor(0.0, device=y_true.device),
+            torch.stack(recalls).mean() if recalls else torch.tensor(0.0, device=y_true.device),
+            torch.stack(f1s).mean() if f1s else torch.tensor(0.0, device=y_true.device),
+        )
+
+    @staticmethod
+    def precision_macro(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
+        """Return macro-averaged precision."""
+        prec, _, _ = ClassificationMetricsPytorch._precision_recall_f1_macro(y_true, y_pred, sample_weight)
+        return prec.item()
+
+    @staticmethod
+    def recall_macro(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
+        """Return macro-averaged recall."""
+        _, rec, _ = ClassificationMetricsPytorch._precision_recall_f1_macro(y_true, y_pred, sample_weight)
+        return rec.item()
+
+    @staticmethod
+    def f1_macro(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
+        """Return macro-averaged F1 score."""
+        _, _, f1 = ClassificationMetricsPytorch._precision_recall_f1_macro(y_true, y_pred, sample_weight)
+        return f1.item()
+
+    @staticmethod
+    def precision_micro(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
+        """Return micro-averaged precision."""
+        return ClassificationMetricsPytorch.accuracy(y_true, y_pred, sample_weight)
+
+    @staticmethod
+    def recall_micro(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
+        """Return micro-averaged recall."""
+        return ClassificationMetricsPytorch.accuracy(y_true, y_pred, sample_weight)
+
+    @staticmethod
+    def f1_micro(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
+        """Return micro-averaged F1 score."""
+        return ClassificationMetricsPytorch.accuracy(y_true, y_pred, sample_weight)
+
+    @staticmethod
+    def confusion_matrix(
+        y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None
+    ) -> np.ndarray:
+        """Return the confusion matrix."""
+        classes = torch.unique(torch.cat([y_true, y_pred]))
+        n_classes = len(classes)
+        cm = torch.zeros((n_classes, n_classes), dtype=torch.float32, device=y_true.device)
+        class_to_idx = {c.item(): idx for idx, c in enumerate(classes)}
+        for i in range(len(y_true)):
+            t_idx = class_to_idx[y_true[i].item()]
+            p_idx = class_to_idx[y_pred[i].item()]
+            val = sample_weight[i].item() if sample_weight is not None else 1.0
+            cm[t_idx, p_idx] += val
+        return cm.cpu().numpy()
+
+    @staticmethod
+    def classes(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> np.ndarray:
+        """Return the sorted union of true and predicted labels."""
+        return torch.unique(torch.cat([y_true, y_pred])).cpu().numpy()
+
+
+class RegressionMetricsPytorch:
+    """Standard regression metrics using PyTorch."""
+
+    @staticmethod
+    def mse(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
+        """Return mean squared error."""
+        if sample_weight is not None:
+            return (torch.sum(((y_true - y_pred) ** 2) * sample_weight) / torch.sum(sample_weight)).item()
+        return torch.mean((y_true - y_pred) ** 2).item()
+
+    @staticmethod
+    def mae(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
+        """Return mean absolute error."""
+        if sample_weight is not None:
+            return (torch.sum(torch.abs(y_true - y_pred) * sample_weight) / torch.sum(sample_weight)).item()
+        return torch.mean(torch.abs(y_true - y_pred)).item()
+
+    @staticmethod
+    def rmse(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
+        """Return root mean squared error."""
+        if sample_weight is not None:
+            return torch.sqrt(torch.sum(((y_true - y_pred) ** 2) * sample_weight) / torch.sum(sample_weight)).item()
+        return torch.sqrt(torch.mean((y_true - y_pred) ** 2)).item()
+
+    @staticmethod
+    def r2(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
+        """Return coefficient of determination (R²)."""
+        if sample_weight is not None:
+            mean_y = torch.sum(y_true * sample_weight) / torch.sum(sample_weight)
+            ss_res = torch.sum(((y_true - y_pred) ** 2) * sample_weight)
+            ss_tot = torch.sum(((y_true - mean_y) ** 2) * sample_weight)
+        else:
+            mean_y = torch.mean(y_true)
+            ss_res = torch.sum((y_true - y_pred) ** 2)
+            ss_tot = torch.sum((y_true - mean_y) ** 2)
+        return (1.0 - ss_res / ss_tot).item() if ss_tot > 0 else 0.0
+
+    @staticmethod
+    def median_absolute_error(
+        y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None
+    ) -> float:
+        """Return median absolute error."""
+        errors = torch.abs(y_true - y_pred)
+        if sample_weight is not None:
+            # Weighted median matching scikit-learn
+            sorted_indices = torch.argsort(errors)
+            sorted_errors = errors[sorted_indices]
+            sorted_weights = sample_weight[sorted_indices]
+            cum_weights = torch.cumsum(sorted_weights, dim=0)
+            total_weight = cum_weights[-1]
+            half_weight = total_weight / 2.0
+            idx = torch.searchsorted(cum_weights, half_weight)
+            if idx < len(sorted_errors) - 1 and cum_weights[idx] == half_weight:
+                return ((sorted_errors[idx] + sorted_errors[idx + 1]) / 2.0).item()
+            return sorted_errors[idx].item()
+        return torch.median(errors).item()
+
+    @staticmethod
+    def mean_bias_error(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
+        """Return mean bias error (prediction minus truth)."""
+        return torch.mean(y_pred - y_true).item()
+
+    @staticmethod
+    def max_error(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
+        """Return maximum absolute error."""
+        return torch.max(torch.abs(y_true - y_pred)).item()
+
+    @staticmethod
+    def std_error(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
+        """Return the standard deviation of the errors."""
+        return torch.std(y_pred - y_true, unbiased=False).item()
+
+    @staticmethod
+    def explained_variance(
+        y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None
+    ) -> float:
+        """Return explained variance."""
+        if sample_weight is not None:
+            mean_diff = torch.sum((y_true - y_pred) * sample_weight) / torch.sum(sample_weight)
+            var_diff = torch.sum(((y_true - y_pred - mean_diff) ** 2) * sample_weight) / torch.sum(sample_weight)
+            mean_y = torch.sum(y_true * sample_weight) / torch.sum(sample_weight)
+            var_y = torch.sum(((y_true - mean_y) ** 2) * sample_weight) / torch.sum(sample_weight)
+        else:
+            var_diff = torch.var(y_true - y_pred, unbiased=False)
+            var_y = torch.var(y_true, unbiased=False)
+        return (1.0 - var_diff / var_y).item() if var_y > 0 else 0.0
+
+    @staticmethod
+    def mape(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
+        """Return mean absolute percentage error."""
+        eps = torch.finfo(y_true.dtype).eps
+        ratio = torch.abs(y_true - y_pred) / torch.clamp(torch.abs(y_true), min=eps)
+        return torch.mean(ratio).item()
+
+    @staticmethod
+    def smape(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
+        """Return symmetric mean absolute percentage error."""
+        numerator = torch.abs(y_pred - y_true) * 2.0
+        denominator = torch.abs(y_true) + torch.abs(y_pred)
+        ratio = torch.where(denominator == 0.0, 0.0, numerator / denominator)
+        return torch.mean(ratio).item()
+
+    @staticmethod
+    def msle(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
+        """Return mean squared logarithmic error."""
+        if torch.any(y_true < 0) or torch.any(y_pred < 0):
+            return float("nan")
+        log_diff = torch.log1p(y_true) - torch.log1p(y_pred)
+        return torch.mean(log_diff**2).item()
+
+    @staticmethod
+    def pearson(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
+        """Return Pearson correlation coefficient."""
+        if y_true.numel() < 2:
+            return float("nan")
+        vx = y_true - torch.mean(y_true)
+        vy = y_pred - torch.mean(y_pred)
+        std_x = torch.std(y_true)
+        std_y = torch.std(y_pred)
+        if std_x == 0 or std_y == 0:
+            return float("nan")
+        return (torch.sum(vx * vy) / (torch.sqrt(torch.sum(vx**2)) * torch.sqrt(torch.sum(vy**2)))).item()
+
+
 def _validate_classification_metrics(metrics: list[str]) -> list[ClassificationMetric]:
     unknown = set(metrics) - _CLASSIFICATION_METRIC_NAMES
     if unknown:
@@ -313,6 +551,42 @@ def _ensure_regression_inputs(y_true: Any, y_pred: Any) -> tuple[np.ndarray, np.
     return _flatten_array(y_true), _flatten_array(y_pred)
 
 
+def compute_metrics_pytorch(
+    task: Task,
+    y_true: torch.Tensor,
+    y_pred: torch.Tensor,
+    sample_weight: torch.Tensor | None = None,
+    metrics: list[str] | None = None,
+) -> dict[str, Any]:
+    """Compute a set of named evaluation metrics using PyTorch."""
+    if y_true.ndim != 1:
+        y_true = y_true.ravel()
+    if y_pred.ndim != 1:
+        y_pred = y_pred.ravel()
+    if sample_weight is not None and sample_weight.ndim != 1:
+        sample_weight = sample_weight.ravel()
+
+    if task == "classification":
+        metric_names = (
+            _validate_classification_metrics(metrics) if metrics is not None else DEFAULT_CLASSIFICATION_METRICS
+        )
+        results: dict[str, Any] = {}
+        for m in metric_names:
+            metric_fn = getattr(ClassificationMetricsPytorch, m)
+            results[m] = metric_fn(y_true, y_pred, sample_weight)
+        return results
+
+    if task == "regression":
+        metric_names = _validate_regression_metrics(metrics) if metrics is not None else DEFAULT_REGRESSION_METRICS
+        results = {}
+        for m in metric_names:
+            metric_fn = getattr(RegressionMetricsPytorch, m)
+            results[m] = metric_fn(y_true, y_pred, sample_weight)
+        return results
+
+    raise ValueError("task must be 'classification' or 'regression'")
+
+
 def compute_metrics(
     task: Task,
     y_true: Any,
@@ -332,6 +606,11 @@ def compute_metrics(
     Returns:
         Dictionary mapping metric names to scalar float results.
     """
+    if isinstance(y_true, torch.Tensor) and isinstance(y_pred, torch.Tensor):
+        if sample_weight is not None and not isinstance(sample_weight, torch.Tensor):
+            sample_weight = torch.as_tensor(sample_weight, device=y_true.device, dtype=y_true.dtype)
+        return compute_metrics_pytorch(task, y_true, y_pred, sample_weight, metrics)
+
     if task == "classification":
         metric_names = (
             _validate_classification_metrics(metrics) if metrics is not None else DEFAULT_CLASSIFICATION_METRICS

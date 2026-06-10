@@ -165,3 +165,229 @@ def test_compute_metrics_rejects_invalid_task() -> None:
     task = cast(Task, "invalid")
     with pytest.raises(ValueError, match="task must be 'classification' or 'regression'"):
         compute_metrics(task=task, y_true=[0], y_pred=[0])
+
+
+def test_compute_metrics_pytorch_matches_numpy() -> None:
+    import torch
+
+    # 1. Classification
+    y_true_np = np.array([0, 1, 2, 1, 0, 2, 0, 1])
+    y_pred_np = np.array([0, 2, 2, 1, 1, 2, 0, 0])
+    weights_np = np.array([1.0, 0.5, 2.0, 1.5, 1.0, 0.8, 1.2, 0.5])
+
+    y_true_torch = torch.tensor(y_true_np)
+    y_pred_torch = torch.tensor(y_pred_np)
+    weights_torch = torch.tensor(weights_np)
+
+    # Check default metrics without weights
+    res_np = compute_metrics(task="classification", y_true=y_true_np, y_pred=y_pred_np)
+    res_torch = compute_metrics(task="classification", y_true=y_true_torch, y_pred=y_pred_torch)
+    assert set(res_np) == set(res_torch)
+    for k in res_np:
+        if isinstance(res_np[k], np.ndarray):
+            assert np.allclose(res_np[k], res_torch[k])
+        else:
+            assert np.isclose(res_np[k], res_torch[k], atol=1e-6)
+
+    # Check default metrics with weights
+    res_np_w = compute_metrics(task="classification", y_true=y_true_np, y_pred=y_pred_np, sample_weight=weights_np)
+    res_torch_w = compute_metrics(
+        task="classification", y_true=y_true_torch, y_pred=y_pred_torch, sample_weight=weights_torch
+    )
+    for k in res_np_w:
+        if isinstance(res_np_w[k], np.ndarray):
+            assert np.allclose(res_np_w[k], res_torch_w[k])
+        else:
+            assert np.isclose(res_np_w[k], res_torch_w[k], atol=1e-6)
+
+    # 2. Regression
+    y_true_reg_np = np.array([1.2, 2.3, 3.4, 4.5, 5.6])
+    y_pred_reg_np = np.array([1.1, 2.5, 3.2, 4.5, 6.0])
+    weights_reg_np = np.array([1.0, 1.5, 0.5, 2.0, 1.0])
+
+    y_true_reg_torch = torch.tensor(y_true_reg_np)
+    y_pred_reg_torch = torch.tensor(y_pred_reg_np)
+    weights_reg_torch = torch.tensor(weights_reg_np)
+
+    # Check default regression metrics without weights
+    res_reg_np = compute_metrics(task="regression", y_true=y_true_reg_np, y_pred=y_pred_reg_np)
+    res_reg_torch = compute_metrics(task="regression", y_true=y_true_reg_torch, y_pred=y_pred_reg_torch)
+    assert set(res_reg_np) == set(res_reg_torch)
+    for k in res_reg_np:
+        assert np.isclose(res_reg_np[k], res_reg_torch[k], atol=1e-6)
+
+    # Check default regression metrics with weights
+    res_reg_np_w = compute_metrics(
+        task="regression", y_true=y_true_reg_np, y_pred=y_pred_reg_np, sample_weight=weights_reg_np
+    )
+    res_reg_torch_w = compute_metrics(
+        task="regression", y_true=y_true_reg_torch, y_pred=y_pred_reg_torch, sample_weight=weights_reg_torch
+    )
+    for k in res_reg_np_w:
+        assert np.isclose(res_reg_np_w[k], res_reg_torch_w[k], atol=1e-6)
+
+
+def test_pytorch_metrics_explicitly_against_sklearn() -> None:
+    import torch
+    from sklearn.metrics import (
+        accuracy_score,
+        balanced_accuracy_score,
+        explained_variance_score,
+        f1_score,
+        mean_absolute_error,
+        mean_squared_error,
+        precision_score,
+        r2_score,
+        recall_score,
+    )
+    from sklearn.metrics import confusion_matrix as sk_confusion_matrix
+    from sklearn.metrics import median_absolute_error as sk_median_absolute_error
+
+    from highfis.metrics import ClassificationMetricsPytorch, RegressionMetricsPytorch
+
+    # Classification
+    y_true_cls = torch.tensor([0, 1, 2, 1, 0, 2])
+    y_pred_cls = torch.tensor([0, 2, 2, 1, 1, 2])
+    w_cls = torch.tensor([1.0, 0.8, 1.2, 0.5, 2.0, 1.1])
+
+    y_true_cls_np = y_true_cls.numpy()
+    y_pred_cls_np = y_pred_cls.numpy()
+    w_cls_np = w_cls.numpy()
+
+    # Accuracy
+    assert np.isclose(
+        ClassificationMetricsPytorch.accuracy(y_true_cls, y_pred_cls), accuracy_score(y_true_cls_np, y_pred_cls_np)
+    )
+    assert np.isclose(
+        ClassificationMetricsPytorch.accuracy(y_true_cls, y_pred_cls, w_cls),
+        accuracy_score(y_true_cls_np, y_pred_cls_np, sample_weight=w_cls_np),
+    )
+
+    # Balanced Accuracy
+    assert np.isclose(
+        ClassificationMetricsPytorch.balanced_accuracy(y_true_cls, y_pred_cls),
+        balanced_accuracy_score(y_true_cls_np, y_pred_cls_np),
+    )
+    assert np.isclose(
+        ClassificationMetricsPytorch.balanced_accuracy(y_true_cls, y_pred_cls, w_cls),
+        balanced_accuracy_score(y_true_cls_np, y_pred_cls_np, sample_weight=w_cls_np),
+    )
+
+    # Precision/Recall/F1 Macro
+    assert np.isclose(
+        ClassificationMetricsPytorch.precision_macro(y_true_cls, y_pred_cls),
+        precision_score(y_true_cls_np, y_pred_cls_np, average="macro"),
+    )
+    assert np.isclose(
+        ClassificationMetricsPytorch.precision_macro(y_true_cls, y_pred_cls, w_cls),
+        precision_score(y_true_cls_np, y_pred_cls_np, sample_weight=w_cls_np, average="macro"),
+    )
+    assert np.isclose(
+        ClassificationMetricsPytorch.recall_macro(y_true_cls, y_pred_cls),
+        recall_score(y_true_cls_np, y_pred_cls_np, average="macro"),
+    )
+    assert np.isclose(
+        ClassificationMetricsPytorch.recall_macro(y_true_cls, y_pred_cls, w_cls),
+        recall_score(y_true_cls_np, y_pred_cls_np, sample_weight=w_cls_np, average="macro"),
+    )
+    assert np.isclose(
+        ClassificationMetricsPytorch.f1_macro(y_true_cls, y_pred_cls),
+        f1_score(y_true_cls_np, y_pred_cls_np, average="macro"),
+    )
+    assert np.isclose(
+        ClassificationMetricsPytorch.f1_macro(y_true_cls, y_pred_cls, w_cls),
+        f1_score(y_true_cls_np, y_pred_cls_np, sample_weight=w_cls_np, average="macro"),
+    )
+
+    # Precision/Recall/F1 Micro
+    assert np.isclose(
+        ClassificationMetricsPytorch.precision_micro(y_true_cls, y_pred_cls),
+        precision_score(y_true_cls_np, y_pred_cls_np, average="micro"),
+    )
+    assert np.isclose(
+        ClassificationMetricsPytorch.precision_micro(y_true_cls, y_pred_cls, w_cls),
+        precision_score(y_true_cls_np, y_pred_cls_np, sample_weight=w_cls_np, average="micro"),
+    )
+    assert np.isclose(
+        ClassificationMetricsPytorch.recall_micro(y_true_cls, y_pred_cls),
+        recall_score(y_true_cls_np, y_pred_cls_np, average="micro"),
+    )
+    assert np.isclose(
+        ClassificationMetricsPytorch.recall_micro(y_true_cls, y_pred_cls, w_cls),
+        recall_score(y_true_cls_np, y_pred_cls_np, sample_weight=w_cls_np, average="micro"),
+    )
+    assert np.isclose(
+        ClassificationMetricsPytorch.f1_micro(y_true_cls, y_pred_cls),
+        f1_score(y_true_cls_np, y_pred_cls_np, average="micro"),
+    )
+    assert np.isclose(
+        ClassificationMetricsPytorch.f1_micro(y_true_cls, y_pred_cls, w_cls),
+        f1_score(y_true_cls_np, y_pred_cls_np, sample_weight=w_cls_np, average="micro"),
+    )
+
+    # Confusion matrix
+    assert np.allclose(
+        ClassificationMetricsPytorch.confusion_matrix(y_true_cls, y_pred_cls),
+        sk_confusion_matrix(y_true_cls_np, y_pred_cls_np),
+    )
+    assert np.allclose(
+        ClassificationMetricsPytorch.confusion_matrix(y_true_cls, y_pred_cls, w_cls),
+        sk_confusion_matrix(y_true_cls_np, y_pred_cls_np, sample_weight=w_cls_np),
+    )
+
+    # Regression
+    y_true_reg = torch.tensor([1.5, 2.3, 3.8, 4.2])
+    y_pred_reg = torch.tensor([1.2, 2.5, 3.5, 4.9])
+    w_reg = torch.tensor([1.0, 0.5, 2.0, 1.5])
+
+    y_true_reg_np = y_true_reg.numpy()
+    y_pred_reg_np = y_pred_reg.numpy()
+    w_reg_np = w_reg.numpy()
+
+    # MSE/MAE/RMSE/R2
+    assert np.isclose(
+        RegressionMetricsPytorch.mse(y_true_reg, y_pred_reg), mean_squared_error(y_true_reg_np, y_pred_reg_np)
+    )
+    assert np.isclose(
+        RegressionMetricsPytorch.mse(y_true_reg, y_pred_reg, w_reg),
+        mean_squared_error(y_true_reg_np, y_pred_reg_np, sample_weight=w_reg_np),
+    )
+    assert np.isclose(
+        RegressionMetricsPytorch.mae(y_true_reg, y_pred_reg), mean_absolute_error(y_true_reg_np, y_pred_reg_np)
+    )
+    assert np.isclose(
+        RegressionMetricsPytorch.mae(y_true_reg, y_pred_reg, w_reg),
+        mean_absolute_error(y_true_reg_np, y_pred_reg_np, sample_weight=w_reg_np),
+    )
+    assert np.isclose(
+        RegressionMetricsPytorch.rmse(y_true_reg, y_pred_reg), np.sqrt(mean_squared_error(y_true_reg_np, y_pred_reg_np))
+    )
+    assert np.isclose(
+        RegressionMetricsPytorch.rmse(y_true_reg, y_pred_reg, w_reg),
+        np.sqrt(mean_squared_error(y_true_reg_np, y_pred_reg_np, sample_weight=w_reg_np)),
+    )
+    assert np.isclose(RegressionMetricsPytorch.r2(y_true_reg, y_pred_reg), r2_score(y_true_reg_np, y_pred_reg_np))
+    assert np.isclose(
+        RegressionMetricsPytorch.r2(y_true_reg, y_pred_reg, w_reg),
+        r2_score(y_true_reg_np, y_pred_reg_np, sample_weight=w_reg_np),
+    )
+
+    # Median Absolute Error
+    assert np.isclose(
+        RegressionMetricsPytorch.median_absolute_error(y_true_reg, y_pred_reg),
+        sk_median_absolute_error(y_true_reg_np, y_pred_reg_np),
+    )
+    assert np.isclose(
+        RegressionMetricsPytorch.median_absolute_error(y_true_reg, y_pred_reg, w_reg),
+        sk_median_absolute_error(y_true_reg_np, y_pred_reg_np, sample_weight=w_reg_np),
+    )
+
+    # Explained Variance
+    assert np.isclose(
+        RegressionMetricsPytorch.explained_variance(y_true_reg, y_pred_reg),
+        explained_variance_score(y_true_reg_np, y_pred_reg_np),
+    )
+    assert np.isclose(
+        RegressionMetricsPytorch.explained_variance(y_true_reg, y_pred_reg, w_reg),
+        explained_variance_score(y_true_reg_np, y_pred_reg_np, sample_weight=w_reg_np),
+    )
