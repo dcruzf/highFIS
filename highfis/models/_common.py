@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import copy
 from collections.abc import Sequence
+from typing import Any
 
 import torch
 from torch import Tensor, nn
@@ -136,3 +138,88 @@ class BaseTSKRegressorModel(BaseTSK):
                     return self.forward(x).squeeze(1)
                 finally:
                     self.train(was_training)
+
+
+def _run_threshold_grid_search(
+    model: Any,
+    x: Tensor,
+    y: Tensor,
+    x_eval: Tensor,
+    y_eval: Tensor,
+    zeta_lambda: Sequence[float],
+    zeta_theta: Sequence[float],
+    use_lse: bool,
+    verbose: bool,
+) -> tuple[float, dict[str, Any] | None, float, float, float, float]:
+    best_score = float("-inf")
+    best_state: dict[str, Any] | None = None
+    best_tau_lambda = 0.0
+    best_tau_theta = 0.0
+    best_zeta_lambda = 0.0
+    best_zeta_theta = 0.0
+
+    for zeta_l in zeta_lambda:
+        for zeta_t in zeta_theta:
+            candidate = copy.deepcopy(model)
+            if use_lse:
+                class_name = candidate.consequent_layer.__class__.__name__
+                if "ZeroOrder" in class_name:
+                    candidate.convert_to_first_order()
+                tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
+                candidate.apply_thresholds(tau_l, tau_t)
+                candidate._fit_first_order_consequents_lse(x, y)
+            else:
+                tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
+                candidate.apply_thresholds(tau_l, tau_t)
+
+            score = candidate._evaluate_threshold_score(x_eval, y_eval)
+            if verbose:
+                model.logger.info("zeta_lambda=%s zeta_theta=%s score=%.6f", zeta_l, zeta_t, score)
+
+            if score > best_score:
+                best_score = score
+                best_state = copy.deepcopy(candidate.state_dict()) if use_lse else None
+                best_tau_lambda = tau_l
+                best_tau_theta = tau_t
+                best_zeta_lambda = zeta_l
+                best_zeta_theta = zeta_t
+
+    if best_score == float("-inf"):
+        raise RuntimeError("threshold search did not yield a valid candidate")
+
+    return best_score, best_state, best_tau_lambda, best_tau_theta, best_zeta_lambda, best_zeta_theta
+
+
+def _apply_thresholds_and_pruning_inplace(
+    model: Any,
+    x: Tensor,
+    y: Tensor,
+    best_tau_lambda: float,
+    best_tau_theta: float,
+    best_state: dict[str, Any] | None,
+    use_lse: bool,
+    structural: bool,
+    sf: list[int],
+    sr: list[int],
+    result: dict[str, Any],
+) -> None:
+    if structural:
+        class_name = model.consequent_layer.__class__.__name__
+        if use_lse and "ZeroOrder" in class_name:
+            model.convert_to_first_order()
+        model.apply_thresholds(best_tau_lambda, best_tau_theta)
+        model.prune_structure(sf, sr)
+        if use_lse:
+            model._fit_first_order_consequents_lse(x[:, sf], y)
+        result["surviving_feature_indices"] = sf
+        result["surviving_rule_indices"] = sr
+    else:
+        class_name = model.consequent_layer.__class__.__name__
+        if use_lse:
+            if "ZeroOrder" in class_name:
+                model.convert_to_first_order()
+            if best_state is None:  # pragma: no cover
+                raise RuntimeError("best_state is None despite use_lse=True")
+            model.load_state_dict(best_state)
+        else:
+            model.apply_thresholds(best_tau_lambda, best_tau_theta)

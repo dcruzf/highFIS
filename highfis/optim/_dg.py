@@ -142,49 +142,17 @@ class DGTrainer(BaseTrainer):
         self.structural_pruning = structural_pruning
         self.finetune_freeze_antecedents = finetune_freeze_antecedents
 
-    def fit(
+    def _run_dg_phase(
         self,
         model: BaseTSK,
         x: Tensor,
         y: Tensor,
-        *,
-        x_val: Tensor | None = None,
-        y_val: Tensor | None = None,
-        metrics: list[str] | None = None,
+        x_val: Tensor | None,
+        y_val: Tensor | None,
+        metrics: list[str] | None,
     ) -> dict[str, Any]:
-        """Execute the three-phase DG training procedure.
-
-        Args:
-            model: A DG-TSK or DG-ALETSK model instance, such as
-                DGTSKClassifierModel, DGTSKRegressorModel,
-                DGALETSKClassifierModel, or DGALETSKRegressorModel.
-            x: Training inputs of shape ``(N, D)``.
-            y: Training targets.
-            x_val: Validation inputs (used for threshold-search scoring).
-                When ``None``, training data is used for threshold selection.
-            y_val: Validation targets.
-            metrics: Optional list of metric names to evaluate.
-
-        Returns:
-            Dictionary with keys:
-
-            - ``"dg"`` — history dict from phase 1 (DG phase).
-            - ``"threshold"`` — result dict from search_thresholds().
-            - ``"finetune"`` — history dict from phase 3 (fine-tune phase).
-        """
-        import torch.nn as nn
-
         from ._gradient import GradientTrainer
 
-        zeta_lambda = self.zeta_lambda if self.zeta_lambda is not None else _DEFAULT_ZETA
-        zeta_theta = self.zeta_theta if self.zeta_theta is not None else _DEFAULT_ZETA
-
-        if not isinstance(model, DGModelProtocol):
-            raise TypeError("model must implement DGModelProtocol")
-
-        # ── Phase 1: DG training ──────────────────────────────────────────
-        # DG-TSK freezes antecedent MFs; DG-ALETSK trains them jointly.
-        # We freeze membership_layer params here (DGTrainer manages param state).
         membership_params = list(model.membership_layer.parameters())
         for p in membership_params:
             p.requires_grad_(False)
@@ -201,40 +169,24 @@ class DGTrainer(BaseTrainer):
                 patience=self.dg_patience,
                 weight_decay=float(self.dg_weight_decay),
             )
-            dg_history: dict[str, Any] = dg_trainer.fit(model, x, y, x_val=x_val, y_val=y_val, metrics=metrics)
+            return dg_trainer.fit(model, x, y, x_val=x_val, y_val=y_val, metrics=metrics)
         finally:
             for p in membership_params:
                 p.requires_grad_(True)
 
-        # ── Phase 2: Threshold search + pruning ───────────────────────────
-        # Fall back to training data for threshold scoring when no hold-out
-        # set is provided (paper practice).
-        x_eval = x_val if x_val is not None else x
-        y_eval = y_val if y_val is not None else y
+    def _run_finetune_phase(
+        self,
+        model: BaseTSK,
+        x_ft: Tensor,
+        y: Tensor,
+        x_val_ft: Tensor | None,
+        y_val: Tensor | None,
+        metrics: list[str] | None,
+    ) -> dict[str, Any]:
+        import torch.nn as nn
 
-        threshold_result: dict[str, Any] = model.search_thresholds(
-            x,
-            y,
-            zeta_lambda=zeta_lambda,
-            zeta_theta=zeta_theta,
-            x_val=x_eval,
-            y_val=y_eval,
-            use_lse=bool(self.use_lse),
-            inplace=True,
-            verbose=bool(self.verbose),
-            structural=bool(self.structural_pruning),
-        )
+        from ._gradient import GradientTrainer
 
-        # Slice x to surviving features when structural pruning was applied.
-        sf = threshold_result.get("surviving_feature_indices")
-        if self.structural_pruning and sf is not None and len(sf) < x.shape[1]:
-            x_ft: Tensor = x[:, sf]
-            x_val_ft: Tensor | None = x_val[:, sf] if x_val is not None else None
-        else:
-            x_ft, x_val_ft = x, x_val
-
-        # ── Phase 3: Fine-tune ────────────────────────────────────────────
-        # Ensure first-order consequent (may already be converted by search_thresholds).
         if isinstance(model, FirstOrderModelProtocol):
             from ..layers import GatedClassificationZeroOrderConsequentLayer, GatedRegressionZeroOrderConsequentLayer
 
@@ -273,12 +225,77 @@ class DGTrainer(BaseTrainer):
                 restore_best=bool(self.finetune_restore_best),
                 weight_decay=float(self.finetune_weight_decay),
             )
-            finetune_history: dict[str, Any] = ft_trainer.fit(
-                model, x_ft, y, x_val=x_val_ft, y_val=y_val, metrics=metrics
-            )
+            return ft_trainer.fit(model, x_ft, y, x_val=x_val_ft, y_val=y_val, metrics=metrics)
         finally:
             for p in frozen:
                 p.requires_grad_(True)
+
+    def fit(
+        self,
+        model: BaseTSK,
+        x: Tensor,
+        y: Tensor,
+        *,
+        x_val: Tensor | None = None,
+        y_val: Tensor | None = None,
+        metrics: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Execute the three-phase DG training procedure.
+
+        Args:
+            model: A DG-TSK or DG-ALETSK model instance, such as
+                DGTSKClassifierModel, DGTSKRegressorModel,
+                DGALETSKClassifierModel, or DGALETSKRegressorModel.
+            x: Training inputs of shape ``(N, D)``.
+            y: Training targets.
+            x_val: Validation inputs (used for threshold-search scoring).
+                When ``None``, training data is used for threshold selection.
+            y_val: Validation targets.
+            metrics: Optional list of metric names to evaluate.
+
+        Returns:
+            Dictionary with keys:
+
+            - ``"dg"`` — history dict from phase 1 (DG phase).
+            - ``"threshold"`` — result dict from search_thresholds().
+            - ``"finetune"`` — history dict from phase 3 (fine-tune phase).
+        """
+        zeta_lambda = self.zeta_lambda if self.zeta_lambda is not None else _DEFAULT_ZETA
+        zeta_theta = self.zeta_theta if self.zeta_theta is not None else _DEFAULT_ZETA
+
+        if not isinstance(model, DGModelProtocol):
+            raise TypeError("model must implement DGModelProtocol")
+
+        # ── Phase 1: DG training ──────────────────────────────────────────
+        dg_history = self._run_dg_phase(model, x, y, x_val, y_val, metrics)
+
+        # ── Phase 2: Threshold search + pruning ───────────────────────────
+        x_eval = x_val if x_val is not None else x
+        y_eval = y_val if y_val is not None else y
+
+        threshold_result: dict[str, Any] = model.search_thresholds(
+            x,
+            y,
+            zeta_lambda=zeta_lambda,
+            zeta_theta=zeta_theta,
+            x_val=x_eval,
+            y_val=y_eval,
+            use_lse=bool(self.use_lse),
+            inplace=True,
+            verbose=bool(self.verbose),
+            structural=bool(self.structural_pruning),
+        )
+
+        # Slice x to surviving features when structural pruning was applied.
+        sf = threshold_result.get("surviving_feature_indices")
+        if self.structural_pruning and sf is not None and len(sf) < x.shape[1]:
+            x_ft: Tensor = x[:, sf]
+            x_val_ft: Tensor | None = x_val[:, sf] if x_val is not None else None
+        else:
+            x_ft, x_val_ft = x, x_val
+
+        # ── Phase 3: Fine-tune ────────────────────────────────────────────
+        finetune_history = self._run_finetune_phase(model, x_ft, y, x_val_ft, y_val, metrics)
 
         return {
             "dg": dg_history,

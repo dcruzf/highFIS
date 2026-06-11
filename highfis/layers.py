@@ -161,6 +161,54 @@ class MembershipLayer(nn.Module):
         return outputs
 
 
+def _validate_custom_rules(
+    rules: Sequence[Sequence[int]],
+    mf_per_input: list[int],
+    n_inputs: int,
+) -> list[tuple[int, ...]]:
+    validated: list[tuple[int, ...]] = []
+    for i, rule in enumerate(rules):
+        if len(rule) != n_inputs:
+            raise ValueError(f"rule at index {i} has size {len(rule)} but expected {n_inputs}")
+        normalized: list[int] = []
+        for input_idx, mf_idx in enumerate(rule):
+            max_mf = mf_per_input[input_idx]
+            if not 0 <= int(mf_idx) < max_mf:
+                raise ValueError(f"rule index {mf_idx} out of bounds for input {input_idx} with {max_mf} mfs")
+            normalized.append(int(mf_idx))
+        validated.append(tuple(normalized))
+    if not validated:
+        raise ValueError("rules must not be empty")
+    return validated
+
+
+def _generate_or_validate_rules(
+    input_names: list[str],
+    mf_per_input: list[int],
+    rules: Sequence[Sequence[int]] | None,
+    rule_base: str,
+) -> list[tuple[int, ...]]:
+    n_inputs = len(input_names)
+    if rules is None and rule_base == "cartesian":
+        return [tuple(r) for r in product(*[range(n) for n in mf_per_input])]
+
+    if rules is None and rule_base == "coco":
+        if len(set(mf_per_input)) != 1:
+            raise ValueError(f"CoCo rule base requires all inputs to have the same number of MFs, got {mf_per_input}")
+        s = mf_per_input[0]
+        return [tuple(i for _ in range(n_inputs)) for i in range(s)]
+
+    if rules is None and rule_base == "en":
+        if len(set(mf_per_input)) != 1:
+            raise ValueError(f"En-FRB rule base requires all inputs to have the same number of MFs, got {mf_per_input}")
+        return _generate_en_frb(mf_per_input[0], n_inputs)
+
+    if rules is None:
+        raise ValueError("rules must be provided when rule_base='custom'")
+
+    return _validate_custom_rules(rules, mf_per_input, n_inputs)
+
+
 class RuleLayer(nn.Module):
     """Compute firing strengths from membership degrees.
 
@@ -173,7 +221,7 @@ class RuleLayer(nn.Module):
     - ``"cartesian"`` / ``"fuco"`` — full combinatorial rule base.
     - ``"coco"`` — same-index rule base; requires identical MF counts
       across all inputs.
-    - ``"en"`` — enhanced FRB; requires identical MF counts across all
+    - ``"en" — enhanced FRB; requires identical MF counts across all
       inputs.
     - ``"custom"`` — user-supplied rule index sequences.
 
@@ -208,39 +256,7 @@ class RuleLayer(nn.Module):
         self.n_inputs = len(input_names)
         self._resolved_t_norm = resolve_t_norm(t_norm)
 
-        if rules is None and rule_base == "cartesian":
-            self.rules = [tuple(r) for r in product(*[range(n) for n in mf_per_input])]
-        elif rules is None and rule_base == "coco":
-            if len(set(mf_per_input)) != 1:
-                raise ValueError(
-                    f"CoCo rule base requires all inputs to have the same number of MFs, got {mf_per_input}"
-                )
-            s = mf_per_input[0]
-            self.rules = [tuple(i for _ in range(self.n_inputs)) for i in range(s)]
-        elif rules is None and rule_base == "en":
-            if len(set(mf_per_input)) != 1:
-                raise ValueError(
-                    f"En-FRB rule base requires all inputs to have the same number of MFs, got {mf_per_input}"
-                )
-            self.rules = _generate_en_frb(mf_per_input[0], self.n_inputs)
-        else:
-            if rules is None:
-                raise ValueError("rules must be provided when rule_base='custom'")
-            validated: list[tuple[int, ...]] = []
-            for i, rule in enumerate(rules):
-                if len(rule) != self.n_inputs:
-                    raise ValueError(f"rule at index {i} has size {len(rule)} but expected {self.n_inputs}")
-                normalized: list[int] = []
-                for input_idx, mf_idx in enumerate(rule):
-                    max_mf = self.mf_per_input[input_idx]
-                    if not 0 <= int(mf_idx) < max_mf:
-                        raise ValueError(f"rule index {mf_idx} out of bounds for input {input_idx} with {max_mf} mfs")
-                    normalized.append(int(mf_idx))
-                validated.append(tuple(normalized))
-            if not validated:
-                raise ValueError("rules must not be empty")
-            self.rules = validated
-
+        self.rules = _generate_or_validate_rules(input_names, mf_per_input, rules, rule_base)
         self.n_rules = len(self.rules)
         self._register_vectorized_indices()
 

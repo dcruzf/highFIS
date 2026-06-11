@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, cast
 
@@ -22,7 +21,9 @@ from ..memberships import MembershipFunction
 from ._common import (
     BaseTSKClassifierModel,
     BaseTSKRegressorModel,
+    _apply_thresholds_and_pruning_inplace,
     _build_first_order_design_matrix,
+    _run_threshold_grid_search,
     _solve_lse,
     _threshold_from_zeta,
 )
@@ -322,47 +323,14 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
         x_eval = x_val if x_val is not None else x
         y_eval = y_val if y_val is not None else y
 
-        best_score = float("-inf")
-        best_state: dict[str, Any] | None = None
-        best_tau_lambda = 0.0
-        best_tau_theta = 0.0
-        best_zeta_lambda = 0.0
-        best_zeta_theta = 0.0
-
-        for zeta_l in zeta_lambda:
-            for zeta_t in zeta_theta:
-                candidate = copy.deepcopy(self)
-                if use_lse:
-                    # LSE path: convert to first-order, apply thresholds, fit LSE,
-                    # then evaluate accuracy on validation set.
-                    if isinstance(candidate.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
-                        candidate.convert_to_first_order()
-                    tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
-                    candidate.apply_thresholds(tau_l, tau_t)
-                    candidate._fit_first_order_consequents_lse(x, y)
-                else:
-                    # Non-LSE path: evaluate the zero-order model directly after
-                    # pruning.  Conversion to first-order happens only in the
-                    # inplace step (or is done by the caller).
-                    tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
-                    candidate.apply_thresholds(tau_l, tau_t)
-
-                score = candidate._evaluate_threshold_score(x_eval, y_eval)
-                if verbose:
-                    self.logger.info("zeta_lambda=%s zeta_theta=%s score=%.6f", zeta_l, zeta_t, score)
-
-                if score > best_score:
-                    best_score = score
-                    # Store the candidate's raw threshold parameters (not state_dict)
-                    # so they can be replayed correctly in both LSE and non-LSE paths.
-                    best_state = copy.deepcopy(candidate.state_dict()) if use_lse else None
-                    best_tau_lambda = tau_l
-                    best_tau_theta = tau_t
-                    best_zeta_lambda = zeta_l
-                    best_zeta_theta = zeta_t
-
-        if best_score == float("-inf"):
-            raise RuntimeError("threshold search did not yield a valid candidate")
+        (
+            best_score,
+            best_state,
+            best_tau_lambda,
+            best_tau_theta,
+            best_zeta_lambda,
+            best_zeta_theta,
+        ) = _run_threshold_grid_search(self, x, y, x_eval, y_eval, zeta_lambda, zeta_theta, use_lse, verbose)
 
         result: dict[str, Any] = {
             "best_score": best_score,
@@ -388,25 +356,11 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
                     top_k = min(self.n_classes, self.n_rules)
                     top_rules = torch.topk(rule_gate_values, k=top_k).indices.tolist()
                     sr = sorted(set(sr) | set(top_rules))
-                if use_lse and isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
-                    self.convert_to_first_order()
-                self.apply_thresholds(best_tau_lambda, best_tau_theta)
-                self.prune_structure(sf, sr)
-                if use_lse:
-                    self._fit_first_order_consequents_lse(x[:, sf], y)
-                result["surviving_feature_indices"] = sf
-                result["surviving_rule_indices"] = sr
             else:
-                if use_lse:
-                    # best_state holds the already-converted, pruned, LSE-fitted model.
-                    if isinstance(self.consequent_layer, GatedClassificationZeroOrderConsequentLayer):
-                        self.convert_to_first_order()
-                    if best_state is None:  # pragma: no cover
-                        raise RuntimeError("best_state is None despite use_lse=True")
-                    self.load_state_dict(best_state)
-                else:
-                    # Non-LSE path: apply the best thresholds to the zero-order model.
-                    self.apply_thresholds(best_tau_lambda, best_tau_theta)
+                sf, sr = [], []
+            _apply_thresholds_and_pruning_inplace(
+                self, x, y, best_tau_lambda, best_tau_theta, best_state, use_lse, structural, sf, sr, result
+            )
 
         return result
 
@@ -699,45 +653,14 @@ class DGTSKRegressorModel(BaseTSKRegressorModel):
         x_eval = x_val if x_val is not None else x
         y_eval = y_val if y_val is not None else y
 
-        best_score = float("-inf")
-        best_state: dict[str, Any] | None = None
-        best_tau_lambda = 0.0
-        best_tau_theta = 0.0
-        best_zeta_lambda = 0.0
-        best_zeta_theta = 0.0
-
-        for zeta_l in zeta_lambda:
-            for zeta_t in zeta_theta:
-                candidate = copy.deepcopy(self)
-                if use_lse:
-                    # LSE path: convert to first-order, apply thresholds, fit LSE,
-                    # then evaluate negative MSE on validation set.
-                    if isinstance(candidate.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
-                        candidate.convert_to_first_order()
-                    tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
-                    candidate.apply_thresholds(tau_l, tau_t)
-                    candidate._fit_first_order_consequents_lse(x, y)
-                else:
-                    # Non-LSE path: evaluate the zero-order model directly after
-                    # pruning.  Conversion to first-order happens only in the
-                    # inplace step (or is done by the caller).
-                    tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
-                    candidate.apply_thresholds(tau_l, tau_t)
-
-                score = candidate._evaluate_threshold_score(x_eval, y_eval)
-                if verbose:
-                    self.logger.info("zeta_lambda=%s zeta_theta=%s score=%.6f", zeta_l, zeta_t, score)
-
-                if score > best_score:
-                    best_score = score
-                    best_state = copy.deepcopy(candidate.state_dict()) if use_lse else None
-                    best_tau_lambda = tau_l
-                    best_tau_theta = tau_t
-                    best_zeta_lambda = zeta_l
-                    best_zeta_theta = zeta_t
-
-        if best_score == float("-inf"):
-            raise RuntimeError("threshold search did not yield a valid candidate")
+        (
+            best_score,
+            best_state,
+            best_tau_lambda,
+            best_tau_theta,
+            best_zeta_lambda,
+            best_zeta_theta,
+        ) = _run_threshold_grid_search(self, x, y, x_eval, y_eval, zeta_lambda, zeta_theta, use_lse, verbose)
 
         result: dict[str, Any] = {
             "best_score": best_score,
@@ -760,24 +683,10 @@ class DGTSKRegressorModel(BaseTSKRegressorModel):
                     sf = list(range(self.n_inputs))
                 if not sr:
                     sr = list(range(self.n_rules))
-                if use_lse and isinstance(self.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
-                    self.convert_to_first_order()
-                self.apply_thresholds(best_tau_lambda, best_tau_theta)
-                self.prune_structure(sf, sr)
-                if use_lse:
-                    self._fit_first_order_consequents_lse(x[:, sf], y)
-                result["surviving_feature_indices"] = sf
-                result["surviving_rule_indices"] = sr
             else:
-                if use_lse:
-                    # best_state holds the already-converted, pruned, LSE-fitted model.
-                    if isinstance(self.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
-                        self.convert_to_first_order()
-                    if best_state is None:  # pragma: no cover
-                        raise RuntimeError("best_state is None despite use_lse=True")
-                    self.load_state_dict(best_state)
-                else:
-                    # Non-LSE path: apply the best thresholds to the zero-order model.
-                    self.apply_thresholds(best_tau_lambda, best_tau_theta)
+                sf, sr = [], []
+            _apply_thresholds_and_pruning_inplace(
+                self, x, y, best_tau_lambda, best_tau_theta, best_state, use_lse, structural, sf, sr, result
+            )
 
         return result

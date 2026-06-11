@@ -243,6 +243,58 @@ def _resolve_clusterer(
     )
 
 
+def _fit_fuzzy_c_means_on_head(
+    x: np.ndarray,
+    subset: np.ndarray,
+    instance_sample_fraction: float,
+    sample_size: int,
+    n_samples: int,
+    n_clusters: int,
+    fcm_m: float,
+    random_state: int | None,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    if instance_sample_fraction < 1.0 and sample_size < n_samples:
+        row_indices = rng.choice(n_samples, size=sample_size, replace=False)
+        x_sub = x[row_indices][:, subset]
+    else:
+        x_sub = x[:, subset]
+
+    model = FuzzyCMeans(n_clusters=n_clusters, m=fcm_m, random_state=random_state)
+    model.fit(x_sub)
+    if model.cluster_centers_ is None:
+        raise RuntimeError("FuzzyCMeans did not converge to a valid solution")
+    return model.cluster_centers_.cpu().numpy()
+
+
+def _populate_head_mfs_and_rules(
+    centers: np.ndarray,
+    subset: np.ndarray,
+    n_clusters: int,
+    n_features: int,
+    rule_sigma: float,
+    feature_names: list[str],
+    input_mfs: dict[str, list[MembershipFunction]],
+    rules: list[tuple[int, ...]],
+) -> None:
+    feature_indices: dict[int, list[int]] = {}
+    for j, feature_idx in enumerate(subset):
+        mf_list = input_mfs[feature_names[feature_idx]]
+        start_index = len(mf_list)
+        for k in range(n_clusters):
+            mf_list.append(GaussianMF(mean=float(centers[k, j]), sigma=rule_sigma))
+        feature_indices[feature_idx] = list(range(start_index, start_index + n_clusters))
+
+    for k in range(n_clusters):
+        rule_indices: list[int] = []
+        for feature_idx in range(n_features):
+            if feature_idx in feature_indices:
+                rule_indices.append(feature_indices[feature_idx][k])
+            else:
+                rule_indices.append(0)
+        rules.append(tuple(rule_indices))
+
+
 def _build_mhtsk_input_mfs(
     x: np.ndarray,
     feature_names: list[str],
@@ -278,34 +330,12 @@ def _build_mhtsk_input_mfs(
 
     for _ in range(n_heads):
         subset = rng.choice(n_features, size=head_size, replace=False)
-        if instance_sample_fraction < 1.0 and sample_size < n_samples:
-            row_indices = rng.choice(n_samples, size=sample_size, replace=False)
-            x_sub = x[row_indices][:, subset]
-        else:
-            x_sub = x[:, subset]
-
-        model = FuzzyCMeans(n_clusters=n_clusters, m=fcm_m, random_state=random_state)
-        model.fit(x_sub)
-        if model.cluster_centers_ is None:
-            raise RuntimeError("FuzzyCMeans did not converge to a valid solution")
-        centers = model.cluster_centers_.cpu().numpy()
-
-        feature_indices: dict[int, list[int]] = {}
-        for j, feature_idx in enumerate(subset):
-            mf_list = input_mfs[feature_names[feature_idx]]
-            start_index = len(mf_list)
-            for k in range(n_clusters):
-                mf_list.append(GaussianMF(mean=float(centers[k, j]), sigma=rule_sigma))
-            feature_indices[feature_idx] = list(range(start_index, start_index + n_clusters))
-
-        for k in range(n_clusters):
-            rule_indices: list[int] = []
-            for feature_idx in range(n_features):
-                if feature_idx in feature_indices:
-                    rule_indices.append(feature_indices[feature_idx][k])
-                else:
-                    rule_indices.append(0)
-            rules.append(tuple(rule_indices))
+        centers = _fit_fuzzy_c_means_on_head(
+            x, subset, instance_sample_fraction, sample_size, n_samples, n_clusters, fcm_m, random_state, rng
+        )
+        _populate_head_mfs_and_rules(
+            centers, subset, n_clusters, n_features, rule_sigma, feature_names, input_mfs, rules
+        )
 
     rule_feature_mask = np.zeros((len(rules), n_features), dtype=bool)
     for r, rule in enumerate(rules):
@@ -331,7 +361,7 @@ def feature_coverage_rate(n_features: int, head_size: int, n_heads: int) -> floa
     return 1.0 - (1.0 - float(head_size) / float(n_features)) ** float(n_heads)
 
 
-def _resolve_mhtsk_scale_parameters(
+def _validate_mhtsk_scale_inputs(
     n_features: int,
     head_size: int | None,
     head_size_ratio: float | None,
@@ -340,12 +370,7 @@ def _resolve_mhtsk_scale_parameters(
     h_value: float | None,
     sigma: float,
     xi: float,
-) -> tuple[int, int]:
-    """Resolve MHTSK scale parameters using paper-derived defaults.
-
-    This helper reproduces the paper's strategy for selecting rule length and
-    number of heads while allowing user override.
-    """
+) -> None:
     if n_features <= 0:
         raise ValueError("n_features must be > 0")
     if head_size is not None and (head_size <= 0 or head_size > n_features):
@@ -362,6 +387,24 @@ def _resolve_mhtsk_scale_parameters(
         raise ValueError("sigma must be > 0")
     if xi <= 0.0:
         raise ValueError("xi must be > 0")
+
+
+def _resolve_mhtsk_scale_parameters(
+    n_features: int,
+    head_size: int | None,
+    head_size_ratio: float | None,
+    n_heads: int | None,
+    fcr_target: float | None,
+    h_value: float | None,
+    sigma: float,
+    xi: float,
+) -> tuple[int, int]:
+    """Resolve MHTSK scale parameters using paper-derived defaults.
+
+    This helper reproduces the paper's strategy for selecting rule length and
+    number of heads while allowing user override.
+    """
+    _validate_mhtsk_scale_inputs(n_features, head_size, head_size_ratio, n_heads, fcr_target, h_value, sigma, xi)
 
     max_head_size = min(n_features, max(1, math.floor(2.0 * xi * sigma * sigma)))
 
