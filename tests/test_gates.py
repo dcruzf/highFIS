@@ -42,10 +42,8 @@ def test_base_gate_default_init_params() -> None:
 def test_sigmoid_gate() -> None:
     gate = SigmoidGate()
     assert gate.is_nonneg is True
-
     x = torch.tensor([-1.0, 0.0, 1.0])
     assert torch.allclose(gate(x), torch.sigmoid(x))
-
     param = nn.Parameter(torch.zeros(10))
     gate.init_params_(param)
     data = param.detach()
@@ -57,10 +55,8 @@ def test_exp_gate() -> None:
     gate = ExpGate(k=2.0)
     assert gate.is_nonneg is True
     assert gate.k == 2.0
-
     x = torch.tensor([-1.0, 0.0, 1.0])
     assert torch.allclose(gate(x), 1.0 - torch.exp(-2.0 * x.pow(2)))
-
     param = nn.Parameter(torch.zeros(10))
     gate.init_params_(param)
     data = param.detach()
@@ -71,24 +67,19 @@ def test_exp_gate() -> None:
 def test_inv_exp_gate() -> None:
     gate = InvExpGate()
     assert gate.is_nonneg is True
-
     x = torch.tensor([-1.0, 0.0, 1.0])
     assert torch.allclose(gate(x), torch.exp(-x.pow(2)))
-
     param = nn.Parameter(torch.zeros(100))
     gate.init_params_(param)
     data = param.detach()
-    # Check mean/std roughly matches normal(3.0, 0.2)
     assert 2.0 < data.mean().item() < 4.0
 
 
 def test_signed_exp_gate() -> None:
     gate = SignedExpGate()
     assert gate.is_nonneg is False
-
     x = torch.tensor([-1.0, 0.0, 1.0])
     assert torch.allclose(gate(x), x * torch.sqrt(torch.exp(1.0 - x.pow(2))))
-
     param = nn.Parameter(torch.zeros(10))
     gate.init_params_(param)
     data = param.detach()
@@ -99,10 +90,8 @@ def test_signed_exp_gate() -> None:
 def test_m_gate() -> None:
     gate = MGate()
     assert gate.is_nonneg is True
-
     x = torch.tensor([-1.0, 0.0, 1.0])
     assert torch.allclose(gate(x), x.pow(2) * torch.exp(1.0 - x.pow(2)))
-
     param = nn.Parameter(torch.zeros(10))
     gate.init_params_(param)
     data = param.detach()
@@ -125,7 +114,6 @@ def test_resolve_gate_fn() -> None:
     assert resolve_gate_fn("gate3") is gate3
     assert resolve_gate_fn("gate4") is gate4
     assert resolve_gate_fn("gate_m") is gate_m
-
     default = resolve_gate_fn(None)
     assert isinstance(default, ExpGate)
     assert default.k == 10.0
@@ -134,6 +122,5 @@ def test_resolve_gate_fn() -> None:
         return torch.tanh(u)
 
     assert resolve_gate_fn(custom) is custom
-
     with pytest.raises(ValueError, match="unsupported gate function"):
         resolve_gate_fn("invalid_gate")

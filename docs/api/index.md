@@ -19,7 +19,7 @@ For most machine learning tasks, you will interact with the scikit-learn compati
 If you are developing custom neural architectures or need direct access to the raw PyTorch models, use the core model definitions:
 
 *   [`highfis.models`](models.md) — Model Architectures: PyTorch `nn.Module` classes representing TSK model variants (e.g., `HTSKModel`, `LogTSKModel`, `DGTSKModel`).
-*   [`highfis.base`](base.md) — Base TSK: Unified PyTorch training hooks and shared base classes.
+*   [`highfis.models.BaseTSK`](models.md#highfis.models.BaseTSK) — Base TSK: Unified PyTorch training hooks and shared base classes.
 
 ---
 

@@ -2,19 +2,30 @@
 
 from __future__ import annotations
 
+import copy
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
-from torch import Tensor
+import numpy as np
+import torch
+from torch import Tensor, nn
+from torch.utils.data import DataLoader, TensorDataset
+from tqdm.auto import trange
 
-from ..base import BaseTSK
+from ..metrics import compute_metrics
+from ..models._base import BaseTSK
 from ._base import BaseTrainer
+from ._utils import (
+    _get_optimizer_config,
+    _log,
+    _resolve_verbose,
+    _uniform_regularization_loss,
+)
 
 
 class GradientTrainer(BaseTrainer):
     """Single-phase mini-batch gradient descent trainer.
 
-    Wraps `BaseTSK.fit` with an explicit parameter set.
     This is the default trainer used by all standard highFIS estimators.
 
     Example::
@@ -54,7 +65,7 @@ class GradientTrainer(BaseTrainer):
             weight_decay: L2 weight-decay for consequent parameters.
             ur_weight: Uncertainty regularisation weight.
             ur_target: Uncertainty regularisation target firing-level.
-            verbose: Verbosity level passed to :meth:`~highfis.base.BaseTSK.fit`.
+            verbose: Verbosity level.
             loss: Custom loss function ``f(output, target) -> scalar``.
                 ``None`` uses the model's built-in criterion.
         """
@@ -70,6 +81,137 @@ class GradientTrainer(BaseTrainer):
         self.verbose = verbose
         self.loss = loss
 
+    def _evaluate_epoch_metrics(
+        self,
+        model: BaseTSK,
+        x: Tensor,
+        y: Tensor,
+        metrics_list: list[str],
+        history: dict[str, Any],
+        prefix: str,
+    ) -> dict[str, float]:
+        preds = self._predict_tensor(model, x)
+        m_vals = compute_metrics(cast(Any, model.task_type), y, preds, metrics=metrics_list)
+        for m in metrics_list:
+            history.setdefault(f"{prefix}_{m}", []).append(m_vals[m])
+        return m_vals
+
+    def _handle_validation_epoch(
+        self,
+        model: BaseTSK,
+        x_val: Tensor,
+        y_val: Tensor,
+        metrics_list: list[str],
+        maximize: bool,
+        train_criterion: Any,
+        history: dict[str, Any],
+        best_metric: float,
+        epochs_no_improve: int,
+        best_state: dict[str, Any] | None,
+        verbose_level: int,
+        epoch: int,
+        epoch_train_loss: float,
+        pbar: Any,
+    ) -> tuple[float, int, dict[str, Any] | None, bool]:
+        """Run validation evaluation, logging, and early-stopping logic."""
+        model.eval()
+        val_info = self._evaluate_validation(model, train_criterion, x_val, y_val)
+        history["val"].append(val_info["val_loss"])
+
+        if metrics_list:
+            val_metrics = self._evaluate_epoch_metrics(model, x_val, y_val, metrics_list, history, "val")
+            for m in metrics_list:
+                val_info[f"val_{m}"] = val_metrics[m]
+
+            primary_metric = metrics_list[0]
+            metric_val = val_metrics[primary_metric]
+            metric = metric_val if maximize else -metric_val
+            val_info["metric"] = metric
+        else:
+            metric = val_info["metric"]
+
+        for k, v in val_info.items():
+            if k not in ("val_loss", "metric") and k not in [f"val_{m}" for m in metrics_list]:
+                history.setdefault(k, []).append(v)
+        model.train()
+
+        should_stop = False
+        if metric > best_metric:
+            best_metric = metric
+            epochs_no_improve = 0
+            best_state = copy.deepcopy(model.state_dict())
+        else:
+            epochs_no_improve += 1
+
+        self._log_epoch_with_val(model, epoch, self.epochs, epoch_train_loss, val_info, verbose_level, pbar)
+
+        if self.patience is not None and epochs_no_improve >= self.patience:
+            if verbose_level >= 2:
+                _log(
+                    model.logger,
+                    "early stopping at epoch %s (patience=%s)",
+                    epoch + 1,
+                    self.patience,
+                    verbose=verbose_level,
+                )
+            should_stop = True
+
+        return best_metric, epochs_no_improve, best_state, should_stop
+
+    def _resolve_metrics(self, metrics: list[str] | str | None, task: str) -> tuple[list[str], bool]:
+        """Resolve and normalize task metrics, returning metrics_list and maximize flag."""
+        if metrics is None:
+            metrics_list = ["accuracy"] if task == "classification" else ["mse"]
+        else:
+            metrics_list = [metrics] if isinstance(metrics, str) else list(metrics)
+
+        maximize = False
+        if metrics_list:
+            primary_metric = metrics_list[0]
+            _MAXIMIZE_METRICS = {
+                "accuracy",
+                "balanced_accuracy",
+                "precision_macro",
+                "recall_macro",
+                "f1_macro",
+                "precision_micro",
+                "recall_micro",
+                "f1_micro",
+                "r2",
+                "explained_variance",
+                "pearson",
+            }
+            maximize = primary_metric in _MAXIMIZE_METRICS
+        return metrics_list, maximize
+
+    def _build_train_loader(self, x: Tensor, y: Tensor) -> DataLoader:
+        """Create DataLoader for training."""
+        dataset = TensorDataset(x, y)
+        actual_batch_size = len(dataset) if self.batch_size is None else self.batch_size
+        return DataLoader(
+            dataset,
+            batch_size=actual_batch_size,
+            shuffle=self.shuffle,
+        )
+
+    def _get_epoch_iterator(self, verbose_level: int) -> tuple[Any, Any]:
+        """Retrieve the loop iterator and optional progress bar."""
+        pbar = None
+        if verbose_level == 1:
+            pbar = trange(self.epochs, desc="Training", leave=False)
+            epoch_iterator = pbar
+        else:
+            epoch_iterator = range(self.epochs)
+        return epoch_iterator, pbar
+
+    def _finalize_training(self, model: BaseTSK, best_state: dict[str, Any] | None, pbar: Any) -> None:
+        """Perform final training cleanup and best-state restoration."""
+        if pbar is not None:
+            pbar.close()
+
+        if self.restore_best and best_state is not None:
+            model.load_state_dict(best_state)
+
     def fit(
         self,
         model: BaseTSK,
@@ -79,23 +221,269 @@ class GradientTrainer(BaseTrainer):
         x_val: Tensor | None = None,
         y_val: Tensor | None = None,
         metrics: list[str] | None = None,
+        optimizer: torch.optim.Optimizer | None = None,
     ) -> dict[str, Any]:
         """Train *model* for :attr:`epochs` epochs and return the history dict."""
-        return model.fit(
-            x,
-            y,
-            epochs=int(self.epochs),
-            learning_rate=float(self.learning_rate),
-            criterion=self.loss,
-            batch_size=self.batch_size,
-            shuffle=bool(self.shuffle),
-            ur_weight=float(self.ur_weight),
-            ur_target=self.ur_target,
-            verbose=self.verbose,
-            x_val=x_val,
-            y_val=y_val,
-            patience=self.patience,
-            restore_best=bool(self.restore_best),
-            weight_decay=float(self.weight_decay),
-            metrics=metrics,
-        )
+        has_val = self._validate_fit_inputs(model, x, y, x_val, y_val, self.ur_weight, self.ur_target)
+        train_criterion = self.loss or model.default_criterion()
+        train_optimizer = self._build_optimizer(model, optimizer, self.learning_rate, self.weight_decay)
+
+        train_loader = self._build_train_loader(x, y)
+        metrics_list, maximize = self._resolve_metrics(metrics, model.task_type)
+
+        history: dict[str, Any] = {"train": [], "ur": []}
+        if has_val:
+            history["val"] = []
+        best_metric = float("-inf")
+        epochs_no_improve = 0
+        best_state: dict[str, Any] | None = None
+        verbose_level = _resolve_verbose(self.verbose)
+
+        model.train()
+        epoch_iterator, pbar = self._get_epoch_iterator(verbose_level)
+
+        stopped_epoch = 0
+        for epoch in epoch_iterator:
+            stopped_epoch = epoch + 1
+            epoch_train_loss, epoch_ur_loss = self._run_minibatch_epoch(
+                model,
+                train_loader,
+                train_criterion,
+                train_optimizer,
+                self.ur_weight,
+                self.ur_target,
+            )
+            history["train"].append(epoch_train_loss)
+            history["ur"].append(epoch_ur_loss)
+
+            # Evaluate metrics on train set
+            if metrics_list:
+                self._evaluate_epoch_metrics(model, x, y, metrics_list, history, "train")
+
+            if has_val and x_val is not None and y_val is not None:
+                best_metric, epochs_no_improve, best_state, should_stop = self._handle_validation_epoch(
+                    model,
+                    x_val,
+                    y_val,
+                    metrics_list,
+                    maximize,
+                    train_criterion,
+                    history,
+                    best_metric,
+                    epochs_no_improve,
+                    best_state,
+                    verbose_level,
+                    epoch,
+                    epoch_train_loss,
+                    pbar,
+                )
+                if should_stop:
+                    break
+            else:
+                self._log_epoch_no_val(model, epoch, self.epochs, epoch_train_loss, verbose_level, pbar)
+
+        self._finalize_training(model, best_state, pbar)
+        history["stopped_epoch"] = stopped_epoch
+
+        return history
+
+    def _validate_fit_inputs(
+        self,
+        model: BaseTSK,
+        x: Tensor,
+        y: Tensor,
+        x_val: Tensor | None,
+        y_val: Tensor | None,
+        ur_weight: float,
+        ur_target: float | None,
+    ) -> bool:
+        """Validate all inputs to :meth:`fit` and return ``has_val``."""
+        if x.ndim != 2 or x.shape[1] != model.n_inputs:
+            raise ValueError(f"expected x shape (batch, {model.n_inputs}), got {tuple(x.shape)}")
+        if y.ndim != 1:
+            raise ValueError("expected y shape (batch,)")
+        if ur_weight < 0.0:
+            raise ValueError("ur_weight must be >= 0")
+        if ur_target is not None and not (0.0 < ur_target <= 1.0):
+            raise ValueError("ur_target must be in (0, 1] when provided")
+        if self.batch_size is not None and self.batch_size <= 0:
+            raise ValueError("batch_size must be > 0 when provided")
+
+        has_val = x_val is not None and y_val is not None
+        if has_val and x_val is not None and y_val is not None:
+            if x_val.ndim != 2 or x_val.shape[1] != model.n_inputs:
+                raise ValueError(f"expected x_val shape (batch, {model.n_inputs}), got {tuple(x_val.shape)}")
+            if y_val.ndim != 1:
+                raise ValueError("expected y_val shape (batch,)")
+        return has_val
+
+    def _build_optimizer(
+        self,
+        model: BaseTSK,
+        optimizer: torch.optim.Optimizer | None,
+        learning_rate: float,
+        weight_decay: float,
+    ) -> torch.optim.Optimizer:
+        if optimizer is not None:
+            return optimizer
+        opt_class, param_groups = _get_optimizer_config(model, learning_rate, weight_decay)
+        return cast(Any, opt_class)(param_groups, lr=learning_rate)
+
+    def _compute_loss(
+        self,
+        model: BaseTSK,
+        criterion: Callable[[Tensor, Tensor], Tensor],
+        output: Tensor,
+        target: Tensor,
+    ) -> Tensor:
+        task = model.task_type
+        if task == "classification":
+            if isinstance(criterion, nn.MSELoss):
+                one_hot = torch.zeros_like(output)
+                one_hot.scatter_(1, target.unsqueeze(1), 1.0)
+                return criterion(output, one_hot)
+            return criterion(output, target)
+        else:
+            return criterion(output.squeeze(1), target)
+
+    def _predict_tensor(self, model: BaseTSK, x: Tensor) -> Tensor:
+        """Helper to get PyTorch Tensor predictions of the model on *x* using DataLoader."""
+        task = model.task_type
+        was_training = model.training
+        model.eval()
+        try:
+            with torch.no_grad():
+                outputs = []
+                dataset = TensorDataset(x)
+                loader = DataLoader(dataset, batch_size=1024, shuffle=False)
+                for (x_b,) in loader:
+                    out_b = model(x_b)
+                    outputs.append(out_b)
+                output = torch.cat(outputs, dim=0)
+                if task == "classification":
+                    return output.argmax(dim=1)
+                else:
+                    if output.ndim > 1 and output.shape[1] == 1:
+                        output = output.squeeze(1)
+                    return output
+        finally:
+            model.train(was_training)
+
+    def _predict_numpy(self, model: BaseTSK, x: Tensor) -> np.ndarray:
+        """Helper to get numpy predictions of the model on *x* using DataLoader."""
+        return self._predict_tensor(model, x).cpu().numpy()
+
+    def _run_minibatch_epoch(
+        self,
+        model: BaseTSK,
+        loader: DataLoader,
+        criterion: Callable[[Tensor, Tensor], Tensor],
+        optimizer: torch.optim.Optimizer,
+        ur_weight: float,
+        ur_target: float | None,
+    ) -> tuple[float, float]:
+        """Run one full epoch of mini-batch gradient updates.
+
+        Returns:
+            ``(mean_train_loss, mean_ur_loss)`` averaged over all batches.
+        """
+        batch_losses: list[float] = []
+        batch_ur_losses: list[float] = []
+        for x_b, y_b in loader:
+            optimizer.zero_grad(set_to_none=True)
+            output, norm_w = model._forward_train(x_b)
+            main_loss = self._compute_loss(model, criterion, output, y_b)
+
+            ur_loss = _uniform_regularization_loss(norm_w, target=ur_target)
+            total_loss = main_loss + float(ur_weight) * ur_loss
+            total_loss.backward()
+            optimizer.step()
+
+            batch_losses.append(float(total_loss.detach().item()))
+            batch_ur_losses.append(float(ur_loss.detach().item()))
+
+        train_loss = float(sum(batch_losses) / max(len(batch_losses), 1))
+        ur_loss_avg = float(sum(batch_ur_losses) / max(len(batch_ur_losses), 1))
+        return train_loss, ur_loss_avg
+
+    def _evaluate_validation(
+        self,
+        model: BaseTSK,
+        criterion: Callable[[Tensor, Tensor], Tensor],
+        x_val: Tensor,
+        y_val: Tensor,
+    ) -> dict[str, float]:
+        """Evaluate on validation set.  Return dict with at least ``'metric'``."""
+        task = model.task_type
+        was_training = model.training
+        model.eval()
+        try:
+            with torch.no_grad():
+                outputs = []
+                dataset = TensorDataset(x_val)
+                loader = DataLoader(dataset, batch_size=1024, shuffle=False)
+                for (x_b,) in loader:
+                    out_b = model(x_b)
+                    outputs.append(out_b)
+                output = torch.cat(outputs, dim=0)
+                val_loss = float(self._compute_loss(model, criterion, output, y_val).item())
+                if task == "classification":
+                    val_acc = float((output.argmax(dim=1) == y_val).float().mean().item())
+                    return {"val_loss": val_loss, "val_acc": val_acc, "metric": val_acc}
+                else:
+                    return {"val_loss": val_loss, "metric": -val_loss}
+        finally:
+            model.train(was_training)
+
+    def _log_epoch_with_val(
+        self,
+        model: BaseTSK,
+        epoch: int,
+        epochs: int,
+        train_loss: float,
+        val_info: dict[str, Any],
+        verbose_level: int,
+        pbar: Any,
+    ) -> None:
+        """Emit epoch-level progress when a validation set is active."""
+        if verbose_level == 1:
+            if pbar is None:  # pragma: no cover
+                raise RuntimeError("progress bar unavailable for verbose level 1")
+            postfix = [
+                f"train={train_loss:.4f}",
+                f"val={val_info.get('val_loss', 0.0):.4f}",
+            ]
+            pbar.set_postfix_str(" ".join(postfix))
+        if verbose_level >= 2 and (verbose_level == 3 or ((epoch + 1) % max(epochs // 10, 1) == 0 or epoch == 0)):
+            log_parts = [
+                f"epoch={epoch + 1}/{epochs}",
+                f"train_loss={train_loss:.6f}",
+            ]
+            for k, v in val_info.items():
+                if k != "metric":
+                    log_parts.append(f"{k}={v:.6f}" if isinstance(v, float) else f"{k}={v}")
+            _log(model.logger, " ".join(log_parts), verbose=verbose_level)
+
+    def _log_epoch_no_val(
+        self,
+        model: BaseTSK,
+        epoch: int,
+        epochs: int,
+        train_loss: float,
+        verbose_level: int,
+        pbar: Any,
+    ) -> None:
+        """Emit epoch-level progress when no validation set is provided."""
+        if verbose_level == 1:
+            if pbar is None:  # pragma: no cover
+                raise RuntimeError("progress bar unavailable for verbose level 1")
+            pbar.set_postfix_str(f"loss={train_loss:.4f}")
+        if verbose_level >= 2 and (verbose_level == 3 or ((epoch + 1) % max(epochs // 10, 1) == 0 or epoch == 0)):
+            _log(
+                model.logger,
+                "epoch=%s/%s loss=%.6f",
+                epoch + 1,
+                epochs,
+                train_loss,
+                verbose=verbose_level,
+            )

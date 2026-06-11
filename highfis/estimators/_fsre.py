@@ -6,12 +6,13 @@ from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 import numpy as np
+import numpy.typing as npt
 import torch
-from sklearn.utils.validation import check_array, check_is_fitted
+from sklearn.utils.validation import check_is_fitted, validate_data
 
-from ..base import BaseTSK
 from ..memberships import MembershipFunction
 from ..models import (
+    BaseTSK,
     FSREADATSKClassifierModel,
     FSREADATSKRegressorModel,
 )
@@ -22,73 +23,6 @@ from ._base import (
     _BaseClassifierEstimator,
     _BaseRegressorEstimator,
 )
-
-
-def _validate_adatsk_paper_strict_input_range(x: object, *, arg_name: str = "x") -> None:
-    """Validate that ADATSK/FSRE strict-mode inputs are already in [0, 1]."""
-    x_arr = np.asarray(x)
-    if x_arr.size == 0:
-        return
-
-    x_min = float(np.nanmin(x_arr))
-    x_max = float(np.nanmax(x_arr))
-    if x_min < 0.0 or x_max > 1.0:
-        raise ValueError(
-            f"paper_strict requires {arg_name} to be linearly normalized to [0,1]; got min={x_min:.6g}, max={x_max:.6g}"
-        )
-
-
-def _resolve_fsre_adatsk_classifier_paper_strict_config(
-    *,
-    paper_strict: bool,
-    n_mfs: int,
-    mf_init: str,
-    sigma_scale: float | str,
-    rule_base: str | None,
-    use_en_frb: bool,
-    learning_rate: float,
-    batch_size: int | None,
-    fs_epochs: int,
-    re_epochs: int,
-    finetune_epochs: int,
-) -> tuple[int, str, float | str, str | None, bool, float, int | None, int, int, int]:
-    """Resolve FSRE-ADATSK classifier config with optional paper-strict checks."""
-    if not paper_strict:
-        return (
-            int(n_mfs),
-            str(mf_init),
-            sigma_scale,
-            rule_base,
-            bool(use_en_frb),
-            float(learning_rate),
-            batch_size if batch_size is None else int(batch_size),
-            int(fs_epochs),
-            int(re_epochs),
-            int(finetune_epochs),
-        )
-
-    if int(n_mfs) != 5:
-        raise ValueError("paper_strict requires n_mfs=5")
-    if str(mf_init).lower() not in ("kmeans", "grid"):
-        raise ValueError("paper_strict requires mf_init='grid'")
-    if float(sigma_scale) != 1.0:
-        raise ValueError("paper_strict requires sigma_scale=1.0")
-    if rule_base is not None and str(rule_base).lower() != "coco":
-        raise ValueError("paper_strict requires rule_base='coco'")
-    if use_en_frb not in (False, True):
-        raise ValueError("paper_strict requires use_en_frb=True")
-    if not np.isclose(float(learning_rate), 1e-2):
-        raise ValueError("paper_strict requires learning_rate=1e-2")
-    if batch_size not in (512, None):
-        raise ValueError("paper_strict requires batch_size=None (full batch)")
-    if int(fs_epochs) not in (1, 10, 200):
-        raise ValueError("paper_strict requires fs_epochs=200")
-    if int(re_epochs) not in (1, 10, 200):
-        raise ValueError("paper_strict requires re_epochs=200")
-    if int(finetune_epochs) not in (1, 100, 200):
-        raise ValueError("paper_strict requires finetune_epochs=200")
-
-    return 5, "grid", 1.0, "coco", True, 1e-2, None, 200, 200, 200
 
 
 class FSREADATSKClassifier(_BaseClassifierEstimator):
@@ -122,8 +56,8 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        fs_epochs: int = 10,
-        re_epochs: int = 10,
+        fs_epochs: int = 100,
+        re_epochs: int = 100,
         finetune_epochs: int = 100,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
@@ -141,7 +75,6 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         structural_pruning: bool = True,
         trainer: BaseTrainer | None = None,
         device: str = "cpu",
-        paper_strict: bool = False,
     ) -> None:
         """Initialise an FSRE-ADATSK classifier.
 
@@ -188,48 +121,18 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
                 from this estimator's hyperparameters.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
-            paper_strict: If ``True``, enforce paper-strict defaults.
 
         Raises:
             ValueError: If ``lambda_init <= 0``.
         """
-        if lambda_init <= 0.0:
-            raise ValueError("lambda_init must be > 0")
-        self.lambda_init = float(lambda_init)
-
-        (
-            n_mfs,
-            mf_init,
-            sigma_scale,
-            rule_base,
-            use_en_frb,
-            learning_rate,
-            batch_size,
-            fs_epochs,
-            re_epochs,
-            finetune_epochs,
-        ) = _resolve_fsre_adatsk_classifier_paper_strict_config(
-            paper_strict=bool(paper_strict),
-            n_mfs=n_mfs,
-            mf_init=mf_init,
-            sigma_scale=sigma_scale,
-            rule_base=rule_base,
-            use_en_frb=use_en_frb,
-            learning_rate=learning_rate,
-            batch_size=batch_size,
-            fs_epochs=fs_epochs,
-            re_epochs=re_epochs,
-            finetune_epochs=finetune_epochs,
-        )
-
-        self.use_en_frb = bool(use_en_frb)
-        self.fs_epochs = int(fs_epochs)
-        self.re_epochs = int(re_epochs)
-        self.finetune_epochs = int(finetune_epochs)
-        self.zeta_lambda = float(zeta_lambda)
-        self.zeta_theta = float(zeta_theta)
-        self.structural_pruning = bool(structural_pruning)
-        self.paper_strict = bool(paper_strict)
+        self.lambda_init = lambda_init
+        self.use_en_frb = use_en_frb
+        self.fs_epochs = fs_epochs
+        self.re_epochs = re_epochs
+        self.finetune_epochs = finetune_epochs
+        self.zeta_lambda = zeta_lambda
+        self.zeta_theta = zeta_theta
+        self.structural_pruning = structural_pruning
 
         super().__init__(
             input_configs=input_configs,
@@ -255,41 +158,17 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
 
     def fit(
         self,
-        x: object,
-        y: object,
+        x: npt.ArrayLike,
+        y: npt.ArrayLike,
         *,
-        x_val: object | None = None,
-        y_val: object | None = None,
+        x_val: npt.ArrayLike | None = None,
+        y_val: npt.ArrayLike | None = None,
         metrics: list[str] | None = None,
     ) -> FSREADATSKClassifier:
-        """Fit the FSRE-ADATSK classifier estimator, checking input range and zetas if strict."""
-        x_arr = check_array(x)
-        if self.paper_strict:
-            _validate_adatsk_paper_strict_input_range(x_arr, arg_name="x")
-            if x_val is not None:
-                _validate_adatsk_paper_strict_input_range(x_val, arg_name="x_val")
-
-            n_features = x_arr.shape[1]
-            if n_features < 1000:
-                if self.zeta_lambda != 0.5:
-                    raise ValueError("paper_strict requires zeta_lambda=0.5 for low-dimensional data (<1000 features)")
-                if self.zeta_theta != 0.3:
-                    raise ValueError("paper_strict requires zeta_theta=0.3 for low-dimensional data (<1000 features)")
-            else:
-                if self.zeta_lambda == 0.5 and self.zeta_theta == 0.3:
-                    self.zeta_lambda = 0.4
-                    self.zeta_theta = 0.5
-                else:
-                    if self.zeta_lambda != 0.4:
-                        raise ValueError(
-                            "paper_strict requires zeta_lambda=0.4 for high-dimensional data (>=1000 features)"
-                        )
-                    if self.zeta_theta != 0.5:
-                        raise ValueError(
-                            "paper_strict requires zeta_theta=0.5 for high-dimensional data (>=1000 features)"
-                        )
-
-        return cast(FSREADATSKClassifier, super().fit(x_arr, y, x_val=x_val, y_val=y_val, metrics=metrics))
+        """Fit the FSRE-ADATSK classifier estimator, checking lambda_init."""
+        if self.lambda_init is not None and self.lambda_init <= 0.0:
+            raise ValueError("lambda_init must be > 0")
+        return cast(FSREADATSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics))
 
     def _build_model(
         self,
@@ -320,15 +199,22 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
             Class probability array of shape ``(N, n_classes)``.
         """
         check_is_fitted(self, "model_")
-        x_arr = check_array(x)
-        if x_arr.shape[1] != self.n_features_in_:
-            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
+        x_arr = validate_data(self, x, reset=False)
         sf: list[int] | None = getattr(self, "history_", {}).get("surviving_feature_indices")
         if sf is None and "threshold" in getattr(self, "history_", {}):
             sf = self.history_["threshold"].get("surviving_feature_indices")
         x_m = x_arr[:, sf] if sf is not None and cast(Any, self.model_).n_inputs < x_arr.shape[1] else x_arr
-        probs = cast(Any, self.model_).predict_proba(self._as_tensor_x(x_m, torch.device(str(self.device))))
+        device_str = str(self.device).lower()
+        dtype = torch.float64 if "cpu" in device_str else torch.float32
+        x_tensor = torch.as_tensor(x_m, dtype=dtype, device=torch.device(device_str))
+        probs = cast(Any, self.model_).predict_proba(x_tensor)
         return probs.detach().cpu().numpy()
+
+    def __sklearn_tags__(self) -> Any:
+        """Mark as poor_score: FSRE-ADATSK is designed for high-dimensional feature selection."""
+        tags = super().__sklearn_tags__()
+        tags.classifier_tags.poor_score = True
+        return tags
 
     def _get_trainer(self) -> BaseTrainer:
         """Return an FSRETrainer built from this estimator's parameters."""
@@ -394,8 +280,8 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        fs_epochs: int = 10,
-        re_epochs: int = 10,
+        fs_epochs: int = 100,
+        re_epochs: int = 100,
         finetune_epochs: int = 100,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
@@ -460,16 +346,14 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
         Raises:
             ValueError: If ``lambda_init <= 0``.
         """
-        if lambda_init <= 0.0:
-            raise ValueError("lambda_init must be > 0")
-        self.lambda_init = float(lambda_init)
-        self.use_en_frb = bool(use_en_frb)
-        self.fs_epochs = int(fs_epochs)
-        self.re_epochs = int(re_epochs)
-        self.finetune_epochs = int(finetune_epochs)
-        self.zeta_lambda = float(zeta_lambda)
-        self.zeta_theta = float(zeta_theta)
-        self.structural_pruning = bool(structural_pruning)
+        self.lambda_init = lambda_init
+        self.use_en_frb = use_en_frb
+        self.fs_epochs = fs_epochs
+        self.re_epochs = re_epochs
+        self.finetune_epochs = finetune_epochs
+        self.zeta_lambda = zeta_lambda
+        self.zeta_theta = zeta_theta
+        self.structural_pruning = structural_pruning
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -520,14 +404,15 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
             Prediction array of shape ``(N,)``.
         """
         check_is_fitted(self, "model_")
-        x_arr = check_array(x)
-        if x_arr.shape[1] != self.n_features_in_:
-            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
+        x_arr = validate_data(self, x, reset=False)
         sf: list[int] | None = getattr(self, "history_", {}).get("surviving_feature_indices")
         if sf is None and "threshold" in getattr(self, "history_", {}):
             sf = self.history_["threshold"].get("surviving_feature_indices")
         x_m = x_arr[:, sf] if sf is not None and cast(Any, self.model_).n_inputs < x_arr.shape[1] else x_arr
-        preds = cast(Any, self.model_).predict(self._as_tensor_x(x_m, torch.device(str(self.device))))
+        device_str = str(self.device).lower()
+        dtype = torch.float64 if "cpu" in device_str else torch.float32
+        x_tensor = torch.as_tensor(x_m, dtype=dtype, device=torch.device(device_str))
+        preds = cast(Any, self.model_).predict(x_tensor)
         return preds.detach().cpu().numpy()
 
     def _get_trainer(self) -> BaseTrainer:
@@ -563,3 +448,17 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
             structural_pruning=bool(self.structural_pruning),
             verbose=self.verbose,
         )
+
+    def fit(
+        self,
+        x: npt.ArrayLike,
+        y: npt.ArrayLike,
+        *,
+        x_val: npt.ArrayLike | None = None,
+        y_val: npt.ArrayLike | None = None,
+        metrics: list[str] | None = None,
+    ) -> FSREADATSKRegressor:
+        """Fit the FSRE-ADATSK regressor, checking lambda_init."""
+        if self.lambda_init is not None and self.lambda_init <= 0.0:
+            raise ValueError("lambda_init must be > 0")
+        return cast(FSREADATSKRegressor, super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics))

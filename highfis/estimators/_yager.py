@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import warnings
 from collections.abc import Mapping, Sequence
+from typing import Any
 
 import numpy as np
+import numpy.typing as npt
 
-from ..base import BaseTSK
 from ..memberships import (
     CompositeExponentialMF,
     MembershipFunction,
@@ -15,55 +15,13 @@ from ..memberships import (
 from ..models import (
     AYATSKClassifierModel,
     AYATSKRegressorModel,
+    BaseTSK,
 )
 from ._base import (
     InputConfig,
     _BaseClassifierEstimator,
     _BaseRegressorEstimator,
 )
-
-
-def _resolve_ayatsk_classifier_paper_strict_config(
-    *,
-    paper_strict: bool,
-    n_mfs: int,
-    mf_init: str,
-    sigma_scale: float | str,
-    rule_base: str | None,
-    epochs: int,
-    learning_rate: float,
-    k: float,
-) -> tuple[int, str, float | str, str | None, int, float, float]:
-    """Resolve AYATSK classifier config with optional paper-strict checks."""
-    if not paper_strict:
-        if float(k) <= 1.0:
-            raise ValueError("k must be > 1.0")
-        return (
-            int(n_mfs),
-            str(mf_init),
-            sigma_scale,
-            rule_base,
-            int(epochs),
-            float(learning_rate),
-            float(k),
-        )
-
-    if int(n_mfs) != 3:
-        raise ValueError("paper_strict requires n_mfs=3")
-    if str(mf_init).lower() != "grid":
-        raise ValueError("paper_strict requires mf_init='grid'")
-    if float(sigma_scale) != 1.0:
-        raise ValueError("paper_strict requires sigma_scale=1.0")
-    if rule_base is not None and str(rule_base).lower() != "coco":
-        raise ValueError("paper_strict requires rule_base='coco'")
-    if int(epochs) != 200:
-        raise ValueError("paper_strict requires epochs=200")
-    if float(learning_rate) != 1e-3:
-        raise ValueError("paper_strict requires learning_rate=1e-3")
-    if float(k) <= 1.0:
-        raise ValueError("paper_strict requires k > 1.0")
-
-    return 3, "grid", 1.0, "coco", 200, 1e-3, float(k)
 
 
 def _build_ayatsk_default_input_mfs(
@@ -134,7 +92,6 @@ class AYATSKClassifier(_BaseClassifierEstimator):
         weight_decay: float = 0.0,
         k: float = 10.0,
         device: str = "cpu",
-        paper_strict: bool = False,
     ) -> None:
         """Initialise an AYATSK classifier.
 
@@ -165,28 +122,7 @@ class AYATSKClassifier(_BaseClassifierEstimator):
             k: CEMF lower-bound control parameter. Must be ``> 1``.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
-            paper_strict: If ``True``, enforce AYATSK paper defaults for
-                classifier hyperparameters.
         """
-        (
-            n_mfs,
-            mf_init,
-            sigma_scale,
-            rule_base,
-            epochs,
-            learning_rate,
-            k,
-        ) = _resolve_ayatsk_classifier_paper_strict_config(
-            paper_strict=bool(paper_strict),
-            n_mfs=n_mfs,
-            mf_init=mf_init,
-            sigma_scale=sigma_scale,
-            rule_base=rule_base,
-            epochs=epochs,
-            learning_rate=learning_rate,
-            k=k,
-        )
-
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -208,13 +144,14 @@ class AYATSKClassifier(_BaseClassifierEstimator):
             weight_decay=weight_decay,
             device=device,
         )
-        self.k = float(k)
-        self.paper_strict = bool(paper_strict)
+        self.k = k
 
     def _build_input_mfs(
         self,
         x_arr: np.ndarray,
     ) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
+        if x_arr.shape[1] < 2:
+            raise ValueError(f"AYATSKClassifier requires at least 2 features; got n_features={x_arr.shape[1]}.")
         if (
             self.input_configs is None
             and isinstance(self.mf_init, str)
@@ -232,25 +169,21 @@ class AYATSKClassifier(_BaseClassifierEstimator):
 
     def fit(
         self,
-        x: object,
-        y: object,
+        x: npt.ArrayLike,
+        y: npt.ArrayLike,
         *,
-        x_val: object | None = None,
-        y_val: object | None = None,
+        x_val: npt.ArrayLike | None = None,
+        y_val: npt.ArrayLike | None = None,
         metrics: list[str] | None = None,
     ) -> AYATSKClassifier:
+        if float(self.k) <= 1.0:
+            raise ValueError("k must be > 1.0")
         original_batch_size = self.batch_size
         try:
-            x_arr = np.asarray(x)
-            n_samples = int(np.asarray(y).shape[0])
+            y_arr = np.asarray(y)
+            n_samples = y_arr.shape[0] if y_arr.ndim >= 1 else 0
             if original_batch_size is None:
                 self.batch_size = self._resolve_default_batch_size(n_samples)
-            if self.paper_strict and n_samples >= 500 and int(x_arr.shape[1]) < 1000:
-                warnings.warn(
-                    "paper_strict: mini-batch policy may diverge from paper protocol when D < 1000 and N >= 500",
-                    UserWarning,
-                    stacklevel=2,
-                )
             return super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics)
         finally:
             self.batch_size = original_batch_size
@@ -343,9 +276,6 @@ class AYATSKRegressor(_BaseRegressorEstimator):
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
         """
-        if float(k) <= 1.0:
-            raise ValueError("k must be > 1.0")
-
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -366,12 +296,14 @@ class AYATSKRegressor(_BaseRegressorEstimator):
             weight_decay=weight_decay,
             device=device,
         )
-        self.k = float(k)
+        self.k = k
 
     def _build_input_mfs(
         self,
         x_arr: np.ndarray,
     ) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
+        if x_arr.shape[1] < 2:
+            raise ValueError(f"AYATSKRegressor requires at least 2 features; got n_features={x_arr.shape[1]}.")
         if (
             self.input_configs is None
             and isinstance(self.mf_init, str)
@@ -389,21 +321,30 @@ class AYATSKRegressor(_BaseRegressorEstimator):
 
     def fit(
         self,
-        x: object,
-        y: object,
+        x: npt.ArrayLike,
+        y: npt.ArrayLike,
         *,
-        x_val: object | None = None,
-        y_val: object | None = None,
+        x_val: npt.ArrayLike | None = None,
+        y_val: npt.ArrayLike | None = None,
         metrics: list[str] | None = None,
     ) -> AYATSKRegressor:
+        if float(self.k) <= 1.0:
+            raise ValueError("k must be > 1.0")
         original_batch_size = self.batch_size
         try:
-            n_samples = int(np.asarray(y).shape[0])
+            y_arr = np.asarray(y)
+            n_samples = y_arr.shape[0] if y_arr.ndim >= 1 else 0
             if original_batch_size is None:
                 self.batch_size = self._resolve_default_batch_size(n_samples)
             return super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics)
         finally:
             self.batch_size = original_batch_size
+
+    def __sklearn_tags__(self) -> Any:
+        """Mark as poor_score: AYATSK is designed for high-dimensional data."""
+        tags = super().__sklearn_tags__()
+        tags.regressor_tags.poor_score = True
+        return tags
 
     def _build_regressor_model(
         self,

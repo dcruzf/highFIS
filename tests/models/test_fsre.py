@@ -16,42 +16,34 @@ def _build_input_mfs(n_inputs: int = 3, n_mfs: int = 2) -> dict[str, list[Gaussi
 def test_fsre_adatsk_classifier_forward_shapes() -> None:
     model = FSREADATSKClassifierModel(_build_input_mfs(), n_classes=3)
     x = torch.randn(5, 3)
-
     logits = model.forward(x)
     proba = model.predict_proba(x)
     pred = model.predict(x)
-
     assert logits.shape == (5, 3)
     assert proba.shape == (5, 3)
     assert pred.shape == (5,)
-    assert torch.allclose(proba.sum(dim=1), torch.ones(5), atol=1e-6)
+    assert torch.allclose(proba.sum(dim=1), torch.ones(5), atol=1e-06)
 
 
 def test_fsre_adatsk_regressor_forward_shape() -> None:
     model = FSREADATSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(4, 2)
-
     output = model.forward(x)
-
     assert output.shape == (4, 1)
 
 
 def test_fsre_adatsk_forward_antecedents_row_sum_one() -> None:
     model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(6, 2)
-
     norm_w = model.forward_antecedents(x)
-
     assert norm_w.ndim == 2
-    assert torch.allclose(norm_w.sum(dim=1), torch.ones(6), atol=1e-6)
+    assert torch.allclose(norm_w.sum(dim=1), torch.ones(6), atol=1e-06)
 
 
 def test_fsre_adatsk_expand_to_en_frb_increases_rule_count() -> None:
     model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     initial_rules = model.n_rules
-
     model.expand_to_en_frb()
-
     assert model.n_rules > initial_rules
     assert isinstance(model.rule_layer, AdaSoftminRuleLayer)
 
@@ -90,12 +82,10 @@ def test_fsre_adatsk_classifier_mode_fs_uses_only_feature_gates() -> None:
     model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(4, 2)
     model.consequent_layer.mode = "fs"
-
     with torch.no_grad():
         out_before = model.forward(x).clone()
         model.consequent_layer.theta_gates.zero_()
         out_after = model.forward(x)
-
     assert torch.allclose(out_before, out_after)
 
 
@@ -103,12 +93,10 @@ def test_fsre_adatsk_classifier_mode_re_uses_only_rule_gates() -> None:
     model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(4, 2)
     model.consequent_layer.mode = "re"
-
     with torch.no_grad():
         out_before = model.forward(x).clone()
         model.consequent_layer.lambda_gates.zero_()
         out_after = model.forward(x)
-
     assert torch.allclose(out_before, out_after)
 
 
@@ -116,13 +104,11 @@ def test_fsre_adatsk_classifier_mode_finetune_ignores_all_gates() -> None:
     model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     x = torch.randn(4, 2)
     model.consequent_layer.mode = "finetune"
-
     with torch.no_grad():
         out_before = model.forward(x).clone()
         model.consequent_layer.lambda_gates.zero_()
         model.consequent_layer.theta_gates.zero_()
         out_after = model.forward(x)
-
     assert torch.allclose(out_before, out_after)
 
 
@@ -206,86 +192,14 @@ def test_prune_to_rules_empty_raises_classifier() -> None:
         model.prune_to_rules([])
 
 
-def test_fsre_trainer_classifier_end_to_end() -> None:
-    from highfis.optim import FSRETrainer
-
-    torch.manual_seed(0)
-    model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=4, n_mfs=2), n_classes=2)
-    x = torch.randn(20, 4)
-    y = torch.randint(0, 2, (20,))
-    trainer = FSRETrainer(fs_epochs=1, re_epochs=1, finetune_epochs=1)
-    result = trainer.fit(model, x, y)
-
-    assert "surviving_feature_indices" in result
-    assert "surviving_rule_indices" in result
-    assert "tau_lambda" in result
-    assert "tau_theta" in result
-    assert len(result["surviving_feature_indices"]) >= 1
-    sf = result["surviving_feature_indices"]
-    assert model.forward(x[:, sf]).shape[1] == 2
-
-
-def test_fsre_trainer_regressor_end_to_end() -> None:
-    from highfis.optim import FSRETrainer
-
-    torch.manual_seed(1)
-    model = FSREADATSKRegressorModel(_build_input_mfs(n_inputs=3, n_mfs=2))
-    x = torch.randn(15, 3)
-    y = torch.randn(15)
-    trainer = FSRETrainer(fs_epochs=1, re_epochs=1, finetune_epochs=1)
-    result = trainer.fit(model, x, y)
-
-    sf = result["surviving_feature_indices"]
-    assert model.forward(x[:, sf]).shape == (15, 1)
-
-
-def test_fsre_trainer_lower_bound_enforcement_classifier() -> None:
-    from highfis.optim import FSRETrainer
-
-    torch.manual_seed(42)
-    n_classes = 3
-    model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=3, n_mfs=2), n_classes=n_classes)
-    x = torch.randn(20, 3)
-    y = torch.randint(0, n_classes, (20,))
-    trainer = FSRETrainer(
-        fs_epochs=1,
-        re_epochs=1,
-        finetune_epochs=1,
-        zeta_lambda=0.99,
-        zeta_theta=0.0,
-    )
-    result = trainer.fit(model, x, y)
-    assert len(result["surviving_rule_indices"]) >= n_classes
-
-
-def test_fsre_trainer_no_structural_pruning_preserves_n_inputs() -> None:
-    from highfis.optim import FSRETrainer
-
-    torch.manual_seed(7)
-    model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=4, n_mfs=2), n_classes=2)
-    n_inputs_before = model.n_inputs
-    x = torch.randn(20, 4)
-    y = torch.randint(0, 2, (20,))
-    trainer = FSRETrainer(
-        fs_epochs=1,
-        re_epochs=1,
-        finetune_epochs=1,
-        structural_pruning=False,
-    )
-    trainer.fit(model, x, y)
-    assert model.n_inputs == n_inputs_before
-
-
 def test_fsre_adatsk_regressor_mode_fs_uses_only_feature_gates() -> None:
     model = FSREADATSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(4, 2)
     model.consequent_layer.mode = "fs"
-
     with torch.no_grad():
         out_before = model.forward(x).clone()
         model.consequent_layer.theta_gates.zero_()
         out_after = model.forward(x)
-
     assert torch.allclose(out_before, out_after)
 
 
@@ -293,12 +207,10 @@ def test_fsre_adatsk_regressor_mode_re_uses_only_rule_gates() -> None:
     model = FSREADATSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(4, 2)
     model.consequent_layer.mode = "re"
-
     with torch.no_grad():
         out_before = model.forward(x).clone()
         model.consequent_layer.lambda_gates.zero_()
         out_after = model.forward(x)
-
     assert torch.allclose(out_before, out_after)
 
 
@@ -306,13 +218,11 @@ def test_fsre_adatsk_regressor_mode_finetune_ignores_all_gates() -> None:
     model = FSREADATSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     x = torch.randn(4, 2)
     model.consequent_layer.mode = "finetune"
-
     with torch.no_grad():
         out_before = model.forward(x).clone()
         model.consequent_layer.lambda_gates.zero_()
         model.consequent_layer.theta_gates.zero_()
         out_after = model.forward(x)
-
     assert torch.allclose(out_before, out_after)
 
 
@@ -340,53 +250,14 @@ def test_prune_to_features_empty_raises_regressor() -> None:
         model.prune_to_features([])
 
 
-def test_fsre_trainer_all_features_gated_out_keeps_one() -> None:
-    from highfis.optim import FSRETrainer
-
-    torch.manual_seed(0)
-    model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
-    x = torch.randn(10, 2)
-    y = torch.randint(0, 2, (10,))
-    trainer = FSRETrainer(
-        fs_epochs=1,
-        re_epochs=1,
-        finetune_epochs=1,
-        zeta_lambda=0.0,
-    )
-    result = trainer.fit(model, x, y)
-    assert len(result["surviving_feature_indices"]) == 1
-
-
-def test_fsre_adatsk_classifier_helpers() -> None:
-    model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
-    x = torch.randn(12, 2)
-    y = torch.randint(0, 2, (12,), dtype=torch.long)
-
-    history_fs = model.fit_fs(x, y, epochs=2, batch_size=6)
-    assert history_fs["stopped_epoch"] == 2
-
-    history_re = model.fit_re(x, y, epochs=2, batch_size=6)
-    assert history_re["stopped_epoch"] == 2
-
-    history_ft = model.fit_finetune(x, y, epochs=2, batch_size=6)
-    assert history_ft["stopped_epoch"] == 2
-
-
 def test_fsre_adatsk_classifier_invalid_n_classes() -> None:
     with pytest.raises(ValueError, match="n_classes must be >= 2"):
         FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=1)
 
 
-def test_fsre_adatsk_regressor_helpers() -> None:
-    model = FSREADATSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
-    x = torch.randn(12, 2)
-    y = torch.randn(12)
+def test_fsre_adatsk_default_criterion() -> None:
+    model_clf = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    assert isinstance(model_clf._default_criterion(), nn.CrossEntropyLoss)
 
-    history_fs = model.fit_fs(x, y, epochs=2, batch_size=6)
-    assert history_fs["stopped_epoch"] == 2
-
-    history_re = model.fit_re(x, y, epochs=2, batch_size=6)
-    assert history_re["stopped_epoch"] == 2
-
-    history_ft = model.fit_finetune(x, y, epochs=2, batch_size=6)
-    assert history_ft["stopped_epoch"] == 2
+    model_reg = FSREADATSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
+    assert isinstance(model_reg._default_criterion(), nn.MSELoss)

@@ -9,14 +9,15 @@ from dataclasses import dataclass
 from typing import Any, Self, cast
 
 import numpy as np
+import numpy.typing as npt
 import torch
 from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
-from sklearn.utils.validation import check_array, check_is_fitted, check_X_y
+from sklearn.utils.multiclass import type_of_target
+from sklearn.utils.validation import check_is_fitted, validate_data
 from torch import Tensor
 
-from ..base import BaseTSK
 from ..clustering import FuzzyCMeans, KMeans, MiniBatchKMeans
 from ..memberships import (
     ConstantMF,
@@ -26,6 +27,7 @@ from ..memberships import (
     MembershipFunction,
 )
 from ..metrics import compute_metrics
+from ..models import BaseTSK
 from ..optim._base import BaseTrainer
 from ..optim._gradient import GradientTrainer
 from ..persistence import (
@@ -228,7 +230,7 @@ def _resolve_clusterer(
         c.n_clusters = n_clusters
         c.random_state = random_state
         return c
-    init_str = str(mf_init).lower()
+    init_str = mf_init.lower()
     if init_str == "kmeans":
         return KMeans(n_clusters=n_clusters, n_init=1, max_iter=100, random_state=random_state)
     if init_str == "minibatch_kmeans":
@@ -239,6 +241,58 @@ def _resolve_clusterer(
         f"mf_init must be 'kmeans', 'minibatch_kmeans', 'fcm', 'grid', "
         f"or a KMeans/MiniBatchKMeans/FuzzyCMeans instance; got {mf_init!r}"
     )
+
+
+def _fit_fuzzy_c_means_on_head(
+    x: np.ndarray,
+    subset: np.ndarray,
+    instance_sample_fraction: float,
+    sample_size: int,
+    n_samples: int,
+    n_clusters: int,
+    fcm_m: float,
+    random_state: int | None,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    if instance_sample_fraction < 1.0 and sample_size < n_samples:
+        row_indices = rng.choice(n_samples, size=sample_size, replace=False)
+        x_sub = x[row_indices][:, subset]
+    else:
+        x_sub = x[:, subset]
+
+    model = FuzzyCMeans(n_clusters=n_clusters, m=fcm_m, random_state=random_state)
+    model.fit(x_sub)
+    if model.cluster_centers_ is None:
+        raise RuntimeError("FuzzyCMeans did not converge to a valid solution")
+    return model.cluster_centers_.cpu().numpy()
+
+
+def _populate_head_mfs_and_rules(
+    centers: np.ndarray,
+    subset: np.ndarray,
+    n_clusters: int,
+    n_features: int,
+    rule_sigma: float,
+    feature_names: list[str],
+    input_mfs: dict[str, list[MembershipFunction]],
+    rules: list[tuple[int, ...]],
+) -> None:
+    feature_indices: dict[int, list[int]] = {}
+    for j, feature_idx in enumerate(subset):
+        mf_list = input_mfs[feature_names[feature_idx]]
+        start_index = len(mf_list)
+        for k in range(n_clusters):
+            mf_list.append(GaussianMF(mean=float(centers[k, j]), sigma=rule_sigma))
+        feature_indices[feature_idx] = list(range(start_index, start_index + n_clusters))
+
+    for k in range(n_clusters):
+        rule_indices: list[int] = []
+        for feature_idx in range(n_features):
+            if feature_idx in feature_indices:
+                rule_indices.append(feature_indices[feature_idx][k])
+            else:
+                rule_indices.append(0)
+        rules.append(tuple(rule_indices))
 
 
 def _build_mhtsk_input_mfs(
@@ -276,34 +330,12 @@ def _build_mhtsk_input_mfs(
 
     for _ in range(n_heads):
         subset = rng.choice(n_features, size=head_size, replace=False)
-        if instance_sample_fraction < 1.0 and sample_size < n_samples:
-            row_indices = rng.choice(n_samples, size=sample_size, replace=False)
-            x_sub = x[row_indices][:, subset]
-        else:
-            x_sub = x[:, subset]
-
-        model = FuzzyCMeans(n_clusters=n_clusters, m=fcm_m, random_state=random_state)
-        model.fit(x_sub)
-        if model.cluster_centers_ is None:
-            raise RuntimeError("FuzzyCMeans did not converge to a valid solution")
-        centers = model.cluster_centers_.cpu().numpy()
-
-        feature_indices: dict[int, list[int]] = {}
-        for j, feature_idx in enumerate(subset):
-            mf_list = input_mfs[feature_names[feature_idx]]
-            start_index = len(mf_list)
-            for k in range(n_clusters):
-                mf_list.append(GaussianMF(mean=float(centers[k, j]), sigma=float(rule_sigma)))
-            feature_indices[feature_idx] = list(range(start_index, start_index + n_clusters))
-
-        for k in range(n_clusters):
-            rule_indices: list[int] = []
-            for feature_idx in range(n_features):
-                if feature_idx in feature_indices:
-                    rule_indices.append(feature_indices[feature_idx][k])
-                else:
-                    rule_indices.append(0)
-            rules.append(tuple(rule_indices))
+        centers = _fit_fuzzy_c_means_on_head(
+            x, subset, instance_sample_fraction, sample_size, n_samples, n_clusters, fcm_m, random_state, rng
+        )
+        _populate_head_mfs_and_rules(
+            centers, subset, n_clusters, n_features, rule_sigma, feature_names, input_mfs, rules
+        )
 
     rule_feature_mask = np.zeros((len(rules), n_features), dtype=bool)
     for r, rule in enumerate(rules):
@@ -329,7 +361,7 @@ def feature_coverage_rate(n_features: int, head_size: int, n_heads: int) -> floa
     return 1.0 - (1.0 - float(head_size) / float(n_features)) ** float(n_heads)
 
 
-def _resolve_mhtsk_scale_parameters(
+def _validate_mhtsk_scale_inputs(
     n_features: int,
     head_size: int | None,
     head_size_ratio: float | None,
@@ -338,12 +370,7 @@ def _resolve_mhtsk_scale_parameters(
     h_value: float | None,
     sigma: float,
     xi: float,
-) -> tuple[int, int]:
-    """Resolve MHTSK scale parameters using paper-derived defaults.
-
-    This helper reproduces the paper's strategy for selecting rule length and
-    number of heads while allowing user override.
-    """
+) -> None:
     if n_features <= 0:
         raise ValueError("n_features must be > 0")
     if head_size is not None and (head_size <= 0 or head_size > n_features):
@@ -360,6 +387,24 @@ def _resolve_mhtsk_scale_parameters(
         raise ValueError("sigma must be > 0")
     if xi <= 0.0:
         raise ValueError("xi must be > 0")
+
+
+def _resolve_mhtsk_scale_parameters(
+    n_features: int,
+    head_size: int | None,
+    head_size_ratio: float | None,
+    n_heads: int | None,
+    fcr_target: float | None,
+    h_value: float | None,
+    sigma: float,
+    xi: float,
+) -> tuple[int, int]:
+    """Resolve MHTSK scale parameters using paper-derived defaults.
+
+    This helper reproduces the paper's strategy for selecting rule length and
+    number of heads while allowing user override.
+    """
+    _validate_mhtsk_scale_inputs(n_features, head_size, head_size_ratio, n_heads, fcr_target, h_value, sigma, xi)
 
     max_head_size = min(n_features, max(1, math.floor(2.0 * xi * sigma * sigma)))
 
@@ -455,10 +500,10 @@ def _extract_mhtsk_rule_indices(
         return []
 
     unsupervised_scores = torch.max(norm_w, dim=0).values
-    selected_us = _select_rule_indices(unsupervised_scores, float(crcr_us))
+    selected_us = _select_rule_indices(unsupervised_scores, crcr_us)
 
     selected_s: list[int] = []
-    if y is not None and y.ndim == 1 and len(torch.unique(y)) > 1 and float(crcr_s) > 0.0:
+    if y is not None and y.ndim == 1 and len(torch.unique(y)) > 1 and crcr_s > 0.0:
         unique_labels = torch.unique(y)
         groups: list[np.ndarray] = []
         for label in unique_labels:
@@ -473,7 +518,7 @@ def _extract_mhtsk_rule_indices(
                     p_val = _mann_whitney_p_value(groups[i][:, r], groups[j][:, r])
                     p_min = min(p_min, p_val)
             supervised_scores[r] = 1.0 - p_min
-        selected_s = _select_rule_indices(supervised_scores, float(crcr_s))
+        selected_s = _select_rule_indices(supervised_scores, crcr_s)
 
     selected_indices = sorted(set(selected_us) | set(selected_s))
     if len(selected_indices) == 0 and n_rules > 0:
@@ -482,7 +527,7 @@ def _extract_mhtsk_rule_indices(
 
 
 def _extract_mhtsk_rule_indices_unsupervised(norm_w: Tensor, crcr_us: float) -> list[int]:
-    return _select_rule_indices(torch.max(norm_w, dim=0).values, float(crcr_us))
+    return _select_rule_indices(torch.max(norm_w, dim=0).values, crcr_us)
 
 
 def _build_pfrb_input_mfs(
@@ -527,7 +572,6 @@ def _wrap_dimension_dependent_gaussian_input_mfs(
     dimension: int,
     xi: float = 745.0,
     rho: float | None = None,
-    paper_strict_equation: bool = False,
 ) -> dict[str, list[GaussianMF]]:
     return {
         name: cast(
@@ -539,7 +583,6 @@ def _wrap_dimension_dependent_gaussian_input_mfs(
                     dimension=dimension,
                     xi=xi,
                     rho=rho,
-                    paper_strict_equation=paper_strict_equation,
                 )
                 for mf in mfs
             ],
@@ -581,7 +624,7 @@ def _wrap_gaussian_pimf_input_mfs(
                 GaussianPiMF(
                     mean=cast(GaussianMF, mf).mean.detach().item(),
                     sigma=cast(GaussianMF, mf).sigma.detach().item(),
-                    k=float(k),
+                    k=k,
                     eps=eps if eps is not None else mf.eps,
                 )
                 for mf in mfs
@@ -665,33 +708,19 @@ def _build_input_mfs_cached(
         _MF_INITIALIZATION_CACHE.pop(oldest_key)
     _MF_INITIALIZATION_CACHE[cache_key] = (serialized_config, feature_names, effective_rule_base)
 
+    # Reconstruct from serialized_config to match cached hits precisely
+    input_mfs = deserialize_input_mfs(serialized_config)
     return input_mfs, feature_names, effective_rule_base
 
 
-class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[misc]
-    """Abstract base class for all highFIS TSK classifier estimators.
-
-    Implements the full scikit-learn estimator protocol — ``fit``,
-    ``predict_proba``, ``predict``, ``score``, ``save`` and ``load`` — and
-    delegates only model construction to concrete subclasses via the abstract
-    method :meth:`_build_model`.
-
-    Subclasses should implement :meth:`_build_model` and may override
-    :meth:`_get_trainer` to supply a custom training strategy.
-    Use :meth:`_pre_train_hook` for any per-estimator setup that must run
-    just before training starts.  Direct ``fit`` overrides should be avoided.
-
-    Attributes:
-        model_: Fitted :class:`~highfis.base.BaseTSK` instance. Available
-            after :meth:`fit`.
-        classes_: Unique class labels discovered during :meth:`fit`.
-        n_features_in_: Number of input features seen during :meth:`fit`.
-        feature_names_in_: Array of feature name strings.
-        history_: Training history dictionary returned by the underlying model.
-        rule_base_: Rule-base type actually used during the last :meth:`fit`.
-    """
+class _BaseTSKEstimator(BaseEstimator):
+    """Abstract parent class for TSK estimators in highFIS."""
 
     model_: BaseTSK
+    feature_names_in_: np.ndarray | None
+    rule_base_: str
+    n_features_in_: int
+    history_: dict[str, Any]
 
     def __init__(
         self,
@@ -701,7 +730,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         mf_init: str | KMeans | MiniBatchKMeans | FuzzyCMeans = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 10,
+        epochs: int = 100,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
@@ -717,87 +746,6 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         device: str = "cpu",
         trainer: BaseTrainer | None = None,
     ) -> None:
-        """Initialise shared hyperparameters for TSK classifier estimators.
-
-        Args:
-            input_configs: Optional list of :class:`InputConfig` instances,
-                one per input feature. Must match the number of columns in
-                ``X`` when supplied. When ``mf_init="kmeans"`` only the
-                ``name`` field is used; centres and sigmas are computed from
-                cluster statistics.
-            n_mfs: Number of MFs per feature when ``mf_init="grid"``, or
-                number of k-means clusters when ``mf_init="kmeans"`` /
-                ``"minibatch_kmeans"`` / ``"fcm"``. Cui et al. (IJCNN 2021)
-                used ``R=30`` for all datasets.
-            mf_init: MF initialisation strategy. ``"kmeans"`` (default)
-                derives MF centres from k-means cluster centroids following
-                Cui et al. (IJCNN 2021). ``"minibatch_kmeans"`` is a faster
-                variant recommended for large datasets (n > 20 k).
-                ``"fcm"`` derives MF centres from fuzzy C-means cluster
-                centroids and computes sigmas from the resulting fuzzy
-                memberships. ``"grid"`` places centres on a regular grid
-                controlled by :class:`InputConfig`.
-            sigma_scale: Scale factor for sigma initialisation when
-                ``mf_init="kmeans"``. Each sigma is drawn from
-                ``N(h, 0.2)`` where ``h = sigma_scale * within_cluster_std``
-                (Cui et al., IJCNN 2021). Pass ``"auto"`` to set
-                ``sigma_scale = sqrt(D)`` as recommended for vanilla TSK on
-                high-dimensional data; HTSK and LogTSK handle dimensionality
-                internally and use ``1.0``.
-            random_state: Integer seed forwarded to k-means initialisation
-                and ``torch.manual_seed``. Ensures reproducible runs.
-            epochs: Maximum number of full passes over the training data.
-                Training may stop earlier if ``patience`` is exhausted.
-            learning_rate: Initial learning rate for the Adam optimiser.
-                Cui et al. (IJCNN 2021) selected ``0.01`` via cross-
-                validation across most datasets.
-            verbose: Verbosity level. ``0`` = quiet, ``1`` = progress bar,
-                ``2`` = per-epoch summary, ``3`` = full per-epoch logging.
-                ``True`` is accepted as an alias for ``2``.
-            rule_base: Explicit rule-base construction type. ``"coco"``
-                (compactly combined) pairs rule ``r`` with MF ``r`` on every
-                feature. ``"cartesian"`` enumerates all MF combinations.
-                ``"pfrb"`` builds a point-based FRB from training samples and
-                uses a CoCo rule base over the resulting sample-centered MFs.
-                Defaults to ``"coco"`` for ``mf_init="kmeans"`` and
-                ``"cartesian"`` for ``mf_init="grid"``.
-            batch_size: Mini-batch size for gradient descent. Cui et al.
-                (IJCNN 2021) used ``512`` (or ``min(N, 60)`` when the
-                training set is smaller). ``None`` uses the full dataset.
-            shuffle: If ``True``, training samples are reshuffled before
-                each epoch.
-            ur_weight: Weight of the uncertainty regularisation (UR) term
-                added to the cross-entropy loss. ``0.0`` disables UR.
-                Cui et al. (TFS 2020) describe the UR formulation.
-            ur_target: Optional target firing-level for UR. ``None`` uses
-                the model default.
-            consequent_batch_norm: Apply batch normalisation to the
-                consequent linear layers. Can improve training stability on
-                large datasets.
-            pfrb_max_rules: Maximum number of rules when using the point-
-                based FRB (P-FRB) initialisation introduced by DG-TSK (Xue
-                et al., Fuzzy Sets and Systems, 2023). ``None`` uses all
-                training samples as rule prototypes.
-            patience: Number of consecutive epochs without improvement on
-                the validation loss before training is stopped early. Only
-                active when ``x_val`` and ``y_val`` are provided.
-            restore_best: If ``True`` (default), restore the best validation
-                model weights after training.
-                early stopping and held-out performance monitoring.
-            weight_decay: L2 weight-decay coefficient applied to consequent
-                layer parameters by the Adam optimiser.
-            device: PyTorch device string on which the model and all tensors
-                are placed during training and inference. Examples:
-                ``"cpu"`` (default), ``"cuda"``, ``"cuda:0"``,
-                ``"mps"`` (Apple Silicon). When ``"cuda"`` is requested but
-                no CUDA device is available PyTorch will raise an error at
-                fit time; use ``torch.cuda.is_available()`` to check
-                availability before setting this parameter.
-            trainer: Optional custom :class:`~highfis.optim.BaseTrainer`.
-                When ``None`` (default) a
-                :class:`~highfis.optim.GradientTrainer` is built automatically
-                from this estimator's hyperparameters.
-        """
         self.input_configs = input_configs
         self.n_mfs = n_mfs
         self.mf_init = mf_init
@@ -852,6 +800,8 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
                 or inference methods to keep all tensors on the same device
                 as the model.
         """
+        if not x.flags.writeable:
+            x = x.copy()
         return torch.as_tensor(x, dtype=torch.float32, device=device)
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
@@ -908,15 +858,6 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
             effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
 
         return input_mfs, feature_names, effective_rule_base
-
-    @abstractmethod
-    def _build_model(
-        self,
-        input_mfs: Mapping[str, Sequence[MembershipFunction]],
-        n_classes: int,
-        rule_base: str,
-    ) -> BaseTSK:
-        """Create the concrete TSK classification model."""
 
     def _get_trainer(self) -> BaseTrainer:
         """Return the default :class:`~highfis.optim.GradientTrainer` for this estimator.
@@ -945,60 +886,6 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         P-FRB consequent initialisation in DG-TSK.
         """
 
-    # -- sklearn API ------------------------------------------------------
-
-    def fit(
-        self,
-        x: Any,
-        y: Any,
-        *,
-        x_val: Any | None = None,
-        y_val: Any | None = None,
-        metrics: list[str] | None = None,
-    ) -> Self:
-        """Train the TSK classifier on labeled samples.
-
-        Validation data should be supplied using ``x_val`` and ``y_val``
-        when available.
-        """
-        x_arr, y_arr = check_X_y(x, y)
-
-        if self.random_state is not None:
-            torch.manual_seed(int(self.random_state))
-
-        le = LabelEncoder()
-        y_idx = le.fit_transform(np.asarray(y_arr))
-
-        input_mfs, feature_names, effective_rule_base = self._build_input_mfs(x_arr)
-
-        self.n_features_in_ = x_arr.shape[1]
-        self.feature_names_in_ = np.asarray(feature_names, dtype=object)
-        self.classes_ = le.classes_
-        self._label_encoder_ = le
-
-        _device = torch.device(str(self.device))
-        self.model_ = self._build_model(input_mfs, len(self.classes_), effective_rule_base).to(_device)
-
-        y_t = torch.as_tensor(y_idx, dtype=torch.long, device=_device)
-
-        # Prepare validation tensors if provided via fit.
-        x_val_t: torch.Tensor | None = None
-        y_val_t: torch.Tensor | None = None
-        if (x_val is None) ^ (y_val is None):
-            raise ValueError("x_val and y_val must be provided together")
-        if x_val is not None and y_val is not None:
-            x_v_arr, y_v_arr = check_X_y(x_val, y_val)
-            x_val_t = self._as_tensor_x(x_v_arr, _device)
-            y_val_idx = le.transform(np.asarray(y_v_arr))
-            y_val_t = torch.as_tensor(y_val_idx, dtype=torch.long, device=_device)
-
-        x_t = self._as_tensor_x(x_arr, _device)
-        self.rule_base_ = effective_rule_base
-        self._pre_train_hook(self.model_, x_t, y_t)
-        _trainer = self.trainer if self.trainer is not None else self._get_trainer()
-        self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
-        return self
-
     def _build_checkpoint_base(
         self,
         *,
@@ -1026,8 +913,160 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
             "history": getattr(self, "history_", None),
         }
 
+    def get_mf_params(self) -> dict[str, list[dict[str, Any]]]:
+        """Return model membership function metadata after fitting."""
+        check_is_fitted(self, "model_")
+        return self.model_.get_mf_params()
+
+    def rule_activation(self, X: npt.ArrayLike) -> np.ndarray:
+        """Return normalized rule activations for the provided inputs."""
+        check_is_fitted(self, "model_")
+        x_arr = validate_data(self, X, reset=False)
+
+        was_training = self.model_.training
+        try:
+            self.model_.eval()
+            with torch.no_grad():
+                norm_w = self.model_.forward_antecedents(self._as_tensor_x(x_arr, torch.device(str(self.device))))
+        finally:
+            self.model_.train(was_training)
+
+        return _to_numpy(norm_w)
+
+    def inspect(self) -> dict[str, Any]:
+        """Return a structured summary of fitted model state and rule metadata."""
+        check_is_fitted(self, "model_")
+        return {
+            "n_rules": int(self.model_.n_rules),
+            "n_inputs": int(self.model_.n_inputs),
+            "feature_names": list(self.model_.input_names),
+            "rule_base": self.rule_base_,
+            "defuzzifier_type": type(self.model_.defuzzifier).__name__,
+            "mf_params": self.get_mf_params(),
+            "rule_table": self.model_.get_rule_table(),
+        }
+
+    def feature_importance(self) -> np.ndarray | None:
+        """Compute a normalized feature importance vector from consequent weights."""
+        check_is_fitted(self, "model_")
+        weights = self.model_.get_consequent_weights()
+        if weights is None:
+            return None
+
+        consequent_layer = self.model_.consequent_layer
+        if hasattr(consequent_layer, "rule_feature_mask"):
+            rule_feature_mask = cast(Tensor, consequent_layer.rule_feature_mask)
+            weights = weights * rule_feature_mask.unsqueeze(1) if weights.ndim == 3 else weights * rule_feature_mask
+
+        abs_weights = weights.abs()
+        if abs_weights.ndim == 3:
+            importance = abs_weights.mean(dim=(0, 1))
+        elif abs_weights.ndim == 2:
+            importance = abs_weights.mean(dim=0)
+        else:
+            raise ValueError("unsupported consequent weight shape for feature importance")
+
+        return _normalize_importance(importance)
+
+
+class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ignore[misc]
+    """Abstract base class for all highFIS TSK classifier estimators.
+
+    Implements the full scikit-learn estimator protocol — ``fit``,
+    ``predict_proba``, ``predict``, ``score``, ``save`` and ``load`` — and
+    delegates only model construction to concrete subclasses via the abstract
+    method :meth:`_build_model`.
+
+    Subclasses should implement :meth:`_build_model` and may override
+    :meth:`_get_trainer` to supply a custom training strategy.
+    Use :meth:`_pre_train_hook` for any per-estimator setup that must run
+    just before training starts.  Direct ``fit`` overrides should be avoided.
+
+    Attributes:
+        model_: Fitted :class:`~highfis.models.BaseTSK` instance. Available
+            after :meth:`fit`.
+        classes_: Unique class labels discovered during :meth:`fit`.
+        n_features_in_: Number of input features seen during :meth:`fit`.
+        feature_names_in_: Array of feature name strings.
+        history_: Training history dictionary returned by the underlying model.
+        rule_base_: Rule-base type actually used during the last :meth:`fit`.
+    """
+
+    @abstractmethod
+    def _build_model(
+        self,
+        input_mfs: Mapping[str, Sequence[MembershipFunction]],
+        n_classes: int,
+        rule_base: str,
+    ) -> BaseTSK:
+        """Create the concrete TSK classification model."""
+
+    def fit(
+        self,
+        x: npt.ArrayLike,
+        y: npt.ArrayLike,
+        *,
+        x_val: npt.ArrayLike | None = None,
+        y_val: npt.ArrayLike | None = None,
+        metrics: list[str] | None = None,
+    ) -> Self:
+        """Train the TSK classifier on labeled samples.
+
+        Validation data should be supplied using ``x_val`` and ``y_val``
+        when available.
+        """
+        x_arr, y_arr = validate_data(self, x, y, reset=True)
+        n_samples = x_arr.shape[0]
+        n_mfs_val = getattr(self, "n_mfs", 3)
+        n_mfs_val = 3 if n_mfs_val is None else n_mfs_val
+        mf_init_val = getattr(self, "mf_init", "kmeans")
+        required_samples = 2 if mf_init_val == "grid" else max(2, n_mfs_val)
+        if n_samples < required_samples:
+            raise ValueError(
+                f"Found array with {n_samples} sample(s). Estimator requires at least {required_samples} samples."
+            )
+        target_type = type_of_target(y_arr)
+        if target_type in ("continuous", "continuous-multioutput"):
+            raise ValueError(f"Unknown label type: {target_type}")
+
+        if self.random_state is not None:
+            torch.manual_seed(int(self.random_state))
+
+        le = LabelEncoder()
+        y_idx = le.fit_transform(np.asarray(y_arr))
+
+        input_mfs, _, effective_rule_base = self._build_input_mfs(x_arr)
+
+        self.n_features_in_ = x_arr.shape[1]
+        self.classes_ = le.classes_
+        self._label_encoder_ = le
+
+        _device = torch.device(str(self.device))
+        self.model_ = self._build_model(input_mfs, len(self.classes_), effective_rule_base).to(_device)
+
+        y_t = torch.as_tensor(y_idx, dtype=torch.long, device=_device)
+
+        # Prepare validation tensors if provided via fit.
+        x_val_t: torch.Tensor | None = None
+        y_val_t: torch.Tensor | None = None
+        if (x_val is None) != (y_val is None):
+            raise ValueError("x_val and y_val must be provided together")
+        if x_val is not None and y_val is not None:
+            x_v_arr, y_v_arr = validate_data(self, x_val, y_val, reset=False)
+            x_val_t = self._as_tensor_x(x_v_arr, _device)
+            y_val_idx = le.transform(np.asarray(y_v_arr))
+            y_val_t = torch.as_tensor(y_val_idx, dtype=torch.long, device=_device)
+
+        x_t = self._as_tensor_x(x_arr, _device)
+        self.rule_base_ = effective_rule_base
+        self._pre_train_hook(self.model_, x_t, y_t)
+        _trainer = self.trainer if self.trainer is not None else self._get_trainer()
+        self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
+        return self
+
     def save(self, path: str) -> None:
         """Persist estimator configuration, model weights and fitted metadata."""
+        _fnames: np.ndarray | None = getattr(self, "feature_names_in_", None)
         checkpoint = self._build_checkpoint_base(
             model_init={
                 "input_mfs_config": serialize_input_mfs(self.model_.input_mfs),
@@ -1036,7 +1075,7 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
             },
             fitted_attrs={
                 "n_features_in": int(self.n_features_in_),
-                "feature_names_in": self.feature_names_in_.tolist(),
+                "feature_names_in": _fnames.tolist() if _fnames is not None else None,
                 "classes": self.classes_.tolist(),
             },
         )
@@ -1064,7 +1103,10 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
 
         fitted = checkpoint["fitted_attrs"]
         estimator.n_features_in_ = int(fitted["n_features_in"])
-        estimator.feature_names_in_ = np.asarray(fitted["feature_names_in"], dtype=object)
+        if fitted.get("feature_names_in") is not None:
+            estimator.feature_names_in_ = np.asarray(fitted["feature_names_in"], dtype=object)
+        elif hasattr(estimator, "feature_names_in_"):
+            delattr(estimator, "feature_names_in_")
         estimator.classes_ = np.asarray(fitted["classes"], dtype=object)
         label_encoder = LabelEncoder()
         label_encoder.classes_ = estimator.classes_
@@ -1072,22 +1114,23 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
         estimator.history_ = cast(dict[str, Any], checkpoint.get("history", {}))
         return estimator
 
-    def predict_proba(self, x: Any) -> np.ndarray:
+    def predict_proba(self, x: npt.ArrayLike) -> np.ndarray:
         """Predict class probabilities for input samples."""
         check_is_fitted(self, "model_")
-        x_arr = check_array(x)
-        if x_arr.shape[1] != self.n_features_in_:
-            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
-        probs = cast(Any, self.model_).predict_proba(self._as_tensor_x(x_arr, torch.device(str(self.device))))
+        x_arr = validate_data(self, x, reset=False)
+        device_str = str(self.device).lower()
+        dtype = torch.float64 if "cpu" in device_str else torch.float32
+        x_tensor = torch.as_tensor(x_arr, dtype=dtype, device=torch.device(device_str))
+        probs = cast(Any, self.model_).predict_proba(x_tensor)
         return probs.detach().cpu().numpy()
 
-    def predict(self, x: Any) -> np.ndarray:
+    def predict(self, x: npt.ArrayLike) -> np.ndarray:
         """Predict class labels for input samples."""
         proba = self.predict_proba(x)
         y_idx = np.argmax(proba, axis=1)
         return np.asarray(self._label_encoder_.inverse_transform(y_idx))
 
-    def score(self, X: Any, y: Any, sample_weight: Any = None) -> float:
+    def score(self, X: npt.ArrayLike, y: npt.ArrayLike, sample_weight: npt.ArrayLike | None = None) -> float:
         """Return classification accuracy on the provided dataset."""
         y_true = np.asarray(y)
         y_pred = self.predict(X)
@@ -1095,10 +1138,10 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
 
     def evaluate(
         self,
-        X: Any,
-        y: Any,
+        X: npt.ArrayLike,
+        y: npt.ArrayLike,
         metrics: list[str] | None = None,
-        sample_weight: Any | None = None,
+        sample_weight: npt.ArrayLike | None = None,
     ) -> dict[str, Any]:
         """Compute classification evaluation metrics for the provided dataset."""
         y_true = np.asarray(y)
@@ -1111,65 +1154,8 @@ class _BaseClassifierEstimator(BaseEstimator, ClassifierMixin):  # type: ignore[
             metrics=metrics,
         )
 
-    def get_mf_params(self) -> dict[str, list[dict[str, Any]]]:
-        """Return model membership function metadata after fitting."""
-        check_is_fitted(self, "model_")
-        return self.model_.get_mf_params()
 
-    def rule_activation(self, X: Any) -> np.ndarray:
-        """Return normalized rule activations for the provided inputs."""
-        check_is_fitted(self, "model_")
-        x_arr = check_array(X)
-        if x_arr.shape[1] != self.n_features_in_:
-            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
-
-        was_training = self.model_.training
-        try:
-            self.model_.eval()
-            with torch.no_grad():
-                norm_w = self.model_.forward_antecedents(self._as_tensor_x(x_arr, torch.device(str(self.device))))
-        finally:
-            self.model_.train(was_training)
-
-        return _to_numpy(norm_w)
-
-    def inspect(self) -> dict[str, Any]:
-        """Return a structured summary of fitted model state and rule metadata."""
-        check_is_fitted(self, "model_")
-        return {
-            "n_rules": int(self.model_.n_rules),
-            "n_inputs": int(self.model_.n_inputs),
-            "feature_names": list(self.model_.input_names),
-            "rule_base": self.rule_base_,
-            "defuzzifier_type": type(self.model_.defuzzifier).__name__,
-            "mf_params": self.get_mf_params(),
-            "rule_table": self.model_.get_rule_table(),
-        }
-
-    def feature_importance(self) -> np.ndarray | None:
-        """Compute a normalized feature importance vector from consequent weights."""
-        check_is_fitted(self, "model_")
-        weights = self.model_.get_consequent_weights()
-        if weights is None:
-            return None
-
-        consequent_layer = self.model_.consequent_layer
-        if hasattr(consequent_layer, "rule_feature_mask"):
-            rule_feature_mask = cast(Tensor, consequent_layer.rule_feature_mask)
-            weights = weights * rule_feature_mask.unsqueeze(1) if weights.ndim == 3 else weights * rule_feature_mask
-
-        abs_weights = weights.abs()
-        if abs_weights.ndim == 3:
-            importance = abs_weights.mean(dim=(0, 1))
-        elif abs_weights.ndim == 2:
-            importance = abs_weights.mean(dim=0)
-        else:
-            raise ValueError("unsupported consequent weight shape for feature importance")
-
-        return _normalize_importance(importance)
-
-
-class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[misc]
+class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignore[misc]
     """Abstract base class for all highFIS TSK regressor estimators.
 
     Implements the full scikit-learn estimator protocol — ``fit``,
@@ -1183,227 +1169,13 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
     just before training starts.  Direct ``fit`` overrides should be avoided.
 
     Attributes:
-        model_: Fitted :class:`~highfis.base.BaseTSK` instance. Available
+        model_: Fitted :class:`~highfis.models.BaseTSK` instance. Available
             after :meth:`fit`.
         n_features_in_: Number of input features seen during :meth:`fit`.
         feature_names_in_: Array of feature name strings.
         history_: Training history dictionary returned by the underlying model.
         rule_base_: Rule-base type actually used during the last :meth:`fit`.
     """
-
-    model_: BaseTSK
-
-    def __init__(
-        self,
-        *,
-        input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 5,
-        mf_init: str | KMeans | MiniBatchKMeans | FuzzyCMeans = "kmeans",
-        sigma_scale: float | str = 1.0,
-        random_state: int | None = None,
-        epochs: int = 10,
-        learning_rate: float = 1e-2,
-        verbose: bool | int = False,
-        rule_base: str | None = None,
-        batch_size: int | None = 512,
-        shuffle: bool = True,
-        ur_weight: float = 0.0,
-        ur_target: float | None = None,
-        consequent_batch_norm: bool = False,
-        pfrb_max_rules: int | None = None,
-        patience: int | None = 20,
-        restore_best: bool = True,
-        weight_decay: float = 1e-8,
-        device: str = "cpu",
-        trainer: BaseTrainer | None = None,
-    ) -> None:
-        """Initialise shared hyperparameters for TSK regressor estimators.
-
-        Args:
-            input_configs: Optional list of :class:`InputConfig` instances,
-                one per input feature. Must match the number of columns in
-                ``X`` when supplied. When ``mf_init="kmeans"`` only the
-                ``name`` field is used; centres and sigmas are computed from
-                cluster statistics.
-            n_mfs: Number of MFs per feature when ``mf_init="grid"``, or
-                number of k-means clusters when ``mf_init="kmeans"`` /
-                ``"minibatch_kmeans"`` / ``"fcm"``. Cui et al. (IJCNN 2021)
-                used ``R=30`` for all datasets.
-            mf_init: MF initialisation strategy. ``"kmeans"`` (default)
-                derives MF centres from k-means cluster centroids following
-                Cui et al. (IJCNN 2021). ``"minibatch_kmeans"`` is a faster
-                variant recommended for large datasets (n > 20 k).
-                ``"fcm"`` derives MF centres from fuzzy C-means cluster
-                centroids and computes sigmas from the resulting fuzzy
-                memberships. ``"grid"`` places centres on a regular grid
-                controlled by :class:`InputConfig`.
-            sigma_scale: Scale factor for sigma initialisation when
-                ``mf_init="kmeans"``. Each sigma is drawn from
-                ``N(h, 0.2)`` where ``h = sigma_scale * within_cluster_std``
-                (Cui et al., IJCNN 2021). Pass ``"auto"`` to set
-                ``sigma_scale = sqrt(D)`` as recommended for vanilla TSK on
-                high-dimensional data; HTSK and LogTSK handle dimensionality
-                internally and use ``1.0``.
-            random_state: Integer seed forwarded to k-means initialisation
-                and ``torch.manual_seed``. Ensures reproducible runs.
-            epochs: Maximum number of full passes over the training data.
-                Training may stop earlier if ``patience`` is exhausted.
-            learning_rate: Initial learning rate for the Adam optimiser.
-                Cui et al. (IJCNN 2021) selected ``0.01`` via cross-
-                validation across most datasets.
-            verbose: Verbosity level. ``0`` = quiet, ``1`` = progress bar,
-                ``2`` = per-epoch summary, ``3`` = full per-epoch logging.
-                ``True`` is accepted as an alias for ``2``.
-            rule_base: Explicit rule-base construction type. ``"coco"``
-                (compactly combined) pairs rule ``r`` with MF ``r`` on every
-                feature. ``"cartesian"`` enumerates all MF combinations.
-                ``"pfrb"`` builds a point-based FRB from training samples and
-                uses a CoCo rule base over the resulting sample-centered MFs.
-                Defaults to ``"coco"`` for ``mf_init="kmeans"`` and
-                ``"cartesian"`` for ``mf_init="grid"``.
-            batch_size: Mini-batch size for gradient descent. Cui et al.
-                (IJCNN 2021) used ``512`` (or ``min(N, 60)`` when the
-                training set is smaller). ``None`` uses the full dataset.
-            shuffle: If ``True``, training samples are reshuffled before
-                each epoch.
-            ur_weight: Weight of the uncertainty regularisation (UR) term
-                added to the MSE loss. ``0.0`` disables UR.
-            ur_target: Optional target firing-level for UR. ``None`` uses
-                the model default.
-            consequent_batch_norm: Apply batch normalisation to the
-                consequent linear layers. Can improve training stability on
-                large datasets.
-            pfrb_max_rules: Maximum number of point-based FRB rules when
-                ``rule_base='pfrb'``. ``None`` uses all training samples.
-            patience: Number of consecutive epochs without improvement on
-                the validation loss before training is stopped early. Only
-                active when ``x_val`` and ``y_val`` are provided.
-            restore_best: If ``True`` (default), restore the best validation
-                model weights after training.
-            weight_decay: L2 weight-decay coefficient applied to consequent
-                layer parameters by the Adam optimiser.
-            device: PyTorch device string on which the model and all tensors
-                are placed during training and inference. Examples:
-                ``"cpu"`` (default), ``"cuda"``, ``"cuda:0"``,
-                ``"mps"`` (Apple Silicon). When ``"cuda"`` is requested but
-                no CUDA device is available PyTorch will raise an error at
-                fit time; use ``torch.cuda.is_available()`` to check
-                availability before setting this parameter.
-            trainer: Optional custom :class:`~highfis.optim.BaseTrainer`.
-                When ``None`` (default) a
-                :class:`~highfis.optim.GradientTrainer` is built automatically
-                from this estimator's hyperparameters.
-        """
-        self.input_configs = input_configs
-        self.n_mfs = n_mfs
-        self.mf_init = mf_init
-        self.sigma_scale = sigma_scale
-        self.random_state = random_state
-        self.epochs = epochs
-        self.learning_rate = learning_rate
-        self.verbose = verbose
-        self.rule_base = rule_base
-        self.batch_size = batch_size
-        self.shuffle = shuffle
-        self.ur_weight = ur_weight
-        self.ur_target = ur_target
-        self.consequent_batch_norm = consequent_batch_norm
-        self.pfrb_max_rules = pfrb_max_rules
-        self.patience = patience
-        self.restore_best = restore_best
-        self.weight_decay = weight_decay
-        self.device = device
-        self.trainer = trainer
-
-    # -- helpers ----------------------------------------------------------
-
-    def _resolve_input_configs(self, x: np.ndarray) -> list[InputConfig]:
-        """Resolve per-feature input configs."""
-        if self.input_configs is not None:
-            if len(self.input_configs) != x.shape[1]:
-                raise ValueError(
-                    f"input_configs length ({len(self.input_configs)}) must match number of features ({x.shape[1]})"
-                )
-            return list(self.input_configs)
-        return [InputConfig(name=f"x{i + 1}", n_mfs=int(self.n_mfs)) for i in range(x.shape[1])]
-
-    def _resolve_feature_names(self, x: np.ndarray) -> list[str]:
-        """Resolve feature names from configs or defaults."""
-        if self.input_configs is not None:
-            if len(self.input_configs) != x.shape[1]:
-                raise ValueError(
-                    f"input_configs length ({len(self.input_configs)}) must match number of features ({x.shape[1]})"
-                )
-            return [cfg.name for cfg in self.input_configs]
-        return [f"x{i + 1}" for i in range(x.shape[1])]
-
-    @staticmethod
-    def _as_tensor_x(x: np.ndarray, device: torch.device | str | None = None) -> torch.Tensor:
-        """Convert numpy array to a float32 tensor on *device*.
-
-        Args:
-            x: Input array to convert.
-            device: Target PyTorch device. ``None`` uses the PyTorch default
-                (CPU). Pass the resolved ``torch.device`` from :meth:`fit`
-                or inference methods to keep all tensors on the same device
-                as the model.
-        """
-        return torch.as_tensor(x, dtype=torch.float32, device=device)
-
-    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
-        """Build MFs and resolve rule_base from the initialization mode."""
-        return _build_input_mfs_cached(self, x_arr, self._build_input_mfs_impl)
-
-    def _build_input_mfs_impl(
-        self, x_arr: np.ndarray
-    ) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
-        # ---- grid initialisation ----
-        if isinstance(self.mf_init, str) and self.mf_init.lower() == "grid":
-            input_configs = self._resolve_input_configs(x_arr)
-            feature_names = [cfg.name for cfg in input_configs]
-            if self.rule_base == "pfrb":
-                input_mfs = _build_pfrb_input_mfs(
-                    x_arr,
-                    feature_names,
-                    max_rules=self.pfrb_max_rules,
-                    sigma_scale=float(self.sigma_scale) if not isinstance(self.sigma_scale, str) else 1.0,
-                    random_state=self.random_state,
-                )
-                effective_rule_base = "coco"
-            else:
-                input_mfs = _build_gaussian_input_mfs(x_arr, input_configs)
-                effective_rule_base = self.rule_base if self.rule_base is not None else "cartesian"
-            return input_mfs, feature_names, effective_rule_base
-
-        # ---- clustering-based initialisation ----
-        feature_names = self._resolve_feature_names(x_arr)
-        if isinstance(self.sigma_scale, str) and self.sigma_scale.lower() == "auto":
-            effective_sigma_scale = math.sqrt(float(x_arr.shape[1]))
-        else:
-            effective_sigma_scale = float(self.sigma_scale)
-
-        if self.rule_base == "pfrb":
-            input_mfs = _build_pfrb_input_mfs(
-                x_arr,
-                feature_names,
-                max_rules=self.pfrb_max_rules,
-                sigma_scale=effective_sigma_scale,
-                random_state=self.random_state,
-            )
-            effective_rule_base = "coco"
-        else:
-            clusterer = _resolve_clusterer(self.mf_init, int(self.n_mfs), self.random_state)
-            if isinstance(clusterer, FuzzyCMeans):
-                input_mfs = _build_fuzzy_c_means_input_mfs(
-                    x_arr, clusterer, effective_sigma_scale, feature_names, self.random_state
-                )
-            else:
-                input_mfs = _build_kmeans_input_mfs(
-                    x_arr, clusterer, effective_sigma_scale, feature_names, self.random_state
-                )
-            effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
-
-        return input_mfs, feature_names, effective_rule_base
 
     @abstractmethod
     def _build_regressor_model(
@@ -1414,37 +1186,13 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
     ) -> BaseTSK:
         """Create the concrete TSK regression model."""
 
-    def _get_trainer(self) -> BaseTrainer:
-        """Return the default :class:`~highfis.optim.GradientTrainer` for this estimator.
-
-        Subclasses may override this to return a different trainer, e.g.
-        :class:`~highfis.optim.DGTrainer` for DG-TSK / DG-ALETSK estimators.
-        """
-        return GradientTrainer(
-            epochs=int(self.epochs),
-            learning_rate=float(self.learning_rate),
-            batch_size=self.batch_size,
-            shuffle=bool(self.shuffle),
-            patience=self.patience,
-            restore_best=bool(self.restore_best),
-            weight_decay=float(self.weight_decay),
-            ur_weight=float(self.ur_weight),
-            ur_target=self.ur_target,
-            verbose=self.verbose,
-        )
-
-    def _pre_train_hook(self, model: BaseTSK, x_t: Tensor, y_t: Tensor) -> None:
-        """Called just before the trainer runs.  No-op by default."""
-
-    # -- sklearn API ------------------------------------------------------
-
     def fit(
         self,
-        x: Any,
-        y: Any,
+        x: npt.ArrayLike,
+        y: npt.ArrayLike,
         *,
-        x_val: Any | None = None,
-        y_val: Any | None = None,
+        x_val: npt.ArrayLike | None = None,
+        y_val: npt.ArrayLike | None = None,
         metrics: list[str] | None = None,
     ) -> Self:
         """Train the TSK regressor on labeled samples.
@@ -1452,15 +1200,23 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         Validation data should be supplied using ``x_val`` and ``y_val``
         when available.
         """
-        x_arr, y_arr = check_X_y(x, y)
+        x_arr, y_arr = validate_data(self, x, y, reset=True)
+        n_samples = x_arr.shape[0]
+        n_mfs_val = getattr(self, "n_mfs", 3)
+        n_mfs_val = 3 if n_mfs_val is None else n_mfs_val
+        mf_init_val = getattr(self, "mf_init", "kmeans")
+        required_samples = 2 if mf_init_val == "grid" else max(2, n_mfs_val)
+        if n_samples < required_samples:
+            raise ValueError(
+                f"Found array with {n_samples} sample(s). Estimator requires at least {required_samples} samples."
+            )
 
         if self.random_state is not None:
             torch.manual_seed(int(self.random_state))
 
-        input_mfs, feature_names, effective_rule_base = self._build_input_mfs(x_arr)
+        input_mfs, _, effective_rule_base = self._build_input_mfs(x_arr)
 
         self.n_features_in_ = x_arr.shape[1]
-        self.feature_names_in_ = np.asarray(feature_names, dtype=object)
 
         _device = torch.device(str(self.device))
         self.model_ = self._build_regressor_model(input_mfs, effective_rule_base).to(_device)
@@ -1470,10 +1226,10 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         # Prepare validation tensors if provided via fit.
         x_val_t: torch.Tensor | None = None
         y_val_t: torch.Tensor | None = None
-        if (x_val is None) ^ (y_val is None):
+        if (x_val is None) != (y_val is None):
             raise ValueError("x_val and y_val must be provided together")
         if x_val is not None and y_val is not None:
-            x_v_arr, y_v_arr = check_X_y(x_val, y_val)
+            x_v_arr, y_v_arr = validate_data(self, x_val, y_val, reset=False)
             x_val_t = self._as_tensor_x(x_v_arr, _device)
             y_val_t = torch.as_tensor(np.asarray(y_v_arr, dtype=np.float32), dtype=torch.float32, device=_device)
 
@@ -1484,35 +1240,9 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
         self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
         return self
 
-    def _build_checkpoint_base(
-        self,
-        *,
-        model_init: dict[str, Any],
-        fitted_attrs: dict[str, Any],
-    ) -> dict[str, Any]:
-        check_is_fitted(self, "model_")
-        params = self.get_params(deep=False)
-        if params.get("input_configs") is not None:
-            params["input_configs"] = [
-                {"name": c.name, "n_mfs": c.n_mfs, "overlap": c.overlap, "margin": c.margin}
-                for c in params["input_configs"]
-            ]
-        # Exclude non-serialisable trainer objects from the checkpoint; they
-        # are reconstructed from the estimator's hyperparameters on load.
-        params.pop("trainer", None)
-        return {
-            "format": CHECKPOINT_FORMAT,
-            "format_version": CHECKPOINT_FORMAT_VERSION,
-            "estimator_class": self.__class__.__name__,
-            "estimator_params": params,
-            "model_init": model_init,
-            "model_state_dict": self.model_.state_dict(),
-            "fitted_attrs": fitted_attrs,
-            "history": getattr(self, "history_", None),
-        }
-
     def save(self, path: str) -> None:
         """Persist estimator configuration, model weights and fitted metadata."""
+        _fnames: np.ndarray | None = getattr(self, "feature_names_in_", None)
         checkpoint = self._build_checkpoint_base(
             model_init={
                 "input_mfs_config": serialize_input_mfs(self.model_.input_mfs),
@@ -1520,7 +1250,7 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
             },
             fitted_attrs={
                 "n_features_in": int(self.n_features_in_),
-                "feature_names_in": self.feature_names_in_.tolist(),
+                "feature_names_in": _fnames.tolist() if _fnames is not None else None,
             },
         )
         save_checkpoint(path, checkpoint)
@@ -1546,25 +1276,29 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
 
         fitted = checkpoint["fitted_attrs"]
         estimator.n_features_in_ = int(fitted["n_features_in"])
-        estimator.feature_names_in_ = np.asarray(fitted["feature_names_in"], dtype=object)
+        if fitted.get("feature_names_in") is not None:
+            estimator.feature_names_in_ = np.asarray(fitted["feature_names_in"], dtype=object)
+        elif hasattr(estimator, "feature_names_in_"):
+            delattr(estimator, "feature_names_in_")
         estimator.history_ = cast(dict[str, Any], checkpoint.get("history", {}))
         return estimator
 
-    def predict(self, x: Any) -> np.ndarray:
+    def predict(self, x: npt.ArrayLike) -> np.ndarray:
         """Predict continuous target values for input samples."""
         check_is_fitted(self, "model_")
-        x_arr = check_array(x)
-        if x_arr.shape[1] != self.n_features_in_:
-            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
-        preds = cast(Any, self.model_).predict(self._as_tensor_x(x_arr, torch.device(str(self.device))))
+        x_arr = validate_data(self, x, reset=False)
+        device_str = str(self.device).lower()
+        dtype = torch.float64 if "cpu" in device_str else torch.float32
+        x_tensor = torch.as_tensor(x_arr, dtype=dtype, device=torch.device(device_str))
+        preds = cast(Any, self.model_).predict(x_tensor)
         return preds.detach().cpu().numpy()
 
     def evaluate(
         self,
-        X: Any,
-        y: Any,
+        X: npt.ArrayLike,
+        y: npt.ArrayLike,
         metrics: list[str] | None = None,
-        sample_weight: Any | None = None,
+        sample_weight: npt.ArrayLike | None = None,
     ) -> dict[str, Any]:
         """Compute regression evaluation metrics for the provided dataset."""
         y_true = np.asarray(y)
@@ -1576,65 +1310,3 @@ class _BaseRegressorEstimator(BaseEstimator, RegressorMixin):  # type: ignore[mi
             sample_weight=sample_weight,
             metrics=metrics,
         )
-
-    def get_mf_params(self) -> dict[str, list[dict[str, Any]]]:
-        """Return model membership function metadata after fitting."""
-        check_is_fitted(self, "model_")
-        return self.model_.get_mf_params()
-
-    def rule_activation(self, X: Any) -> np.ndarray:
-        """Return normalized rule activations for the provided inputs."""
-        check_is_fitted(self, "model_")
-        x_arr = check_array(X)
-        if x_arr.shape[1] != self.n_features_in_:
-            raise ValueError(f"expected {self.n_features_in_} features, got {x_arr.shape[1]}")
-
-        was_training = self.model_.training
-        try:
-            self.model_.eval()
-            with torch.no_grad():
-                norm_w = self.model_.forward_antecedents(self._as_tensor_x(x_arr, torch.device(str(self.device))))
-        finally:
-            self.model_.train(was_training)
-
-        return _to_numpy(norm_w)
-
-    def inspect(self) -> dict[str, Any]:
-        """Return a structured summary of fitted model state and rule metadata."""
-        check_is_fitted(self, "model_")
-        return {
-            "n_rules": int(self.model_.n_rules),
-            "n_inputs": int(self.model_.n_inputs),
-            "feature_names": list(self.model_.input_names),
-            "rule_base": self.rule_base_,
-            "defuzzifier_type": type(self.model_.defuzzifier).__name__,
-            "mf_params": self.get_mf_params(),
-            "rule_table": self.model_.get_rule_table(),
-        }
-
-    def feature_importance(self) -> np.ndarray | None:
-        """Compute a normalized feature importance vector from consequent weights."""
-        check_is_fitted(self, "model_")
-        weights = self.model_.get_consequent_weights()
-        if weights is None:
-            return None
-
-        consequent_layer = self.model_.consequent_layer
-        if hasattr(consequent_layer, "rule_feature_mask"):
-            rule_feature_mask = cast(Tensor, consequent_layer.rule_feature_mask)
-            weights = weights * rule_feature_mask.unsqueeze(1) if weights.ndim == 3 else weights * rule_feature_mask
-
-        abs_weights = weights.abs()
-        if abs_weights.ndim == 3:
-            importance = abs_weights.mean(dim=(0, 1))
-        elif abs_weights.ndim == 2:
-            importance = abs_weights.mean(dim=0)
-        else:
-            raise ValueError("unsupported consequent weight shape for feature importance")
-
-        return _normalize_importance(importance)
-
-
-# =====================================================================
-# HTSK Estimators
-# =====================================================================

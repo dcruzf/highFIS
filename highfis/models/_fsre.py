@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import cast
 
 from torch import Tensor, nn
 
@@ -100,6 +100,10 @@ class FSREADATSKClassifierModel(BaseTSKClassifierModel):
         layer.mode = "fs"
         return layer
 
+    def set_consequent_mode(self, mode: str) -> None:
+        """Set training mode for the consequent layer."""
+        self.consequent_layer.mode = mode
+
     def _default_criterion(self) -> nn.Module:
         return nn.CrossEntropyLoss()
 
@@ -113,22 +117,6 @@ class FSREADATSKClassifierModel(BaseTSKClassifierModel):
         )
         self.n_rules = self.rule_layer.n_rules
         self.consequent_layer = self._build_consequent_layer()
-
-    def fit_fs(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Train the FS phase: only feature gates M(λ_d) are active (eq. 21)."""
-        self.consequent_layer.mode = "fs"
-        return self.fit(x, y, **kwargs)
-
-    def fit_re(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Expand to En-FRB and train the RE phase: only rule gates M(θ_r) active (eq. 22)."""
-        self.expand_to_en_frb()
-        self.consequent_layer.mode = "re"
-        return self.fit(x, y, **kwargs)
-
-    def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Fine-tune with no gates — plain TSK consequent (eq. 5)."""
-        self.consequent_layer.mode = "finetune"
-        return self.fit(x, y, **kwargs)
 
     def get_feature_gate_values(self) -> Tensor:
         """Return M(λ_d) gate activations for all input features.
@@ -282,6 +270,10 @@ class FSREADATSKRegressorModel(BaseTSKRegressorModel):
         layer.mode = "fs"
         return layer
 
+    def set_consequent_mode(self, mode: str) -> None:
+        """Set training mode for the consequent layer."""
+        self.consequent_layer.mode = mode
+
     def _default_criterion(self) -> nn.Module:
         return nn.MSELoss()
 
@@ -295,22 +287,6 @@ class FSREADATSKRegressorModel(BaseTSKRegressorModel):
         )
         self.n_rules = self.rule_layer.n_rules
         self.consequent_layer = self._build_consequent_layer()
-
-    def fit_fs(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Train the FS phase: only feature gates M(λ_d) are active (eq. 21)."""
-        self.consequent_layer.mode = "fs"
-        return self.fit(x, y, **kwargs)
-
-    def fit_re(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Expand to En-FRB and train the RE phase: only rule gates M(θ_r) active (eq. 22)."""
-        self.expand_to_en_frb()
-        self.consequent_layer.mode = "re"
-        return self.fit(x, y, **kwargs)
-
-    def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Fine-tune with no gates — plain TSK consequent (eq. 5)."""
-        self.consequent_layer.mode = "finetune"
-        return self.fit(x, y, **kwargs)
 
     def get_feature_gate_values(self) -> Tensor:
         """Return M(λ_d) gate activations for all input features.

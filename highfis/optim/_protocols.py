@@ -3,26 +3,18 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Protocol
+from typing import Any, Protocol, runtime_checkable
 
 from torch import Tensor
 
 
+@runtime_checkable
 class DGModelProtocol(Protocol):
     """Structural protocol for models that support three-phase DG training.
 
     Satisfied by DGTSKClassifierModel, DGTSKRegressorModel,
     DGALETSKClassifierModel, and DGALETSKRegressorModel.
     """
-
-    def fit_dg_phase(
-        self,
-        x: Tensor,
-        y: Tensor,
-        **kwargs: Any,
-    ) -> dict[str, Any]:
-        """Execute phase-1 (data-guided) training."""
-        ...  # pragma: no cover
 
     def search_thresholds(
         self,
@@ -40,18 +32,8 @@ class DGModelProtocol(Protocol):
         """Search pruning thresholds and optionally apply the best candidate."""
         ...  # pragma: no cover
 
-    def fit_finetune(
-        self,
-        x: Tensor,
-        y: Tensor,
-        *,
-        freeze_antecedents: bool = True,
-        **kwargs: Any,
-    ) -> dict[str, Any]:
-        """Execute phase-3 (fine-tune) training."""
-        ...  # pragma: no cover
 
-
+@runtime_checkable
 class PFRBModelProtocol(Protocol):
     """Protocol for DG-TSK models that support P-FRB consequent initialisation."""
 
@@ -60,6 +42,7 @@ class PFRBModelProtocol(Protocol):
         ...  # pragma: no cover
 
 
+@runtime_checkable
 class FirstOrderModelProtocol(Protocol):
     """Protocol for DG models that can convert to first-order consequents."""
 
@@ -68,11 +51,16 @@ class FirstOrderModelProtocol(Protocol):
         ...  # pragma: no cover
 
 
+@runtime_checkable
 class FSREModelProtocol(Protocol):
     """Structural protocol for models that support three-phase FSRE training.
 
     Satisfied by FSREADATSKClassifierModel and FSREADATSKRegressorModel.
     """
+
+    def set_consequent_mode(self, mode: str) -> None:
+        """Set the training mode of the consequent layer (e.g. 'fs', 're', 'finetune')."""
+        ...  # pragma: no cover
 
     def get_feature_gate_values(self) -> Tensor:
         """Return M(λ_d) gate activations of shape ``(n_inputs,)``."""
@@ -82,16 +70,8 @@ class FSREModelProtocol(Protocol):
         """Return M(θ_r) gate activations of shape ``(n_rules,)``."""
         ...  # pragma: no cover
 
-    def fit_fs(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Execute phase-1 (feature-selection) training."""
-        ...  # pragma: no cover
-
-    def fit_re(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Execute phase-2 (rule-extraction) training."""
-        ...  # pragma: no cover
-
-    def fit_finetune(self, x: Tensor, y: Tensor, **kwargs: Any) -> dict[str, Any]:
-        """Execute phase-3 (fine-tune) training."""
+    def expand_to_en_frb(self) -> None:
+        """Switch to Enhanced Fuzzy Rule Base for the RE phase."""
         ...  # pragma: no cover
 
     def prune_to_features(self, surviving_features: list[int]) -> None:
