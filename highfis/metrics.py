@@ -40,6 +40,8 @@ Notes:
 
 from __future__ import annotations
 
+import warnings
+from collections.abc import Sequence
 from typing import Any, Literal, cast
 
 import numpy as np
@@ -189,7 +191,13 @@ class ClassificationMetrics:
         y_pred: Any,
         sample_weight: Any | None = None,
     ) -> np.ndarray:
-        """Return the sorted set of predicted and true classes."""
+        """Return the sorted set of predicted and true classes.
+
+        Note:
+            ``sample_weight`` is ignored.
+        """
+        if sample_weight is not None:
+            warnings.warn("sample_weight is ignored by classes", UserWarning, stacklevel=2)
         y_true_arr = _flatten_array(y_true)
         y_pred_arr = _flatten_array(y_pred)
         return np.unique(np.concatenate([y_true_arr, y_pred_arr]))
@@ -229,15 +237,29 @@ class RegressionMetrics:
 
     @staticmethod
     def max_error(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
-        """Return maximum absolute error."""
+        """Return maximum absolute error.
+
+        Note:
+            ``sample_weight`` is ignored.
+        """
+        if sample_weight is not None:
+            warnings.warn("sample_weight is ignored by max_error", UserWarning, stacklevel=2)
         return float(max_error(y_true, y_pred))
 
     @staticmethod
     def std_error(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
-        """Return the standard deviation of the errors."""
+        """Return the standard deviation of the errors.
+
+        Note:
+            ``sample_weight`` is ignored.
+        """
+        if sample_weight is not None:
+            warnings.warn("sample_weight is ignored by std_error", UserWarning, stacklevel=2)
         y_true_arr = _flatten_array(y_true)
         y_pred_arr = _flatten_array(y_pred)
-        return float(np.std(y_pred_arr - y_true_arr))
+        if y_true_arr.size < 2:
+            return 0.0
+        return float(np.std(y_pred_arr - y_true_arr, ddof=1))
 
     @staticmethod
     def explained_variance(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
@@ -272,12 +294,19 @@ class RegressionMetrics:
 
     @staticmethod
     def pearson(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
-        """Return Pearson correlation coefficient."""
+        """Return Pearson correlation coefficient.
+
+        Note:
+            ``sample_weight`` is ignored.
+        """
+        if sample_weight is not None:
+            warnings.warn("sample_weight is ignored by pearson", UserWarning, stacklevel=2)
         y_true_arr = _flatten_array(y_true)
         y_pred_arr = _flatten_array(y_pred)
         if y_true_arr.size < 2 or np.std(y_true_arr) == 0 or np.std(y_pred_arr) == 0:
             return float(np.nan)
-        return float(np.corrcoef(y_true_arr, y_pred_arr)[0, 1])
+        with np.errstate(invalid="ignore", divide="ignore"):
+            return float(np.corrcoef(y_true_arr, y_pred_arr)[0, 1])
 
     @staticmethod
     def r2(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
@@ -306,7 +335,11 @@ class ClassificationMetricsPytorch:
             true_c = y_true == c
             if sample_weight is not None:
                 w_c = sample_weight[true_c]
-                recalls.append(torch.sum((y_pred[true_c] == c).float() * w_c) / torch.sum(w_c))
+                den = torch.sum(w_c)
+                if den == 0:
+                    recalls.append(torch.tensor(0.0, device=y_true.device))
+                else:
+                    recalls.append(torch.sum((y_pred[true_c] == c).float() * w_c) / den)
             else:
                 recalls.append(torch.mean((y_pred[true_c] == c).float()))
         return torch.stack(recalls).mean().item() if recalls else 0.0
@@ -407,12 +440,11 @@ class ClassificationMetricsPytorch:
         y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None
     ) -> np.ndarray:
         """Return the confusion matrix."""
-        classes = torch.unique(torch.cat([y_true, y_pred]))
-        classes = torch.sort(classes).values
+        classes, inverse = torch.unique(torch.cat([y_true, y_pred]), return_inverse=True)
         n_classes = len(classes)
 
-        y_true_idx = torch.searchsorted(classes, y_true)
-        y_pred_idx = torch.searchsorted(classes, y_pred)
+        y_true_idx = inverse[: len(y_true)]
+        y_pred_idx = inverse[len(y_true) :]
         indices = y_true_idx * n_classes + y_pred_idx
 
         if sample_weight is not None:
@@ -424,7 +456,13 @@ class ClassificationMetricsPytorch:
 
     @staticmethod
     def classes(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> np.ndarray:
-        """Return the sorted union of true and predicted labels."""
+        """Return the sorted union of true and predicted labels.
+
+        Note:
+            ``sample_weight`` is ignored.
+        """
+        if sample_weight is not None:
+            warnings.warn("sample_weight is ignored by classes", UserWarning, stacklevel=2)
         return torch.unique(torch.cat([y_true, y_pred])).cpu().numpy()
 
 
@@ -434,28 +472,40 @@ class RegressionMetricsPytorch:
     @staticmethod
     def mse(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
         """Return mean squared error."""
+        y_true = y_true.float()
+        y_pred = y_pred.float()
         if sample_weight is not None:
+            sample_weight = sample_weight.float()
             return (torch.sum(((y_true - y_pred) ** 2) * sample_weight) / torch.sum(sample_weight)).item()
         return torch.mean((y_true - y_pred) ** 2).item()
 
     @staticmethod
     def mae(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
         """Return mean absolute error."""
+        y_true = y_true.float()
+        y_pred = y_pred.float()
         if sample_weight is not None:
+            sample_weight = sample_weight.float()
             return (torch.sum(torch.abs(y_true - y_pred) * sample_weight) / torch.sum(sample_weight)).item()
         return torch.mean(torch.abs(y_true - y_pred)).item()
 
     @staticmethod
     def rmse(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
         """Return root mean squared error."""
+        y_true = y_true.float()
+        y_pred = y_pred.float()
         if sample_weight is not None:
+            sample_weight = sample_weight.float()
             return torch.sqrt(torch.sum(((y_true - y_pred) ** 2) * sample_weight) / torch.sum(sample_weight)).item()
         return torch.sqrt(torch.mean((y_true - y_pred) ** 2)).item()
 
     @staticmethod
     def r2(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
         """Return coefficient of determination (R²)."""
+        y_true = y_true.float()
+        y_pred = y_pred.float()
         if sample_weight is not None:
+            sample_weight = sample_weight.float()
             mean_y = torch.sum(y_true * sample_weight) / torch.sum(sample_weight)
             ss_res = torch.sum(((y_true - y_pred) ** 2) * sample_weight)
             ss_tot = torch.sum(((y_true - mean_y) ** 2) * sample_weight)
@@ -472,8 +522,11 @@ class RegressionMetricsPytorch:
         y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None
     ) -> float:
         """Return median absolute error."""
+        y_true = y_true.float()
+        y_pred = y_pred.float()
         errors = torch.abs(y_true - y_pred)
         if sample_weight is not None:
+            sample_weight = sample_weight.float()
             # Weighted median matching scikit-learn
             sorted_indices = torch.argsort(errors)
             sorted_errors = errors[sorted_indices]
@@ -482,35 +535,67 @@ class RegressionMetricsPytorch:
             total_weight = cum_weights[-1]
             half_weight = total_weight / 2.0
             idx = torch.searchsorted(cum_weights, half_weight)
+            idx = torch.clamp(idx, max=max(0, len(sorted_errors) - 1))
             if idx < len(sorted_errors) - 1 and cum_weights[idx] == half_weight:
                 return ((sorted_errors[idx] + sorted_errors[idx + 1]) / 2.0).item()
             return sorted_errors[idx].item()
-        return torch.quantile(errors.float(), 0.5).item()
+        return torch.quantile(errors, 0.5).item()
 
     @staticmethod
     def mean_bias_error(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
         """Return mean bias error (prediction minus truth)."""
+        y_true = y_true.float()
+        y_pred = y_pred.float()
         diff = y_pred - y_true
         if sample_weight is not None:
+            sample_weight = sample_weight.float()
             return (torch.sum(diff * sample_weight) / torch.sum(sample_weight)).item()
         return torch.mean(diff).item()
 
     @staticmethod
     def max_error(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
-        """Return maximum absolute error."""
+        """Return maximum absolute error.
+
+        Note:
+            ``sample_weight`` is ignored.
+        """
+        y_true = y_true.float()
+        y_pred = y_pred.float()
+        if sample_weight is not None:
+            sample_weight = sample_weight.float()
+            warnings.warn("sample_weight is ignored by max_error", UserWarning, stacklevel=2)
         return torch.max(torch.abs(y_true - y_pred)).item()
 
     @staticmethod
     def std_error(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
-        """Return the standard deviation of the errors."""
-        return torch.std(y_pred - y_true, unbiased=False).item()
+        """Return the standard deviation of the errors.
+
+        Note:
+            ``sample_weight`` is ignored.
+        """
+        y_true = y_true.float()
+        y_pred = y_pred.float()
+        if sample_weight is not None:
+            sample_weight = sample_weight.float()
+            warnings.warn("sample_weight is ignored by std_error", UserWarning, stacklevel=2)
+        if y_true.numel() < 2:
+            return 0.0
+        return torch.std(y_pred - y_true, unbiased=True).item()
 
     @staticmethod
     def explained_variance(
         y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None
     ) -> float:
-        """Return explained variance."""
+        """Return explained variance.
+
+        Note:
+            Uses biased variance (unbiased=False) to match scikit-learn's
+            explained_variance_score implementation.
+        """
+        y_true = y_true.float()
+        y_pred = y_pred.float()
         if sample_weight is not None:
+            sample_weight = sample_weight.float()
             mean_diff = torch.sum((y_true - y_pred) * sample_weight) / torch.sum(sample_weight)
             var_diff = torch.sum(((y_true - y_pred - mean_diff) ** 2) * sample_weight) / torch.sum(sample_weight)
             mean_y = torch.sum(y_true * sample_weight) / torch.sum(sample_weight)
@@ -523,69 +608,85 @@ class RegressionMetricsPytorch:
     @staticmethod
     def mape(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
         """Return mean absolute percentage error."""
+        y_true = y_true.float()
+        y_pred = y_pred.float()
         eps = torch.finfo(y_true.dtype).eps
         ratio = torch.abs(y_true - y_pred) / torch.clamp(torch.abs(y_true), min=eps)
         if sample_weight is not None:
+            sample_weight = sample_weight.float()
             return (torch.sum(ratio * sample_weight) / torch.sum(sample_weight)).item()
         return torch.mean(ratio).item()
 
     @staticmethod
     def smape(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
         """Return symmetric mean absolute percentage error."""
+        y_true = y_true.float()
+        y_pred = y_pred.float()
         numerator = torch.abs(y_pred - y_true) * 2.0
         denominator = torch.abs(y_true) + torch.abs(y_pred)
-        ratio = torch.where(denominator == 0.0, 0.0, numerator / denominator)
+        ratio = torch.where(denominator == 0.0, torch.zeros_like(numerator), numerator / denominator)
         if sample_weight is not None:
+            sample_weight = sample_weight.float()
             return (torch.sum(ratio * sample_weight) / torch.sum(sample_weight)).item()
         return torch.mean(ratio).item()
 
     @staticmethod
     def msle(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
         """Return mean squared logarithmic error."""
+        y_true = y_true.float()
+        y_pred = y_pred.float()
         if torch.any(y_true < 0) or torch.any(y_pred < 0):
             return float("nan")
         log_diff = torch.log1p(y_true) - torch.log1p(y_pred)
         if sample_weight is not None:
+            sample_weight = sample_weight.float()
             return (torch.sum((log_diff**2) * sample_weight) / torch.sum(sample_weight)).item()
         return torch.mean(log_diff**2).item()
 
     @staticmethod
     def pearson(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
-        """Return Pearson correlation coefficient."""
+        """Return Pearson correlation coefficient.
+
+        Note:
+            ``sample_weight`` is ignored.
+        """
+        y_true = y_true.float()
+        y_pred = y_pred.float()
+        if sample_weight is not None:
+            sample_weight = sample_weight.float()
+            warnings.warn("sample_weight is ignored by pearson", UserWarning, stacklevel=2)
         if y_true.numel() < 2:
             return float("nan")
         vx = y_true - torch.mean(y_true)
         vy = y_pred - torch.mean(y_pred)
-        std_x = torch.std(y_true)
-        std_y = torch.std(y_pred)
-        if std_x == 0 or std_y == 0:
+        corr = torch.sum(vx * vy) / (torch.sqrt(torch.sum(vx**2) * torch.sum(vy**2)))
+        if torch.isnan(corr) or torch.isinf(corr):
             return float("nan")
-        return (torch.sum(vx * vy) / (torch.sqrt(torch.sum(vx**2)) * torch.sqrt(torch.sum(vy**2)))).item()
+        return corr.item()
 
 
-def _validate_classification_metrics(metrics: list[str]) -> list[ClassificationMetric]:
+def _validate_classification_metrics(metrics: Sequence[str]) -> list[ClassificationMetric]:
     unknown = set(metrics) - _CLASSIFICATION_METRIC_NAMES
     if unknown:
         raise ValueError(
             f"Unknown classification metrics: {sorted(unknown)}. "
             f"Supported metrics: {sorted(_CLASSIFICATION_METRIC_NAMES)}"
         )
-    return [cast(ClassificationMetric, m) for m in metrics if m in _CLASSIFICATION_METRIC_NAMES]
+    return [cast(ClassificationMetric, m) for m in metrics]
 
 
-def _validate_regression_metrics(metrics: list[str]) -> list[RegressionMetric]:
+def _validate_regression_metrics(metrics: Sequence[str]) -> list[RegressionMetric]:
     unknown = set(metrics) - _REGRESSION_METRIC_NAMES
     if unknown:
         raise ValueError(
             f"Unknown regression metrics: {sorted(unknown)}. Supported metrics: {sorted(_REGRESSION_METRIC_NAMES)}"
         )
-    return [cast(RegressionMetric, m) for m in metrics if m in _REGRESSION_METRIC_NAMES]
+    return [cast(RegressionMetric, m) for m in metrics]
 
 
 def _ensure_classification_inputs(
     y_true: Any,
     y_pred: Any,
-    metric_names: list[ClassificationMetric],
 ) -> tuple[np.ndarray, np.ndarray]:
     y_true_arr = _flatten_array(y_true)
     y_pred_arr = _flatten_array(y_pred)
@@ -596,12 +697,52 @@ def _ensure_regression_inputs(y_true: Any, y_pred: Any) -> tuple[np.ndarray, np.
     return _flatten_array(y_true), _flatten_array(y_pred)
 
 
+def _compute_classification_pytorch(
+    y_true: torch.Tensor,
+    y_pred: torch.Tensor,
+    sample_weight: torch.Tensor | None,
+    metrics: Sequence[str] | None,
+) -> dict[str, Any]:
+    metric_names = _validate_classification_metrics(metrics) if metrics is not None else DEFAULT_CLASSIFICATION_METRICS
+    if sample_weight is not None and "classes" in metric_names:
+        warnings.warn("sample_weight is ignored by classes", UserWarning, stacklevel=3)
+    results: dict[str, Any] = {}
+    for m in metric_names:
+        metric_fn = getattr(ClassificationMetricsPytorch, m)
+        w = None if m == "classes" else sample_weight
+        results[m] = metric_fn(y_true, y_pred, w)
+    return results
+
+
+def _compute_regression_pytorch(
+    y_true: torch.Tensor,
+    y_pred: torch.Tensor,
+    sample_weight: torch.Tensor | None,
+    metrics: Sequence[str] | None,
+) -> dict[str, Any]:
+    metric_names = _validate_regression_metrics(metrics) if metrics is not None else DEFAULT_REGRESSION_METRICS
+    if sample_weight is not None:
+        ignored_metrics = [m for m in metric_names if m in ("max_error", "std_error", "pearson")]
+        if ignored_metrics:
+            warnings.warn(
+                f"sample_weight is ignored by the following regression metrics: {sorted(ignored_metrics)}",
+                UserWarning,
+                stacklevel=3,
+            )
+    results = {}
+    for m in metric_names:
+        metric_fn = getattr(RegressionMetricsPytorch, m)
+        w = None if m in ("max_error", "std_error", "pearson") else sample_weight
+        results[m] = metric_fn(y_true, y_pred, w)
+    return results
+
+
 def compute_metrics_pytorch(
     task: Task,
     y_true: torch.Tensor,
     y_pred: torch.Tensor,
     sample_weight: torch.Tensor | None = None,
-    metrics: list[str] | None = None,
+    metrics: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     """Compute a set of named evaluation metrics using PyTorch."""
     if y_true.ndim != 1:
@@ -611,25 +752,66 @@ def compute_metrics_pytorch(
     if sample_weight is not None and sample_weight.ndim != 1:
         sample_weight = sample_weight.ravel()
 
-    if task == "classification":
-        metric_names = (
-            _validate_classification_metrics(metrics) if metrics is not None else DEFAULT_CLASSIFICATION_METRICS
+    if y_true.numel() != y_pred.numel():
+        raise ValueError(
+            f"Found input variables with inconsistent numbers of samples: [{y_true.numel()}, {y_pred.numel()}]"
         )
-        results: dict[str, Any] = {}
-        for m in metric_names:
-            metric_fn = getattr(ClassificationMetricsPytorch, m)
-            results[m] = metric_fn(y_true, y_pred, sample_weight)
-        return results
 
+    if task == "classification":
+        return _compute_classification_pytorch(y_true, y_pred, sample_weight, metrics)
     if task == "regression":
-        metric_names = _validate_regression_metrics(metrics) if metrics is not None else DEFAULT_REGRESSION_METRICS
-        results = {}
-        for m in metric_names:
-            metric_fn = getattr(RegressionMetricsPytorch, m)
-            results[m] = metric_fn(y_true, y_pred, sample_weight)
-        return results
-
+        return _compute_regression_pytorch(y_true, y_pred, sample_weight, metrics)
     raise ValueError("task must be 'classification' or 'regression'")
+
+
+def _compute_classification_numpy(
+    y_true: Any,
+    y_pred: Any,
+    sample_weight: Any | None,
+    metrics: Sequence[str] | None,
+) -> dict[str, Any]:
+    metric_names = _validate_classification_metrics(metrics) if metrics is not None else DEFAULT_CLASSIFICATION_METRICS
+    y_true_arr, y_pred_arr = _ensure_classification_inputs(y_true, y_pred)
+    if y_true_arr.size != y_pred_arr.size:
+        raise ValueError(
+            f"Found input variables with inconsistent numbers of samples: [{y_true_arr.size}, {y_pred_arr.size}]"
+        )
+    if sample_weight is not None and "classes" in metric_names:
+        warnings.warn("sample_weight is ignored by classes", UserWarning, stacklevel=3)
+    results: dict[str, Any] = {}
+    for metric in metric_names:
+        metric_fn = getattr(ClassificationMetrics, metric)
+        w = None if metric == "classes" else sample_weight
+        results[metric] = metric_fn(y_true_arr, y_pred_arr, w)
+    return results
+
+
+def _compute_regression_numpy(
+    y_true: Any,
+    y_pred: Any,
+    sample_weight: Any | None,
+    metrics: Sequence[str] | None,
+) -> dict[str, Any]:
+    metric_names = _validate_regression_metrics(metrics) if metrics is not None else DEFAULT_REGRESSION_METRICS
+    y_true_arr, y_pred_arr = _ensure_regression_inputs(y_true, y_pred)
+    if y_true_arr.size != y_pred_arr.size:
+        raise ValueError(
+            f"Found input variables with inconsistent numbers of samples: [{y_true_arr.size}, {y_pred_arr.size}]"
+        )
+    if sample_weight is not None:
+        ignored_metrics = [m for m in metric_names if m in ("max_error", "std_error", "pearson")]
+        if ignored_metrics:
+            warnings.warn(
+                f"sample_weight is ignored by the following regression metrics: {sorted(ignored_metrics)}",
+                UserWarning,
+                stacklevel=3,
+            )
+    results = {}
+    for metric in metric_names:
+        metric_fn = getattr(RegressionMetrics, metric)
+        w = None if metric in ("max_error", "std_error", "pearson") else sample_weight
+        results[metric] = metric_fn(y_true_arr, y_pred_arr, w)
+    return results
 
 
 def compute_metrics(
@@ -637,7 +819,7 @@ def compute_metrics(
     y_true: Any,
     y_pred: Any,
     sample_weight: Any | None = None,
-    metrics: list[str] | None = None,
+    metrics: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     """Compute a set of named evaluation metrics.
 
@@ -657,42 +839,7 @@ def compute_metrics(
         return compute_metrics_pytorch(task, y_true, y_pred, sample_weight, metrics)
 
     if task == "classification":
-        metric_names = (
-            _validate_classification_metrics(metrics) if metrics is not None else DEFAULT_CLASSIFICATION_METRICS
-        )
-        y_true_arr, y_pred_arr = _ensure_classification_inputs(
-            y_true,
-            y_pred,
-            metric_names,
-        )
-        results: dict[str, Any] = {}
-        for metric in metric_names:
-            metric_fn = getattr(ClassificationMetrics, metric)
-            results[metric] = metric_fn(y_true_arr, y_pred_arr, sample_weight)
-        return results
-
+        return _compute_classification_numpy(y_true, y_pred, sample_weight, metrics)
     if task == "regression":
-        metric_names = _validate_regression_metrics(metrics) if metrics is not None else DEFAULT_REGRESSION_METRICS
-        y_true_arr, y_pred_arr = _ensure_regression_inputs(y_true, y_pred)
-        results = {
-            "mse": RegressionMetrics.mse(y_true_arr, y_pred_arr, sample_weight=sample_weight),
-            "mae": RegressionMetrics.mae(y_true_arr, y_pred_arr, sample_weight=sample_weight),
-            "rmse": RegressionMetrics.rmse(y_true_arr, y_pred_arr, sample_weight=sample_weight),
-            "median_absolute_error": RegressionMetrics.median_absolute_error(
-                y_true_arr, y_pred_arr, sample_weight=sample_weight
-            ),
-            "mean_bias_error": RegressionMetrics.mean_bias_error(y_true_arr, y_pred_arr, sample_weight=sample_weight),
-            "max_error": RegressionMetrics.max_error(y_true_arr, y_pred_arr, sample_weight=sample_weight),
-            "std_error": RegressionMetrics.std_error(y_true_arr, y_pred_arr, sample_weight=sample_weight),
-            "explained_variance": RegressionMetrics.explained_variance(
-                y_true_arr, y_pred_arr, sample_weight=sample_weight
-            ),
-            "mape": RegressionMetrics.mape(y_true_arr, y_pred_arr, sample_weight=sample_weight),
-            "smape": RegressionMetrics.smape(y_true_arr, y_pred_arr, sample_weight=sample_weight),
-            "msle": RegressionMetrics.msle(y_true_arr, y_pred_arr, sample_weight=sample_weight),
-            "pearson": RegressionMetrics.pearson(y_true_arr, y_pred_arr, sample_weight=sample_weight),
-            "r2": RegressionMetrics.r2(y_true_arr, y_pred_arr, sample_weight=sample_weight),
-        }
-        return {key: results[key] for key in metric_names}
-
+        return _compute_regression_numpy(y_true, y_pred, sample_weight, metrics)
     raise ValueError("task must be 'classification' or 'regression'")

@@ -4,9 +4,30 @@ from typing import cast
 
 import numpy as np
 import pytest
-from sklearn.metrics import explained_variance_score
+import torch
+from sklearn.metrics import (
+    accuracy_score,
+    balanced_accuracy_score,
+    explained_variance_score,
+    f1_score,
+    mean_absolute_error,
+    mean_squared_error,
+    precision_score,
+    r2_score,
+    recall_score,
+)
+from sklearn.metrics import confusion_matrix as sk_confusion_matrix
+from sklearn.metrics import median_absolute_error as sk_median_absolute_error
 
-from highfis.metrics import ClassificationMetrics, RegressionMetrics, Task, compute_metrics
+from highfis.metrics import (
+    ClassificationMetrics,
+    ClassificationMetricsPytorch,
+    RegressionMetrics,
+    RegressionMetricsPytorch,
+    Task,
+    compute_metrics,
+    compute_metrics_pytorch,
+)
 
 
 def test_compute_metrics_classification_default() -> None:
@@ -139,7 +160,7 @@ def test_compute_metrics_regression_extra_metrics() -> None:
     assert np.isclose(result["median_absolute_error"], np.median(np.abs(y_true - y_pred)))
     assert np.isclose(result["mean_bias_error"], np.mean(y_pred - y_true))
     assert np.isclose(result["max_error"], np.max(np.abs(y_true - y_pred)))
-    assert np.isclose(result["std_error"], np.std(y_pred - y_true))
+    assert np.isclose(result["std_error"], np.std(y_pred - y_true, ddof=1))
     assert np.isclose(result["explained_variance"], explained_variance_score(y_true, y_pred))
     assert np.isclose(result["mape"], np.mean(np.abs((y_pred - y_true) / y_true)))
     assert np.isclose(result["smape"], np.mean(2.0 * np.abs(y_pred - y_true) / (np.abs(y_true) + np.abs(y_pred))))
@@ -167,6 +188,7 @@ def test_compute_metrics_rejects_invalid_task() -> None:
         compute_metrics(task=task, y_true=[0], y_pred=[0])
 
 
+@pytest.mark.filterwarnings("ignore:sample_weight is ignored")
 def test_compute_metrics_pytorch_matches_numpy() -> None:
     import torch
 
@@ -228,23 +250,6 @@ def test_compute_metrics_pytorch_matches_numpy() -> None:
 
 
 def test_pytorch_metrics_explicitly_against_sklearn() -> None:
-    import torch
-    from sklearn.metrics import (
-        accuracy_score,
-        balanced_accuracy_score,
-        explained_variance_score,
-        f1_score,
-        mean_absolute_error,
-        mean_squared_error,
-        precision_score,
-        r2_score,
-        recall_score,
-    )
-    from sklearn.metrics import confusion_matrix as sk_confusion_matrix
-    from sklearn.metrics import median_absolute_error as sk_median_absolute_error
-
-    from highfis.metrics import ClassificationMetricsPytorch, RegressionMetricsPytorch
-
     # Classification
     y_true_cls = torch.tensor([0, 1, 2, 1, 0, 2])
     y_pred_cls = torch.tensor([0, 2, 2, 1, 1, 2])
@@ -438,15 +443,8 @@ def test_pytorch_metrics_edge_cases() -> None:
     assert "mse" in res_weight_list
 
 
+@pytest.mark.filterwarnings("ignore:y_pred contains classes not in y_true")
 def test_pytorch_metrics_randomized_against_sklearn() -> None:
-    import torch
-    from sklearn.metrics import (
-        balanced_accuracy_score,
-        f1_score,
-        precision_score,
-        recall_score,
-    )
-
     from highfis.metrics import ClassificationMetricsPytorch
 
     rng = np.random.default_rng(12345)
@@ -490,3 +488,141 @@ def test_pytorch_metrics_randomized_against_sklearn() -> None:
         sk_bal = balanced_accuracy_score(y_true, y_pred, sample_weight=w)
         py_bal = ClassificationMetricsPytorch.balanced_accuracy(y_true_t, y_pred_t, w_t)
         assert np.isclose(sk_bal, py_bal, atol=1e-5)
+
+
+def test_metrics_inconsistent_shapes_raises_error() -> None:
+    # 1. Inconsistent shapes
+    y_true_3 = np.array([1, 2, 3])
+    y_pred_2 = np.array([1, 2])
+    with pytest.raises(ValueError, match="inconsistent numbers of samples"):
+        compute_metrics(task="classification", y_true=y_true_3, y_pred=y_pred_2)
+    with pytest.raises(ValueError, match="inconsistent numbers of samples"):
+        compute_metrics(task="regression", y_true=y_true_3, y_pred=y_pred_2)
+
+    y_true_3_t = torch.tensor([1, 2, 3])
+    y_pred_2_t = torch.tensor([1, 2])
+    with pytest.raises(ValueError, match="inconsistent numbers of samples"):
+        compute_metrics_pytorch(task="classification", y_true=y_true_3_t, y_pred=y_pred_2_t)
+    with pytest.raises(ValueError, match="inconsistent numbers of samples"):
+        compute_metrics_pytorch(task="regression", y_true=y_true_3_t, y_pred=y_pred_2_t)
+
+
+def test_numpy_metrics_warnings_on_direct_calls() -> None:
+    # 2. Warnings from direct calls (NumPy)
+    with pytest.warns(UserWarning, match="ignored by classes"):
+        ClassificationMetrics.classes([1, 2], [1, 2], sample_weight=[1.0, 1.0])
+    with pytest.warns(UserWarning, match="ignored by max_error"):
+        RegressionMetrics.max_error([1, 2], [1, 2], sample_weight=[1.0, 1.0])
+    with pytest.warns(UserWarning, match="ignored by std_error"):
+        RegressionMetrics.std_error([1, 2], [1, 2], sample_weight=[1.0, 1.0])
+    with pytest.warns(UserWarning, match="ignored by pearson"):
+        RegressionMetrics.pearson([1, 2], [1, 2], sample_weight=[1.0, 1.0])
+
+
+def test_pytorch_metrics_warnings_on_direct_calls() -> None:
+    # 3. Warnings from direct calls (PyTorch)
+    with pytest.warns(UserWarning, match="ignored by classes"):
+        ClassificationMetricsPytorch.classes(
+            torch.tensor([1, 2]), torch.tensor([1, 2]), sample_weight=torch.tensor([1.0, 1.0])
+        )
+    with pytest.warns(UserWarning, match="ignored by max_error"):
+        RegressionMetricsPytorch.max_error(
+            torch.tensor([1, 2]), torch.tensor([1, 2]), sample_weight=torch.tensor([1.0, 1.0])
+        )
+    with pytest.warns(UserWarning, match="ignored by std_error"):
+        RegressionMetricsPytorch.std_error(
+            torch.tensor([1, 2]), torch.tensor([1, 2]), sample_weight=torch.tensor([1.0, 1.0])
+        )
+    with pytest.warns(UserWarning, match="ignored by pearson"):
+        RegressionMetricsPytorch.pearson(
+            torch.tensor([1, 2]), torch.tensor([1, 2]), sample_weight=torch.tensor([1.0, 1.0])
+        )
+
+
+def test_compute_metrics_warnings_level() -> None:
+    # 4. Warnings from compute_metrics / compute_metrics_pytorch level
+    with pytest.warns(UserWarning, match="ignored by classes"):
+        compute_metrics(
+            task="classification", y_true=[1, 2], y_pred=[1, 2], sample_weight=[1.0, 1.0], metrics=["classes"]
+        )
+    with pytest.warns(UserWarning, match="ignored by the following regression metrics"):
+        compute_metrics(
+            task="regression", y_true=[1.0, 2.0], y_pred=[1.1, 1.9], sample_weight=[1.0, 1.0], metrics=["max_error"]
+        )
+    with pytest.warns(UserWarning, match="ignored by classes"):
+        compute_metrics_pytorch(
+            task="classification",
+            y_true=torch.tensor([1, 2]),
+            y_pred=torch.tensor([1, 2]),
+            sample_weight=torch.tensor([1.0, 1.0]),
+            metrics=["classes"],
+        )
+    with pytest.warns(UserWarning, match="ignored by the following regression metrics"):
+        compute_metrics_pytorch(
+            task="regression",
+            y_true=torch.tensor([1.0, 2.0]),
+            y_pred=torch.tensor([1.1, 1.9]),
+            sample_weight=torch.tensor([1.0, 1.0]),
+            metrics=["max_error"],
+        )
+
+
+def test_regression_std_error_under_minimum_size() -> None:
+    # 5. std_error with size < 2
+    assert RegressionMetrics.std_error([1.0], [1.0]) == 0.0
+    assert RegressionMetricsPytorch.std_error(torch.tensor([1.0]), torch.tensor([1.0])) == 0.0
+
+
+def test_pytorch_balanced_accuracy_with_zero_weights() -> None:
+    # 6. balanced_accuracy with weights summing to 0
+    y_true_cls = torch.tensor([0, 1])
+    y_pred_cls = torch.tensor([0, 0])
+    w_zero = torch.tensor([0.0, 0.0])
+    val = ClassificationMetricsPytorch.balanced_accuracy(y_true_cls, y_pred_cls, w_zero)
+    assert val == 0.0
+
+
+def test_pytorch_r2_under_constant_targets() -> None:
+    # 7. r2 when ss_tot == 0 (constant target)
+    assert RegressionMetricsPytorch.r2(torch.tensor([1.0, 1.0]), torch.tensor([1.0, 1.0])) == 1.0
+    assert RegressionMetricsPytorch.r2(torch.tensor([1.0, 1.0]), torch.tensor([2.0, 2.0])) == 0.0
+
+
+def test_regression_metrics_with_sample_weight_no_warnings() -> None:
+    import warnings
+
+    # NumPy
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")  # Treat all warnings as errors
+        compute_metrics(
+            task="regression",
+            y_true=[1.0, 2.0],
+            y_pred=[1.1, 1.9],
+            sample_weight=[1.0, 1.0],
+            metrics=["mse", "mae"],
+        )
+        compute_metrics(
+            task="classification",
+            y_true=[0, 1],
+            y_pred=[0, 1],
+            sample_weight=[1.0, 1.0],
+            metrics=["accuracy"],
+        )
+
+    # PyTorch
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        compute_metrics_pytorch(
+            task="regression",
+            y_true=torch.tensor([1.0, 2.0]),
+            y_pred=torch.tensor([1.1, 1.9]),
+            sample_weight=torch.tensor([1.0, 1.0]),
+            metrics=["mse", "mae"],
+        )
+        compute_metrics_pytorch(
+            task="classification",
+            y_true=torch.tensor([0, 1]),
+            y_pred=torch.tensor([0, 1]),
+            sample_weight=torch.tensor([1.0, 1.0]),
+            metrics=["accuracy"],
+        )
