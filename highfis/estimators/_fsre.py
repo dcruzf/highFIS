@@ -205,8 +205,7 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
             sf = self.history_["threshold"].get("surviving_feature_indices")
         x_m = x_arr[:, sf] if sf is not None and cast(Any, self.model_).n_inputs < x_arr.shape[1] else x_arr
         device_str = str(self.device).lower()
-        dtype = torch.float64 if "cpu" in device_str else torch.float32
-        x_tensor = torch.as_tensor(x_m, dtype=dtype, device=torch.device(device_str))
+        x_tensor = torch.as_tensor(x_m, dtype=torch.float32, device=torch.device(device_str))
         probs = cast(Any, self.model_).predict_proba(x_tensor)
         return probs.detach().cpu().numpy()
 
@@ -410,8 +409,7 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
             sf = self.history_["threshold"].get("surviving_feature_indices")
         x_m = x_arr[:, sf] if sf is not None and cast(Any, self.model_).n_inputs < x_arr.shape[1] else x_arr
         device_str = str(self.device).lower()
-        dtype = torch.float64 if "cpu" in device_str else torch.float32
-        x_tensor = torch.as_tensor(x_m, dtype=dtype, device=torch.device(device_str))
+        x_tensor = torch.as_tensor(x_m, dtype=torch.float32, device=torch.device(device_str))
         preds = cast(Any, self.model_).predict(x_tensor)
         return preds.detach().cpu().numpy()
 

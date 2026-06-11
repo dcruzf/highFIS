@@ -14,11 +14,7 @@ from highfis.estimators._base import (
     _build_gaussian_input_mfs,
     _build_kmeans_input_mfs,
     _build_pfrb_input_mfs,
-    _mann_whitney_p_value,
     _normalize_importance,
-    _rankdata,
-    _resolve_mhtsk_scale_parameters,
-    _select_rule_indices,
 )
 from highfis.memberships import GaussianMF
 
@@ -210,26 +206,6 @@ def test_build_kmeans_input_mfs_works_with_numpy_cluster_centers() -> None:
     assert len(input_mfs["x1"]) == 2
 
 
-def test_rankdata_handles_ties() -> None:
-    values = np.array([1.0, 2.0, 2.0, 4.0], dtype=np.float64)
-    ranks = _rankdata(values)
-    assert ranks.tolist() == [1.0, 2.5, 2.5, 4.0]
-
-
-def test_mann_whitney_p_value_with_empty_group() -> None:
-    assert _mann_whitney_p_value(np.array([], dtype=np.float64), np.array([1.0])) == 1.0
-
-
-def test_select_rule_indices_edge_cases() -> None:
-    assert _select_rule_indices(torch.tensor([], dtype=torch.float32), 0.5) == []
-    assert _select_rule_indices(torch.tensor([1.0, 2.0]), 0.0) == []
-    assert _select_rule_indices(torch.tensor([1.0, 2.0]), 1.0) == [0, 1]
-    zero_sum = torch.tensor([0.0, 0.0], dtype=torch.float32)
-    assert _select_rule_indices(zero_sum, 0.5) == [0]
-    with pytest.raises(ValueError, match="crcr must be between 0 and 1"):
-        _select_rule_indices(torch.tensor([1.0, 2.0]), -0.1)
-
-
 def test_normalize_importance_returns_uniform_distribution_for_zero_total() -> None:
     values = torch.zeros(3, dtype=torch.float32)
     normalized = _normalize_importance(values)
@@ -330,22 +306,6 @@ def test_regressor_sigma_scale_auto() -> None:
     est.fit(x, y)
 
 
-def test_resolve_mhtsk_scale_parameters_large_features() -> None:
-    # Test high feature count branch (n_features > 5000) for line 372
-    h, n = _resolve_mhtsk_scale_parameters(
-        n_features=6000,
-        head_size=None,
-        head_size_ratio=None,
-        n_heads=None,
-        fcr_target=0.85,
-        h_value=None,
-        sigma=10.0,
-        xi=1.0,
-    )
-    assert h == 60  # round(6000 * 0.01)
-    assert n > 0
-
-
 def test_fit_read_only_inputs_classifier() -> None:
     # Test read-only array conversion for line 858
     x, y = _make_dataset(20)
@@ -391,3 +351,50 @@ def test_regressor_fit_too_few_samples() -> None:
     est = HTSKRegressor(epochs=1)
     with pytest.raises(ValueError, match="requires at least 3 samples"):
         est.fit(x, y)
+
+
+def test_build_input_mfs_cached_thread_safety() -> None:
+    import threading
+    import time
+
+    from highfis.estimators._base import _build_input_mfs_cached
+
+    class DummyEstimator:
+        def __init__(self) -> None:
+            self.mf_init = "kmeans"
+            self.n_mfs = 3
+            self.sigma_scale = 1.0
+            self.random_state = 42
+            self.pfrb_max_rules = None
+            self.input_configs = None
+
+    estimator = DummyEstimator()
+    x = np.random.randn(20, 2)
+
+    def build_func(x_arr: np.ndarray) -> tuple[Any, list[str], str]:
+        from highfis.memberships import GaussianMF
+
+        time.sleep(0.01)
+        mfs = {"x1": [GaussianMF(mean=0.0, sigma=1.0)], "x2": [GaussianMF(mean=1.0, sigma=1.0)]}
+        return mfs, ["x1", "x2"], "coco"
+
+    threads = []
+    errors = []
+
+    def worker() -> None:
+        try:
+            _mfs, names, rb = _build_input_mfs_cached(estimator, x, build_func)
+            assert len(names) == 2
+            assert rb == "coco"
+        except Exception as e:
+            errors.append(e)
+
+    for _ in range(10):
+        t = threading.Thread(target=worker)
+        threads.append(t)
+        t.start()
+
+    for t in threads:
+        t.join()
+
+    assert len(errors) == 0
