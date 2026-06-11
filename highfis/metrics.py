@@ -223,6 +223,8 @@ class RegressionMetrics:
         """Return mean bias error (prediction minus truth)."""
         y_true_arr = _flatten_array(y_true)
         y_pred_arr = _flatten_array(y_pred)
+        if sample_weight is not None:
+            return float(np.average(y_pred_arr - y_true_arr, weights=sample_weight))
         return float(np.mean(y_pred_arr - y_true_arr))
 
     @staticmethod
@@ -245,7 +247,7 @@ class RegressionMetrics:
     @staticmethod
     def mape(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
         """Return mean absolute percentage error."""
-        return float(mean_absolute_percentage_error(y_true, y_pred))
+        return float(mean_absolute_percentage_error(y_true, y_pred, sample_weight=sample_weight))
 
     @staticmethod
     def smape(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
@@ -256,13 +258,15 @@ class RegressionMetrics:
         denominator = np.abs(y_true_arr) + np.abs(y_pred_arr)
         with np.errstate(divide="ignore", invalid="ignore"):
             ratio = np.where(denominator == 0.0, 0.0, numerator / denominator)
+        if sample_weight is not None:
+            return float(np.average(ratio, weights=sample_weight))
         return float(np.mean(ratio))
 
     @staticmethod
     def msle(y_true: Any, y_pred: Any, sample_weight: Any | None = None) -> float:
         """Return mean squared logarithmic error."""
         try:
-            return float(mean_squared_log_error(y_true, y_pred))
+            return float(mean_squared_log_error(y_true, y_pred, sample_weight=sample_weight))
         except ValueError:
             return float(np.nan)
 
@@ -357,19 +361,46 @@ class ClassificationMetricsPytorch:
         return f1.item()
 
     @staticmethod
+    def _precision_recall_f1_micro(
+        y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        classes = torch.unique(torch.cat([y_true, y_pred]))
+        tp_sum = torch.tensor(0.0, device=y_true.device)
+        fp_sum = torch.tensor(0.0, device=y_true.device)
+        fn_sum = torch.tensor(0.0, device=y_true.device)
+        for c in classes:
+            true_c = y_true == c
+            pred_c = y_pred == c
+            if sample_weight is not None:
+                tp_sum += torch.sum((true_c & pred_c).float() * sample_weight)
+                fp_sum += torch.sum((~true_c & pred_c).float() * sample_weight)
+                fn_sum += torch.sum((true_c & ~pred_c).float() * sample_weight)
+            else:
+                tp_sum += (true_c & pred_c).sum().float()
+                fp_sum += (~true_c & pred_c).sum().float()
+                fn_sum += (true_c & ~pred_c).sum().float()
+        prec = tp_sum / (tp_sum + fp_sum) if (tp_sum + fp_sum) > 0 else torch.tensor(0.0, device=y_true.device)
+        rec = tp_sum / (tp_sum + fn_sum) if (tp_sum + fn_sum) > 0 else torch.tensor(0.0, device=y_true.device)
+        f1 = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else torch.tensor(0.0, device=y_true.device)
+        return prec, rec, f1
+
+    @staticmethod
     def precision_micro(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
         """Return micro-averaged precision."""
-        return ClassificationMetricsPytorch.accuracy(y_true, y_pred, sample_weight)
+        prec, _, _ = ClassificationMetricsPytorch._precision_recall_f1_micro(y_true, y_pred, sample_weight)
+        return prec.item()
 
     @staticmethod
     def recall_micro(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
         """Return micro-averaged recall."""
-        return ClassificationMetricsPytorch.accuracy(y_true, y_pred, sample_weight)
+        _, rec, _ = ClassificationMetricsPytorch._precision_recall_f1_micro(y_true, y_pred, sample_weight)
+        return rec.item()
 
     @staticmethod
     def f1_micro(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
         """Return micro-averaged F1 score."""
-        return ClassificationMetricsPytorch.accuracy(y_true, y_pred, sample_weight)
+        _, _, f1 = ClassificationMetricsPytorch._precision_recall_f1_micro(y_true, y_pred, sample_weight)
+        return f1.item()
 
     @staticmethod
     def confusion_matrix(
@@ -377,15 +408,19 @@ class ClassificationMetricsPytorch:
     ) -> np.ndarray:
         """Return the confusion matrix."""
         classes = torch.unique(torch.cat([y_true, y_pred]))
+        classes = torch.sort(classes).values
         n_classes = len(classes)
-        cm = torch.zeros((n_classes, n_classes), dtype=torch.float32, device=y_true.device)
-        class_to_idx = {c.item(): idx for idx, c in enumerate(classes)}
-        for i in range(len(y_true)):
-            t_idx = class_to_idx[y_true[i].item()]
-            p_idx = class_to_idx[y_pred[i].item()]
-            val = sample_weight[i].item() if sample_weight is not None else 1.0
-            cm[t_idx, p_idx] += val
-        return cm.cpu().numpy()
+
+        y_true_idx = torch.searchsorted(classes, y_true)
+        y_pred_idx = torch.searchsorted(classes, y_pred)
+        indices = y_true_idx * n_classes + y_pred_idx
+
+        if sample_weight is not None:
+            cm = torch.bincount(indices, weights=sample_weight, minlength=n_classes**2)
+        else:
+            cm = torch.bincount(indices, minlength=n_classes**2)
+
+        return cm.reshape(n_classes, n_classes).cpu().numpy()
 
     @staticmethod
     def classes(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> np.ndarray:
@@ -428,7 +463,9 @@ class RegressionMetricsPytorch:
             mean_y = torch.mean(y_true)
             ss_res = torch.sum((y_true - y_pred) ** 2)
             ss_tot = torch.sum((y_true - mean_y) ** 2)
-        return (1.0 - ss_res / ss_tot).item() if ss_tot > 0 else 0.0
+        if ss_tot == 0:
+            return 1.0 if ss_res == 0 else 0.0
+        return (1.0 - ss_res / ss_tot).item()
 
     @staticmethod
     def median_absolute_error(
@@ -448,12 +485,15 @@ class RegressionMetricsPytorch:
             if idx < len(sorted_errors) - 1 and cum_weights[idx] == half_weight:
                 return ((sorted_errors[idx] + sorted_errors[idx + 1]) / 2.0).item()
             return sorted_errors[idx].item()
-        return torch.median(errors).item()
+        return torch.quantile(errors.float(), 0.5).item()
 
     @staticmethod
     def mean_bias_error(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
         """Return mean bias error (prediction minus truth)."""
-        return torch.mean(y_pred - y_true).item()
+        diff = y_pred - y_true
+        if sample_weight is not None:
+            return (torch.sum(diff * sample_weight) / torch.sum(sample_weight)).item()
+        return torch.mean(diff).item()
 
     @staticmethod
     def max_error(y_true: torch.Tensor, y_pred: torch.Tensor, sample_weight: torch.Tensor | None = None) -> float:
@@ -485,6 +525,8 @@ class RegressionMetricsPytorch:
         """Return mean absolute percentage error."""
         eps = torch.finfo(y_true.dtype).eps
         ratio = torch.abs(y_true - y_pred) / torch.clamp(torch.abs(y_true), min=eps)
+        if sample_weight is not None:
+            return (torch.sum(ratio * sample_weight) / torch.sum(sample_weight)).item()
         return torch.mean(ratio).item()
 
     @staticmethod
@@ -493,6 +535,8 @@ class RegressionMetricsPytorch:
         numerator = torch.abs(y_pred - y_true) * 2.0
         denominator = torch.abs(y_true) + torch.abs(y_pred)
         ratio = torch.where(denominator == 0.0, 0.0, numerator / denominator)
+        if sample_weight is not None:
+            return (torch.sum(ratio * sample_weight) / torch.sum(sample_weight)).item()
         return torch.mean(ratio).item()
 
     @staticmethod
@@ -501,6 +545,8 @@ class RegressionMetricsPytorch:
         if torch.any(y_true < 0) or torch.any(y_pred < 0):
             return float("nan")
         log_diff = torch.log1p(y_true) - torch.log1p(y_pred)
+        if sample_weight is not None:
+            return (torch.sum((log_diff**2) * sample_weight) / torch.sum(sample_weight)).item()
         return torch.mean(log_diff**2).item()
 
     @staticmethod

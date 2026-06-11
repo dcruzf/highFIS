@@ -436,3 +436,57 @@ def test_pytorch_metrics_edge_cases() -> None:
         task="regression", y_true=y_true_t, y_pred=y_pred_t, sample_weight=[1.0, 2.0], metrics=["mse"]
     )
     assert "mse" in res_weight_list
+
+
+def test_pytorch_metrics_randomized_against_sklearn() -> None:
+    import torch
+    from sklearn.metrics import (
+        balanced_accuracy_score,
+        f1_score,
+        precision_score,
+        recall_score,
+    )
+
+    from highfis.metrics import ClassificationMetricsPytorch
+
+    rng = np.random.default_rng(12345)
+
+    for _ in range(100):
+        n_samples = rng.integers(5, 50)
+        n_classes = rng.integers(2, 5)
+
+        y_true = rng.integers(0, n_classes, size=n_samples)
+        y_pred = rng.integers(0, n_classes, size=n_samples)
+
+        # Introduce missing classes sometimes
+        if rng.random() > 0.5:
+            missing_c = rng.integers(0, n_classes)
+            y_pred[y_pred == missing_c] = (missing_c + 1) % n_classes
+
+        has_w = rng.random() > 0.5
+        w = rng.uniform(0.1, 2.0, size=n_samples) if has_w else None
+
+        y_true_t = torch.tensor(y_true)
+        y_pred_t = torch.tensor(y_pred)
+        w_t = torch.tensor(w) if w is not None else None
+
+        for avg in ["macro", "micro"]:
+            sk_prec = precision_score(y_true, y_pred, average=avg, zero_division=0, sample_weight=w)
+            sk_rec = recall_score(y_true, y_pred, average=avg, zero_division=0, sample_weight=w)
+            sk_f1 = f1_score(y_true, y_pred, average=avg, zero_division=0, sample_weight=w)
+
+            py_prec_fn = getattr(ClassificationMetricsPytorch, f"precision_{avg}")
+            py_rec_fn = getattr(ClassificationMetricsPytorch, f"recall_{avg}")
+            py_f1_fn = getattr(ClassificationMetricsPytorch, f"f1_{avg}")
+
+            py_prec = py_prec_fn(y_true_t, y_pred_t, w_t)
+            py_rec = py_rec_fn(y_true_t, y_pred_t, w_t)
+            py_f1 = py_f1_fn(y_true_t, y_pred_t, w_t)
+
+            assert np.isclose(sk_prec, py_prec, atol=1e-5)
+            assert np.isclose(sk_rec, py_rec, atol=1e-5)
+            assert np.isclose(sk_f1, py_f1, atol=1e-5)
+
+        sk_bal = balanced_accuracy_score(y_true, y_pred, sample_weight=w)
+        py_bal = ClassificationMetricsPytorch.balanced_accuracy(y_true_t, y_pred_t, w_t)
+        assert np.isclose(sk_bal, py_bal, atol=1e-5)
