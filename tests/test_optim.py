@@ -387,3 +387,30 @@ def test_predict_numpy_different_shapes() -> None:
     model = DummyModel2D()
     res = trainer._predict_numpy(model, torch.randn(5, 3))  # type: ignore
     assert res.shape == (5, 2)
+
+
+def test_gradient_trainer_default_history_metrics() -> None:
+    from highfis.models._fsre import FSREADATSKClassifierModel, FSREADATSKRegressorModel
+
+    # 1. Classification
+    model_cls = FSREADATSKClassifierModel(_build_input_mfs(3, 2), n_classes=2)
+    x = torch.randn(15, 3)
+    y = torch.randint(0, 2, (15,))
+
+    trainer = GradientTrainer(epochs=2)
+    history_cls = trainer.fit(model_cls, x, y, x_val=x, y_val=y)
+
+    assert "train_accuracy" in history_cls
+    assert "val_accuracy" in history_cls
+    assert len(history_cls["train_accuracy"]) == 2
+    assert len(history_cls["val_accuracy"]) == 2
+
+    # 2. Regression
+    model_reg = FSREADATSKRegressorModel(_build_input_mfs(3, 2))
+    y_reg = torch.randn(15)
+    history_reg = trainer.fit(model_reg, x, y_reg, x_val=x, y_val=y_reg)
+
+    assert "train_mse" in history_reg
+    assert "val_mse" in history_reg
+    assert len(history_reg["train_mse"]) == 2
+    assert len(history_reg["val_mse"]) == 2

@@ -108,8 +108,10 @@ class GradientTrainer(BaseTrainer):
 
         # Resolve/normalize metrics
         task = model.task_type
-        metrics_list: list[str] = []
-        if metrics is not None:
+        metrics_list: list[str]
+        if metrics is None:
+            metrics_list = ["accuracy"] if task == "classification" else ["mse"]
+        else:
             metrics_list = [metrics] if isinstance(metrics, str) else list(metrics)
 
         if metrics_list:
@@ -161,9 +163,8 @@ class GradientTrainer(BaseTrainer):
 
             # Evaluate metrics on train set
             if metrics_list:
-                train_preds = self._predict_numpy(model, x)
-                train_targets = y.cpu().numpy()
-                train_metrics = compute_metrics(cast(Any, task), train_targets, train_preds, metrics=metrics_list)
+                train_preds = self._predict_tensor(model, x)
+                train_metrics = compute_metrics(cast(Any, task), y, train_preds, metrics=metrics_list)
                 for m in metrics_list:
                     history.setdefault(f"train_{m}", []).append(train_metrics[m])
 
@@ -174,9 +175,8 @@ class GradientTrainer(BaseTrainer):
 
                 # Evaluate metrics on val set
                 if metrics_list:
-                    val_preds = self._predict_numpy(model, x_val)
-                    val_targets = y_val.cpu().numpy()
-                    val_metrics = compute_metrics(cast(Any, task), val_targets, val_preds, metrics=metrics_list)
+                    val_preds = self._predict_tensor(model, x_val)
+                    val_metrics = compute_metrics(cast(Any, task), y_val, val_preds, metrics=metrics_list)
                     for m in metrics_list:
                         history.setdefault(f"val_{m}", []).append(val_metrics[m])
                         val_info[f"val_{m}"] = val_metrics[m]
@@ -284,8 +284,8 @@ class GradientTrainer(BaseTrainer):
         else:
             return criterion(output.squeeze(1), target)
 
-    def _predict_numpy(self, model: BaseTSK, x: Tensor) -> np.ndarray:
-        """Helper to get numpy predictions of the model on *x* using DataLoader."""
+    def _predict_tensor(self, model: BaseTSK, x: Tensor) -> Tensor:
+        """Helper to get PyTorch Tensor predictions of the model on *x* using DataLoader."""
         task = model.task_type
         was_training = model.training
         model.eval()
@@ -299,13 +299,17 @@ class GradientTrainer(BaseTrainer):
                     outputs.append(out_b)
                 output = torch.cat(outputs, dim=0)
                 if task == "classification":
-                    return output.argmax(dim=1).cpu().numpy()
+                    return output.argmax(dim=1)
                 else:
                     if output.ndim > 1 and output.shape[1] == 1:
                         output = output.squeeze(1)
-                    return output.cpu().numpy()
+                    return output
         finally:
             model.train(was_training)
+
+    def _predict_numpy(self, model: BaseTSK, x: Tensor) -> np.ndarray:
+        """Helper to get numpy predictions of the model on *x* using DataLoader."""
+        return self._predict_tensor(model, x).cpu().numpy()
 
     def _run_minibatch_epoch(
         self,
