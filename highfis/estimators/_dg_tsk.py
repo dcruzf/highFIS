@@ -9,10 +9,10 @@ import numpy as np
 import torch
 from torch import Tensor
 
-from ..base import BaseTSK
 from ..layers import GatedClassificationZeroOrderConsequentLayer, GatedRegressionZeroOrderConsequentLayer
 from ..memberships import MembershipFunction
 from ..models import (
+    BaseTSK,
     DGTSKClassifierModel,
     DGTSKRegressorModel,
 )

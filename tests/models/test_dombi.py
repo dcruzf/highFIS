@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pytest
 import torch
-from torch import nn
 
 from highfis.memberships import GaussianMF
 from highfis.models import DombiTSKClassifierModel, DombiTSKRegressorModel
@@ -80,16 +79,6 @@ def test_dombi_tsk_regressor_explicit_t_norm_fn_branch() -> None:
     x = torch.randn(4, 2)
     out = model.forward(x)
     assert out.shape == (4, 1)
-
-
-def test_dombi_tsk_classifier_default_criterion() -> None:
-    model = DombiTSKClassifierModel(_build_input_mfs(), n_classes=2, lambda_=1.0)
-    assert isinstance(model._default_criterion(), nn.CrossEntropyLoss)
-
-
-def test_dombi_tsk_regressor_default_criterion() -> None:
-    model = DombiTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2), lambda_=1.0)
-    assert isinstance(model._default_criterion(), nn.MSELoss)
 
 
 def test_dombi_classifier_zero_init_branches() -> None:

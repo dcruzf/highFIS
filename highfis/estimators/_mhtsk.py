@@ -9,11 +9,11 @@ import numpy as np
 import torch
 from sklearn.utils.validation import check_X_y
 
-from ..base import BaseTSK
 from ..memberships import (
     MembershipFunction,
 )
 from ..models import (
+    BaseTSK,
     MHTSKClassifierModel,
     MHTSKRegressorModel,
 )
@@ -244,6 +244,8 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         self._build_extracted_model(input_mfs, selected)
 
         if self.retrain_after_extraction:
+            from ..optim import GradientTrainer
+
             x_val_t: torch.Tensor | None = None
             y_val_t: torch.Tensor | None = None
             if x_val is not None and y_val is not None:
@@ -253,9 +255,7 @@ class MHTSKClassifier(_BaseClassifierEstimator):
                     self._label_encoder_.transform(np.asarray(y_v_arr)),
                     dtype=torch.long,
                 )
-            self.history_ = self.model_.fit(
-                x_t,
-                y_t,
+            trainer = GradientTrainer(
                 epochs=int(self.epochs),
                 learning_rate=float(self.learning_rate),
                 batch_size=self.batch_size,
@@ -263,12 +263,11 @@ class MHTSKClassifier(_BaseClassifierEstimator):
                 ur_weight=float(self.ur_weight),
                 ur_target=self.ur_target,
                 verbose=self.verbose,
-                x_val=x_val_t,
-                y_val=y_val_t,
                 patience=self.patience,
                 restore_best=self.restore_best,
                 weight_decay=float(self.weight_decay),
             )
+            self.history_ = trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t)
         return self
 
 
@@ -475,6 +474,8 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         self._build_extracted_model(input_mfs, selected)
 
         if self.retrain_after_extraction:
+            from ..optim import GradientTrainer
+
             y_t = torch.as_tensor(np.asarray(y_arr), dtype=torch.float32)
             x_val_t: torch.Tensor | None = None
             y_val_t: torch.Tensor | None = None
@@ -482,9 +483,7 @@ class MHTSKRegressor(_BaseRegressorEstimator):
                 x_v_arr, y_v_arr = check_X_y(x_val, y_val)
                 x_val_t = self._as_tensor_x(x_v_arr)
                 y_val_t = torch.as_tensor(np.asarray(y_v_arr, dtype=np.float32), dtype=torch.float32)
-            self.history_ = self.model_.fit(
-                x_t,
-                y_t,
+            trainer = GradientTrainer(
                 epochs=int(self.epochs),
                 learning_rate=float(self.learning_rate),
                 batch_size=self.batch_size,
@@ -492,12 +491,11 @@ class MHTSKRegressor(_BaseRegressorEstimator):
                 ur_weight=float(self.ur_weight),
                 ur_target=self.ur_target,
                 verbose=self.verbose,
-                x_val=x_val_t,
-                y_val=y_val_t,
                 patience=self.patience,
                 restore_best=self.restore_best,
                 weight_decay=float(self.weight_decay),
             )
+            self.history_ = trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t)
         return self
 
     def _build_regressor_model(

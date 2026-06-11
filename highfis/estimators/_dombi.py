@@ -7,7 +7,6 @@ from collections.abc import Mapping, Sequence
 
 import numpy as np
 
-from ..base import BaseTSK
 from ..memberships import (
     GaussianMF,
     MembershipFunction,
@@ -15,6 +14,7 @@ from ..memberships import (
 from ..models import (
     ADMTSKClassifierModel,
     ADMTSKRegressorModel,
+    BaseTSK,
     DombiTSKClassifierModel,
     DombiTSKRegressorModel,
 )

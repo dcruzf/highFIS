@@ -8,7 +8,6 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 
-from ..base import BaseTSK
 from ..memberships import (
     CompositeExponentialMF,
     MembershipFunction,
@@ -16,6 +15,7 @@ from ..memberships import (
 from ..models import (
     AYATSKClassifierModel,
     AYATSKRegressorModel,
+    BaseTSK,
 )
 from ._base import (
     InputConfig,

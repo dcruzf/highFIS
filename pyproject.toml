@@ -121,6 +121,7 @@ select = [
     "SIM",    # flake8-simplify
     "RUF",    # Ruff-specific rules
     "W",      # pycodestyle (Warning)
+    "C901",   # cyclomatic complexity
 ]
 pydocstyle = { convention = "google" }
 isort = { known-first-party = ["highfis", "tests"] }

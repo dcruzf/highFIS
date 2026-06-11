@@ -106,8 +106,7 @@ class DombiTSKClassifierModel(BaseTSKClassifierModel):
     def _build_consequent_layer(self) -> nn.Module:
         return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
 
-    def _default_criterion(self) -> nn.Module:
-        return nn.CrossEntropyLoss()
+    default_criterion = nn.CrossEntropyLoss
 
 
 class DombiTSKRegressorModel(BaseTSKRegressorModel):
@@ -174,8 +173,7 @@ class DombiTSKRegressorModel(BaseTSKRegressorModel):
     def _build_consequent_layer(self) -> nn.Module:
         return RegressionConsequentLayer(self.n_rules, self.n_inputs)
 
-    def _default_criterion(self) -> nn.Module:
-        return nn.MSELoss()
+    default_criterion = nn.MSELoss
 
 
 class ADMTSKClassifierModel(BaseTSKClassifierModel):
@@ -281,31 +279,7 @@ class ADMTSKClassifierModel(BaseTSKClassifierModel):
     def _build_consequent_layer(self) -> nn.Module:
         return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
 
-    def _default_criterion(self) -> nn.Module:
-        return nn.MSELoss()
-
-    def _build_optimizer(
-        self,
-        optimizer: torch.optim.Optimizer | None,
-        learning_rate: float,
-        weight_decay: float,
-    ) -> torch.optim.Optimizer:
-        """Return *optimizer* unchanged, or build a paper-style Adam optimizer."""
-        if optimizer is not None:
-            return optimizer
-        ante_params = list(self.membership_layer.parameters())
-        rule_params = list(self.rule_layer.parameters())
-        cons_params = list(self.consequent_layer.parameters())
-        if self.consequent_bn is not None:
-            cons_params.extend(self.consequent_bn.parameters())
-        return torch.optim.Adam(
-            [
-                {"params": ante_params},
-                {"params": rule_params},
-                {"params": cons_params},
-            ],
-            lr=learning_rate,
-        )
+    default_criterion = nn.MSELoss
 
 
 class ADMTSKRegressorModel(BaseTSKRegressorModel):
@@ -405,28 +379,4 @@ class ADMTSKRegressorModel(BaseTSKRegressorModel):
     def _build_consequent_layer(self) -> nn.Module:
         return RegressionConsequentLayer(self.n_rules, self.n_inputs)
 
-    def _default_criterion(self) -> nn.Module:
-        return nn.MSELoss()
-
-    def _build_optimizer(
-        self,
-        optimizer: torch.optim.Optimizer | None,
-        learning_rate: float,
-        weight_decay: float,
-    ) -> torch.optim.Optimizer:
-        """Return *optimizer* unchanged, or build a paper-style Adam optimizer."""
-        if optimizer is not None:
-            return optimizer
-        ante_params = list(self.membership_layer.parameters())
-        rule_params = list(self.rule_layer.parameters())
-        cons_params = list(self.consequent_layer.parameters())
-        if self.consequent_bn is not None:
-            cons_params.extend(self.consequent_bn.parameters())
-        return torch.optim.Adam(
-            [
-                {"params": ante_params},
-                {"params": rule_params},
-                {"params": cons_params},
-            ],
-            lr=learning_rate,
-        )
+    default_criterion = nn.MSELoss

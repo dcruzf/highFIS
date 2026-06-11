@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, cast
+from typing import Any
 
 from torch import Tensor
 
-from ..base import BaseTSK
+from ..models import BaseTSK
 from ._base import BaseTrainer
-from ._protocols import DGModelProtocol
+from ._protocols import DGModelProtocol, FirstOrderModelProtocol
 
 _DEFAULT_ZETA: list[float] = [0.0, 0.25, 0.5, 0.75, 1.0]
 
@@ -142,6 +142,94 @@ class DGTrainer(BaseTrainer):
         self.structural_pruning = structural_pruning
         self.finetune_freeze_antecedents = finetune_freeze_antecedents
 
+    def _run_dg_phase(
+        self,
+        model: BaseTSK,
+        x: Tensor,
+        y: Tensor,
+        x_val: Tensor | None,
+        y_val: Tensor | None,
+        metrics: list[str] | None,
+    ) -> dict[str, Any]:
+        from ._gradient import GradientTrainer
+
+        membership_params = list(model.membership_layer.parameters())
+        for p in membership_params:
+            p.requires_grad_(False)
+        try:
+            dg_trainer = GradientTrainer(
+                epochs=int(self.dg_epochs),
+                learning_rate=float(self.dg_learning_rate),
+                loss=self.loss,
+                batch_size=self.dg_batch_size,
+                shuffle=bool(self.dg_shuffle),
+                ur_weight=float(self.dg_ur_weight),
+                ur_target=self.dg_ur_target,
+                verbose=self.verbose,
+                patience=self.dg_patience,
+                weight_decay=float(self.dg_weight_decay),
+            )
+            return dg_trainer.fit(model, x, y, x_val=x_val, y_val=y_val, metrics=metrics)
+        finally:
+            for p in membership_params:
+                p.requires_grad_(True)
+
+    def _run_finetune_phase(
+        self,
+        model: BaseTSK,
+        x_ft: Tensor,
+        y: Tensor,
+        x_val_ft: Tensor | None,
+        y_val: Tensor | None,
+        metrics: list[str] | None,
+    ) -> dict[str, Any]:
+        import torch.nn as nn
+
+        from ._gradient import GradientTrainer
+
+        if isinstance(model, FirstOrderModelProtocol):
+            from ..layers import GatedClassificationZeroOrderConsequentLayer, GatedRegressionZeroOrderConsequentLayer
+
+            cons = model.consequent_layer
+            if isinstance(cons, (GatedClassificationZeroOrderConsequentLayer, GatedRegressionZeroOrderConsequentLayer)):
+                model.convert_to_first_order()
+
+        # Reset consequent weights to zero (paper: "all consequent parameters set to zero").
+        cons = model.consequent_layer
+        for name, param in cons.named_parameters():
+            if name in ("weight", "bias"):
+                nn.init.zeros_(param)
+
+        # Freeze params per paper: antecedents + lambda_gates frozen during fine-tune.
+        frozen: list[Any] = []
+        if self.finetune_freeze_antecedents:
+            frozen.extend(model.membership_layer.parameters())
+        rule_layer = model.rule_layer
+        lambda_gates = getattr(rule_layer, "lambda_gates", None)
+        if isinstance(lambda_gates, Tensor):
+            frozen.append(lambda_gates)
+
+        for p in frozen:
+            p.requires_grad_(False)
+        try:
+            ft_trainer = GradientTrainer(
+                epochs=int(self.finetune_epochs),
+                learning_rate=float(self.finetune_learning_rate),
+                loss=self.loss,
+                batch_size=self.finetune_batch_size,
+                shuffle=bool(self.finetune_shuffle),
+                ur_weight=float(self.finetune_ur_weight),
+                ur_target=self.finetune_ur_target,
+                verbose=self.verbose,
+                patience=self.finetune_patience,
+                restore_best=bool(self.finetune_restore_best),
+                weight_decay=float(self.finetune_weight_decay),
+            )
+            return ft_trainer.fit(model, x_ft, y, x_val=x_val_ft, y_val=y_val, metrics=metrics)
+        finally:
+            for p in frozen:
+                p.requires_grad_(True)
+
     def fit(
         self,
         model: BaseTSK,
@@ -169,40 +257,23 @@ class DGTrainer(BaseTrainer):
             Dictionary with keys:
 
             - ``"dg"`` — history dict from phase 1 (DG phase).
-                        - ``"threshold"`` — result dict from search_thresholds().
+            - ``"threshold"`` — result dict from search_thresholds().
             - ``"finetune"`` — history dict from phase 3 (fine-tune phase).
         """
         zeta_lambda = self.zeta_lambda if self.zeta_lambda is not None else _DEFAULT_ZETA
         zeta_theta = self.zeta_theta if self.zeta_theta is not None else _DEFAULT_ZETA
 
-        dg_model = cast(DGModelProtocol, model)
+        if not isinstance(model, DGModelProtocol):
+            raise TypeError("model must implement DGModelProtocol")
 
         # ── Phase 1: DG training ──────────────────────────────────────────
-        dg_history: dict[str, Any] = dg_model.fit_dg_phase(
-            x,
-            y,
-            epochs=int(self.dg_epochs),
-            learning_rate=float(self.dg_learning_rate),
-            criterion=self.loss,
-            batch_size=self.dg_batch_size,
-            shuffle=bool(self.dg_shuffle),
-            ur_weight=float(self.dg_ur_weight),
-            ur_target=self.dg_ur_target,
-            verbose=self.verbose,
-            x_val=x_val,
-            y_val=y_val,
-            patience=self.dg_patience,
-            weight_decay=float(self.dg_weight_decay),
-            metrics=metrics,
-        )
+        dg_history = self._run_dg_phase(model, x, y, x_val, y_val, metrics)
 
         # ── Phase 2: Threshold search + pruning ───────────────────────────
-        # Fall back to training data for threshold scoring when no hold-out
-        # set is provided (paper practice).
         x_eval = x_val if x_val is not None else x
         y_eval = y_val if y_val is not None else y
 
-        threshold_result: dict[str, Any] = dg_model.search_thresholds(
+        threshold_result: dict[str, Any] = model.search_thresholds(
             x,
             y,
             zeta_lambda=zeta_lambda,
@@ -224,25 +295,7 @@ class DGTrainer(BaseTrainer):
             x_ft, x_val_ft = x, x_val
 
         # ── Phase 3: Fine-tune ────────────────────────────────────────────
-        finetune_history: dict[str, Any] = dg_model.fit_finetune(
-            x_ft,
-            y,
-            freeze_antecedents=bool(self.finetune_freeze_antecedents),
-            epochs=int(self.finetune_epochs),
-            learning_rate=float(self.finetune_learning_rate),
-            criterion=self.loss,
-            batch_size=self.finetune_batch_size,
-            shuffle=bool(self.finetune_shuffle),
-            ur_weight=float(self.finetune_ur_weight),
-            ur_target=self.finetune_ur_target,
-            verbose=self.verbose,
-            x_val=x_val_ft,
-            y_val=y_val,
-            patience=self.finetune_patience,
-            restore_best=bool(self.finetune_restore_best),
-            weight_decay=float(self.finetune_weight_decay),
-            metrics=metrics,
-        )
+        finetune_history = self._run_finetune_phase(model, x_ft, y, x_val_ft, y_val, metrics)
 
         return {
             "dg": dg_history,

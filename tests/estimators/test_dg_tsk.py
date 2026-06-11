@@ -9,12 +9,11 @@ from sklearn.pipeline import Pipeline
 from torch import Tensor
 
 from highfis import DGTSKClassifier, DGTSKRegressor, GradientTrainer
-from highfis.base import BaseTSK
 from highfis.estimators import InputConfig
 from highfis.estimators._dg_tsk import _select_dgtsking_surviving_features
 from highfis.layers import GatedClassificationConsequentLayer, GatedRegressionConsequentLayer
 from highfis.memberships import GaussianMF
-from highfis.models import DGTSKClassifierModel
+from highfis.models import BaseTSK, DGTSKClassifierModel
 
 
 def _build_input_mfs(n_inputs: int = 3, n_mfs: int = 2) -> dict[str, list[GaussianMF]]:

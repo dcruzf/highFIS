@@ -66,8 +66,8 @@ clf = HTSKClassifier(
 clf.fit(X_scaled, y)
 
 # The training history is captured in clf.history_
-print("Final training loss:", clf.history_["loss"][-1])
-print("Epochs executed:", len(clf.history_["loss"]))
+print("Final training loss:", clf.history_["train"][-1])
+print("Epochs executed:", clf.history_["stopped_epoch"])
 ```
 
 ---
@@ -221,3 +221,83 @@ clf = HTSKClassifier(
 # Fit the model
 clf.fit(X_train, y_train)
 ```
+
+---
+
+## 4. Training History and Metric Logging
+
+Each trainer populates the estimator's `history_` attribute after fitting the model. Internally, the optimization loop computes all metrics on the training and validation sets using **pure PyTorch** on the active device (e.g., CPU or CUDA GPU) to avoid expensive, synchronous data transfers to the host memory during training. Only the final scalar metrics are converted to Python floats when written to the history dictionary at the end of each epoch.
+
+### History Structure and Keys
+
+The `history_` dictionary contains the following keys depending on the trainer and parameters:
+
+*   **`"train"`**: The loss value computed on the training set for each epoch.
+*   **`"ur"`**: The Uniform Regularization loss value computed on the training set for each epoch.
+*   **`"val"`**: The validation loss computed on the validation set for each epoch (only present if `validation_data` or `x_val`/`y_val` is provided).
+*   **`"train_<metric>"` / `"val_<metric>"`**: The epoch-wise performance of custom or default metrics.
+*   **`"stopped_epoch"`**: The final epoch index executed (especially useful when early stopping is triggered).
+
+### Default and Custom Metrics
+
+If no metrics are explicitly specified, the trainers automatically configure task-appropriate defaults:
+*   **Classification**: Defaults to `"accuracy"` (creating `"train_accuracy"` and `"val_accuracy"` keys).
+*   **Regression**: Defaults to `"mse"` (creating `"train_mse"` and `"val_mse"` keys).
+
+To track additional metrics, pass them as a list of strings to the `.fit()` method:
+
+```python
+# Train the model while tracking accuracy and macro F1 score
+clf.fit(
+    X_train, y_train,
+    x_val=X_val, y_val=y_val,
+    metrics=["accuracy", "f1_macro"]
+)
+
+# Inspect the captured metrics
+print("Training Macro F1 per epoch:", clf.history_["train_f1_macro"])
+print("Validation Accuracy per epoch:", clf.history_["val_accuracy"])
+```
+
+---
+
+## 5. Uniform Regularization (UR)
+
+In Takagi-Sugeno-Kang (TSK) fuzzy neural networks, mini-batch gradient descent can sometimes lead to rule starvation or rule dominance, where a subset of rules dominates the output while others are never activated. This reduces the generalization performance of the model.
+
+**Uniform Regularization (UR)** resolves this by penalizing the deviation of the average rule activations from a target uniform distribution over each batch.
+
+### Mathematical Formulation
+
+The Uniform Regularization loss $L_{\text{UR}}$ added to the primary task loss is formulated as:
+
+$$
+L_{\text{UR}} = \sum_{r=1}^{R} \left( \bar{a}_r - t \right)^2
+$$
+
+Where:
+*   $R$ is the number of fuzzy rules.
+*   $\bar{a}_r$ is the average normalized activation (firing strength) of rule $r$ across all samples in the current mini-batch:
+    $$
+    \bar{a}_r = \frac{1}{B} \sum_{b=1}^{B} \bar{w}_r(x_b)
+    $$
+*   $t$ is the target uniform activation level. Typically, this is set to $1/R$, meaning every rule is expected to contribute equally on average.
+
+### Configuration Parameters
+
+Uniform Regularization is configured using two hyperparameters on the estimator:
+*   **`ur_weight`**: The regularization strength (default: `0.0`). If set to `0.0`, no UR penalty is added to the loss function during backpropagation. However, the value of the metric is still computed and logged to `history_["ur"]` for monitoring.
+*   **`ur_target`**: The target activation level $t$ (default: `None`, which defaults to $1/R$).
+
+### Interpretation of UR Values
+
+*   **`ur` $\approx 0.0$**: The rule activations are perfectly and uniformly distributed across the batch. Every rule is contributing.
+*   **`ur` $> 0.5$**: The rule activations are highly unbalanced. This suggests that either:
+    1.  Only a few rules are doing all the work (dominating), while the others are starved (inactive).
+    2.  Many rules are activating in a highly correlated way, reducing the diversity of the rule base.
+
+### Scientific Reference
+
+For more details on the rationale and effectiveness of Uniform Regularization, refer to:
+
+> Y. Cui, D. Wu and J. Huang, "Optimize TSK Fuzzy Systems for Classification Problems: Minibatch Gradient Descent With Uniform Regularization and Batch Normalization," in IEEE Transactions on Fuzzy Systems, vol. 28, no. 12, pp. 3065-3075, Dec. 2020, doi: 10.1109/TFUZZ.2020.2967282.

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 from torch import Tensor
 
 if TYPE_CHECKING:
-    from ..base import BaseTSK
+    from ..models import BaseTSK
 
 
 class BaseTrainer(ABC):
