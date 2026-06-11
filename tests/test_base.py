@@ -1,4 +1,4 @@
-"""Tests for highfis.base (BaseTSK and helpers)."""
+"""Tests for highfis.models._base (BaseTSK and helpers)."""
 
 from __future__ import annotations
 

@@ -983,7 +983,7 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
     just before training starts.  Direct ``fit`` overrides should be avoided.
 
     Attributes:
-        model_: Fitted :class:`~highfis.base.BaseTSK` instance. Available
+        model_: Fitted :class:`~highfis.models.BaseTSK` instance. Available
             after :meth:`fit`.
         classes_: Unique class labels discovered during :meth:`fit`.
         n_features_in_: Number of input features seen during :meth:`fit`.
@@ -1169,7 +1169,7 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
     just before training starts.  Direct ``fit`` overrides should be avoided.
 
     Attributes:
-        model_: Fitted :class:`~highfis.base.BaseTSK` instance. Available
+        model_: Fitted :class:`~highfis.models.BaseTSK` instance. Available
             after :meth:`fit`.
         n_features_in_: Number of input features seen during :meth:`fit`.
         feature_names_in_: Array of feature name strings.

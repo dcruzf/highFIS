@@ -119,7 +119,7 @@ Each model family exposes both classifier and regressor variants.
 | [T-Norms](api/t_norms.md) | Built-in and custom aggregation functions. |
 | [Memberships](api/memberships.md) | Membership functions for antecedents. |
 | [Metrics](api/metrics.md) | Regression and classification evaluation utilities. |
-| [Base TSK](api/base.md) | Unified training loop and shared logic. |
+| [Base TSK](api/models.md#highfis.models.BaseTSK) | Unified training loop and shared logic. |
 | [Protocols](api/protocols.md) | Structural typing interfaces. |
 | [Persistence](api/persistence.md) | Estimator checkpoint serialization and load validation. |
 | [Contributing](contributing.md) | Development setup and contribution guide. |

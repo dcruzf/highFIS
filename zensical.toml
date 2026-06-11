@@ -79,7 +79,6 @@ nav = [
         "api/defuzzifiers.md",
         "api/metrics.md",
         "api/clustering.md",
-        "api/base.md",
         "api/gates.md",
         "api/optimisers.md",
         "api/persistence.md",
