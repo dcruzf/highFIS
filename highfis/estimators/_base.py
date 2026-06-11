@@ -831,8 +831,7 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
         check_is_fitted(self, "model_")
         x_arr = validate_data(self, x, reset=False)
         device_str = str(self.device).lower()
-        dtype = torch.float64 if "cpu" in device_str else torch.float32
-        x_tensor = torch.as_tensor(x_arr, dtype=dtype, device=torch.device(device_str))
+        x_tensor = torch.as_tensor(x_arr, dtype=torch.float32, device=torch.device(device_str))
         probs = cast(Any, self.model_).predict_proba(x_tensor)
         return probs.detach().cpu().numpy()
 
@@ -1000,8 +999,7 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
         check_is_fitted(self, "model_")
         x_arr = validate_data(self, x, reset=False)
         device_str = str(self.device).lower()
-        dtype = torch.float64 if "cpu" in device_str else torch.float32
-        x_tensor = torch.as_tensor(x_arr, dtype=dtype, device=torch.device(device_str))
+        x_tensor = torch.as_tensor(x_arr, dtype=torch.float32, device=torch.device(device_str))
         preds = cast(Any, self.model_).predict(x_tensor)
         return preds.detach().cpu().numpy()
 
