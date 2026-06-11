@@ -391,3 +391,48 @@ def test_pytorch_metrics_explicitly_against_sklearn() -> None:
         RegressionMetricsPytorch.explained_variance(y_true_reg, y_pred_reg, w_reg),
         explained_variance_score(y_true_reg_np, y_pred_reg_np, sample_weight=w_reg_np),
     )
+
+
+def test_pytorch_metrics_edge_cases() -> None:
+    import torch
+
+    from highfis.metrics import compute_metrics_pytorch
+
+    # 1. MSLE with negative prediction/target in PyTorch
+    y_true_neg = torch.tensor([-1.0, 2.0])
+    y_pred_neg = torch.tensor([1.0, 2.0])
+    res_neg = compute_metrics(task="regression", y_true=y_true_neg, y_pred=y_pred_neg, metrics=["msle"])
+    assert np.isnan(res_neg["msle"])
+
+    # 2. Pearson with < 2 elements in PyTorch
+    y_true_small = torch.tensor([1.0])
+    y_pred_small = torch.tensor([2.0])
+    res_small = compute_metrics(task="regression", y_true=y_true_small, y_pred=y_pred_small, metrics=["pearson"])
+    assert np.isnan(res_small["pearson"])
+
+    # 3. Pearson with zero std (constant values) in PyTorch
+    y_true_const = torch.tensor([1.0, 1.0])
+    y_pred_const = torch.tensor([2.0, 3.0])
+    res_const = compute_metrics(task="regression", y_true=y_true_const, y_pred=y_pred_const, metrics=["pearson"])
+    assert np.isnan(res_const["pearson"])
+
+    # 4. Multi-dimensional inputs for ravel testing in compute_metrics_pytorch
+    y_true_2d = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
+    y_pred_2d = torch.tensor([[1.1, 1.9], [3.1, 3.9]])
+    weight_2d = torch.tensor([[1.0, 1.0], [1.0, 1.0]])
+    res_2d = compute_metrics_pytorch(
+        task="regression", y_true=y_true_2d, y_pred=y_pred_2d, sample_weight=weight_2d, metrics=["mse"]
+    )
+    assert "mse" in res_2d
+
+    # 5. Invalid task in compute_metrics_pytorch
+    with pytest.raises(ValueError, match="task must be 'classification' or 'regression'"):
+        compute_metrics_pytorch(task=cast(Task, "invalid"), y_true=torch.tensor([1.0]), y_pred=torch.tensor([1.0]))
+
+    # 6. compute_metrics with y_true, y_pred as torch.Tensor but sample_weight as a list (non-torch.Tensor)
+    y_true_t = torch.tensor([1.0, 2.0])
+    y_pred_t = torch.tensor([1.1, 1.9])
+    res_weight_list = compute_metrics(
+        task="regression", y_true=y_true_t, y_pred=y_pred_t, sample_weight=[1.0, 2.0], metrics=["mse"]
+    )
+    assert "mse" in res_weight_list

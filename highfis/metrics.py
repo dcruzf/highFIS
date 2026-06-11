@@ -300,12 +300,11 @@ class ClassificationMetricsPytorch:
         recalls = []
         for c in classes:
             true_c = y_true == c
-            if true_c.sum() > 0:
-                if sample_weight is not None:
-                    w_c = sample_weight[true_c]
-                    recalls.append(torch.sum((y_pred[true_c] == c).float() * w_c) / torch.sum(w_c))
-                else:
-                    recalls.append(torch.mean((y_pred[true_c] == c).float()))
+            if sample_weight is not None:
+                w_c = sample_weight[true_c]
+                recalls.append(torch.sum((y_pred[true_c] == c).float() * w_c) / torch.sum(w_c))
+            else:
+                recalls.append(torch.mean((y_pred[true_c] == c).float()))
         return torch.stack(recalls).mean().item() if recalls else 0.0
 
     @staticmethod
