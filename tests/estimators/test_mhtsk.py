@@ -7,10 +7,13 @@ import pytest
 import torch
 
 from highfis import MHTSKClassifier, MHTSKRegressor
-from highfis.estimators._base import (
+from highfis.estimators._mhtsk import (
     _build_mhtsk_input_mfs,
     _extract_mhtsk_rule_indices,
+    _mann_whitney_p_value,
+    _rankdata,
     _resolve_mhtsk_scale_parameters,
+    _select_rule_indices,
     feature_coverage_rate,
 )
 
@@ -483,7 +486,7 @@ def test_mhtsk_input_builder_raises_when_fcm_fails(monkeypatch) -> None:
         def fit(self, x: np.ndarray) -> None:
             self.cluster_centers_ = None
 
-    monkeypatch.setattr("highfis.estimators._base.FuzzyCMeans", DummyFuzzyCMeans)
+    monkeypatch.setattr("highfis.estimators._mhtsk.FuzzyCMeans", DummyFuzzyCMeans)
     est = MHTSKClassifier(
         n_mfs=2, n_heads=1, head_size=1, fcm_m=2.0, rule_sigma=1.0, epochs=1, batch_size=16, random_state=0
     )
@@ -508,3 +511,38 @@ def test_estimator_inspection_methods_for_mhtsk_classifier() -> None:
     assert importance.shape == (x.shape[1],)
     assert np.all(importance >= 0.0)
     assert np.isclose(np.sum(importance), 1.0)
+
+
+def test_rankdata_handles_ties() -> None:
+    values = np.array([1.0, 2.0, 2.0, 4.0], dtype=np.float64)
+    ranks = _rankdata(values)
+    assert ranks.tolist() == [1.0, 2.5, 2.5, 4.0]
+
+
+def test_mann_whitney_p_value_with_empty_group() -> None:
+    assert _mann_whitney_p_value(np.array([], dtype=np.float64), np.array([1.0])) == 1.0
+
+
+def test_select_rule_indices_edge_cases() -> None:
+    assert _select_rule_indices(torch.tensor([], dtype=torch.float32), 0.5) == []
+    assert _select_rule_indices(torch.tensor([1.0, 2.0]), 0.0) == []
+    assert _select_rule_indices(torch.tensor([1.0, 2.0]), 1.0) == [0, 1]
+    zero_sum = torch.tensor([0.0, 0.0], dtype=torch.float32)
+    assert _select_rule_indices(zero_sum, 0.5) == [0]
+    with pytest.raises(ValueError, match="crcr must be between 0 and 1"):
+        _select_rule_indices(torch.tensor([1.0, 2.0]), -0.1)
+
+
+def test_resolve_mhtsk_scale_parameters_large_features() -> None:
+    h, n = _resolve_mhtsk_scale_parameters(
+        n_features=6000,
+        head_size=None,
+        head_size_ratio=None,
+        n_heads=None,
+        fcr_target=0.85,
+        h_value=None,
+        sigma=10.0,
+        xi=1.0,
+    )
+    assert h == 60  # round(6000 * 0.01)
+    assert n > 0

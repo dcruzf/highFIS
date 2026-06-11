@@ -1,15 +1,16 @@
-"""Sklearn-compatible estimators for MHTSK models."""
-
-from __future__ import annotations
-
+import math
 from collections.abc import Mapping, Sequence
 from typing import Any, Self
 
 import numpy as np
 import torch
 from sklearn.utils.validation import check_X_y
+from torch import Tensor
 
+from ..clustering import FuzzyCMeans
 from ..memberships import (
+    ConstantMF,
+    GaussianMF,
     MembershipFunction,
 )
 from ..models import (
@@ -21,11 +22,294 @@ from ._base import (
     InputConfig,
     _BaseClassifierEstimator,
     _BaseRegressorEstimator,
-    _build_mhtsk_input_mfs,
-    _extract_mhtsk_rule_indices,
-    _extract_mhtsk_rule_indices_unsupervised,
-    _resolve_mhtsk_scale_parameters,
 )
+
+
+def _fit_fuzzy_c_means_on_head(
+    x: np.ndarray,
+    subset: np.ndarray,
+    instance_sample_fraction: float,
+    sample_size: int,
+    n_samples: int,
+    n_clusters: int,
+    fcm_m: float,
+    random_state: int | None,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    if instance_sample_fraction < 1.0 and sample_size < n_samples:
+        row_indices = rng.choice(n_samples, size=sample_size, replace=False)
+        x_sub = x[row_indices][:, subset]
+    else:
+        x_sub = x[:, subset]
+
+    model = FuzzyCMeans(n_clusters=n_clusters, m=fcm_m, random_state=random_state)
+    model.fit(x_sub)
+    if model.cluster_centers_ is None:
+        raise RuntimeError("FuzzyCMeans did not converge to a valid solution")
+    return model.cluster_centers_.cpu().numpy()
+
+
+def _populate_head_mfs_and_rules(
+    centers: np.ndarray,
+    subset: np.ndarray,
+    n_clusters: int,
+    n_features: int,
+    rule_sigma: float,
+    feature_names: list[str],
+    input_mfs: dict[str, list[MembershipFunction]],
+    rules: list[tuple[int, ...]],
+) -> None:
+    feature_indices: dict[int, list[int]] = {}
+    for j, feature_idx in enumerate(subset):
+        mf_list = input_mfs[feature_names[feature_idx]]
+        start_index = len(mf_list)
+        for k in range(n_clusters):
+            mf_list.append(GaussianMF(mean=float(centers[k, j]), sigma=rule_sigma))
+        feature_indices[feature_idx] = list(range(start_index, start_index + n_clusters))
+
+    for k in range(n_clusters):
+        rule_indices: list[int] = []
+        for feature_idx in range(n_features):
+            if feature_idx in feature_indices:
+                rule_indices.append(feature_indices[feature_idx][k])
+            else:
+                rule_indices.append(0)
+        rules.append(tuple(rule_indices))
+
+
+def _build_mhtsk_input_mfs(
+    x: np.ndarray,
+    feature_names: list[str],
+    n_heads: int,
+    head_size: int,
+    n_clusters: int,
+    fcm_m: float,
+    rule_sigma: float,
+    instance_sample_fraction: float,
+    random_state: int | None,
+) -> tuple[dict[str, list[MembershipFunction]], list[tuple[int, ...]], np.ndarray]:
+    """Build sparse partial-rule MFs and rule indices for MHTSK.
+
+    Each feature receives a constant "don't care" MF plus all cluster MFs
+    produced by FCM for any head where the feature is active.
+
+    Each head may also subsample data instances to match the paper's
+    random head construction process.
+    """
+    n_samples, n_features = x.shape
+    if head_size <= 0 or head_size > n_features:
+        raise ValueError("head_size must be between 1 and the number of features")
+    if n_heads <= 0:
+        raise ValueError("n_heads must be > 0")
+    if not 0.0 < instance_sample_fraction <= 1.0:
+        raise ValueError("instance_sample_fraction must be in (0, 1]")
+
+    rng = np.random.default_rng(random_state)
+    input_mfs: dict[str, list[MembershipFunction]] = {name: [ConstantMF(1.0)] for name in feature_names}
+    rules: list[tuple[int, ...]] = []
+
+    sample_size = max(1, round(n_samples * instance_sample_fraction))
+
+    for _ in range(n_heads):
+        subset = rng.choice(n_features, size=head_size, replace=False)
+        centers = _fit_fuzzy_c_means_on_head(
+            x, subset, instance_sample_fraction, sample_size, n_samples, n_clusters, fcm_m, random_state, rng
+        )
+        _populate_head_mfs_and_rules(
+            centers, subset, n_clusters, n_features, rule_sigma, feature_names, input_mfs, rules
+        )
+
+    rule_feature_mask = np.zeros((len(rules), n_features), dtype=bool)
+    for r, rule in enumerate(rules):
+        for j, mf_idx in enumerate(rule):
+            rule_feature_mask[r, j] = mf_idx != 0
+
+    return input_mfs, rules, rule_feature_mask
+
+
+def feature_coverage_rate(n_features: int, head_size: int, n_heads: int) -> float:
+    """Compute the feature coverage rate (FCR) for MHTSK heads.
+
+    FCR is the expected proportion of original features that are selected at
+    least once across ``n_heads`` random subsets of size ``head_size``.
+    """
+    if n_features <= 0:
+        raise ValueError("n_features must be > 0")
+    if head_size <= 0 or head_size > n_features:
+        raise ValueError("head_size must be between 1 and n_features")
+    if n_heads < 0:
+        raise ValueError("n_heads must be >= 0")
+
+    return 1.0 - (1.0 - float(head_size) / float(n_features)) ** float(n_heads)
+
+
+def _validate_mhtsk_scale_inputs(
+    n_features: int,
+    head_size: int | None,
+    head_size_ratio: float | None,
+    n_heads: int | None,
+    fcr_target: float | None,
+    h_value: float | None,
+    sigma: float,
+    xi: float,
+) -> None:
+    if n_features <= 0:
+        raise ValueError("n_features must be > 0")
+    if head_size is not None and (head_size <= 0 or head_size > n_features):
+        raise ValueError("head_size must be between 1 and the number of features")
+    if n_heads is not None and n_heads <= 0:
+        raise ValueError("n_heads must be > 0")
+    if head_size_ratio is not None and not (0.0 < head_size_ratio <= 1.0):
+        raise ValueError("head_size_ratio must be in (0, 1]")
+    if fcr_target is not None and not (0.0 < fcr_target < 1.0):
+        raise ValueError("fcr_target must be in (0, 1)")
+    if h_value is not None and h_value <= 0.0:
+        raise ValueError("h_value must be > 0")
+    if sigma <= 0.0:
+        raise ValueError("sigma must be > 0")
+    if xi <= 0.0:
+        raise ValueError("xi must be > 0")
+
+
+def _resolve_mhtsk_scale_parameters(
+    n_features: int,
+    head_size: int | None,
+    head_size_ratio: float | None,
+    n_heads: int | None,
+    fcr_target: float | None,
+    h_value: float | None,
+    sigma: float,
+    xi: float,
+) -> tuple[int, int]:
+    """Resolve MHTSK scale parameters using paper-derived defaults.
+
+    This helper reproduces the paper's strategy for selecting rule length and
+    number of heads while allowing user override.
+    """
+    _validate_mhtsk_scale_inputs(n_features, head_size, head_size_ratio, n_heads, fcr_target, h_value, sigma, xi)
+
+    max_head_size = min(n_features, max(1, math.floor(2.0 * xi * sigma * sigma)))
+
+    if head_size is None:
+        if head_size_ratio is not None:
+            head_size = max(1, min(n_features, round(n_features * head_size_ratio)))
+        else:
+            head_size = max(1, round(n_features * 0.02)) if n_features <= 5000 else max(1, round(n_features * 0.01))
+    head_size = min(head_size, max_head_size, n_features)
+
+    if n_heads is None:
+        H = h_value if h_value is not None else -math.log(1.0 - (fcr_target if fcr_target is not None else 0.85))
+        n_heads = math.ceil(H * n_features / head_size)
+
+    return head_size, n_heads
+
+
+def _rankdata(values: np.ndarray) -> np.ndarray:
+    ranks = np.empty(len(values), dtype=np.float64)
+    order = np.argsort(values)
+    sorted_values = values[order]
+    i = 0
+    while i < len(values):
+        j = i + 1
+        while j < len(values) and sorted_values[j] == sorted_values[i]:
+            j += 1
+        avg_rank = (i + 1 + j) / 2.0
+        ranks[order[i:j]] = avg_rank
+        i = j
+    return ranks
+
+
+def _normal_survival(z: float) -> float:
+    return 0.5 * math.erfc(z / math.sqrt(2.0))
+
+
+def _mann_whitney_p_value(left: np.ndarray, right: np.ndarray) -> float:
+    if left.size == 0 or right.size == 0:
+        return 1.0
+
+    combined = np.concatenate([left, right]).astype(np.float64)
+    ranks = _rankdata(combined)
+    n1 = float(left.size)
+    n2 = float(right.size)
+    ra = float(np.sum(ranks[: left.size]))
+    u1 = ra - (n1 * (n1 + 1.0) / 2.0)
+    u2 = n1 * n2 - u1
+    u = min(u1, u2)
+
+    sigma = math.sqrt(n1 * n2 * (n1 + n2 + 1.0) / 12.0)
+    if sigma == 0.0:  # pragma: no cover
+        return 1.0
+
+    z = (u - n1 * n2 / 2.0) / sigma
+    return min(1.0, 2.0 * _normal_survival(abs(z)))
+
+
+def _select_rule_indices(scores: Tensor, crcr: float) -> list[int]:
+    if not 0.0 <= float(crcr) <= 1.0:
+        raise ValueError("crcr must be between 0 and 1")
+
+    n_rules = int(scores.numel())
+    if n_rules == 0:
+        return []
+    if crcr <= 0.0:
+        return []
+    if crcr >= 1.0:
+        return list(range(n_rules))
+
+    sorted_indices = torch.argsort(scores, descending=True)
+    sorted_scores = scores[sorted_indices]
+
+    total = float(torch.sum(sorted_scores).item())
+    if total <= 0.0:
+        count = max(1, math.ceil(float(crcr) * n_rules))
+        return sorted_indices[:count].tolist()
+
+    rcr = sorted_scores / total
+    cumulative = torch.cumsum(rcr, dim=0)
+    threshold = torch.tensor(float(crcr), dtype=cumulative.dtype)
+    count = int(torch.searchsorted(cumulative, threshold, right=False).item() + 1)
+    return sorted_indices[: max(1, count)].tolist()
+
+
+def _extract_mhtsk_rule_indices(
+    norm_w: Tensor,
+    y: Tensor | None,
+    crcr_us: float,
+    crcr_s: float,
+) -> list[int]:
+    n_rules = int(norm_w.shape[1])
+    if n_rules == 0:
+        return []
+
+    unsupervised_scores = torch.max(norm_w, dim=0).values
+    selected_us = _select_rule_indices(unsupervised_scores, crcr_us)
+
+    selected_s: list[int] = []
+    if y is not None and y.ndim == 1 and len(torch.unique(y)) > 1 and crcr_s > 0.0:
+        unique_labels = torch.unique(y)
+        groups: list[np.ndarray] = []
+        for label in unique_labels:
+            mask = y == label
+            groups.append(norm_w[mask].cpu().numpy())
+
+        supervised_scores = torch.zeros(n_rules, dtype=torch.float64)
+        for r in range(n_rules):
+            p_min = 1.0
+            for i in range(len(groups)):
+                for j in range(i + 1, len(groups)):
+                    p_val = _mann_whitney_p_value(groups[i][:, r], groups[j][:, r])
+                    p_min = min(p_min, p_val)
+            supervised_scores[r] = 1.0 - p_min
+        selected_s = _select_rule_indices(supervised_scores, crcr_s)
+
+    selected_indices = sorted(set(selected_us) | set(selected_s))
+    if len(selected_indices) == 0 and n_rules > 0:
+        selected_indices = [int(torch.argmax(unsupervised_scores).item())]
+    return selected_indices
+
+
+def _extract_mhtsk_rule_indices_unsupervised(norm_w: Tensor, crcr_us: float) -> list[int]:
+    return _select_rule_indices(torch.max(norm_w, dim=0).values, crcr_us)
 
 
 class MHTSKClassifier(_BaseClassifierEstimator):

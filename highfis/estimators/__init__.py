@@ -11,7 +11,6 @@ from ._adaptive import (
 )
 from ._base import (
     InputConfig,
-    feature_coverage_rate,
 )
 from ._dg_aletsk import (
     DGALETSKClassifier,
@@ -50,6 +49,7 @@ from ._logtsk import (
 from ._mhtsk import (
     MHTSKClassifier,
     MHTSKRegressor,
+    feature_coverage_rate,
 )
 from ._yager import (
     AYATSKClassifier,

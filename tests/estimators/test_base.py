@@ -14,11 +14,7 @@ from highfis.estimators._base import (
     _build_gaussian_input_mfs,
     _build_kmeans_input_mfs,
     _build_pfrb_input_mfs,
-    _mann_whitney_p_value,
     _normalize_importance,
-    _rankdata,
-    _resolve_mhtsk_scale_parameters,
-    _select_rule_indices,
 )
 from highfis.memberships import GaussianMF
 
@@ -210,26 +206,6 @@ def test_build_kmeans_input_mfs_works_with_numpy_cluster_centers() -> None:
     assert len(input_mfs["x1"]) == 2
 
 
-def test_rankdata_handles_ties() -> None:
-    values = np.array([1.0, 2.0, 2.0, 4.0], dtype=np.float64)
-    ranks = _rankdata(values)
-    assert ranks.tolist() == [1.0, 2.5, 2.5, 4.0]
-
-
-def test_mann_whitney_p_value_with_empty_group() -> None:
-    assert _mann_whitney_p_value(np.array([], dtype=np.float64), np.array([1.0])) == 1.0
-
-
-def test_select_rule_indices_edge_cases() -> None:
-    assert _select_rule_indices(torch.tensor([], dtype=torch.float32), 0.5) == []
-    assert _select_rule_indices(torch.tensor([1.0, 2.0]), 0.0) == []
-    assert _select_rule_indices(torch.tensor([1.0, 2.0]), 1.0) == [0, 1]
-    zero_sum = torch.tensor([0.0, 0.0], dtype=torch.float32)
-    assert _select_rule_indices(zero_sum, 0.5) == [0]
-    with pytest.raises(ValueError, match="crcr must be between 0 and 1"):
-        _select_rule_indices(torch.tensor([1.0, 2.0]), -0.1)
-
-
 def test_normalize_importance_returns_uniform_distribution_for_zero_total() -> None:
     values = torch.zeros(3, dtype=torch.float32)
     normalized = _normalize_importance(values)
@@ -328,22 +304,6 @@ def test_regressor_sigma_scale_auto() -> None:
     x, y = _make_dataset(20)
     est = HTSKRegressor(sigma_scale="auto")
     est.fit(x, y)
-
-
-def test_resolve_mhtsk_scale_parameters_large_features() -> None:
-    # Test high feature count branch (n_features > 5000) for line 372
-    h, n = _resolve_mhtsk_scale_parameters(
-        n_features=6000,
-        head_size=None,
-        head_size_ratio=None,
-        n_heads=None,
-        fcr_target=0.85,
-        h_value=None,
-        sigma=10.0,
-        xi=1.0,
-    )
-    assert h == 60  # round(6000 * 0.01)
-    assert n > 0
 
 
 def test_fit_read_only_inputs_classifier() -> None:
