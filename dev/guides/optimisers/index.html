@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="zensical-0.0.44">
+      <meta name="generator" content="zensical-0.0.45">
     
     
       
@@ -311,8 +311,6 @@
       
         
           
-        
-      
         
       
         
@@ -835,6 +833,106 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#4-training-history-and-metric-logging" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        4. Training History and Metric Logging
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Training History and Metric Logging">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#history-structure-and-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        History Structure and Keys
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#default-and-custom-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Default and Custom Metrics
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-uniform-regularization-ur" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        5. Uniform Regularization (UR)
+      </span>
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Uniform Regularization (UR)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mathematical-formulation" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Mathematical Formulation
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-parameters_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Configuration Parameters
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#interpretation-of-ur-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Interpretation of UR Values
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scientific-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Scientific Reference
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -943,8 +1041,6 @@
       
         
           
-        
-      
         
       
         
@@ -1185,8 +1281,8 @@
 </span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_scaled</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
 </span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>
 </span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="c1"># The training history is captured in clf.history_</span>
-</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Final training loss:&quot;</span><span class="p">,</span> <span class="n">clf</span><span class="o">.</span><span class="n">history_</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
-</span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Epochs executed:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">clf</span><span class="o">.</span><span class="n">history_</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">]))</span>
+</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Final training loss:&quot;</span><span class="p">,</span> <span class="n">clf</span><span class="o">.</span><span class="n">history_</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+</span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Epochs executed:&quot;</span><span class="p">,</span> <span class="n">clf</span><span class="o">.</span><span class="n">history_</span><span class="p">[</span><span class="s2">&quot;stopped_epoch&quot;</span><span class="p">])</span>
 </span></code></pre></div>
 <hr />
 <h2 id="2-dgtrainer-double-gated-training">2. DGTrainer (Double-Gated Training)</h2>
@@ -1323,6 +1419,68 @@
 </span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="c1"># Fit the model</span>
 </span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
 </span></code></pre></div>
+<hr />
+<h2 id="4-training-history-and-metric-logging">4. Training History and Metric Logging</h2>
+<p>Each trainer populates the estimator's <code>history_</code> attribute after fitting the model. Internally, the optimization loop computes all metrics on the training and validation sets using <strong>pure PyTorch</strong> on the active device (e.g., CPU or CUDA GPU) to avoid expensive, synchronous data transfers to the host memory during training. Only the final scalar metrics are converted to Python floats when written to the history dictionary at the end of each epoch.</p>
+<h3 id="history-structure-and-keys">History Structure and Keys</h3>
+<p>The <code>history_</code> dictionary contains the following keys depending on the trainer and parameters:</p>
+<ul>
+<li><strong><code>"train"</code></strong>: The loss value computed on the training set for each epoch.</li>
+<li><strong><code>"ur"</code></strong>: The Uniform Regularization loss value computed on the training set for each epoch.</li>
+<li><strong><code>"val"</code></strong>: The validation loss computed on the validation set for each epoch (only present if <code>validation_data</code> or <code>x_val</code>/<code>y_val</code> is provided).</li>
+<li><strong><code>"train_&lt;metric&gt;"</code> / <code>"val_&lt;metric&gt;"</code></strong>: The epoch-wise performance of custom or default metrics.</li>
+<li><strong><code>"stopped_epoch"</code></strong>: The final epoch index executed (especially useful when early stopping is triggered).</li>
+</ul>
+<h3 id="default-and-custom-metrics">Default and Custom Metrics</h3>
+<p>If no metrics are explicitly specified, the trainers automatically configure task-appropriate defaults:
+*   <strong>Classification</strong>: Defaults to <code>"accuracy"</code> (creating <code>"train_accuracy"</code> and <code>"val_accuracy"</code> keys).
+*   <strong>Regression</strong>: Defaults to <code>"mse"</code> (creating <code>"train_mse"</code> and <code>"val_mse"</code> keys).</p>
+<p>To track additional metrics, pass them as a list of strings to the <code>.fit()</code> method:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Train the model while tracking accuracy and macro F1 score</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">x_val</span><span class="o">=</span><span class="n">X_val</span><span class="p">,</span> <span class="n">y_val</span><span class="o">=</span><span class="n">y_val</span><span class="p">,</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;accuracy&quot;</span><span class="p">,</span> <span class="s2">&quot;f1_macro&quot;</span><span class="p">]</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="p">)</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="c1"># Inspect the captured metrics</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Training Macro F1 per epoch:&quot;</span><span class="p">,</span> <span class="n">clf</span><span class="o">.</span><span class="n">history_</span><span class="p">[</span><span class="s2">&quot;train_f1_macro&quot;</span><span class="p">])</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Validation Accuracy per epoch:&quot;</span><span class="p">,</span> <span class="n">clf</span><span class="o">.</span><span class="n">history_</span><span class="p">[</span><span class="s2">&quot;val_accuracy&quot;</span><span class="p">])</span>
+</span></code></pre></div>
+<hr />
+<h2 id="5-uniform-regularization-ur">5. Uniform Regularization (UR)</h2>
+<p>In Takagi-Sugeno-Kang (TSK) fuzzy neural networks, mini-batch gradient descent can sometimes lead to rule starvation or rule dominance, where a subset of rules dominates the output while others are never activated. This reduces the generalization performance of the model.</p>
+<p><strong>Uniform Regularization (UR)</strong> resolves this by penalizing the deviation of the average rule activations from a target uniform distribution over each batch.</p>
+<h3 id="mathematical-formulation">Mathematical Formulation</h3>
+<p>The Uniform Regularization loss <span class="arithmatex">\(L_{\text{UR}}\)</span> added to the primary task loss is formulated as:</p>
+<div class="arithmatex">\[
+L_{\text{UR}} = \sum_{r=1}^{R} \left( \bar{a}_r - t \right)^2
+\]</div>
+<p>Where:
+*   <span class="arithmatex">\(R\)</span> is the number of fuzzy rules.
+*   <span class="arithmatex">\(\bar{a}_r\)</span> is the average normalized activation (firing strength) of rule <span class="arithmatex">\(r\)</span> across all samples in the current mini-batch:
+    $$
+    \bar{a}<em>r = \frac{1}{B} \sum</em>{b=1}^{B} \bar{w}_r(x_b)
+    $$
+*   <span class="arithmatex">\(t\)</span> is the target uniform activation level. Typically, this is set to <span class="arithmatex">\(1/R\)</span>, meaning every rule is expected to contribute equally on average.</p>
+<h3 id="configuration-parameters_1">Configuration Parameters</h3>
+<p>Uniform Regularization is configured using two hyperparameters on the estimator:
+*   <strong><code>ur_weight</code></strong>: The regularization strength (default: <code>0.0</code>). If set to <code>0.0</code>, no UR penalty is added to the loss function during backpropagation. However, the value of the metric is still computed and logged to <code>history_["ur"]</code> for monitoring.
+*   <strong><code>ur_target</code></strong>: The target activation level <span class="arithmatex">\(t\)</span> (default: <code>None</code>, which defaults to <span class="arithmatex">\(1/R\)</span>).</p>
+<h3 id="interpretation-of-ur-values">Interpretation of UR Values</h3>
+<ul>
+<li><strong><code>ur</code> <span class="arithmatex">\(\approx 0.0\)</span></strong>: The rule activations are perfectly and uniformly distributed across the batch. Every rule is contributing.</li>
+<li><strong><code>ur</code> <span class="arithmatex">\(&gt; 0.5\)</span></strong>: The rule activations are highly unbalanced. This suggests that either:<ol>
+<li>Only a few rules are doing all the work (dominating), while the others are starved (inactive).</li>
+<li>Many rules are activating in a highly correlated way, reducing the diversity of the rule base.</li>
+</ol>
+</li>
+</ul>
+<h3 id="scientific-reference">Scientific Reference</h3>
+<p>For more details on the rationale and effectiveness of Uniform Regularization, refer to:</p>
+<blockquote>
+<p>Y. Cui, D. Wu and J. Huang, "Optimize TSK Fuzzy Systems for Classification Problems: Minibatch Gradient Descent With Uniform Regularization and Batch Normalization," in IEEE Transactions on Fuzzy Systems, vol. 28, no. 12, pp. 3065-3075, Dec. 2020, doi: 10.1109/TFUZZ.2020.2967282.</p>
+</blockquote>
 
 
 
