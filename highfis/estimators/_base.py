@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import threading
 from abc import abstractmethod
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -347,6 +348,7 @@ def _wrap_gaussian_pimf_input_mfs(
 
 
 _MF_INITIALIZATION_CACHE: dict[tuple[Any, ...], tuple[dict[str, Any], list[str], str]] = {}
+_MF_CACHE_LOCK = threading.Lock()
 
 
 def _get_mf_cache_key(
@@ -404,21 +406,24 @@ def _build_input_mfs_cached(
         estimator.input_configs,
     )
 
-    if cache_key in _MF_INITIALIZATION_CACHE:
-        serialized_config, feature_names, effective_rule_base = _MF_INITIALIZATION_CACHE[cache_key]
-        # Reconstruct new MF objects from serialized parameters to ensure separate memory space/gradients
-        new_mfs = deserialize_input_mfs(serialized_config)
-        return new_mfs, feature_names, effective_rule_base
+    with _MF_CACHE_LOCK:
+        if cache_key in _MF_INITIALIZATION_CACHE:
+            serialized_config, feature_names, effective_rule_base = _MF_INITIALIZATION_CACHE[cache_key]
+            # Reconstruct new MF objects from serialized parameters to ensure separate memory space/gradients
+            new_mfs = deserialize_input_mfs(serialized_config)
+            return new_mfs, feature_names, effective_rule_base
 
     # Otherwise, execute the real build function
     input_mfs, feature_names, effective_rule_base = build_func(x_arr)
 
     # Serialize the resulting MFs to store in the cache
     serialized_config = serialize_input_mfs(input_mfs)
-    if len(_MF_INITIALIZATION_CACHE) >= 128:
-        oldest_key = next(iter(_MF_INITIALIZATION_CACHE))
-        _MF_INITIALIZATION_CACHE.pop(oldest_key)
-    _MF_INITIALIZATION_CACHE[cache_key] = (serialized_config, feature_names, effective_rule_base)
+    with _MF_CACHE_LOCK:
+        if cache_key not in _MF_INITIALIZATION_CACHE:
+            if len(_MF_INITIALIZATION_CACHE) >= 128:
+                oldest_key = next(iter(_MF_INITIALIZATION_CACHE))
+                _MF_INITIALIZATION_CACHE.pop(oldest_key, None)
+            _MF_INITIALIZATION_CACHE[cache_key] = (serialized_config, feature_names, effective_rule_base)
 
     # Reconstruct from serialized_config to match cached hits precisely
     input_mfs = deserialize_input_mfs(serialized_config)

@@ -351,3 +351,50 @@ def test_regressor_fit_too_few_samples() -> None:
     est = HTSKRegressor(epochs=1)
     with pytest.raises(ValueError, match="requires at least 3 samples"):
         est.fit(x, y)
+
+
+def test_build_input_mfs_cached_thread_safety() -> None:
+    import threading
+    import time
+
+    from highfis.estimators._base import _build_input_mfs_cached
+
+    class DummyEstimator:
+        def __init__(self) -> None:
+            self.mf_init = "kmeans"
+            self.n_mfs = 3
+            self.sigma_scale = 1.0
+            self.random_state = 42
+            self.pfrb_max_rules = None
+            self.input_configs = None
+
+    estimator = DummyEstimator()
+    x = np.random.randn(20, 2)
+
+    def build_func(x_arr: np.ndarray) -> tuple[Any, list[str], str]:
+        from highfis.memberships import GaussianMF
+
+        time.sleep(0.01)
+        mfs = {"x1": [GaussianMF(mean=0.0, sigma=1.0)], "x2": [GaussianMF(mean=1.0, sigma=1.0)]}
+        return mfs, ["x1", "x2"], "coco"
+
+    threads = []
+    errors = []
+
+    def worker() -> None:
+        try:
+            _mfs, names, rb = _build_input_mfs_cached(estimator, x, build_func)
+            assert len(names) == 2
+            assert rb == "coco"
+        except Exception as e:
+            errors.append(e)
+
+    for _ in range(10):
+        t = threading.Thread(target=worker)
+        threads.append(t)
+        t.start()
+
+    for t in threads:
+        t.join()
+
+    assert len(errors) == 0
