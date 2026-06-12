@@ -119,12 +119,14 @@ class HTSKClassifier(_BaseClassifierEstimator):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         """Create HTSKClassifierModel."""
         return HTSKClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
+            rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
         )
 
@@ -234,11 +236,13 @@ class HTSKRegressor(_BaseRegressorEstimator):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         """Create HTSKRegressorModel."""
         return HTSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
+            rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
         )
 
@@ -350,12 +354,14 @@ class TSKClassifier(_BaseClassifierEstimator):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         """Create TSKClassifierModel."""
         return TSKClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
+            rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
         )
 
@@ -458,9 +464,11 @@ class TSKRegressor(_BaseRegressorEstimator):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         return TSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
+            rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
         )

@@ -473,11 +473,13 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
+        rules_to_use = rules if rules is not None else self._mhtsk_rules
         return MHTSKClassifierModel(
             input_mfs,
             self._mhtsk_rule_feature_mask,
-            self._mhtsk_rules,
+            rules_to_use,
             n_classes=n_classes,
             consequent_batch_norm=bool(self.consequent_batch_norm),
         )
@@ -787,10 +789,12 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
+        rules_to_use = rules if rules is not None else self._mhtsk_rules
         return MHTSKRegressorModel(
             input_mfs,
             self._mhtsk_rule_feature_mask,
-            self._mhtsk_rules,
+            rules_to_use,
             consequent_batch_norm=bool(self.consequent_batch_norm),
         )

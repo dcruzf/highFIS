@@ -175,12 +175,14 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         """Create FSREADATSKClassifierModel."""
         return FSREADATSKClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
+            rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             use_en_frb=self.use_en_frb,
         )
@@ -200,9 +202,10 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         """
         check_is_fitted(self, "model_")
         x_arr = validate_data(self, x, reset=False)
-        sf: list[int] | None = getattr(self, "history_", {}).get("surviving_feature_indices")
-        if sf is None and "threshold" in getattr(self, "history_", {}):
-            sf = self.history_["threshold"].get("surviving_feature_indices")
+        history = getattr(self, "history_", None) or {}
+        sf: list[int] | None = history.get("surviving_feature_indices")
+        if sf is None and "threshold" in history:
+            sf = history["threshold"].get("surviving_feature_indices")
         x_m = x_arr[:, sf] if sf is not None and cast(Any, self.model_).n_inputs < x_arr.shape[1] else x_arr
         device_str = str(self.device).lower()
         x_tensor = torch.as_tensor(x_m, dtype=torch.float32, device=torch.device(device_str))
@@ -380,11 +383,13 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         """Create FSREADATSKRegressorModel."""
         return FSREADATSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
+            rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             use_en_frb=self.use_en_frb,
         )
@@ -404,9 +409,10 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
         """
         check_is_fitted(self, "model_")
         x_arr = validate_data(self, x, reset=False)
-        sf: list[int] | None = getattr(self, "history_", {}).get("surviving_feature_indices")
-        if sf is None and "threshold" in getattr(self, "history_", {}):
-            sf = self.history_["threshold"].get("surviving_feature_indices")
+        history = getattr(self, "history_", None) or {}
+        sf: list[int] | None = history.get("surviving_feature_indices")
+        if sf is None and "threshold" in history:
+            sf = history["threshold"].get("surviving_feature_indices")
         x_m = x_arr[:, sf] if sf is not None and cast(Any, self.model_).n_inputs < x_arr.shape[1] else x_arr
         device_str = str(self.device).lower()
         x_tensor = torch.as_tensor(x_m, dtype=torch.float32, device=torch.device(device_str))

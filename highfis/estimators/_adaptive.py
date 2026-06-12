@@ -268,11 +268,13 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         return ADPTSKClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
+            rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             kappa=float(self.kappa),
             xi=float(self.xi),
@@ -476,10 +478,12 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         return ADPTSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
+            rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             kappa=float(self.kappa),
             xi=float(self.xi),
@@ -632,6 +636,7 @@ class ADATSKClassifier(_BaseClassifierEstimator):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         """Create ADATSKClassifierModel."""
         input_mfs = _wrap_adatsk_gaussian_input_mfs(input_mfs)
@@ -639,6 +644,7 @@ class ADATSKClassifier(_BaseClassifierEstimator):
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
+            rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             zero_consequent_init=True,
         )
@@ -765,11 +771,13 @@ class ADATSKRegressor(_BaseRegressorEstimator):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         """Create ADATSKRegressorModel."""
         return ADATSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
+            rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
         )
 

@@ -414,3 +414,43 @@ def test_gradient_trainer_default_history_metrics() -> None:
     assert "val_mse" in history_reg
     assert len(history_reg["train_mse"]) == 2
     assert len(history_reg["val_mse"]) == 2
+
+
+def test_gradient_trainer_scheduler_and_edge_cases() -> None:
+    from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR
+
+    from highfis.models._fsre import FSREADATSKClassifierModel
+
+    model = FSREADATSKClassifierModel(_build_input_mfs(3, 2), n_classes=2)
+    x = torch.randn(15, 3)
+    y = torch.randint(0, 2, (15,))
+
+    # 1. StepLR scheduler
+    trainer = GradientTrainer(epochs=2, learning_rate=0.1)
+    opt = torch.optim.Adam(model.parameters(), lr=0.1)
+    sched = StepLR(opt, step_size=1, gamma=0.5)
+    history = trainer.fit(model, x, y, optimizer=opt, scheduler=sched)
+    assert len(history["lr"]) == 2
+    assert history["lr"][1] == 0.025
+
+    # 2. ReduceLROnPlateau scheduler (with validation)
+    opt = torch.optim.Adam(model.parameters(), lr=0.1)
+    sched_plateau = ReduceLROnPlateau(opt, factor=0.1)
+    history2 = trainer.fit(model, x, y, x_val=x, y_val=y, optimizer=opt, scheduler=sched_plateau)
+    assert len(history2["lr"]) == 2
+
+    # 3. ReduceLROnPlateau scheduler (no validation)
+    opt = torch.optim.Adam(model.parameters(), lr=0.1)
+    sched_plateau_no_val = ReduceLROnPlateau(opt, factor=0.1)
+    history3 = trainer.fit(model, x, y, optimizer=opt, scheduler=sched_plateau_no_val)
+    assert len(history3["lr"]) == 2
+
+    # 4. metrics=[] (empty list) with validation, and early stopping with verbose=2
+    trainer_es = GradientTrainer(epochs=5, patience=1, verbose=2)
+    history_es = trainer_es.fit(model, x, y, x_val=x, y_val=y, metrics=[])
+    assert history_es["stopped_epoch"] < 5
+
+    # 5. classification with validation but accuracy is not in metrics (e.g. metrics=["precision_macro"])
+    history_cls = trainer.fit(model, x, y, x_val=x, y_val=y, metrics=["precision_macro"])
+    assert "val_accuracy" in history_cls
+    assert "val_acc" in history_cls

@@ -201,12 +201,14 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         """Create DGTSKClassifierModel."""
         return DGTSKClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
+            rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             use_en_frb=self.use_en_frb,
             optimizer_type=self.optimizer_type,
@@ -263,6 +265,9 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             else None
         )
         _fnames: np.ndarray | None = getattr(self, "feature_names_in_", None)
+        rules = None
+        if hasattr(self.model_, "rule_layer") and hasattr(self.model_.rule_layer, "rules"):
+            rules = self.model_.rule_layer.rules
         checkpoint = self._build_checkpoint_base(
             model_init={
                 "input_mfs_config": serialize_input_mfs(self.model_.input_mfs),  # type: ignore[attr-defined]
@@ -270,6 +275,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
                 "rule_base": self.rule_base_,
                 "is_first_order": is_first_order,
                 "consequent_mode": consequent_mode,
+                "rules": rules,
             },
             fitted_attrs={
                 "n_features_in": int(self.n_features_in_),
@@ -295,6 +301,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             deserialize_input_mfs(model_init["input_mfs_config"]),
             int(model_init["n_classes"]),
             str(model_init["rule_base"]),
+            rules=model_init.get("rules"),
         )
         if model_init.get("is_first_order", False):  # pragma: no branch
             cast(FirstOrderModelProtocol, estimator.model_).convert_to_first_order()
@@ -316,7 +323,8 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         label_encoder = LabelEncoder()
         label_encoder.classes_ = estimator.classes_
         estimator._label_encoder_ = label_encoder
-        estimator.history_ = cast(dict[str, Any], checkpoint.get("history", {}))
+        history = checkpoint.get("history")
+        estimator.history_ = history if history is not None else {}
         return estimator
 
     def predict_proba(self, x: Any) -> np.ndarray:
@@ -478,11 +486,13 @@ class DGTSKRegressor(_BaseRegressorEstimator):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         """Create DGTSKRegressorModel."""
         return DGTSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
+            rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             use_en_frb=bool(self.use_en_frb),
             optimizer_type=self.optimizer_type,
@@ -539,12 +549,16 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             else None
         )
         _fnames: np.ndarray | None = getattr(self, "feature_names_in_", None)
+        rules = None
+        if hasattr(self.model_, "rule_layer") and hasattr(self.model_.rule_layer, "rules"):
+            rules = self.model_.rule_layer.rules
         checkpoint = self._build_checkpoint_base(
             model_init={
                 "input_mfs_config": serialize_input_mfs(self.model_.input_mfs),  # type: ignore[attr-defined]
                 "rule_base": self.rule_base_,
                 "is_first_order": is_first_order,
                 "consequent_mode": consequent_mode,
+                "rules": rules,
             },
             fitted_attrs={
                 "n_features_in": int(self.n_features_in_),
@@ -568,6 +582,7 @@ class DGTSKRegressor(_BaseRegressorEstimator):
         estimator.model_ = estimator._build_regressor_model(
             deserialize_input_mfs(model_init["input_mfs_config"]),
             str(model_init["rule_base"]),
+            rules=model_init.get("rules"),
         )
         if model_init.get("is_first_order", False):  # pragma: no branch
             cast(FirstOrderModelProtocol, estimator.model_).convert_to_first_order()
@@ -583,7 +598,8 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             estimator.feature_names_in_ = np.asarray(fitted["feature_names_in"], dtype=object)
         elif hasattr(estimator, "feature_names_in_"):
             delattr(estimator, "feature_names_in_")
-        estimator.history_ = cast(dict[str, Any], checkpoint.get("history", {}))
+        history = checkpoint.get("history")
+        estimator.history_ = history if history is not None else {}
         return estimator
 
     def predict(self, x: Any) -> np.ndarray:
@@ -607,7 +623,7 @@ class DGTSKRegressor(_BaseRegressorEstimator):
 
 def _select_dgtsking_surviving_features(estimator: Any, x_arr: np.ndarray) -> np.ndarray:
     """Slice to surviving features when DG structural pruning reduced the model input width."""
-    history: dict[str, Any] = getattr(estimator, "history_", {})
+    history = getattr(estimator, "history_", None) or {}
     surviving_features: list[int] | None = history.get("surviving_feature_indices")
     if surviving_features is None and isinstance(history.get("threshold"), dict):
         surviving_features = cast(list[int] | None, history["threshold"].get("surviving_feature_indices"))
