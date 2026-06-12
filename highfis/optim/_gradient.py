@@ -429,7 +429,7 @@ class GradientTrainer(BaseTrainer):
                 val_loss = float(self._compute_loss(model, criterion, output, y_val).item())
                 if task == "classification":
                     val_acc = float((output.argmax(dim=1) == y_val).float().mean().item())
-                    return {"val_loss": val_loss, "val_acc": val_acc, "metric": val_acc}
+                    return {"val_loss": val_loss, "val_accuracy": val_acc, "metric": val_acc}
                 else:
                     return {"val_loss": val_loss, "metric": -val_loss}
         finally:

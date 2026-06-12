@@ -196,12 +196,14 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         """Create DGALETSKClassifierModel."""
         return DGALETSKClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
+            rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             use_en_frb=self.use_en_frb,
             optimizer_type=self.optimizer_type,
@@ -391,11 +393,13 @@ class DGALETSKRegressor(FSREADATSKRegressor):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         """Create DGALETSKRegressorModel."""
         return DGALETSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
+            rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             use_en_frb=self.use_en_frb,
             optimizer_type=self.optimizer_type,

@@ -263,3 +263,52 @@ def test_persistence_feature_names_in_handling(tmp_path: Path, monkeypatch: pyte
 
     loaded_custom_dg_reg = CustomDGTSKRegressor.load(str(path_dg_reg_no_feat))
     assert not hasattr(loaded_custom_dg_reg, "feature_names_in_")
+
+
+def test_dg_and_fsre_save_load_predict_roundtrip(tmp_path: Path) -> None:
+    from highfis.estimators import FSREADATSKClassifier, FSREADATSKRegressor
+
+    x_clf = np.array([[0.0, 0.0], [1.0, 1.0], [0.5, -0.5]], dtype=float)
+    y_clf = np.array([0, 1, 0], dtype=int)
+    x_reg = np.array([[0.0, 0.0], [1.0, 1.0], [0.5, -0.5]], dtype=float)
+    y_reg = np.array([0.0, 1.0, 0.5], dtype=float)
+
+    # 1. DGTSKClassifier
+    dg_clf = DGTSKClassifier(dg_epochs=1, finetune_epochs=1, n_mfs=2, random_state=0, verbose=False)
+    dg_clf.fit(x_clf, y_clf, x_val=x_clf, y_val=y_clf)
+    path_dg_clf = tmp_path / "dg_clf.pt"
+    dg_clf.save(str(path_dg_clf))
+    loaded_dg_clf = DGTSKClassifier.load(str(path_dg_clf))
+    assert np.array_equal(loaded_dg_clf.predict(x_clf), dg_clf.predict(x_clf))
+    assert "dg" in loaded_dg_clf.history_
+    assert loaded_dg_clf.history_ == dg_clf.history_
+
+    # 2. DGTSKRegressor
+    dg_reg = DGTSKRegressor(dg_epochs=1, finetune_epochs=1, n_mfs=2, random_state=0, verbose=False)
+    dg_reg.fit(x_reg, y_reg, x_val=x_reg, y_val=y_reg)
+    path_dg_reg = tmp_path / "dg_reg.pt"
+    dg_reg.save(str(path_dg_reg))
+    loaded_dg_reg = DGTSKRegressor.load(str(path_dg_reg))
+    assert np.allclose(loaded_dg_reg.predict(x_reg), dg_reg.predict(x_reg), atol=1e-06)
+    assert "dg" in loaded_dg_reg.history_
+    assert loaded_dg_reg.history_ == dg_reg.history_
+
+    # 3. FSREADATSKClassifier
+    fsre_clf = FSREADATSKClassifier(fs_epochs=1, re_epochs=1, finetune_epochs=1, n_mfs=2, random_state=0, verbose=False)
+    fsre_clf.fit(x_clf, y_clf, x_val=x_clf, y_val=y_clf)
+    path_fsre_clf = tmp_path / "fsre_clf.pt"
+    fsre_clf.save(str(path_fsre_clf))
+    loaded_fsre_clf = FSREADATSKClassifier.load(str(path_fsre_clf))
+    assert np.array_equal(loaded_fsre_clf.predict(x_clf), fsre_clf.predict(x_clf))
+    assert "fs" in loaded_fsre_clf.history_
+    assert loaded_fsre_clf.history_ == fsre_clf.history_
+
+    # 4. FSREADATSKRegressor
+    fsre_reg = FSREADATSKRegressor(fs_epochs=1, re_epochs=1, finetune_epochs=1, n_mfs=2, random_state=0, verbose=False)
+    fsre_reg.fit(x_reg, y_reg, x_val=x_reg, y_val=y_reg)
+    path_fsre_reg = tmp_path / "fsre_reg.pt"
+    fsre_reg.save(str(path_fsre_reg))
+    loaded_fsre_reg = FSREADATSKRegressor.load(str(path_fsre_reg))
+    assert np.allclose(loaded_fsre_reg.predict(x_reg), fsre_reg.predict(x_reg), atol=1e-06)
+    assert "fs" in loaded_fsre_reg.history_
+    assert loaded_fsre_reg.history_ == fsre_reg.history_

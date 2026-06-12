@@ -715,6 +715,7 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         """Create the concrete TSK classification model."""
 
@@ -784,11 +785,17 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
     def save(self, path: str) -> None:
         """Persist estimator configuration, model weights and fitted metadata."""
         _fnames: np.ndarray | None = getattr(self, "feature_names_in_", None)
+        rules = None
+        if hasattr(self.model_, "rule_layer") and hasattr(self.model_.rule_layer, "rules"):
+            rules = self.model_.rule_layer.rules
+        consequent_mode = getattr(self.model_.consequent_layer, "mode", None)
         checkpoint = self._build_checkpoint_base(
             model_init={
                 "input_mfs_config": serialize_input_mfs(self.model_.input_mfs),
                 "n_classes": len(self.classes_),
                 "rule_base": self.rule_base_,
+                "rules": rules,
+                "consequent_mode": consequent_mode,
             },
             fitted_attrs={
                 "n_features_in": int(self.n_features_in_),
@@ -810,11 +817,31 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
         estimator = cls(**params)
         model_init = checkpoint["model_init"]
         estimator.rule_base_ = model_init["rule_base"]
-        estimator.model_ = estimator._build_model(
-            deserialize_input_mfs(model_init["input_mfs_config"]),
-            int(model_init["n_classes"]),
-            str(model_init["rule_base"]),
-        )
+
+        import inspect
+
+        sig = inspect.signature(estimator._build_model)
+        if "rules" in sig.parameters:
+            estimator.model_ = estimator._build_model(
+                deserialize_input_mfs(model_init["input_mfs_config"]),
+                int(model_init["n_classes"]),
+                str(model_init["rule_base"]),
+                rules=model_init.get("rules"),
+            )
+        else:
+            estimator.model_ = estimator._build_model(
+                deserialize_input_mfs(model_init["input_mfs_config"]),
+                int(model_init["n_classes"]),
+                str(model_init["rule_base"]),
+            )
+
+        consequent_mode = model_init.get("consequent_mode")
+        if consequent_mode is not None:
+            if hasattr(estimator.model_, "set_consequent_mode"):
+                cast(Any, estimator.model_).set_consequent_mode(consequent_mode)
+            elif hasattr(estimator.model_.consequent_layer, "mode"):
+                estimator.model_.consequent_layer.mode = consequent_mode
+
         estimator.model_.load_state_dict(checkpoint["model_state_dict"])
         estimator.model_.to(torch.device(str(estimator.device)))
 
@@ -828,7 +855,8 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
         label_encoder = LabelEncoder()
         label_encoder.classes_ = estimator.classes_
         estimator._label_encoder_ = label_encoder
-        estimator.history_ = cast(dict[str, Any], checkpoint.get("history", {}))
+        history = checkpoint.get("history")
+        estimator.history_ = history if history is not None else {}
         return estimator
 
     def predict_proba(self, x: npt.ArrayLike) -> np.ndarray:
@@ -899,6 +927,7 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         """Create the concrete TSK regression model."""
 
@@ -959,10 +988,16 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
     def save(self, path: str) -> None:
         """Persist estimator configuration, model weights and fitted metadata."""
         _fnames: np.ndarray | None = getattr(self, "feature_names_in_", None)
+        rules = None
+        if hasattr(self.model_, "rule_layer") and hasattr(self.model_.rule_layer, "rules"):
+            rules = self.model_.rule_layer.rules
+        consequent_mode = getattr(self.model_.consequent_layer, "mode", None)
         checkpoint = self._build_checkpoint_base(
             model_init={
                 "input_mfs_config": serialize_input_mfs(self.model_.input_mfs),
                 "rule_base": self.rule_base_,
+                "rules": rules,
+                "consequent_mode": consequent_mode,
             },
             fitted_attrs={
                 "n_features_in": int(self.n_features_in_),
@@ -983,10 +1018,29 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
         estimator = cls(**params)
         model_init = checkpoint["model_init"]
         estimator.rule_base_ = model_init["rule_base"]
-        estimator.model_ = estimator._build_regressor_model(
-            deserialize_input_mfs(model_init["input_mfs_config"]),
-            str(model_init["rule_base"]),
-        )
+
+        import inspect
+
+        sig = inspect.signature(estimator._build_regressor_model)
+        if "rules" in sig.parameters:
+            estimator.model_ = estimator._build_regressor_model(
+                deserialize_input_mfs(model_init["input_mfs_config"]),
+                str(model_init["rule_base"]),
+                rules=model_init.get("rules"),
+            )
+        else:
+            estimator.model_ = estimator._build_regressor_model(
+                deserialize_input_mfs(model_init["input_mfs_config"]),
+                str(model_init["rule_base"]),
+            )
+
+        consequent_mode = model_init.get("consequent_mode")
+        if consequent_mode is not None:
+            if hasattr(estimator.model_, "set_consequent_mode"):
+                cast(Any, estimator.model_).set_consequent_mode(consequent_mode)
+            elif hasattr(estimator.model_.consequent_layer, "mode"):
+                estimator.model_.consequent_layer.mode = consequent_mode
+
         estimator.model_.load_state_dict(checkpoint["model_state_dict"])
         estimator.model_.to(torch.device(str(estimator.device)))
 
@@ -996,7 +1050,8 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
             estimator.feature_names_in_ = np.asarray(fitted["feature_names_in"], dtype=object)
         elif hasattr(estimator, "feature_names_in_"):
             delattr(estimator, "feature_names_in_")
-        estimator.history_ = cast(dict[str, Any], checkpoint.get("history", {}))
+        history = checkpoint.get("history")
+        estimator.history_ = history if history is not None else {}
         return estimator
 
     def predict(self, x: npt.ArrayLike) -> np.ndarray:

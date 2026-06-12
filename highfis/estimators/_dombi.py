@@ -171,12 +171,14 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         """Create DombiTSKClassifierModel."""
         return DombiTSKClassifierModel(
             input_mfs,
             n_classes=n_classes,
             rule_base=rule_base,
+            rules=rules,
             lambda_=float(self.lambda_),
             consequent_batch_norm=bool(self.consequent_batch_norm),
             zero_consequent_init=bool(self.zero_consequent_init),
@@ -283,11 +285,13 @@ class DombiTSKRegressor(_BaseRegressorEstimator):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         """Create DombiTSKRegressorModel."""
         return DombiTSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
+            rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
         )
 
@@ -438,6 +442,7 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         n_classes: int,
         rule_base: str,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         return ADMTSKClassifierModel(
             input_mfs,
@@ -447,6 +452,7 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
             lambda_=float(self.lambda_),
             lower_bound=float(self.lower_bound),
             k=float(self.k),
+            rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             zero_consequent_init=bool(self.zero_consequent_init),
         )
@@ -599,6 +605,7 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
         rule_base: str,
         n_classes: int | None = None,
+        rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         return ADMTSKRegressorModel(
             input_mfs,
@@ -607,6 +614,7 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
             lambda_=float(self.lambda_),
             lower_bound=float(self.lower_bound),
             k=float(self.k),
+            rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             zero_consequent_init=bool(self.zero_consequent_init),
         )

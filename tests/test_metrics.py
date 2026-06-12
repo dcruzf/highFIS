@@ -626,3 +626,33 @@ def test_regression_metrics_with_sample_weight_no_warnings() -> None:
             sample_weight=torch.tensor([1.0, 1.0]),
             metrics=["accuracy"],
         )
+
+
+def test_compute_metrics_regression_sample_weight_warning() -> None:
+    y_true = np.array([1.0, 2.0, 3.0])
+    y_pred = np.array([0.9, 2.1, 2.8])
+    sample_weight = np.array([1.0, 1.0, 1.0])
+
+    with pytest.warns(UserWarning, match="sample_weight is ignored by the following regression metrics"):
+        compute_metrics(
+            task="regression",
+            y_true=y_true,
+            y_pred=y_pred,
+            sample_weight=sample_weight,
+            metrics=["mse", "max_error"],
+        )
+
+
+def test_compute_metrics_pytorch_regression_sample_weight_warning() -> None:
+    y_true = torch.tensor([1.0, 2.0, 3.0])
+    y_pred = torch.tensor([0.9, 2.1, 2.8])
+    sample_weight = torch.tensor([1.0, 1.0, 1.0])
+
+    with pytest.warns(UserWarning, match="sample_weight is ignored by the following regression metrics"):
+        compute_metrics_pytorch(
+            task="regression",
+            y_true=y_true,
+            y_pred=y_pred,
+            sample_weight=sample_weight,
+            metrics=["mse", "max_error"],
+        )
