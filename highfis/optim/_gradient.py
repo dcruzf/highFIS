@@ -22,6 +22,22 @@ from ._utils import (
     _uniform_regularization_loss,
 )
 
+_MAXIMIZE_METRICS: frozenset[str] = frozenset(
+    {
+        "accuracy",
+        "balanced_accuracy",
+        "precision_macro",
+        "recall_macro",
+        "f1_macro",
+        "precision_micro",
+        "recall_micro",
+        "f1_micro",
+        "r2",
+        "explained_variance",
+        "pearson",
+    }
+)
+
 
 class GradientTrainer(BaseTrainer):
     """Single-phase mini-batch gradient descent trainer.
@@ -66,6 +82,10 @@ class GradientTrainer(BaseTrainer):
             ur_weight: Uncertainty regularisation weight.
             ur_target: Uncertainty regularisation target firing-level.
             verbose: Verbosity level.
+                - ``False`` / ``0``: silent.
+                - ``True``  / ``1``: progress bar (tqdm).
+                - ``2``: log ~10 points during training.
+                - ``3``: log every epoch.
             loss: Custom loss function ``f(output, target) -> scalar``.
                 ``None`` uses the model's built-in criterion.
         """
@@ -80,6 +100,32 @@ class GradientTrainer(BaseTrainer):
         self.ur_target = ur_target
         self.verbose = verbose
         self.loss = loss
+
+    def _init_history(self, has_val: bool, metrics_list: list[str]) -> dict[str, Any]:
+        """Initialize history dictionary with a fixed schema."""
+        history: dict[str, Any] = {
+            "config": {
+                "epochs": self.epochs,
+                "learning_rate": self.learning_rate,
+                "ur_weight": self.ur_weight,
+                "ur_target": self.ur_target,
+            },
+            "stopped_epoch": 0,
+            "train": [],
+            "ur": [],
+            "train_loss": [],
+            "train_ur_loss": [],
+            "train_total_loss": [],
+            "val_loss": [] if has_val else None,
+            "lr": [],
+        }
+        if has_val:
+            history["val"] = []
+        for m in metrics_list:
+            history[f"train_{m}"] = []
+            if has_val:
+                history[f"val_{m}"] = []
+        return history
 
     def _evaluate_epoch_metrics(
         self,
@@ -117,6 +163,7 @@ class GradientTrainer(BaseTrainer):
         model.eval()
         val_info = self._evaluate_validation(model, train_criterion, x_val, y_val)
         history["val"].append(val_info["val_loss"])
+        history["val_loss"].append(val_info["val_loss"])
 
         if metrics_list:
             val_metrics = self._evaluate_epoch_metrics(model, x_val, y_val, metrics_list, history, "val")
@@ -130,9 +177,11 @@ class GradientTrainer(BaseTrainer):
         else:
             metric = val_info["metric"]
 
-        for k, v in val_info.items():
-            if k not in ("val_loss", "metric") and k not in [f"val_{m}" for m in metrics_list]:
-                history.setdefault(k, []).append(v)
+        # val_accuracy de classificação: salvar somente se "accuracy" não está nas métricas explícitas
+        if "val_accuracy" in val_info and "accuracy" not in metrics_list:
+            history.setdefault("val_accuracy", []).append(val_info["val_accuracy"])
+            history.setdefault("val_acc", []).append(val_info["val_accuracy"])
+
         model.train()
 
         should_stop = False
@@ -168,19 +217,6 @@ class GradientTrainer(BaseTrainer):
         maximize = False
         if metrics_list:
             primary_metric = metrics_list[0]
-            _MAXIMIZE_METRICS = {
-                "accuracy",
-                "balanced_accuracy",
-                "precision_macro",
-                "recall_macro",
-                "f1_macro",
-                "precision_micro",
-                "recall_micro",
-                "f1_micro",
-                "r2",
-                "explained_variance",
-                "pearson",
-            }
             maximize = primary_metric in _MAXIMIZE_METRICS
         return metrics_list, maximize
 
@@ -222,6 +258,7 @@ class GradientTrainer(BaseTrainer):
         y_val: Tensor | None = None,
         metrics: list[str] | None = None,
         optimizer: torch.optim.Optimizer | None = None,
+        scheduler: torch.optim.lr_scheduler.LRScheduler | Any = None,
     ) -> dict[str, Any]:
         """Train *model* for :attr:`epochs` epochs and return the history dict."""
         has_val = self._validate_fit_inputs(model, x, y, x_val, y_val, self.ur_weight, self.ur_target)
@@ -231,9 +268,7 @@ class GradientTrainer(BaseTrainer):
         train_loader = self._build_train_loader(x, y)
         metrics_list, maximize = self._resolve_metrics(metrics, model.task_type)
 
-        history: dict[str, Any] = {"train": [], "ur": []}
-        if has_val:
-            history["val"] = []
+        history = self._init_history(has_val, metrics_list)
         best_metric = float("-inf")
         epochs_no_improve = 0
         best_state: dict[str, Any] | None = None
@@ -242,10 +277,9 @@ class GradientTrainer(BaseTrainer):
         model.train()
         epoch_iterator, pbar = self._get_epoch_iterator(verbose_level)
 
-        stopped_epoch = 0
         for epoch in epoch_iterator:
-            stopped_epoch = epoch + 1
-            epoch_train_loss, epoch_ur_loss = self._run_minibatch_epoch(
+            history["stopped_epoch"] = epoch + 1
+            epoch_main_loss, epoch_ur_loss, epoch_total_loss = self._run_minibatch_epoch(
                 model,
                 train_loader,
                 train_criterion,
@@ -253,8 +287,11 @@ class GradientTrainer(BaseTrainer):
                 self.ur_weight,
                 self.ur_target,
             )
-            history["train"].append(epoch_train_loss)
+            history["train"].append(epoch_total_loss)
             history["ur"].append(epoch_ur_loss)
+            history["train_loss"].append(epoch_main_loss)
+            history["train_ur_loss"].append(epoch_ur_loss)
+            history["train_total_loss"].append(epoch_total_loss)
 
             # Evaluate metrics on train set
             if metrics_list:
@@ -274,16 +311,25 @@ class GradientTrainer(BaseTrainer):
                     best_state,
                     verbose_level,
                     epoch,
-                    epoch_train_loss,
+                    epoch_total_loss,
                     pbar,
                 )
                 if should_stop:
                     break
             else:
-                self._log_epoch_no_val(model, epoch, self.epochs, epoch_train_loss, verbose_level, pbar)
+                self._log_epoch_no_val(model, epoch, self.epochs, epoch_total_loss, verbose_level, pbar)
+
+            if scheduler is not None:
+                if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                    val_loss_val = history["val_loss"][-1] if (has_val and history["val_loss"]) else epoch_main_loss
+                    scheduler.step(val_loss_val)
+                else:
+                    scheduler.step()
+
+            current_lr = train_optimizer.param_groups[0]["lr"]
+            history["lr"].append(current_lr)
 
         self._finalize_training(model, best_state, pbar)
-        history["stopped_epoch"] = stopped_epoch
 
         return history
 
@@ -346,28 +392,26 @@ class GradientTrainer(BaseTrainer):
         else:
             return criterion(output.squeeze(1), target)
 
-    def _predict_tensor(self, model: BaseTSK, x: Tensor) -> Tensor:
-        """Helper to get PyTorch Tensor predictions of the model on *x* using DataLoader."""
-        task = model.task_type
+    def _forward_batched(self, model: BaseTSK, x: Tensor) -> Tensor:
+        """Execute forward pass in mini-batches without gradients. Restore training mode."""
         was_training = model.training
         model.eval()
         try:
             with torch.no_grad():
                 outputs = []
-                dataset = TensorDataset(x)
-                loader = DataLoader(dataset, batch_size=1024, shuffle=False)
+                loader = DataLoader(TensorDataset(x), batch_size=1024, shuffle=False)
                 for (x_b,) in loader:
-                    out_b = model(x_b)
-                    outputs.append(out_b)
-                output = torch.cat(outputs, dim=0)
-                if task == "classification":
-                    return output.argmax(dim=1)
-                else:
-                    if output.ndim > 1 and output.shape[1] == 1:
-                        output = output.squeeze(1)
-                    return output
+                    outputs.append(model(x_b))
+                return torch.cat(outputs, dim=0)
         finally:
             model.train(was_training)
+
+    def _predict_tensor(self, model: BaseTSK, x: Tensor) -> Tensor:
+        """Helper to get PyTorch Tensor predictions of the model on *x* using DataLoader."""
+        output = self._forward_batched(model, x)
+        if model.task_type == "classification":
+            return output.argmax(dim=1)
+        return output.squeeze(1) if output.ndim > 1 and output.shape[1] == 1 else output
 
     def _predict_numpy(self, model: BaseTSK, x: Tensor) -> np.ndarray:
         """Helper to get numpy predictions of the model on *x* using DataLoader."""
@@ -381,14 +425,15 @@ class GradientTrainer(BaseTrainer):
         optimizer: torch.optim.Optimizer,
         ur_weight: float,
         ur_target: float | None,
-    ) -> tuple[float, float]:
+    ) -> tuple[float, float, float]:
         """Run one full epoch of mini-batch gradient updates.
 
         Returns:
-            ``(mean_train_loss, mean_ur_loss)`` averaged over all batches.
+            ``(mean_main_loss, mean_ur_loss, mean_total_loss)`` averaged over all batches.
         """
-        batch_losses: list[float] = []
+        batch_main_losses: list[float] = []
         batch_ur_losses: list[float] = []
+        batch_total_losses: list[float] = []
         for x_b, y_b in loader:
             optimizer.zero_grad(set_to_none=True)
             output, norm_w = model._forward_train(x_b)
@@ -399,12 +444,14 @@ class GradientTrainer(BaseTrainer):
             total_loss.backward()
             optimizer.step()
 
-            batch_losses.append(float(total_loss.detach().item()))
+            batch_main_losses.append(float(main_loss.detach().item()))
             batch_ur_losses.append(float(ur_loss.detach().item()))
+            batch_total_losses.append(float(total_loss.detach().item()))
 
-        train_loss = float(sum(batch_losses) / max(len(batch_losses), 1))
-        ur_loss_avg = float(sum(batch_ur_losses) / max(len(batch_ur_losses), 1))
-        return train_loss, ur_loss_avg
+        def mean(lst: list[float]) -> float:
+            return float(sum(lst) / max(len(lst), 1))
+
+        return mean(batch_main_losses), mean(batch_ur_losses), mean(batch_total_losses)
 
     def _evaluate_validation(
         self,
@@ -414,26 +461,12 @@ class GradientTrainer(BaseTrainer):
         y_val: Tensor,
     ) -> dict[str, float]:
         """Evaluate on validation set.  Return dict with at least ``'metric'``."""
-        task = model.task_type
-        was_training = model.training
-        model.eval()
-        try:
-            with torch.no_grad():
-                outputs = []
-                dataset = TensorDataset(x_val)
-                loader = DataLoader(dataset, batch_size=1024, shuffle=False)
-                for (x_b,) in loader:
-                    out_b = model(x_b)
-                    outputs.append(out_b)
-                output = torch.cat(outputs, dim=0)
-                val_loss = float(self._compute_loss(model, criterion, output, y_val).item())
-                if task == "classification":
-                    val_acc = float((output.argmax(dim=1) == y_val).float().mean().item())
-                    return {"val_loss": val_loss, "val_acc": val_acc, "metric": val_acc}
-                else:
-                    return {"val_loss": val_loss, "metric": -val_loss}
-        finally:
-            model.train(was_training)
+        output = self._forward_batched(model, x_val)
+        val_loss = float(self._compute_loss(model, criterion, output, y_val).item())
+        if model.task_type == "classification":
+            val_acc = float((output.argmax(dim=1) == y_val).float().mean().item())
+            return {"val_loss": val_loss, "val_accuracy": val_acc, "metric": val_acc}
+        return {"val_loss": val_loss, "metric": -val_loss}
 
     def _log_epoch_with_val(
         self,
