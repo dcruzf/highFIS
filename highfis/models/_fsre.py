@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import cast
+from typing import Literal, cast
 
 from torch import Tensor, nn
 
@@ -100,7 +100,7 @@ class FSREADATSKClassifierModel(BaseTSKClassifierModel):
         layer.mode = "fs"
         return layer
 
-    def set_consequent_mode(self, mode: str) -> None:
+    def set_consequent_mode(self, mode: Literal["fs", "re", "finetune", "both"]) -> None:
         """Set training mode for the consequent layer."""
         self.consequent_layer.mode = mode
 
@@ -270,7 +270,7 @@ class FSREADATSKRegressorModel(BaseTSKRegressorModel):
         layer.mode = "fs"
         return layer
 
-    def set_consequent_mode(self, mode: str) -> None:
+    def set_consequent_mode(self, mode: Literal["fs", "re", "finetune", "both"]) -> None:
         """Set training mode for the consequent layer."""
         self.consequent_layer.mode = mode
 
