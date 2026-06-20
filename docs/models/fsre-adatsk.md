@@ -198,10 +198,12 @@ feature selection, rule extraction, and En-FRB support.
 from highfis import FSREADATSKClassifier
 
 clf = FSREADATSKClassifier(
-    n_rules=4,
+    n_mfs=4,
     mf_init="kmeans",
     lambda_init=1.0,
-    epochs=200,
+    fs_epochs=100,
+    re_epochs=100,
+    finetune_epochs=50,
     learning_rate=1e-3,
     random_state=0,
     use_en_frb=True,

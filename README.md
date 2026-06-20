@@ -35,7 +35,7 @@ pip install highfis
 from highfis import HTSKClassifier
 
 clf = HTSKClassifier(
-    n_rules=10,
+    n_mfs=5,
     mf_init="kmeans",
     epochs=150,
     learning_rate=1e-3,

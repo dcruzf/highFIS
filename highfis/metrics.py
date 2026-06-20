@@ -659,10 +659,12 @@ class RegressionMetricsPytorch:
             return float("nan")
         vx = y_true - torch.mean(y_true)
         vy = y_pred - torch.mean(y_pred)
-        corr = torch.sum(vx * vy) / (torch.sqrt(torch.sum(vx**2) * torch.sum(vy**2)))
-        if torch.isnan(corr) or torch.isinf(corr):
+        eps = torch.finfo(y_true.dtype).eps
+        denom_sq = torch.sum(vx**2) * torch.sum(vy**2)
+        if denom_sq < eps:
             return float("nan")
-        return corr.item()
+        corr = torch.sum(vx * vy) / torch.sqrt(denom_sq)
+        return corr.clamp(-1.0, 1.0).item()
 
 
 def _validate_classification_metrics(metrics: Sequence[str]) -> list[ClassificationMetric]:
