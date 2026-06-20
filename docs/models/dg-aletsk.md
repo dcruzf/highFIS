@@ -189,7 +189,7 @@ consequents with MFs and feature gates frozen.
 
 ```python
 from highfis.models import DGALETSKClassifierModel
-from highfis import GaussianMF
+from highfis.memberships import GaussianMF
 
 input_mfs = {
     "x1": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],
@@ -230,7 +230,7 @@ which would reset those weights.
 
 ```python
 from highfis.models import DGALETSKRegressorModel
-from highfis import GaussianMF
+from highfis.memberships import GaussianMF
 
 input_mfs = {
     "x1": [GaussianMF(mean=-1.0, sigma=1.0), GaussianMF(mean=1.0, sigma=1.0)],

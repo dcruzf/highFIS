@@ -7,13 +7,13 @@ scikit-learn ``fit`` / ``predict`` / ``score`` interface and integrate with
 Quick start
 -----------
 >>> from highfis import HTSKClassifier
->>> clf = HTSKClassifier(n_rules=10)
+>>> clf = HTSKClassifier(n_mfs=5)
 >>> clf.fit(X_train, y_train)
 >>> clf.predict(X_test)
 >>> clf.score(X_test, y_test)
 
 >>> from highfis import HTSKRegressor
->>> reg = HTSKRegressor(n_rules=8)
+>>> reg = HTSKRegressor(n_mfs=5)
 >>> reg.fit(X_train, y_train)
 >>> reg.predict(X_test)
 
@@ -58,8 +58,12 @@ Each family comes in a ``*Classifier`` and ``*Regressor`` variant.
 
 Common parameters
 -----------------
-n_rules : int
-    Number of fuzzy rules.  Ignored when ``input_mfs`` is supplied.
+n_mfs : int
+    Number of membership functions per input feature.  The total number
+    of rules depends on ``n_mfs`` and the ``rule_base`` strategy (e.g.
+    ``"coco"`` produces exactly ``n_mfs`` rules; ``"cartesian"`` produces
+    ``n_mfs ** n_features`` rules).  Ignored when ``input_mfs`` is
+    supplied.
 mf_init : {"kmeans", "grid"}
     Strategy for initialising input membership functions.
     ``"kmeans"`` (default) fits Gaussian MF centres from k-means cluster
@@ -71,8 +75,9 @@ input_configs : list[InputConfig] or None
     (``n_mfs``), spacing (``overlap``), and range padding (``margin``).
 input_mfs : dict[str, list[MembershipFunction]] or None
     Pre-built membership functions keyed by feature name.  When supplied,
-    ``n_rules`` is inferred from the MF list length and ``mf_init`` is
-    ignored.  Import MF classes from ``highfis.memberships``.
+    ``n_mfs`` is ignored and ``mf_init`` is skipped; the number of rules
+    is inferred from the MF list lengths.  Import MF classes from
+    ``highfis.memberships``.
 random_state : int or None
     Seed for reproducible k-means initialisation.
 
