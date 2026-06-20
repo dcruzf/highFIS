@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 from torch import Tensor, nn
 
@@ -21,7 +21,64 @@ from ._common import (
 )
 
 
-class FSREADATSKClassifierModel(BaseTSKClassifierModel):
+class _FSREADATSKMixin:
+    """Shared gate-inspection and feature-pruning methods for FSRE-ADATSK models."""
+
+    # Attributes provided by BaseTSK subclasses; declared here for type checkers.
+    input_names: list[str]
+    input_mfs: Any
+    n_inputs: int
+    membership_layer: Any
+    consequent_batch_norm: bool
+    consequent_bn: Any
+    consequent_layer: Any
+
+    def get_feature_gate_values(self) -> Tensor:
+        """Return M(λ_d) gate activations for all input features.
+
+        Returns:
+            Detached tensor of shape ``(n_inputs,)`` with the gate
+            activation value for each feature after the FS phase.
+        """
+        return self.consequent_layer.gate_fn(self.consequent_layer.lambda_gates).detach()
+
+    def get_rule_gate_values(self) -> Tensor:
+        """Return M(θ_r) gate activations for all rules.
+
+        Returns:
+            Detached tensor of shape ``(n_rules,)`` with the gate
+            activation value for each rule after the RE phase.
+        """
+        return self.consequent_layer.gate_fn(self.consequent_layer.theta_gates).detach()
+
+    def prune_to_features(self, surviving_features: list[int]) -> None:
+        """Structurally prune the model to the given feature subset (paper step 2).
+
+        Updates input_names, input_mfs, n_inputs, membership_layer, and
+        optionally consequent_bn in-place.
+        The rule layer and consequent layer are intentionally left unchanged
+        here; they will be rebuilt from the updated feature set when
+        fit_re() calls expand_to_en_frb().
+
+        Args:
+            surviving_features: Indices of features to retain.
+
+        Raises:
+            ValueError: If *surviving_features* is empty.
+        """
+        if not surviving_features:
+            raise ValueError("surviving_features must not be empty")
+        surviving_names = [self.input_names[i] for i in surviving_features]
+        new_input_mfs = {name: self.input_mfs[name] for name in surviving_names}
+        self.input_names = surviving_names
+        self.input_mfs = new_input_mfs
+        self.n_inputs = len(surviving_features)
+        self.membership_layer = MembershipLayer(new_input_mfs)
+        if self.consequent_batch_norm:
+            self.consequent_bn = nn.BatchNorm1d(self.n_inputs)
+
+
+class FSREADATSKClassifierModel(_FSREADATSKMixin, BaseTSKClassifierModel):
     """FSRE-ADATSK classifier with adaptive softmin antecedent and gated consequents.
 
     FSRE-ADATSK (Feature Selection and Rule Extraction) extends ADATSK.
@@ -118,50 +175,6 @@ class FSREADATSKClassifierModel(BaseTSKClassifierModel):
         self.n_rules = self.rule_layer.n_rules
         self.consequent_layer = self._build_consequent_layer()
 
-    def get_feature_gate_values(self) -> Tensor:
-        """Return M(λ_d) gate activations for all input features.
-
-        Returns:
-            Detached tensor of shape ``(n_inputs,)`` with the gate
-            activation value for each feature after the FS phase.
-        """
-        return self.consequent_layer.gate_fn(self.consequent_layer.lambda_gates).detach()
-
-    def get_rule_gate_values(self) -> Tensor:
-        """Return M(θ_r) gate activations for all rules.
-
-        Returns:
-            Detached tensor of shape ``(n_rules,)`` with the gate
-            activation value for each rule after the RE phase.
-        """
-        return self.consequent_layer.gate_fn(self.consequent_layer.theta_gates).detach()
-
-    def prune_to_features(self, surviving_features: list[int]) -> None:
-        """Structurally prune the model to the given feature subset (paper step 2).
-
-        Updates input_names, input_mfs, n_inputs, membership_layer, and
-        optionally consequent_bn in-place.
-        The rule layer and consequent layer are intentionally left unchanged
-        here; they will be rebuilt from the updated feature set when
-        fit_re() calls expand_to_en_frb().
-
-        Args:
-            surviving_features: Indices of features to retain.
-
-        Raises:
-            ValueError: If *surviving_features* is empty.
-        """
-        if not surviving_features:
-            raise ValueError("surviving_features must not be empty")
-        surviving_names = [self.input_names[i] for i in surviving_features]
-        new_input_mfs = {name: self.input_mfs[name] for name in surviving_names}
-        self.input_names = surviving_names
-        self.input_mfs = new_input_mfs
-        self.n_inputs = len(surviving_features)
-        self.membership_layer = MembershipLayer(new_input_mfs)
-        if self.consequent_batch_norm:
-            self.consequent_bn = nn.BatchNorm1d(self.n_inputs)
-
     def prune_to_rules(self, surviving_rules: list[int]) -> None:
         """Structurally prune the model to the given rule subset (paper step 4).
 
@@ -201,7 +214,7 @@ class FSREADATSKClassifierModel(BaseTSKClassifierModel):
         self.consequent_layer = new_cons
 
 
-class FSREADATSKRegressorModel(BaseTSKRegressorModel):
+class FSREADATSKRegressorModel(_FSREADATSKMixin, BaseTSKRegressorModel):
     """FSRE-ADATSK regressor with adaptive softmin antecedent and gated consequents.
 
     FSRE-ADATSK (Feature Selection and Rule Extraction) extends ADATSK.
@@ -287,50 +300,6 @@ class FSREADATSKRegressorModel(BaseTSKRegressorModel):
         )
         self.n_rules = self.rule_layer.n_rules
         self.consequent_layer = self._build_consequent_layer()
-
-    def get_feature_gate_values(self) -> Tensor:
-        """Return M(λ_d) gate activations for all input features.
-
-        Returns:
-            Detached tensor of shape ``(n_inputs,)`` with the gate
-            activation value for each feature after the FS phase.
-        """
-        return self.consequent_layer.gate_fn(self.consequent_layer.lambda_gates).detach()
-
-    def get_rule_gate_values(self) -> Tensor:
-        """Return M(θ_r) gate activations for all rules.
-
-        Returns:
-            Detached tensor of shape ``(n_rules,)`` with the gate
-            activation value for each rule after the RE phase.
-        """
-        return self.consequent_layer.gate_fn(self.consequent_layer.theta_gates).detach()
-
-    def prune_to_features(self, surviving_features: list[int]) -> None:
-        """Structurally prune the model to the given feature subset (paper step 2).
-
-        Updates input_names, input_mfs, n_inputs, membership_layer, and
-        optionally consequent_bn in-place.
-        The rule layer and consequent layer are intentionally left unchanged
-        here; they will be rebuilt from the updated feature set when
-        fit_re() calls expand_to_en_frb().
-
-        Args:
-            surviving_features: Indices of features to retain.
-
-        Raises:
-            ValueError: If *surviving_features* is empty.
-        """
-        if not surviving_features:
-            raise ValueError("surviving_features must not be empty")
-        surviving_names = [self.input_names[i] for i in surviving_features]
-        new_input_mfs = {name: self.input_mfs[name] for name in surviving_names}
-        self.input_names = surviving_names
-        self.input_mfs = new_input_mfs
-        self.n_inputs = len(surviving_features)
-        self.membership_layer = MembershipLayer(new_input_mfs)
-        if self.consequent_batch_norm:
-            self.consequent_bn = nn.BatchNorm1d(self.n_inputs)
 
     def prune_to_rules(self, surviving_rules: list[int]) -> None:
         """Structurally prune the model to the given rule subset (paper step 4).
