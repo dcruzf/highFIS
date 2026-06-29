@@ -34,9 +34,10 @@ from __future__ import annotations
 import logging
 import sys
 from abc import abstractmethod
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any, cast
 
+import torch
 from torch import Tensor, nn
 
 from ..defuzzifiers import SoftmaxLogDefuzzifier
@@ -191,6 +192,20 @@ class BaseTSK(nn.Module):
         """Full forward pass through the TSK pipeline."""
         output, _ = self._forward_train(x)
         return output
+
+    def _run_inference(self, x: Tensor, fn: Callable[[Tensor], Tensor]) -> Tensor:
+        """Run *fn(x)* in eval mode, restoring training state and dtype afterward."""
+        was_training = self.training
+        use_double = x.dtype == torch.float64
+        if use_double:
+            self.double()
+        try:
+            self.eval()
+            return fn(x)
+        finally:
+            if use_double:
+                self.float()
+            self.train(was_training)
 
 
 __all__: list[str] = ["BaseTSK"]

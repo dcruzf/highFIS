@@ -38,19 +38,46 @@ from typing import Any
 def _get_mf_registry() -> dict[str, type]:
     """Lazily return the supported MF type registry to avoid circular imports."""
     from .memberships import (
+        BellMF,
+        CompositeExponentialMF,
+        CompositeGaussianMF,
         CompositeGMF,
+        ConstantMF,
+        DiffSigmoidalMF,
         DimensionDependentGaussianMF,
         GaussianMF,
         GaussianPiMF,
+        LinSShapedMF,
+        LinZShapedMF,
+        PiMF,
+        ProdSigmoidalMF,
+        SigmoidalMF,
+        SShapedMF,
+        TrapezoidalMF,
+        TriangularMF,
+        ZShapedMF,
     )
 
     return {
-        "CompositeGMF": CompositeGMF,
+        "BellMF": BellMF,
+        "CompositeExponentialMF": CompositeExponentialMF,
+        "CompositeGaussianMF": CompositeGaussianMF,
+        "CompositeGMF": CompositeGMF,  # legacy, deprecated
+        "ConstantMF": ConstantMF,
+        "DiffSigmoidalMF": DiffSigmoidalMF,
         "DimensionDependentGaussianMF": DimensionDependentGaussianMF,
         "GaussianMF": GaussianMF,
         "GaussianPiMF": GaussianPiMF,
-        # Legacy key kept for backward-compatible checkpoint loading.
-        "GaussianPIMF": GaussianPiMF,
+        "GaussianPIMF": GaussianPiMF,  # legacy key for backward-compatible checkpoint loading
+        "LinSShapedMF": LinSShapedMF,
+        "LinZShapedMF": LinZShapedMF,
+        "PiMF": PiMF,
+        "ProdSigmoidalMF": ProdSigmoidalMF,
+        "SShapedMF": SShapedMF,
+        "SigmoidalMF": SigmoidalMF,
+        "TrapezoidalMF": TrapezoidalMF,
+        "TriangularMF": TriangularMF,
+        "ZShapedMF": ZShapedMF,
     }
 
 

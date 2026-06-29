@@ -234,7 +234,7 @@ class ALESoftminYagerTNorm(BaseTNorm):
     @staticmethod
     def _adaptive_softmin(values: Tensor, dim: int = -1) -> Tensor:
         values = values.double()
-        q = -700.0 / values.data.max(dim=dim).values
+        q = -700.0 / values.detach().max(dim=dim).values
         return (values * q.unsqueeze(dim=dim)).exp().sum(dim=dim).log() / q
 
     def forward(self, terms: Tensor, dim: int = -1) -> Tensor:

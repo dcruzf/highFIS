@@ -202,14 +202,12 @@ class DimensionDependentGaussianMF(GaussianMF):
             ValueError: If *dimension* is not greater than 1.
             ValueError: If *xi* is not greater than 1.
         """
-        super().__init__(eps=eps)
         if sigma <= 0:
             raise ValueError("sigma must be positive")
         if dimension <= 1:
             raise ValueError("dimension must be greater than 1")
         if xi <= 1:
             raise ValueError("xi must be greater than 1")
-
         super().__init__(mean=mean, sigma=sigma, eps=eps)
         self.dimension = float(dimension)
         self.xi = float(xi)

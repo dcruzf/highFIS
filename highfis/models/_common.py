@@ -88,24 +88,7 @@ class BaseTSKClassifierModel(BaseTSK):
     def predict_proba(self, x: Tensor) -> Tensor:
         """Return class probabilities computed with softmax."""
         with torch.no_grad():
-            if x.dtype == torch.float64:
-                was_training = self.training
-                self.double()
-                try:
-                    self.eval()
-                    logits = self.forward(x)
-                    return torch.softmax(logits, dim=1)
-                finally:
-                    self.float()
-                    self.train(was_training)
-            else:
-                was_training = self.training
-                try:
-                    self.eval()
-                    logits = self.forward(x)
-                    return torch.softmax(logits, dim=1)
-                finally:
-                    self.train(was_training)
+            return torch.softmax(self._run_inference(x, self.forward), dim=1)
 
     def predict(self, x: Tensor) -> Tensor:
         """Return predicted class indices."""
@@ -122,22 +105,7 @@ class BaseTSKRegressorModel(BaseTSK):
     def predict(self, x: Tensor) -> Tensor:
         """Return predicted values as a 1-D tensor."""
         with torch.no_grad():
-            if x.dtype == torch.float64:
-                was_training = self.training
-                self.double()
-                try:
-                    self.eval()
-                    return self.forward(x).squeeze(1)
-                finally:
-                    self.float()
-                    self.train(was_training)
-            else:
-                was_training = self.training
-                try:
-                    self.eval()
-                    return self.forward(x).squeeze(1)
-                finally:
-                    self.train(was_training)
+            return self._run_inference(x, lambda inp: self.forward(inp).squeeze(1))
 
 
 def _run_threshold_grid_search(

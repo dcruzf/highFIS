@@ -42,7 +42,7 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Mapping, Sequence
 from itertools import product
-from typing import cast
+from typing import Literal, cast
 
 import torch
 from torch import Tensor, nn
@@ -58,15 +58,8 @@ from .gates import (
     gate_m,  # noqa: F401
     resolve_gate_fn,
 )
-from .memberships import MembershipFunction
+from .memberships import MembershipFunction, _inv_softplus
 from .t_norms import TNormFn, resolve_t_norm
-
-
-def _inv_softplus(value: float, eps: float | None = None) -> float:
-    """Map a positive value to the unconstrained space used by softplus."""
-    eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else eps
-    v = max(value - eps, eps)
-    return math.log(math.expm1(v))
 
 
 def _generate_en_frb(s: int, d: int) -> list[tuple[int, ...]]:
@@ -221,7 +214,7 @@ class RuleLayer(nn.Module):
     - ``"cartesian"`` / ``"fuco"`` — full combinatorial rule base.
     - ``"coco"`` — same-index rule base; requires identical MF counts
       across all inputs.
-    - ``"en" — enhanced FRB; requires identical MF counts across all
+    - ``"en"`` — enhanced FRB; requires identical MF counts across all
       inputs.
     - ``"custom"`` — user-supplied rule index sequences.
 
@@ -281,6 +274,19 @@ class RuleLayer(nn.Module):
         except TypeError:
             return self._resolved_t_norm(terms)
 
+    def _gather_terms(self, membership_outputs: dict[str, Tensor]) -> Tensor:
+        """Gather per-rule membership terms from membership layer outputs."""
+        mu_list = []
+        for name in self.input_names:
+            if name not in membership_outputs:
+                raise KeyError(f"missing membership output for input '{name}'")
+            mu_list.append(membership_outputs[name])
+        mu_flat = torch.cat(mu_list, dim=1)
+        batch_size = mu_flat.shape[0]
+        rule_indices = cast(Tensor, self.rule_indices)
+        indices = rule_indices.unsqueeze(0).expand(batch_size, -1, -1)
+        return mu_flat.gather(1, indices.reshape(batch_size, -1)).reshape(batch_size, self.n_rules, self.n_inputs)
+
     def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
         """Compute rule firing strengths from membership outputs.
 
@@ -296,17 +302,7 @@ class RuleLayer(nn.Module):
             KeyError: If a required input name is missing from
                 *membership_outputs*.
         """
-        mu_list = []
-        for name in self.input_names:
-            if name not in membership_outputs:
-                raise KeyError(f"missing membership output for input '{name}'")
-            mu_list.append(membership_outputs[name])
-
-        mu_flat = torch.cat(mu_list, dim=1)
-        batch_size = mu_flat.shape[0]
-        rule_indices = cast(Tensor, self.rule_indices)
-        indices = rule_indices.unsqueeze(0).expand(batch_size, -1, -1)
-        terms = mu_flat.gather(1, indices.reshape(batch_size, -1)).reshape(batch_size, self.n_rules, self.n_inputs)
+        terms = self._gather_terms(membership_outputs)
         return self._apply_t_norm(terms)
 
 
@@ -327,19 +323,7 @@ class AdaSoftminRuleLayer(RuleLayer):
 
     def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
         """Compute Ada-softmin rule strengths from membership outputs."""
-        mu_list = []
-        for name in self.input_names:
-            if name not in membership_outputs:
-                raise KeyError(f"missing membership output for input '{name}'")
-            mu_list.append(membership_outputs[name])
-
-        mu_flat = torch.cat(mu_list, dim=1)
-        batch_size = mu_flat.shape[0]
-        rule_indices = cast(Tensor, self.rule_indices)
-        indices = rule_indices.unsqueeze(0).expand(batch_size, -1, -1)
-        terms = mu_flat.gather(1, indices.reshape(batch_size, -1)).reshape(batch_size, self.n_rules, self.n_inputs)
-
-        mu = terms.clamp(min=self.eps, max=1.0 - self.eps)
+        mu = self._gather_terms(membership_outputs).clamp(min=self.eps, max=1.0 - self.eps)
         min_mu = mu.min(dim=-1).values
         q = torch.ceil(690.0 / torch.log(min_mu))
         q = q.clamp(min=-1000.0, max=-1.0)
@@ -379,19 +363,7 @@ class ADPSoftminRuleLayer(RuleLayer):
 
     def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
         """Compute ADP-softmin rule strengths from membership outputs."""
-        mu_list = []
-        for name in self.input_names:
-            if name not in membership_outputs:
-                raise KeyError(f"missing membership output for input '{name}'")
-            mu_list.append(membership_outputs[name])
-
-        mu_flat = torch.cat(mu_list, dim=1)
-        batch_size = mu_flat.shape[0]
-        rule_indices = cast(Tensor, self.rule_indices)
-        indices = rule_indices.unsqueeze(0).expand(batch_size, -1, -1)
-        terms = mu_flat.gather(1, indices.reshape(batch_size, -1)).reshape(batch_size, self.n_rules, self.n_inputs)
-
-        mu = terms.clamp(min=self.eps, max=1.0 - self.eps)
+        mu = self._gather_terms(membership_outputs).clamp(min=self.eps, max=1.0 - self.eps)
         min_mu = mu.min(dim=-1).values
         max_mu = mu.max(dim=-1).values
 
@@ -449,19 +421,7 @@ class DGALETSKRuleLayer(RuleLayer):
 
     def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
         """Compute adaptive Ln-Exp rule strengths from membership outputs."""
-        mu_list = []
-        for name in self.input_names:
-            if name not in membership_outputs:
-                raise KeyError(f"missing membership output for input '{name}'")
-            mu_list.append(membership_outputs[name])
-
-        mu_flat = torch.cat(mu_list, dim=1)
-        batch_size = mu_flat.shape[0]
-        rule_indices = cast(Tensor, self.rule_indices)
-        indices = rule_indices.unsqueeze(0).expand(batch_size, -1, -1)
-        terms = mu_flat.gather(1, indices.reshape(batch_size, -1)).reshape(batch_size, self.n_rules, self.n_inputs)
-
-        mu = terms.clamp(min=self.eps, max=1.0 - self.eps)
+        mu = self._gather_terms(membership_outputs).clamp(min=self.eps, max=1.0 - self.eps)
         feature_gates = self.gate_fn(self.lambda_gates).clamp(0.0, 1.0)  # (n_inputs,)
         mu = mu.pow(feature_gates)  # µ^{M(λ)} — exponential antecedent gating
 
@@ -499,19 +459,7 @@ class DGTSKRuleLayer(RuleLayer):
 
     def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
         """Compute DGTSK rule strengths from membership outputs."""
-        mu_list = []
-        for name in self.input_names:
-            if name not in membership_outputs:
-                raise KeyError(f"missing membership output for input '{name}'")
-            mu_list.append(membership_outputs[name])
-
-        mu_flat = torch.cat(mu_list, dim=1)
-        batch_size = mu_flat.shape[0]
-        rule_indices = cast(Tensor, self.rule_indices)
-        indices = rule_indices.unsqueeze(0).expand(batch_size, -1, -1)
-        terms = mu_flat.gather(1, indices.reshape(batch_size, -1)).reshape(batch_size, self.n_rules, self.n_inputs)
-
-        mu = terms.clamp(min=self.eps, max=1.0 - self.eps)
+        mu = self._gather_terms(membership_outputs).clamp(min=self.eps, max=1.0 - self.eps)
         feature_gates = self.gate_fn(self.lambda_gates).clamp(0.0, 1.0).unsqueeze(0)
         mu = mu.pow(feature_gates)  # µ^{M(λ)} — exponential antecedent gating
 
@@ -544,20 +492,7 @@ class AdaptiveDombiRuleLayer(RuleLayer):
 
     def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
         """Compute adaptive Dombi firing strengths for each rule."""
-        mu_list = []
-        for name in self.input_names:
-            if name not in membership_outputs:
-                raise KeyError(f"missing membership output for input '{name}'")
-            mu_list.append(membership_outputs[name])
-
-        mu_flat = torch.cat(mu_list, dim=1)
-        batch_size = mu_flat.shape[0]
-        rule_indices = cast(Tensor, self.rule_indices)
-        indices = rule_indices.unsqueeze(0).expand(batch_size, -1, -1)
-        terms_tensor = mu_flat.gather(1, indices.reshape(batch_size, -1)).reshape(
-            batch_size, self.n_rules, self.n_inputs
-        )
-        mu = terms_tensor.clamp(min=self.eps, max=1.0 - self.eps)
+        mu = self._gather_terms(membership_outputs).clamp(min=self.eps, max=1.0 - self.eps)
         ratio = (1.0 - mu) / mu
         lambdas = self.lambdas.view(1, self.n_rules, 1)
         powered = ratio.pow(lambdas)
@@ -681,7 +616,7 @@ class GatedClassificationConsequentLayer(nn.Module):
     (DG-ALETSK).
     """
 
-    mode: str
+    mode: Literal["fs", "re", "finetune", "both"]
 
     def __init__(
         self,
@@ -859,7 +794,7 @@ class GatedRegressionConsequentLayer(nn.Module):
     :class:`GatedClassificationConsequentLayer`.
     """
 
-    mode: str
+    mode: Literal["fs", "re", "finetune", "both"]
 
     def __init__(
         self,
