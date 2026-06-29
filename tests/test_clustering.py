@@ -32,6 +32,12 @@ def test_kmeans_fit_predict_raises_when_fit_does_not_set_labels() -> None:
         model.fit_predict(torch.randn(2, 2))
 
 
+@pytest.mark.parametrize("m", [1.0, 0.5, 0.0])
+def test_fcm_rejects_fuzziness_not_greater_than_one(m: float) -> None:
+    with pytest.raises(ValueError, match="m must be > 1"):
+        FuzzyCMeans(n_clusters=2, m=m)
+
+
 def test_fcm_class_methods_compute_membership() -> None:
     x = torch.tensor([[0.0, 0.0], [0.0, 1.0], [10.0, 10.0], [10.0, 11.0]], dtype=torch.float32)
     model = FuzzyCMeans(n_clusters=2, m=2.0, max_iter=50, random_state=2)
