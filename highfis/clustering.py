@@ -289,9 +289,14 @@ class FuzzyCMeans:
             tol: Convergence tolerance on centroid movement.
             random_state: Optional seed for reproducible initialization.
             eps: Small constant to avoid division by zero.
+
+        Raises:
+            ValueError: If *m* is not greater than 1.
         """
         self.n_clusters = int(n_clusters)
         self.m = float(m)
+        if self.m <= 1.0:
+            raise ValueError("m must be > 1")
         self.max_iter = int(max_iter)
         self.tol = float(tol)
         self.random_state = random_state
