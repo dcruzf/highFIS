@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 import torch
+from torch import nn
 
 from highfis.layers import (
     AdaptiveDombiRuleLayer,
@@ -558,3 +561,73 @@ def test_gated_layers_custom_callable_gate_fn_init() -> None:
     assert rzl.theta_gates.min().detach().detach() >= 0.01
     out = rzl(x, norm_w)
     assert out.shape == (5, 1)
+
+
+def test_membership_layer_vectorized_matches_per_module_loop() -> None:
+    torch.manual_seed(0)
+    values = [(0.1, 0.2), (0.5, 0.3), (0.9, 0.15)]
+    layer = MembershipLayer({f"x{d + 1}": [GaussianMF(mean=m, sigma=s) for m, s in values] for d in range(4)})
+    reference = {f"x{d + 1}": [GaussianMF(mean=m, sigma=s) for m, s in values] for d in range(4)}
+    assert layer._fast_kernel is not None
+    x = torch.rand(32, 4)
+    out = layer(x)
+    for i, (name, mfs) in enumerate(reference.items()):
+        expected = torch.stack([mf(x[:, i]) for mf in mfs], dim=-1)
+        assert torch.allclose(out[name], expected, rtol=1e-5, atol=1e-6)
+
+
+def test_membership_layer_vectorized_consolidates_parameters() -> None:
+    layer = MembershipLayer({"x1": [GaussianMF(), GaussianMF()], "x2": [GaussianMF(), GaussianMF()]})
+    names = [name for name, _ in layer.named_parameters()]
+    assert sorted(names) == ["_flat_mean", "_flat_raw_sigma"]
+    assert layer._flat_mean is not None and layer._flat_mean.shape == (4,)
+
+
+def test_membership_layer_heterogeneous_grid_falls_back_to_loop() -> None:
+    from highfis.memberships import TriangularMF
+
+    layer = MembershipLayer(
+        {"x1": [GaussianMF(), TriangularMF(0.0, 0.5, 1.0)], "x2": [GaussianMF(), TriangularMF(0.0, 0.5, 1.0)]}
+    )
+    assert layer._fast_kernel is None
+    assert any(name.startswith("input_mfs.") for name, _ in layer.named_parameters())
+    out = layer(torch.rand(8, 2))
+    assert out["x1"].shape == (8, 2)
+
+
+def test_membership_layer_vectorized_introspection_after_optimizer_step() -> None:
+    layer = MembershipLayer({"x1": [GaussianMF(mean=0.2, sigma=0.5)], "x2": [GaussianMF(mean=0.8, sigma=0.5)]})
+    optimizer = torch.optim.SGD(layer.parameters(), lr=0.1)
+    out = layer(torch.rand(16, 2))
+    loss = sum(v.sum() for v in out.values())
+    loss.backward()
+    optimizer.step()
+    assert layer._flat_mean is not None
+    mf = cast(GaussianMF, cast(nn.ModuleList, layer.input_mfs["x1"])[0])
+    assert float(mf.mean) == pytest.approx(float(layer._flat_mean[0]))
+    params = mf.inspect_params()
+    assert params["mean"] == pytest.approx(float(layer._flat_mean[0]))
+    assert params["sigma"] > 0
+
+
+def test_membership_layer_vectorized_loads_legacy_per_module_state_dict() -> None:
+    layer = MembershipLayer({"x1": [GaussianMF(), GaussianMF()], "x2": [GaussianMF(), GaussianMF()]})
+    legacy = {
+        f"input_mfs.x{d + 1}.{i}.{key}": torch.tensor(0.1 * (d * 2 + i) + offset)
+        for d in range(2)
+        for i in range(2)
+        for key, offset in (("mean", 0.0), ("raw_sigma", 0.5))
+    }
+    layer.load_state_dict(legacy)
+    assert layer._flat_mean is not None
+    assert float(layer._flat_mean[3]) == pytest.approx(0.3)
+    mf = cast(GaussianMF, cast(nn.ModuleList, layer.input_mfs["x2"])[1])
+    assert float(mf.mean) == pytest.approx(0.3)
+
+
+def test_membership_layer_vectorized_state_dict_roundtrip() -> None:
+    layer_a = MembershipLayer({"x1": [GaussianMF(mean=0.3, sigma=0.4)]})
+    layer_b = MembershipLayer({"x1": [GaussianMF(mean=0.9, sigma=0.1)]})
+    layer_b.load_state_dict(layer_a.state_dict())
+    x = torch.rand(8, 1)
+    assert torch.equal(layer_a(x)["x1"], layer_b(x)["x1"])
