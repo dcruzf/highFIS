@@ -232,8 +232,8 @@ def test_membership_functions_initialization_caching() -> None:
         for mf1, mf2 in zip(mfs1[name], mfs2[name], strict=True):
             assert mf1 is not mf2
             assert mf1.mean is not mf2.mean
-            val1 = float(cast(Any, mf1.mean).detach().cpu().numpy())
-            val2 = float(cast(Any, mf2.mean).detach().cpu().numpy())
+            val1 = float(mf1.mean.detach().cpu().numpy())
+            val2 = float(mf2.mean.detach().cpu().numpy())
             assert val1 == val2
     est3 = HTSKClassifier(n_mfs=3, mf_init="kmeans", epochs=1, random_state=42, batch_size=16)
     est3._build_input_mfs(x)

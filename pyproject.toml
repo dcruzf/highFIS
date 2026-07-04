@@ -49,14 +49,12 @@ installer = "uv"
 dependencies = [
     "ruff",
     "bandit[toml]",
-    "ty",
     "pre-commit",
     "coverage",
     "pytest"
 ]
 [tool.hatch.envs.default.scripts]
 security = "bandit -c pyproject.toml -r highfis/"
-typing = "ty check"
 install = "pre-commit install && pre-commit autoupdate"
 html-report = "coverage html -d docs/assets/cov/"
 all = "pre-commit run --all-files"
