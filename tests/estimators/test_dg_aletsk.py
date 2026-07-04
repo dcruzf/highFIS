@@ -140,7 +140,7 @@ def test_dgaletsk_classifier_estimator_pipeline_integration() -> None:
     )
     pipe = Pipeline([("model", est)])
     pipe.fit(x, y)
-    pred = pipe.predict(x[:10])
+    pred = cast(np.ndarray, pipe.predict(x[:10]))
     assert pred.shape == (10,)
 
 

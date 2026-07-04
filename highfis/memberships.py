@@ -84,10 +84,38 @@ class MembershipFunction(nn.Module):
             return x
         return torch.as_tensor(x, dtype=torch.get_default_dtype())
 
+    def __getattr__(self, name: str) -> Any:
+        """Resolve scalars consolidated by a vectorized MembershipLayer.
+
+        When this MF belongs to a vectorized
+        :class:`~highfis.layers.MembershipLayer`, its trainable scalars
+        live in the layer's flat parameters. ``_vectorized_binding`` maps
+        each original attribute to ``(layer, flat_name, index)``; the value
+        is materialized as a detached view on access so it always reflects
+        the current training state.
+        """
+        binding = self.__dict__.get("_vectorized_binding")
+        if binding is not None and name in binding:
+            layer, flat_name, index = binding[name]
+            flat = getattr(layer, flat_name)
+            return flat.detach()[index]
+        return super().__getattr__(name)
+
     def inspect_params(self) -> dict[str, Any]:
-        """Return a serializable parameter dict for this membership function."""
+        """Return a serializable parameter dict for this membership function.
+
+        When this MF belongs to a vectorized
+        :class:`~highfis.layers.MembershipLayer`, its scalars live in the
+        layer's flat parameters and the module attributes are read-only
+        views; ``_vectorized_param_names`` lists them so introspection
+        keeps working.
+        """
+        items: list[tuple[str, Tensor]] = list(self.named_parameters(recurse=False))
+        binding = self.__dict__.get("_vectorized_binding")
+        if not items and binding is not None:
+            items = [(name, getattr(self, name)) for name in binding]
         params: dict[str, Any] = {}
-        for name, param in self.named_parameters(recurse=False):
+        for name, param in items:
             if name.startswith("raw_"):
                 public_name = name[4:]
                 value = getattr(self, public_name, param)

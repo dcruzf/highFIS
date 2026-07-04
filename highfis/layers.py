@@ -42,7 +42,7 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Mapping, Sequence
 from itertools import product
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 import torch
 from torch import Tensor, nn
@@ -58,8 +58,69 @@ from .gates import (
     gate_m,  # noqa: F401
     resolve_gate_fn,
 )
-from .memberships import MembershipFunction, _inv_softplus
+from .memberships import (
+    ADATSKGaussianMF,
+    ConstantMF,
+    DimensionDependentGaussianMF,
+    GaussianMF,
+    GaussianPiMF,
+    MembershipFunction,
+    _inv_softplus,
+)
 from .t_norms import TNormFn, resolve_t_norm
+
+
+def _kernel_gaussian(x: Tensor, mean: Tensor, raw_sigma: Tensor, consts: Mapping[str, Tensor]) -> Tensor:
+    sigma = F.softplus(raw_sigma) + consts["eps"]
+    z = (x - mean) / sigma
+    return torch.exp(-0.5 * z.square())
+
+
+def _kernel_adatsk_gaussian(x: Tensor, mean: Tensor, raw_sigma: Tensor, consts: Mapping[str, Tensor]) -> Tensor:
+    sigma = F.softplus(raw_sigma) + consts["eps"]
+    z = (x - mean) / sigma
+    return torch.exp(-z.square())
+
+
+def _kernel_dimension_dependent_gaussian(
+    x: Tensor, mean: Tensor, raw_sigma: Tensor, consts: Mapping[str, Tensor]
+) -> Tensor:
+    eps = consts["eps"]
+    sigma = F.softplus(raw_sigma) + eps
+    denom = consts["scale"] + sigma.square() + eps
+    return torch.exp(-(x - mean).square() / denom)
+
+
+def _kernel_gaussian_pi(x: Tensor, mean: Tensor, raw_sigma: Tensor, consts: Mapping[str, Tensor]) -> Tensor:
+    sigma = F.softplus(raw_sigma) + consts["eps"]
+    z_sq = ((x - mean) / sigma).square()
+    inner = 1.0 - torch.exp(-0.5 * z_sq)
+    return torch.exp(-consts["k"] * inner)
+
+
+def _kernel_constant(x: Tensor, mean: Tensor | None, raw_sigma: Tensor | None, consts: Mapping[str, Tensor]) -> Tensor:
+    return consts["value"].expand_as(x).clone()
+
+
+_MFKernel = Callable[[Tensor, "Tensor | None", "Tensor | None", Mapping[str, Tensor]], Tensor]
+
+#: Vectorized fuzzification kernels, keyed by exact membership class.
+#: Each kernel reproduces the corresponding ``forward`` formula elementwise
+#: over a pre-gathered ``(N, total_mfs)`` input, with the trainable
+#: parameters consolidated into flat ``(total_mfs,)`` tensors owned by the
+#: layer. ``consts`` carries the per-MF non-trainable constants cached at
+#: layer construction. The Gaussian-family kernels require the flat
+#: parameter tensors; only ``ConstantMF`` (parameter-free) receives None.
+_VECTORIZED_MF_KERNELS: dict[type, _MFKernel] = cast(
+    "dict[type, _MFKernel]",
+    {
+        GaussianMF: _kernel_gaussian,
+        ADATSKGaussianMF: _kernel_adatsk_gaussian,
+        DimensionDependentGaussianMF: _kernel_dimension_dependent_gaussian,
+        GaussianPiMF: _kernel_gaussian_pi,
+        ConstantMF: _kernel_constant,
+    },
+)
 
 
 def _generate_en_frb(s: int, d: int) -> list[tuple[int, ...]]:
@@ -126,9 +187,116 @@ class MembershipLayer(nn.Module):
             self.mf_per_input.append(len(mfs))
 
         self.input_mfs = nn.ModuleDict(modules)
+        # Flat MF index -> owning feature column, used by the vectorized
+        # fast path to gather inputs in one op. Non-persistent so that
+        # state_dict keys are unchanged.
+        feat_idx = torch.repeat_interleave(torch.arange(self.n_inputs), torch.tensor(self.mf_per_input))
+        self.register_buffer("_feat_idx", feat_idx, persistent=False)
+        self._build_fast_path()
+        self.register_load_state_dict_pre_hook(self._load_legacy_state_dict_hook)
+
+    def _build_fast_path(self) -> None:
+        """Consolidate parameters for vectorized fuzzification when possible.
+
+        The fast path applies when every membership function in the layer
+        is an instance of the exact same class registered in
+        ``_VECTORIZED_MF_KERNELS``. In that case the per-MF trainable
+        scalars are consolidated into flat ``(total_mfs,)`` parameters
+        owned by the layer (``_flat_mean``, ``_flat_raw_sigma``), and each
+        module's scalar parameters are replaced by read-only views into
+        the flat storage, so introspection (``get_mf_params``,
+        ``inspect_params``) keeps working. Per-MF non-trainable constants
+        (eps, scale, k, value) are frozen into non-persistent buffers.
+        The plan is built once at construction: layers are rebuilt (not
+        mutated) by the pruning routines, so it cannot go stale.
+        """
+        flat_mfs = [mf for name in self.input_names for mf in cast(nn.ModuleList, self.input_mfs[name])]
+        mf_type = type(flat_mfs[0])
+        kernel = _VECTORIZED_MF_KERNELS.get(mf_type)
+        if kernel is None or not all(type(mf) is mf_type for mf in flat_mfs):
+            self._flat_mfs: list[MembershipFunction] | None = None
+            self._fast_kernel = None
+            self._fast_const_names: tuple[str, ...] = ()
+            self._flat_mean: nn.Parameter | None = None
+            self._flat_raw_sigma: nn.Parameter | None = None
+            return
+
+        self._flat_mfs = cast("list[MembershipFunction]", flat_mfs)
+        self._fast_kernel = kernel
+        consts: dict[str, Tensor] = {"eps": torch.tensor([mf.eps for mf in flat_mfs])}
+        if mf_type is DimensionDependentGaussianMF:
+            consts["scale"] = torch.tensor([cast(Any, mf).scale for mf in flat_mfs])
+        elif mf_type is GaussianPiMF:
+            consts["k"] = torch.tensor([cast(Any, mf).k for mf in flat_mfs])
+        elif mf_type is ConstantMF:
+            consts["value"] = torch.tensor([cast(Any, mf).value for mf in flat_mfs])
+        for cname, tensor in consts.items():
+            self.register_buffer(f"_fast_const_{cname}", tensor, persistent=False)
+        self._fast_const_names = tuple(consts)
+
+        if mf_type is ConstantMF:
+            self._flat_mean = None
+            self._flat_raw_sigma = None
+            return
+
+        with torch.no_grad():
+            mean = torch.stack([cast(Tensor, mf.mean).detach() for mf in flat_mfs]).clone()
+            raw_sigma = torch.stack([cast(Tensor, mf.raw_sigma).detach() for mf in flat_mfs]).clone()
+        self._flat_mean = nn.Parameter(mean)
+        self._flat_raw_sigma = nn.Parameter(raw_sigma)
+        for i, mf in enumerate(flat_mfs):
+            mf._parameters.pop("mean", None)
+            mf._parameters.pop("raw_sigma", None)
+            mf.__dict__.pop("mean", None)
+            mf.__dict__.pop("raw_sigma", None)
+            # Resolved lazily by MembershipFunction.__getattr__ so the
+            # values stay current across optimizer steps and .to() moves.
+            mf.__dict__["_vectorized_binding"] = {
+                "mean": (self, "_flat_mean", i),
+                "raw_sigma": (self, "_flat_raw_sigma", i),
+            }
+
+    def _load_legacy_state_dict_hook(
+        self,
+        module: nn.Module,
+        state_dict: dict[str, Any],
+        prefix: str,
+        *args: Any,
+    ) -> None:
+        """Map per-module scalar checkpoint keys onto the flat parameters.
+
+        Checkpoints written before parameter consolidation store one
+        ``input_mfs.<name>.<i>.mean``/``raw_sigma`` entry per membership
+        function. When the layer runs in vectorized mode, gather them into
+        ``_flat_mean``/``_flat_raw_sigma`` so old checkpoints keep loading.
+        """
+        if self._flat_mean is None or f"{prefix}_flat_mean" in state_dict:
+            return
+        means: list[Tensor] = []
+        raws: list[Tensor] = []
+        for name in self.input_names:
+            for i in range(len(cast(nn.ModuleList, self.input_mfs[name]))):
+                mean_key = f"{prefix}input_mfs.{name}.{i}.mean"
+                raw_key = f"{prefix}input_mfs.{name}.{i}.raw_sigma"
+                if mean_key not in state_dict or raw_key not in state_dict:
+                    return
+                means.append(state_dict[mean_key].reshape(()))
+                raws.append(state_dict[raw_key].reshape(()))
+        for name in self.input_names:
+            for i in range(len(cast(nn.ModuleList, self.input_mfs[name]))):
+                state_dict.pop(f"{prefix}input_mfs.{name}.{i}.mean")
+                state_dict.pop(f"{prefix}input_mfs.{name}.{i}.raw_sigma")
+        state_dict[f"{prefix}_flat_mean"] = torch.stack(means)
+        state_dict[f"{prefix}_flat_raw_sigma"] = torch.stack(raws)
 
     def forward(self, x: Tensor) -> dict[str, Tensor]:
         """Compute membership outputs for each input variable.
+
+        When every membership function in the layer is an instance of the
+        same vectorizable class (see ``_VECTORIZED_MF_KERNELS``), all
+        degrees are computed in a single batched tensor operation instead
+        of one module call per (feature, MF) pair. Heterogeneous or custom
+        membership functions fall back to the per-module loop.
 
         Args:
             x: Input tensor of shape ``(N, n_inputs)``.
@@ -145,6 +313,13 @@ class MembershipLayer(nn.Module):
             raise ValueError(f"expected x with 2 dims, got shape {tuple(x.shape)}")
         if x.shape[1] != self.n_inputs:
             raise ValueError(f"expected {self.n_inputs} inputs, got {x.shape[1]}")
+
+        if self._fast_kernel is not None:
+            consts = {name: cast(Tensor, getattr(self, f"_fast_const_{name}")) for name in self._fast_const_names}
+            x_flat = x.index_select(1, cast(Tensor, self._feat_idx))
+            mu_flat = self._fast_kernel(x_flat, self._flat_mean, self._flat_raw_sigma, consts)
+            chunks = torch.split(mu_flat, self.mf_per_input, dim=1)
+            return dict(zip(self.input_names, chunks, strict=False))
 
         outputs: dict[str, Tensor] = {}
         for i, name in enumerate(self.input_names):

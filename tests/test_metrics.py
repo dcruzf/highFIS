@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import cast
+from typing import Literal, cast
 
 import numpy as np
 import pytest
@@ -469,6 +469,7 @@ def test_pytorch_metrics_randomized_against_sklearn() -> None:
         w_t = torch.tensor(w) if w is not None else None
 
         for avg in ["macro", "micro"]:
+            avg = cast(Literal["macro", "micro"], avg)
             sk_prec = precision_score(y_true, y_pred, average=avg, zero_division=0, sample_weight=w)
             sk_rec = recall_score(y_true, y_pred, average=avg, zero_division=0, sample_weight=w)
             sk_f1 = f1_score(y_true, y_pred, average=avg, zero_division=0, sample_weight=w)

@@ -11,8 +11,8 @@ repos:
 - repo: local
   hooks:
   - id: format
-    name: Format
-    entry: hatch fmt
+    name: Check
+    entry: hatch check --fix
     types: [python]
     language: system
     pass_filenames: false
@@ -20,11 +20,5 @@ repos:
   - id: bandit
     name: Bandit Security Scan
     entry: hatch run security
-    language: system
-    pass_filenames: false
-
-  - id: type-check
-    name: Type Check
-    entry: hatch run typing
     language: system
     pass_filenames: false
