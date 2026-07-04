@@ -599,14 +599,14 @@ def test_membership_layer_vectorized_introspection_after_optimizer_step() -> Non
     layer = MembershipLayer({"x1": [GaussianMF(mean=0.2, sigma=0.5)], "x2": [GaussianMF(mean=0.8, sigma=0.5)]})
     optimizer = torch.optim.SGD(layer.parameters(), lr=0.1)
     out = layer(torch.rand(16, 2))
-    loss = sum(v.sum() for v in out.values())
+    loss = torch.stack([v.sum() for v in out.values()]).sum()
     loss.backward()
     optimizer.step()
     assert layer._flat_mean is not None
     mf = cast(GaussianMF, cast(nn.ModuleList, layer.input_mfs["x1"])[0])
-    assert float(mf.mean) == pytest.approx(float(layer._flat_mean[0]))
+    assert mf.mean.detach() == pytest.approx(layer._flat_mean[0].detach())
     params = mf.inspect_params()
-    assert params["mean"] == pytest.approx(float(layer._flat_mean[0]))
+    assert params["mean"] == pytest.approx(layer._flat_mean[0].detach())
     assert params["sigma"] > 0
 
 
@@ -620,7 +620,7 @@ def test_membership_layer_vectorized_loads_legacy_per_module_state_dict() -> Non
     }
     layer.load_state_dict(legacy)
     assert layer._flat_mean is not None
-    assert float(layer._flat_mean[3]) == pytest.approx(0.3)
+    assert layer._flat_mean[3].detach() == pytest.approx(0.3)
     mf = cast(GaussianMF, cast(nn.ModuleList, layer.input_mfs["x2"])[1])
     assert float(mf.mean) == pytest.approx(0.3)
 
