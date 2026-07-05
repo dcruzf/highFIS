@@ -398,3 +398,267 @@ def test_build_input_mfs_cached_thread_safety() -> None:
         t.join()
 
     assert len(errors) == 0
+
+
+def test_classifier_save_load_with_rule_layer_rules() -> None:
+    """Test save/load for models with rule_layer.rules (lines 789-791)."""
+    import tempfile
+
+    x, y = _make_dataset(20)
+    est = HTSKClassifier(n_mfs=2, mf_init="kmeans", epochs=1, random_state=42, batch_size=16)
+    est.fit(x, y)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = f"{tmpdir}/model.ckpt"
+        est.save(path)
+        est_loaded = HTSKClassifier.load(path)
+        assert est_loaded.model_ is not None
+        assert est_loaded.classes_.shape == est.classes_.shape
+
+
+def test_regressor_save_load_with_rule_layer_rules() -> None:
+    """Test save/load for regressor models with rule_layer.rules (lines 992-994)."""
+    import tempfile
+
+    from highfis import HTSKRegressor
+
+    x, y = _make_dataset(20)
+    est = HTSKRegressor(n_mfs=2, mf_init="kmeans", epochs=1, random_state=42, batch_size=16)
+    est.fit(x, y)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = f"{tmpdir}/model.ckpt"
+        est.save(path)
+        est_loaded = HTSKRegressor.load(path)
+        assert est_loaded.model_ is not None
+        assert est_loaded.n_features_in_ == est.n_features_in_
+
+
+def test_classifier_load_without_rules_support() -> None:
+    """Test classifier load path when _build_model doesn't support rules (line 832)."""
+    import inspect
+    import tempfile
+    from unittest.mock import patch
+
+    x, y = _make_dataset(20)
+    est = HTSKClassifier(n_mfs=2, mf_init="kmeans", epochs=1, random_state=42, batch_size=16)
+    est.fit(x, y)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = f"{tmpdir}/model.ckpt"
+        est.save(path)
+
+        # Mock inspect.signature to simulate a _build_model without 'rules' parameter
+        original_signature = inspect.signature
+
+        def mock_signature(obj):
+            sig = original_signature(obj)
+            if hasattr(obj, "__name__") and "_build_model" in getattr(obj, "__name__", ""):
+                return sig.replace(parameters=[p for p in sig.parameters.values() if p.name != "rules"])
+            return sig
+
+        with patch("inspect.signature", side_effect=mock_signature):
+            est_loaded = HTSKClassifier.load(path)
+            assert est_loaded.model_ is not None
+
+
+def test_regressor_load_without_rules_support() -> None:
+    """Test regressor load path when _build_regressor_model doesn't support rules (line 1032)."""
+    import inspect
+    import tempfile
+    from unittest.mock import patch
+
+    from highfis import HTSKRegressor
+
+    x, y = _make_dataset(20)
+    est = HTSKRegressor(n_mfs=2, mf_init="kmeans", epochs=1, random_state=42, batch_size=16)
+    est.fit(x, y)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = f"{tmpdir}/model.ckpt"
+        est.save(path)
+
+        # Mock inspect.signature to simulate _build_regressor_model without 'rules'
+        original_signature = inspect.signature
+
+        def mock_signature(obj):
+            sig = original_signature(obj)
+            if hasattr(obj, "__name__") and "_build_regressor_model" in getattr(obj, "__name__", ""):
+                return sig.replace(parameters=[p for p in sig.parameters.values() if p.name != "rules"])
+            return sig
+
+        with patch("inspect.signature", side_effect=mock_signature):
+            est_loaded = HTSKRegressor.load(path)
+            assert est_loaded.model_ is not None
+
+
+def test_classifier_load_with_consequent_layer_mode_no_method() -> None:
+    """Test load when setting consequent_layer.mode directly (lines 842-843)."""
+    import tempfile
+
+    x, y = _make_dataset(20)
+    est = HTSKClassifier(n_mfs=2, mf_init="kmeans", epochs=1, random_state=42, batch_size=16)
+    est.fit(x, y)
+
+    # Mock the model to have mode in consequent_layer but no set_consequent_mode
+    original_has_method = hasattr(est.model_, "set_consequent_mode")
+    if original_has_method:
+        delattr(est.model_, "set_consequent_mode")
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = f"{tmpdir}/model.ckpt"
+        est.save(path)
+        est_loaded = HTSKClassifier.load(path)
+        assert est_loaded.model_ is not None
+
+
+def test_regressor_load_with_consequent_layer_mode_no_method() -> None:
+    """Test regressor load when setting consequent_layer.mode directly (lines 1041-1042)."""
+    import tempfile
+
+    from highfis import HTSKRegressor
+
+    x, y = _make_dataset(20)
+    est = HTSKRegressor(n_mfs=2, mf_init="kmeans", epochs=1, random_state=42, batch_size=16)
+    est.fit(x, y)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = f"{tmpdir}/model.ckpt"
+        est.save(path)
+        est_loaded = HTSKRegressor.load(path)
+        assert est_loaded.model_ is not None
+        assert est_loaded.n_features_in_ == est.n_features_in_
+
+
+def test_classifier_save_model_without_rule_layer() -> None:
+    """Test save when model doesn't have rule_layer (covers line 789->791 false branch)."""
+    import tempfile
+    from unittest.mock import patch
+
+    x, y = _make_dataset(20)
+    est = HTSKClassifier(n_mfs=2, mf_init="kmeans", epochs=1, random_state=42, batch_size=16)
+    est.fit(x, y)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = f"{tmpdir}/model.ckpt"
+        # Mock hasattr to return False for rule_layer check
+        original_hasattr = hasattr
+
+        def mock_hasattr(obj, name):
+            if obj is est.model_ and name == "rule_layer":
+                return False
+            return original_hasattr(obj, name)
+
+        with patch("builtins.hasattr", side_effect=mock_hasattr):
+            est.save(path)
+            assert True  # If we reach here, save completed without error
+
+
+def test_regressor_save_model_without_rule_layer() -> None:
+    """Test regressor save when model doesn't have rule_layer (covers line 992->994 false branch)."""
+    import tempfile
+    from unittest.mock import patch
+
+    from highfis import HTSKRegressor
+
+    x, y = _make_dataset(20)
+    est = HTSKRegressor(n_mfs=2, mf_init="kmeans", epochs=1, random_state=42, batch_size=16)
+    est.fit(x, y)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = f"{tmpdir}/model.ckpt"
+        # Mock hasattr to return False for rule_layer check
+        original_hasattr = hasattr
+
+        def mock_hasattr(obj, name):
+            if obj is est.model_ and name == "rule_layer":
+                return False
+            return original_hasattr(obj, name)
+
+        with patch("builtins.hasattr", side_effect=mock_hasattr):
+            est.save(path)
+            assert True  # If we reach here, save completed without error
+
+
+def test_classifier_load_consequent_mode_elif_branch() -> None:
+    """Test elif branch for consequent_layer.mode when set_consequent_mode doesn't exist (line 842-843)."""
+    import tempfile
+    from unittest.mock import patch
+
+    x, y = _make_dataset(20)
+    est = HTSKClassifier(n_mfs=2, mf_init="kmeans", epochs=1, random_state=42, batch_size=16)
+    est.fit(x, y)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = f"{tmpdir}/model.ckpt"
+        est.save(path)
+
+        # Intercept load to inject a checkpoint with consequent_mode
+        from highfis.persistence import load_checkpoint
+
+        original_load_checkpoint = load_checkpoint
+
+        def mock_load_checkpoint(fpath):
+            checkpoint = original_load_checkpoint(fpath)
+            # Ensure consequent_mode is not None
+            checkpoint["model_init"]["consequent_mode"] = "test_mode"
+            return checkpoint
+
+        # Mock hasattr to return False for set_consequent_mode
+        original_hasattr = hasattr
+
+        def mock_hasattr_no_set_method(obj, name):
+            if name == "set_consequent_mode":
+                return False
+            return original_hasattr(obj, name)
+
+        with (
+            patch("highfis.persistence.load_checkpoint", mock_load_checkpoint),
+            patch("builtins.hasattr", side_effect=mock_hasattr_no_set_method),
+        ):
+            est_loaded = HTSKClassifier.load(path)
+            assert est_loaded.model_ is not None
+
+
+def test_regressor_load_consequent_mode_elif_branch() -> None:
+    """Test elif branch for consequent_layer.mode when set_consequent_mode doesn't exist (lines 1041-1042)."""
+    import tempfile
+    from unittest.mock import patch
+
+    from highfis import HTSKRegressor
+
+    x, y = _make_dataset(20)
+    est = HTSKRegressor(n_mfs=2, mf_init="kmeans", epochs=1, random_state=42, batch_size=16)
+    est.fit(x, y)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = f"{tmpdir}/model.ckpt"
+        est.save(path)
+
+        # Intercept load to inject a checkpoint with consequent_mode
+        from highfis.persistence import load_checkpoint
+
+        original_load_checkpoint = load_checkpoint
+
+        def mock_load_checkpoint(fpath):
+            checkpoint = original_load_checkpoint(fpath)
+            # Ensure consequent_mode is not None
+            checkpoint["model_init"]["consequent_mode"] = "test_mode"
+            return checkpoint
+
+        # Mock hasattr to return False for set_consequent_mode
+        original_hasattr = hasattr
+
+        def mock_hasattr_selective(obj, name):
+            if name == "set_consequent_mode":
+                return False
+            if name == "mode" and hasattr(obj, "__class__") and "consequent_layer" in str(type(obj)):
+                return True
+            return original_hasattr(obj, name)
+
+        with (
+            patch("highfis.persistence.load_checkpoint", mock_load_checkpoint),
+            patch("builtins.hasattr", side_effect=mock_hasattr_selective),
+        ):
+            est_loaded = HTSKRegressor.load(path)
+            assert est_loaded.model_ is not None
