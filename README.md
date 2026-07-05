@@ -123,22 +123,22 @@ Key reference pages:
 
 ## 🧪 Testing & quality
 
+Format, lint, and type check:
+
+```bash
+hatch check --fix
+```
+
 Run the test suite with coverage:
 
 ```bash
 hatch test -c -a
 ```
 
-Format and lint the repository:
+Run security scan:
 
 ```bash
-hatch fmt
-```
-
-Run static type checks:
-
-```bash
-hatch run typing
+hatch run security
 ```
 
 ## 🤝 Contributing
