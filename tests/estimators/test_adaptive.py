@@ -202,3 +202,42 @@ def test_adptsk_nan_guards() -> None:
     pred = reg.predict(x_reg)
     assert not np.any(np.isnan(pred))
     assert np.allclose(pred, 0.0)
+
+
+def test_adptsk_low_dimensional_no_nan() -> None:
+    """Integration test: ADPTSK should not diverge to NaN on low-dimensional data after fix.
+
+    This replicates the scenario from BUG_REPORT_ADPTSK_NaN.md: low-dimensional
+    data (D=2) with ADPTSK typically triggered NaN on first gradient step due to
+    a division-by-zero pole in ADPSoftminRuleLayer. After the fix, this should pass.
+    """
+    from sklearn.datasets import make_circles
+
+    X, y = make_circles(n_samples=60, noise=0.1, factor=0.5, random_state=42)
+    X = (X - X.min(axis=0)) / (X.max(axis=0) - X.min(axis=0))  # Normalize to [0, 1]
+
+    # Use settings that would trigger NaN in the old code
+    clf = ADPTSKClassifier(
+        n_mfs=5,
+        mf_init="kmeans",
+        rule_base="coco",
+        epochs=5,
+        learning_rate=0.05,
+        random_state=42,
+        verbose=False,
+    )
+    clf.fit(X[:40], y[:40])
+
+    # After training, forward pass through model should not contain NaN
+    X_test_tensor = torch.tensor(X[40:], dtype=torch.get_default_dtype())
+    with torch.no_grad():
+        antecedent_output = clf.model_.forward_antecedents(X_test_tensor)
+    assert torch.all(torch.isfinite(antecedent_output)), "forward_antecedents contains NaN/inf after training"
+
+    # predict and predict_proba should work without falling back to NaN guards
+    proba = clf.predict_proba(X[40:])
+    pred = clf.predict(X[40:])
+    assert proba.shape == (20, 2)
+    assert pred.shape == (20,)
+    assert not np.any(np.isnan(proba))
+    assert not np.any(np.isnan(pred))

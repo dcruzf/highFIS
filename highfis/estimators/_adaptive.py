@@ -138,7 +138,7 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         restore_best: bool = True,
         weight_decay: float = 0.0,
         kappa: float = 690.0,
-        xi: float = 700.0,
+        xi: float = 730.0,
         k: float = 1.0,
         eps: float | None = None,
         zero_consequent_init: bool = True,
@@ -291,8 +291,9 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
     def predict_proba(self, x: Any) -> np.ndarray:
         """Predict class probabilities, replacing NaNs with uniform probabilities.
 
-        ADPTSK uses parameters designed for high-dimensional data which can
-        be unstable on low-dimensional datasets, causing NaNs.
+        Guards against residual numerical edge cases in the forward pass.
+        The ADP-softmin division-pole root cause is guarded upstream in
+        ``ADPSoftminRuleLayer``.
         """
         result = super().predict_proba(x)
         if np.any(np.isnan(result)):
@@ -348,7 +349,7 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         restore_best: bool = True,
         weight_decay: float = 0.0,
         kappa: float = 690.0,
-        xi: float = 700.0,
+        xi: float = 730.0,
         k: float = 1.0,
         eps: float | None = None,
         zero_consequent_init: bool = True,
@@ -498,13 +499,12 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         return tags
 
     def predict(self, x: Any) -> np.ndarray:
-        """Predict, replacing NaN with zeros to guard against training instability.
+        """Predict, replacing NaN with zeros to guard against residual edge cases.
 
-        ADPTSK uses kappa=690/xi=700 tuned for high-dimensional data. On
-        sklearn's low-dimensional test sets the model may produce NaN due
-        to gradient instability during the ADP-softmin backward pass.
-        Since ``poor_score=True`` is set, this guard does not affect
-        real-world high-dimensional use cases.
+        Guards against residual numerical edge cases in the forward pass.
+        The ADP-softmin division-pole root cause is guarded upstream in
+        ``ADPSoftminRuleLayer``. Since ``poor_score=True`` is set, this guard
+        does not affect real-world high-dimensional use cases.
         """
         result = super().predict(x)
         if np.any(np.isnan(result)):

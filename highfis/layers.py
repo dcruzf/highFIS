@@ -513,6 +513,17 @@ class AdaSoftminRuleLayer(RuleLayer):
         return torch.exp(log_w)
 
 
+def _clamp_log_denom(x: Tensor, eps: float) -> Tensor:
+    """Clamp a log-space denominator away from zero, preserving sign.
+
+    Prevents an exact division-by-zero pole (and the resulting NaN through
+    the reciprocal's backward pass, since d(1/x)/dx is singular at x=0)
+    without altering values that are not already at the pole.
+    """
+    sign = torch.where(x >= 0, torch.ones_like(x), -torch.ones_like(x))
+    return torch.where(x.abs() < eps, sign * eps, x)
+
+
 class ADPSoftminRuleLayer(RuleLayer):
     """Compute adaptive ADP-softmin firing strengths for each rule."""
 
@@ -550,8 +561,8 @@ class ADPSoftminRuleLayer(RuleLayer):
         log_eta = (self.xi * neg_ln_under + (self.kappa - ln_D) * neg_ln_bar) / denom
         eta = torch.exp(log_eta)
 
-        q1 = (self.kappa - ln_D) / torch.log(eta * min_mu)
-        q2 = (-self.xi) / torch.log(eta * max_mu)
+        q1 = (self.kappa - ln_D) / _clamp_log_denom(torch.log(eta * min_mu), self.eps)
+        q2 = (-self.xi) / _clamp_log_denom(torch.log(eta * max_mu), self.eps)
         q = torch.maximum(q1, q2)
         q = torch.ceil(q).clamp(min=-1000.0, max=-1.0)
 
