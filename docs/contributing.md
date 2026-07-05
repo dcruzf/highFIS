@@ -27,8 +27,7 @@ hatch run install
 Run the following before opening a pull request:
 
 ```bash
-hatch fmt            # format and lint (ruff)
-hatch run typing     # type check (ty)
+hatch check --fix    # format, lint, and type check
 hatch run security   # security scan (bandit)
 hatch test -c        # tests with coverage (pytest + coverage)
 ```
@@ -71,7 +70,7 @@ hatch run docs:build   # build static site
 2. Keep changes small and coherent.
 3. Add or update tests for behavior changes.
 4. Update documentation for public API changes.
-5. Ensure all local checks pass (`hatch run all`).
+5. Ensure all local checks pass (`hatch check --fix`, `hatch run security`, `hatch test -c`).
 6. Provide a clear PR description with motivation and scope.
 
 ## Reporting Issues
