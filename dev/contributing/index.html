@@ -895,10 +895,9 @@ management, testing, formatting, and builds.</p>
 </span></code></pre></div>
 <h2 id="local-checks">Local Checks</h2>
 <p>Run the following before opening a pull request:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>hatch<span class="w"> </span>fmt<span class="w">            </span><span class="c1"># format and lint (ruff)</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>hatch<span class="w"> </span>run<span class="w"> </span>typing<span class="w">     </span><span class="c1"># type check (ty)</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>hatch<span class="w"> </span>run<span class="w"> </span>security<span class="w">   </span><span class="c1"># security scan (bandit)</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>hatch<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-c<span class="w">        </span><span class="c1"># tests with coverage (pytest + coverage)</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>hatch<span class="w"> </span>check<span class="w"> </span>--fix<span class="w">    </span><span class="c1"># format, lint, and type check</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>hatch<span class="w"> </span>run<span class="w"> </span>security<span class="w">   </span><span class="c1"># security scan (bandit)</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>hatch<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-c<span class="w">        </span><span class="c1"># tests with coverage (pytest + coverage)</span>
 </span></code></pre></div>
 <p>To run all pre-commit hooks at once:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>hatch<span class="w"> </span>run<span class="w"> </span>all
@@ -923,7 +922,7 @@ specific version:</p>
 <li>Keep changes small and coherent.</li>
 <li>Add or update tests for behavior changes.</li>
 <li>Update documentation for public API changes.</li>
-<li>Ensure all local checks pass (<code>hatch run all</code>).</li>
+<li>Ensure all local checks pass (<code>hatch check --fix</code>, <code>hatch run security</code>, <code>hatch test -c</code>).</li>
 <li>Provide a clear PR description with motivation and scope.</li>
 </ol>
 <h2 id="reporting-issues">Reporting Issues</h2>
