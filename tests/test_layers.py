@@ -383,6 +383,47 @@ def test_adp_softmin_rule_layer_forward_shape() -> None:
     assert torch.all(output < 1.0)
 
 
+def test_adp_softmin_rule_layer_no_nan_at_pole() -> None:
+    """Test that ADP-softmin does not produce NaN at the division pole (min_mu == max_mu)."""
+    from highfis.layers import ADPSoftminRuleLayer
+
+    layer = ADPSoftminRuleLayer(["x1", "x2"], [2, 2])
+    # Degenerate case: all features have identical membership (min_mu == max_mu)
+    # This is the exact condition for the pole: eta * min_mu == 1.0 => log(1.0) == 0.0
+    membership_outputs = {
+        "x1": torch.tensor([[0.5, 0.5]], dtype=torch.float32, requires_grad=True),
+        "x2": torch.tensor([[0.5, 0.5]], dtype=torch.float32, requires_grad=True),
+    }
+    output = layer(membership_outputs)
+    # Forward should be finite
+    assert torch.all(torch.isfinite(output)), "forward pass produced inf/nan at pole"
+    # Backward through reciprocal pole should not produce NaN in gradients
+    loss = output.sum()
+    loss.backward()
+    assert membership_outputs["x1"].grad is not None and torch.all(torch.isfinite(membership_outputs["x1"].grad))
+    assert membership_outputs["x2"].grad is not None and torch.all(torch.isfinite(membership_outputs["x2"].grad))
+
+
+def test_adp_softmin_rule_layer_mixed_degenerate_batch() -> None:
+    """Test that the fix doesn't corrupt non-degenerate rows in a batch with mixed degeneracy."""
+    from highfis.layers import ADPSoftminRuleLayer
+
+    layer = ADPSoftminRuleLayer(["x1", "x2"], [2, 2])
+    # Batch: one degenerate row (0.5, 0.5) and one normal row (0.3, 0.9)
+    membership_outputs = {
+        "x1": torch.tensor([[0.5, 0.5], [0.3, 0.9]], dtype=torch.float32, requires_grad=True),
+        "x2": torch.tensor([[0.5, 0.5], [0.7, 0.1]], dtype=torch.float32, requires_grad=True),
+    }
+    output = layer(membership_outputs)
+    # All values should be finite
+    assert torch.all(torch.isfinite(output)), "forward pass produced inf/nan"
+    # Gradients should all be finite
+    loss = output.sum()
+    loss.backward()
+    assert membership_outputs["x1"].grad is not None and torch.all(torch.isfinite(membership_outputs["x1"].grad))
+    assert membership_outputs["x2"].grad is not None and torch.all(torch.isfinite(membership_outputs["x2"].grad))
+
+
 def test_classification_consequent_layer_invalid_init_args() -> None:
     with pytest.raises(ValueError, match="n_rules, n_inputs and n_classes must be positive"):
         ClassificationConsequentLayer(n_rules=0, n_inputs=2, n_classes=2)
