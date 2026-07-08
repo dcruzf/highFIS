@@ -189,8 +189,14 @@ feature selection, rule extraction, and En-FRB support.
   training begins on a compact CoCo-FRB and expands to En-FRB during RE.
 - `rule_base` can still be set to `"coco"` or another supported rule base;
   the `use_en_frb` flag controls whether the enhanced rule base is used.
-- `consequent_batch_norm=True` can improve training stability for regression
-  and classification when features are poorly scaled.
+- `consequent_batch_norm=True` is the **default**. It is required for numerical
+  stability: the first-order gated consequent spans all features and is trained
+  with plain gradient descent, which diverges (consequent weights grow unbounded
+  and become `NaN`) on high-dimensional data without normalisation, collapsing
+  the classifier to a single class below the majority-class baseline. This
+  mirrors the ADATSK default and is consistent with the CoCo-FRB TSK lineage the
+  method builds on (Cui et al., 2020). It can be set to `False` for
+  low-dimensional problems where divergence does not occur.
 
 ## Example
 

@@ -26,6 +26,26 @@ def test_fsre_adatsk_classifier_estimator_default_uses_fsre_trainer() -> None:
     assert isinstance(clf._get_trainer(), FSRETrainer)
 
 
+def test_fsre_adatsk_defaults_enable_consequent_batch_norm() -> None:
+    """FSRE-ADATSK enables consequent batch norm by default (guards the collapse fix).
+
+    The first-order gated consequent spans all features and is trained with plain
+    gradient descent, which diverges (weights -> NaN) on high-dimensional data
+    without normalisation, collapsing the model to a single class (see
+    investigate_gating_collapse.py). Batch norm on the consequent inputs is the
+    default, mirroring the ADATSK fix. Validated end-to-end on the real Colon
+    dataset (D=2000): with the default the classifier predicts both classes again.
+    """
+    assert FSREADATSKClassifier().consequent_batch_norm is True
+    assert FSREADATSKRegressor().consequent_batch_norm is True
+
+    # After a small fit the batch-norm module must be active on the model.
+    x, y = _make_dataset(60)
+    clf = FSREADATSKClassifier(n_mfs=2, mf_init="kmeans", fs_epochs=1, re_epochs=1, finetune_epochs=1, random_state=7)
+    clf.fit(x, y)
+    assert clf.model_.consequent_bn is not None
+
+
 def test_fsre_adatsk_regressor_estimator_default_uses_fsre_trainer() -> None:
     reg = FSREADATSKRegressor()
     assert isinstance(reg._get_trainer(), FSRETrainer)
