@@ -549,7 +549,7 @@ class ADATSKClassifier(_BaseClassifierEstimator):
         shuffle: bool = False,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
-        consequent_batch_norm: bool = False,
+        consequent_batch_norm: bool = True,
         patience: int | None = None,
         restore_best: bool = False,
         weight_decay: float = 0.0,
@@ -569,15 +569,24 @@ class ADATSKClassifier(_BaseClassifierEstimator):
             sigma_scale: Sigma scale factor used by clustering initializers.
                 In paper-strict mode, Gaussian sigmas are reset to ``1`` and frozen.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``10``).
-            learning_rate: Adam learning rate (default ``0.01``).
+            epochs: Maximum training epochs (default ``100``).
+            learning_rate: Learning rate for the full-batch SGD (plain gradient
+                descent) optimizer used by ADATSK, matching the paper's update
+                rule (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: Rule-base strategy. Default ``"coco"`` to match the paper.
             batch_size: Mini-batch size. Default ``None`` (full-batch GD).
             shuffle: Whether to reshuffle each epoch. Default ``False``.
             ur_weight: Uncertainty regularisation weight.
             ur_target: Uncertainty regularisation target.
-            consequent_batch_norm: Batch normalisation on consequent layers.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+                Default ``True``. Required for numerical stability: the
+                first-order consequent over all features is optimized with
+                plain full-batch gradient descent, which diverges (weights grow
+                unbounded and become NaN) on high-dimensional data without this
+                normalisation. It is consistent with the CoCo-FRB TSK classifier
+                lineage the paper builds on (Cui et al., 2020). Set to ``False``
+                only for low-dimensional data where divergence does not occur.
             patience: Early-stopping patience. Default ``None`` (disabled).
             restore_best: Restore best validation weights. Default ``False``.
             weight_decay: L2 weight decay for consequent parameters. Default ``0.0``.
@@ -706,7 +715,7 @@ class ADATSKRegressor(_BaseRegressorEstimator):
         shuffle: bool = False,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
-        consequent_batch_norm: bool = False,
+        consequent_batch_norm: bool = True,
         patience: int | None = None,
         restore_best: bool = False,
         weight_decay: float = 0.0,
@@ -724,15 +733,24 @@ class ADATSKRegressor(_BaseRegressorEstimator):
             sigma_scale: Sigma scale factor used by clustering initializers.
                 In paper-style mode, Gaussian sigmas are reset to ``1`` and frozen.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``10``).
-            learning_rate: Adam learning rate (default ``0.01``).
+            epochs: Maximum training epochs (default ``100``).
+            learning_rate: Learning rate for the full-batch SGD (plain gradient
+                descent) optimizer used by ADATSK, matching the paper's update
+                rule (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: Rule-base strategy. Default ``"coco"``.
             batch_size: Mini-batch size. Default ``None`` (full-batch GD).
             shuffle: Whether to reshuffle each epoch. Default ``False``.
             ur_weight: Uncertainty regularisation weight.
             ur_target: Uncertainty regularisation target.
-            consequent_batch_norm: Batch normalisation on consequent layers.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+                Default ``True``. Required for numerical stability: the
+                first-order consequent over all features is optimized with
+                plain full-batch gradient descent, which diverges (weights grow
+                unbounded and become NaN) on high-dimensional data without this
+                normalisation. It is consistent with the CoCo-FRB TSK classifier
+                lineage the paper builds on (Cui et al., 2020). Set to ``False``
+                only for low-dimensional data where divergence does not occur.
             patience: Early-stopping patience. Default ``None`` (disabled).
             restore_best: Restore best validation weights. Default ``False``.
             weight_decay: L2 weight decay for consequent parameters. Default ``0.0``.
