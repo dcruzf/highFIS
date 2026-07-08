@@ -117,6 +117,15 @@ operator.
   paper-strict path.
 - For high-dimensional inputs (default threshold `1000` features), antecedent
   parameters are frozen by default to match the paper's experimental protocol.
+- Batch normalization on the consequent inputs is enabled by default
+  (`consequent_batch_norm=True`). This is required for numerical stability:
+  the first-order consequent spans all features and is optimized with plain
+  full-batch gradient descent, which **diverges** (consequent weights grow
+  unbounded and become `NaN`) on high-dimensional data without normalization,
+  causing the classifier to collapse below the majority-class baseline. Batch
+  normalization is consistent with the CoCo-FRB TSK classifier lineage the
+  paper builds on (Cui et al., 2020, ref. [10]). It can be disabled for
+  low-dimensional problems where divergence does not occur.
 
 ### Membership functions
 
@@ -151,6 +160,8 @@ operator.
   derived from the rule's minimum antecedent membership.
 - The default `ADATSKClassifier` now follows the paper protocol (CoCo rule
   base, Eq. (3)-style Gaussian antecedent with `sigma=1` fixed, full-batch
-  GD, MSE-style classification loss, and zero-initialized consequents).
+  GD, MSE-style classification loss, and zero-initialized consequents), plus
+  consequent batch normalization for the numerical stability needed to
+  reproduce the paper's high-dimensional accuracies (e.g., Colon in Table III).
 - Regression and alternative MF variants are treated as explicit framework
   extensions, not part of the strict ADATSK paper baseline.
