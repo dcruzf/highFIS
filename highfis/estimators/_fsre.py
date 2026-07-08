@@ -66,7 +66,7 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
-        consequent_batch_norm: bool = False,
+        consequent_batch_norm: bool = True,
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
@@ -105,7 +105,16 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
             shuffle: Reshuffle each epoch.
             ur_weight: Uncertainty regularisation weight.
             ur_target: Uncertainty regularisation target.
-            consequent_batch_norm: Batch normalisation on consequent layers.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+                Default ``True``. Required for numerical stability: the
+                first-order gated consequent spans all features and is optimized
+                with plain gradient descent, which diverges (weights grow
+                unbounded and become NaN) on high-dimensional data without this
+                normalisation, collapsing the model to a single class. It is
+                consistent with the CoCo-FRB TSK lineage the method builds on
+                (Cui et al., 2020) and mirrors the ADATSK default. Set to
+                ``False`` only for low-dimensional data where divergence does
+                not occur.
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
@@ -292,7 +301,7 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
-        consequent_batch_norm: bool = False,
+        consequent_batch_norm: bool = True,
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
@@ -328,7 +337,16 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
             shuffle: Reshuffle each epoch.
             ur_weight: Uncertainty regularisation weight.
             ur_target: Uncertainty regularisation target.
-            consequent_batch_norm: Batch normalisation on consequent layers.
+            consequent_batch_norm: Batch normalisation on consequent inputs.
+                Default ``True``. Required for numerical stability: the
+                first-order gated consequent spans all features and is optimized
+                with plain gradient descent, which diverges (weights grow
+                unbounded and become NaN) on high-dimensional data without this
+                normalisation, collapsing the model to a single class. It is
+                consistent with the CoCo-FRB TSK lineage the method builds on
+                (Cui et al., 2020) and mirrors the ADATSK default. Set to
+                ``False`` only for low-dimensional data where divergence does
+                not occur.
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
