@@ -241,3 +241,66 @@ def test_adptsk_low_dimensional_no_nan() -> None:
     assert pred.shape == (20,)
     assert not np.any(np.isnan(proba))
     assert not np.any(np.isnan(pred))
+
+
+def test_adatsk_classifier_defaults_enable_consequent_batch_norm() -> None:
+    """ADATSK enables consequent batch norm by default (guards the high-dim fix).
+
+    Plain full-batch GD on the first-order consequent over all features diverges
+    (weights blow up to NaN) on high-dimensional data without normalisation, which
+    made ADATSK collapse below the majority-class baseline. Batch norm on the
+    consequent inputs is therefore the default. See BUG_REPORT_ADATSK_COLLAPSE.md.
+    """
+    clf = ADATSKClassifier()
+    reg = ADATSKRegressor()
+    assert clf.consequent_batch_norm is True
+    assert reg.consequent_batch_norm is True
+
+    x, y = _make_dataset(40)
+    clf = ADATSKClassifier(n_mfs=3, mf_init="grid", rule_base="coco", epochs=5, random_state=42)
+    clf.fit(x, y)
+    assert clf.model_.consequent_bn is not None
+
+
+def test_adatsk_high_dimensional_no_collapse_no_nan() -> None:
+    """ADATSK must not diverge/collapse on high-dimensional data (D >> N).
+
+    Reproduces the BUG_REPORT_ADATSK_COLLAPSE.md regime with a synthetic D=2000
+    proxy. With the default consequent batch norm, training must stay finite and
+    the classifier must not collapse to a single class scoring below the
+    majority-class baseline.
+    """
+    from sklearn.datasets import make_classification
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import MinMaxScaler
+
+    X, y = make_classification(
+        n_samples=80,
+        n_features=2000,
+        n_informative=20,
+        n_redundant=30,
+        n_classes=2,
+        weights=[0.65, 0.35],
+        random_state=42,
+    )
+    X = X.astype(np.float32)
+    x_tr, x_te, y_tr, y_te = train_test_split(X, y, test_size=0.3, stratify=y, random_state=42)
+    scaler = MinMaxScaler().fit(x_tr)
+    x_tr, x_te = scaler.transform(x_tr).astype(np.float32), scaler.transform(x_te).astype(np.float32)
+
+    torch.manual_seed(42)
+    clf = ADATSKClassifier(n_mfs=3, mf_init="grid", rule_base="coco", epochs=150, learning_rate=0.01, random_state=42)
+    clf.fit(x_tr, y_tr)
+
+    # Consequent weights must stay finite (the bug diverged to NaN/1e17).
+    weight = cast(torch.Tensor, clf.model_.consequent_layer.weight).detach()
+    assert torch.all(torch.isfinite(weight)), "consequent weights diverged to NaN/inf"
+
+    pred = clf.predict(x_te)
+    assert not np.any(np.isnan(pred.astype(np.float64)))
+    # Must predict both classes (no single-class collapse) ...
+    assert len(np.unique(pred)) == 2, f"collapsed to a single class: {np.bincount(pred).tolist()}"
+    # ... and beat the majority-class baseline.
+    majority = float(np.bincount(y_te).max() / len(y_te))
+    acc = float(np.mean(pred == y_te))
+    assert acc >= majority, f"accuracy {acc:.3f} below majority baseline {majority:.3f}"
