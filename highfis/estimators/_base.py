@@ -243,6 +243,25 @@ def _resolve_clusterer(
     )
 
 
+def _select_pfrb_indices(
+    n_samples: int,
+    max_rules: int | None,
+    random_state: int | None,
+) -> np.ndarray:
+    """Select the training-sample indices used to build a point-based FRB.
+
+    Deterministic in ``(n_samples, max_rules, random_state)`` so the same
+    sample subset can be reproduced when initialising the consequents from the
+    corresponding labels (see :meth:`_BaseTSKEstimator._pfrb_aligned_labels`).
+    When ``max_rules`` is ``None`` or covers every sample, all samples are used.
+    """
+    if max_rules is None or int(max_rules) >= n_samples:
+        return np.arange(n_samples)
+    rng = np.random.default_rng(random_state)
+    indices = rng.choice(n_samples, size=int(max_rules), replace=False)
+    return np.sort(indices)
+
+
 def _build_pfrb_input_mfs(
     x: np.ndarray,
     feature_names: list[str],
@@ -251,13 +270,7 @@ def _build_pfrb_input_mfs(
     random_state: int | None,
 ) -> dict[str, list[GaussianMF]]:
     """Build point-based fuzzy rule base membership functions from training samples."""
-    n_samples = x.shape[0]
-    if max_rules is None or max_rules >= n_samples:
-        indices = np.arange(n_samples)
-    else:
-        rng = np.random.default_rng(random_state)
-        indices = rng.choice(n_samples, size=int(max_rules), replace=False)
-        indices = np.sort(indices)
+    indices = _select_pfrb_indices(x.shape[0], max_rules, random_state)
 
     input_mfs: dict[str, list[GaussianMF]] = {}
     for d, name in enumerate(feature_names):
@@ -602,6 +615,31 @@ class _BaseTSKEstimator(BaseEstimator):
         depends on the already-built model and training tensors, e.g.
         P-FRB consequent initialisation in DG-TSK.
         """
+
+    def _effective_pfrb_max_rules(self, n_features: int) -> int | None:
+        """Return the P-FRB rule cap actually used to build the MFs.
+
+        Defaults to ``pfrb_max_rules``. Subclasses that resolve a data-dependent
+        default (e.g. DG-ALETSK's paper-style cap) must override this so that the
+        consequent label initialisation samples the *same* points as the rule
+        centres (see :meth:`_pfrb_aligned_labels`).
+        """
+        return self.pfrb_max_rules
+
+    def _pfrb_aligned_labels(self, x_t: Tensor, y_t: Tensor) -> Tensor:
+        """Return the labels of the sampled P-FRB points, aligned with rule centres.
+
+        The P-FRB rule ``r`` is built from training sample ``indices[r]`` (see
+        :func:`_build_pfrb_input_mfs`). This returns ``y_t[indices]`` so the
+        one-hot consequent of rule ``r`` encodes the label of the *same* sample,
+        rather than the ``r``-th label of the (unsampled) training set.
+        """
+        indices = _select_pfrb_indices(
+            int(x_t.shape[0]),
+            self._effective_pfrb_max_rules(int(x_t.shape[1])),
+            self.random_state,
+        )
+        return y_t[torch.as_tensor(indices, dtype=torch.long, device=y_t.device)]
 
     def _build_checkpoint_base(
         self,
