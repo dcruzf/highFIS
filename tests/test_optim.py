@@ -87,6 +87,27 @@ def test_get_optimizer_config_with_consequent_bn() -> None:
     assert found_bn, "consequent_bn parameters not found in optimizer config param groups"
 
 
+def test_get_optimizer_config_optimizer_type_routing() -> None:
+    """`optimizer_type` routes to the right optimizer; invalid values raise.
+
+    Guards the DG-ALETSK fix: the paper uses plain Adam, but ``"adam"`` used to
+    fall through silently to AdamW. Now ``"adam"`` maps to ``torch.optim.Adam``
+    and unknown values raise instead of silently becoming AdamW.
+    """
+    model = DGTSKClassifierModel(_build_input_mfs(3, 2), n_classes=2)
+
+    model._optimizer_type = "sgd"
+    assert _get_optimizer_config(model, 0.01, 0.0)[0] is torch.optim.SGD
+    model._optimizer_type = "adam"
+    assert _get_optimizer_config(model, 0.01, 0.0)[0] is torch.optim.Adam
+    model._optimizer_type = "adamw"
+    assert _get_optimizer_config(model, 0.01, 0.0)[0] is torch.optim.AdamW
+
+    model._optimizer_type = "bogus"
+    with pytest.raises(ValueError, match="unsupported optimizer_type"):
+        _get_optimizer_config(model, 0.01, 0.0)
+
+
 # ==============================================================================
 # Tests for highfis.optim._gradient (GradientTrainer)
 # ==============================================================================
