@@ -564,3 +564,44 @@ def test_dgtsk_load_regressor_without_feature_names(tmp_path: object) -> None:
 
     loaded = DGTSKRegressor.load(path)
     assert loaded.n_features_in_ == 3
+
+
+def test_pfrb_consequent_labels_align_with_sampled_rules() -> None:
+    """P-FRB consequent labels must match the sampled rule centres' samples.
+
+    Regression guard for the alignment bug: when the training set exceeds
+    ``pfrb_max_rules``, ``_build_pfrb_input_mfs`` samples the rule centres, so the
+    one-hot consequent of rule ``r`` must encode the label of the *sampled*
+    point, not the ``r``-th training label.
+    """
+    import torch
+
+    from highfis import DGTSKClassifier
+    from highfis.estimators._base import _build_pfrb_input_mfs
+
+    # Distinct feature values so each rule centre identifies its source sample.
+    x = np.arange(6, dtype=np.float32).reshape(6, 1) * 10.0
+    y = torch.tensor([0, 1, 0, 1, 0, 1])
+
+    y_list = y.tolist()
+    mfs = _build_pfrb_input_mfs(x, ["x1"], max_rules=3, sigma_scale=1.0, random_state=0)
+    src_samples = [round(float(mf.mean.detach()) / 10.0) for mf in mfs["x1"]]
+    expected = [y_list[s] for s in src_samples]
+
+    est = DGTSKClassifier(pfrb_max_rules=3, random_state=0)
+    aligned = est._pfrb_aligned_labels(torch.as_tensor(x), y).tolist()
+    assert aligned == expected
+
+    # No sampling (max_rules >= n_samples): all labels used in order (unchanged).
+    est_full = DGTSKClassifier(pfrb_max_rules=10, random_state=0)
+    assert est_full._pfrb_aligned_labels(torch.as_tensor(x), y).tolist() == y.tolist()
+
+
+def test_dgtsk_fit_with_pfrb_subsampling_runs() -> None:
+    """DG-TSK fits end-to-end when the training set exceeds pfrb_max_rules."""
+    rng = np.random.default_rng(0)
+    x = rng.uniform(0.0, 1.0, (40, 3)).astype(np.float32)
+    y = rng.choice([0, 1], size=40).astype(np.int64)
+    clf = DGTSKClassifier(pfrb_max_rules=10, dg_epochs=1, finetune_epochs=1, random_state=0)
+    clf.fit(x, y)
+    assert clf.model_ is not None

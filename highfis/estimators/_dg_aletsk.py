@@ -195,9 +195,14 @@ class DGALETSKClassifier(FSREADATSKClassifier):
                 self.pfrb_max_rules = original
         return super()._build_input_mfs(x_arr)
 
+    def _effective_pfrb_max_rules(self, n_features: int) -> int | None:
+        if self.pfrb_max_rules is None:
+            return self._resolve_default_pfrb_max_rules(n_features)
+        return self.pfrb_max_rules
+
     def _pre_train_hook(self, model: BaseTSK, x_t: Tensor, y_t: Tensor) -> None:
         if self.rule_base == "pfrb" and hasattr(model, "init_consequents_from_labels"):
-            cast(PFRBModelProtocol, model).init_consequents_from_labels(y_t)
+            cast(PFRBModelProtocol, model).init_consequents_from_labels(self._pfrb_aligned_labels(x_t, y_t))
 
     def _build_model(
         self,

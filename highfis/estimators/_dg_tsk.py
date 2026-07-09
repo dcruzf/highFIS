@@ -248,7 +248,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
     def _pre_train_hook(self, model: BaseTSK, x_t: Tensor, y_t: Tensor) -> None:
         """Initialise P-FRB consequents from class labels before training."""
         if self.rule_base == "pfrb" and hasattr(model, "init_consequents_from_labels"):
-            cast(PFRBModelProtocol, model).init_consequents_from_labels(y_t)
+            cast(PFRBModelProtocol, model).init_consequents_from_labels(self._pfrb_aligned_labels(x_t, y_t))
 
     def save(self, path: str) -> None:
         """Persist estimator including first-order architecture flag."""
@@ -532,7 +532,9 @@ class DGTSKRegressor(_BaseRegressorEstimator):
     def _pre_train_hook(self, model: BaseTSK, x_t: Tensor, y_t: Tensor) -> None:
         """Initialise P-FRB consequents from targets before training."""
         if self.rule_base == "pfrb" and hasattr(model, "init_consequents_from_labels"):
-            cast(PFRBModelProtocol, model).init_consequents_from_labels(y_t)  # pragma: no cover
+            cast(PFRBModelProtocol, model).init_consequents_from_labels(
+                self._pfrb_aligned_labels(x_t, y_t)
+            )  # pragma: no cover
 
     def save(self, path: str) -> None:
         """Persist estimator including first-order architecture flag."""
