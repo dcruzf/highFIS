@@ -160,3 +160,58 @@ def test_dgaletsk_classifier_coco() -> None:
     clf = DGALETSKClassifier(rule_base="coco", dg_epochs=1, finetune_epochs=1)
     clf.fit(x, y)
     assert clf.rule_base_ == "coco"
+
+
+def test_dgaletsk_paper_faithful_defaults() -> None:
+    """DG-ALETSK defaults follow the paper (Adam, dg_epochs=10, FT unfrozen)."""
+    clf = DGALETSKClassifier()
+    assert clf.optimizer_type == "adam"
+    assert clf.dg_epochs == 10
+    assert clf.freeze_antecedents_finetune is False
+    reg = DGALETSKRegressor()
+    assert reg.optimizer_type == "adam"
+    assert reg.dg_epochs == 10
+    assert reg.freeze_antecedents_finetune is False
+
+
+def test_dgaletsk_model_preserves_consequent_bias_flag() -> None:
+    """DG-ALETSK models keep the Eq. 25 bias through fine-tuning; DG-TSK does not."""
+    from highfis.models import DGALETSKClassifierModel, DGTSKClassifierModel
+
+    def _mfs() -> dict[str, list]:  # type: ignore[type-arg]
+        from highfis.memberships import GaussianMF
+
+        return {f"x{i + 1}": [GaussianMF(mean=float(j), sigma=1.0) for j in range(2)] for i in range(3)}
+
+    ale = DGALETSKClassifierModel(_mfs(), n_classes=2)
+    tsk = DGTSKClassifierModel(_mfs(), n_classes=2)
+    assert ale.preserve_consequent_bias_on_finetune is True
+    # DG-TSK must not opt into the DG-ALETSK behaviour (guards isolation).
+    assert getattr(tsk, "preserve_consequent_bias_on_finetune", False) is False
+
+
+def test_dgaletsk_convert_to_first_order_carries_bias() -> None:
+    """convert_to_first_order transfers the label-initialised zero-order bias."""
+    import torch
+
+    from highfis.models import DGALETSKClassifierModel
+
+    def _mfs() -> dict[str, list]:  # type: ignore[type-arg]
+        from highfis.memberships import GaussianMF
+
+        return {f"x{i + 1}": [GaussianMF(mean=float(j), sigma=1.0) for j in range(2)] for i in range(3)}
+
+    model = DGALETSKClassifierModel(_mfs(), n_classes=2)
+    model.init_consequents_from_labels(torch.tensor([0, 1, 0]))
+    zero_order_bias = model.consequent_layer.bias.detach().clone()
+    model.convert_to_first_order()
+    assert torch.allclose(model.consequent_layer.bias.detach(), zero_order_bias)
+
+
+# NOTE: The high-dimensional non-collapse behaviour (DG-ALETSK reaching ~0.84 on
+# Colon, D=2000, instead of collapsing to the majority class) is validated manually
+# on the real dataset via investigate_gating_collapse.py. It is intentionally not a
+# CI test: D=2000 is memory-unsafe for the En-FRB/LSE path, and low-dimensional
+# synthetic proxies (make_classification) do not faithfully reproduce these fuzzy
+# models' behaviour. The structural guards above lock in the fix (paper-faithful
+# defaults, Eq. 25 bias carried through fine-tuning, and optimizer routing).

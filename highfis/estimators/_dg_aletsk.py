@@ -35,12 +35,16 @@ class DGALETSKClassifier(FSREADATSKClassifier):
     (data-guided) training phase and optionally converts to first-order
     after gate-based pruning.  Training follows the three-phase DG protocol:
 
-    1. **DG phase** — Train gate parameters, antecedent MFs, and zero-order
-       consequents (CoCo-FRB; antecedents are **not** frozen unlike DG-TSK).
+    1. **DG phase** — Train only the feature/rule gate parameters and the
+       zero-order consequents; the antecedent MFs are frozen (paper Section
+       III-C: "we only optimize the gate parameters and the consequents in
+       the DG phase"). The zero-order consequent bias is initialised from the
+       target labels (Eq. 25).
     2. **Threshold search** — Grid-search for the pruning thresholds
        ``(zeta_lambda, zeta_theta)`` that maximise held-out accuracy.
-    3. **Fine-tune phase** — Train first-order consequents with antecedent
-       MFs and feature gates frozen.
+    3. **Fine-tune phase** — Convert to first-order rules (carrying over the
+       label-initialised consequent bias) and optimise all parameters
+       (centres, spreads, and consequents) by default, matching the paper.
 
     Reference:
         G. Xue, J. Wang, B. Yuan and C. Dai, "DG-ALETSK: A High-Dimensional
@@ -67,7 +71,7 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        dg_epochs: int = 100,
+        dg_epochs: int = 10,
         finetune_epochs: int = 50,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
@@ -85,9 +89,9 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         zeta_theta: list[float] | None = None,
         use_lse: bool = False,
         trainer: BaseTrainer | None = None,
-        optimizer_type: str = "sgd",
+        optimizer_type: str = "adam",
         structural_pruning: bool = True,
-        freeze_antecedents_finetune: bool = True,
+        freeze_antecedents_finetune: bool = False,
         device: str = "cpu",
     ) -> None:
         """Initialise a DG-ALETSK classifier.
@@ -102,7 +106,8 @@ class DGALETSKClassifier(FSREADATSKClassifier):
                 or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for reproducibility.
-            dg_epochs: Maximum epochs for phase 1 (DG training).
+            dg_epochs: Maximum epochs for phase 1 (DG training). Default
+                ``10`` follows the paper.
             finetune_epochs: Maximum epochs for phase 3 (fine-tune).
                 Default ``50`` follows the DG-ALETSK paper setup.
             learning_rate: Adam learning rate for both phases.
@@ -130,12 +135,15 @@ class DGALETSKClassifier(FSREADATSKClassifier):
             trainer: Optional custom :class:`~highfis.optim.BaseTrainer`.
                 When ``None`` (default) a :class:`~highfis.optim.DGTrainer`
                 is built from this estimator's hyperparameters.
-            optimizer_type: Optimizer type.  ``"sgd"`` (default, paper) or
-                ``"adamw"``.
+            optimizer_type: Optimizer type. ``"adam"`` (default) matches the
+                DG-ALETSK paper (Section IV). Also accepts ``"sgd"`` and
+                ``"adamw"``; any other value raises ``ValueError``.
             structural_pruning: If ``True`` (default), apply hard structural
                 pruning after threshold search.
-            freeze_antecedents_finetune: If ``True`` (default), freeze MF
-                parameters and feature gates during fine-tuning.
+            freeze_antecedents_finetune: If ``False`` (default), optimise the
+                antecedent MF parameters (centres and spreads) during
+                fine-tuning, matching the paper. Feature gates are always kept
+                frozen during fine-tuning. Set ``True`` to freeze the MFs too.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
         """
@@ -293,7 +301,7 @@ class DGALETSKRegressor(FSREADATSKRegressor):
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        dg_epochs: int = 100,
+        dg_epochs: int = 10,
         finetune_epochs: int = 200,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
@@ -310,9 +318,9 @@ class DGALETSKRegressor(FSREADATSKRegressor):
         zeta_theta: list[float] | None = None,
         use_lse: bool = True,
         trainer: BaseTrainer | None = None,
-        optimizer_type: str = "sgd",
+        optimizer_type: str = "adam",
         structural_pruning: bool = True,
-        freeze_antecedents_finetune: bool = True,
+        freeze_antecedents_finetune: bool = False,
         device: str = "cpu",
     ) -> None:
         """Initialise a DG-ALETSK regressor.
@@ -327,7 +335,8 @@ class DGALETSKRegressor(FSREADATSKRegressor):
                 or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for reproducibility.
-            dg_epochs: Maximum epochs for phase 1 (DG training).
+            dg_epochs: Maximum epochs for phase 1 (DG training). Default
+                ``10`` follows the paper.
             finetune_epochs: Maximum epochs for phase 3 (fine-tune).
             learning_rate: Adam learning rate for both phases.
             verbose: Print per-epoch progress.
@@ -347,12 +356,15 @@ class DGALETSKRegressor(FSREADATSKRegressor):
             trainer: Optional custom :class:`~highfis.optim.BaseTrainer`.
                 When ``None`` (default) a :class:`~highfis.optim.DGTrainer`
                 is built from this estimator's hyperparameters.
-            optimizer_type: Optimizer type.  ``"sgd"`` (default, paper) or
-                ``"adamw"``.
+            optimizer_type: Optimizer type. ``"adam"`` (default) matches the
+                DG-ALETSK paper (Section IV). Also accepts ``"sgd"`` and
+                ``"adamw"``; any other value raises ``ValueError``.
             structural_pruning: If ``True`` (default), apply hard structural
                 pruning after threshold search.
-            freeze_antecedents_finetune: If ``True`` (default), freeze MF
-                parameters and feature gates during fine-tuning.
+            freeze_antecedents_finetune: If ``False`` (default), optimise the
+                antecedent MF parameters (centres and spreads) during
+                fine-tuning, matching the paper. Feature gates are always kept
+                frozen during fine-tuning. Set ``True`` to freeze the MFs too.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
         """

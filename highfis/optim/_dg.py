@@ -194,10 +194,15 @@ class DGTrainer(BaseTrainer):
             if isinstance(cons, (GatedClassificationZeroOrderConsequentLayer, GatedRegressionZeroOrderConsequentLayer)):
                 model.convert_to_first_order()
 
-        # Reset consequent weights to zero (paper: "all consequent parameters set to zero").
+        # Reset consequent parameters to zero (paper: "all consequent parameters
+        # set to zero"). DG-ALETSK keeps the label-initialised ``bias`` (Eq. 25)
+        # carried over by ``convert_to_first_order`` and only resets the linear
+        # ``weight``; DG-TSK resets both.
         cons = model.consequent_layer
+        preserve_bias = getattr(model, "preserve_consequent_bias_on_finetune", False)
+        reset_names = ("weight",) if preserve_bias else ("weight", "bias")
         for name, param in cons.named_parameters():
-            if name in ("weight", "bias"):
+            if name in reset_names:
                 nn.init.zeros_(param)
 
         # Freeze params per paper: antecedents + lambda_gates frozen during fine-tune.
