@@ -115,8 +115,8 @@ Features and rules with gate values below these thresholds are pruned.
 | Adaptive Ln-Exp softmin antecedent | `DGALETSKRuleLayer` | Implements ALE softmin (paper eq. 22) with adaptive $\hat{q}=-700/\max_d\tilde{\mu}_{r,d}$ |
 | Feature gates | `DGALETSKRuleLayer.lambda_gates` + `ExpGate(k=10)` | $\mu^{M(\lambda_d)}$ exponential gating (paper eqs. 12, 24) |
 | Rule gates | `GatedClassificationZeroOrderConsequentLayer.theta_gates`, `GatedRegressionZeroOrderConsequentLayer.theta_gates` | Gated zero-order consequents during DG training |
-| Zero-order DG phase | `fit_dg_phase()` | Jointly optimizes antecedent, feature gates, rule gates, and zero-order consequents |
-| First-order conversion | `convert_to_first_order()` | Preserves learned rule gates and switches consequent form |
+| Zero-order DG phase | `fit_dg_phase()` | Optimizes the feature gates, rule gates, and zero-order consequents; the antecedent MFs are frozen (paper Section III-C) |
+| First-order conversion | `convert_to_first_order()` | Switches the consequent to first-order, preserving the learned rule gates and the label-initialised consequent bias (Eq. 25) |
 | Threshold computation | `compute_thresholds(zeta_lambda, zeta_theta)` | Computes pruning thresholds from gate values |
 | Threshold pruning | `apply_thresholds(tau_lambda, tau_theta)` | Sets low gate values to zero |
 | Threshold search | `search_thresholds(...)` | Grid-searches `\zeta_\lambda` / `\zeta_\theta` and optionally refits consequents |
