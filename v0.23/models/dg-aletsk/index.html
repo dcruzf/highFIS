@@ -1516,12 +1516,12 @@ coefficients <span class="arithmatex">\(\zeta_{\lambda}\)</span> and <span class
 <tr>
 <td>Zero-order DG phase</td>
 <td><code>fit_dg_phase()</code></td>
-<td>Jointly optimizes antecedent, feature gates, rule gates, and zero-order consequents</td>
+<td>Optimizes the feature gates, rule gates, and zero-order consequents; the antecedent MFs are frozen (paper Section III-C)</td>
 </tr>
 <tr>
 <td>First-order conversion</td>
 <td><code>convert_to_first_order()</code></td>
-<td>Preserves learned rule gates and switches consequent form</td>
+<td>Switches the consequent to first-order, preserving the learned rule gates and the label-initialised consequent bias (Eq. 25)</td>
 </tr>
 <tr>
 <td>Threshold computation</td>
@@ -1542,13 +1542,21 @@ coefficients <span class="arithmatex">\(\zeta_{\lambda}\)</span> and <span class
 </table>
 <h2 id="implementation-notes">Implementation notes</h2>
 <ul>
-<li><code>DGALETSKClassifier</code> now defaults to a paper-strict-like profile for
-  classification: <code>rule_base='pfrb'</code>, <code>dg_epochs=10</code>,
-  <code>finetune_epochs=50</code>, <code>learning_rate=0.01</code>,
+<li><code>DGALETSKClassifier</code> now defaults to the paper profile for classification:
+  <code>optimizer_type='adam'</code> (paper Section IV), <code>rule_base='pfrb'</code>,
+  <code>dg_epochs=10</code>, <code>finetune_epochs=50</code>, <code>learning_rate=0.01</code>,
+  <code>freeze_antecedents_finetune=False</code> (the fine-tune phase optimises all
+  parameters, including MF centres and spreads),
   <code>zeta_lambda=zeta_theta=[0.05, 0.1, 0.15, 0.2, 0.25, 0.3]</code>, and
   <code>use_lse=False</code>.</li>
+<li><code>optimizer_type</code> accepts <code>'adam'</code> (default, paper), <code>'sgd'</code>, and <code>'adamw'</code>;
+  any other value raises <code>ValueError</code> (previously <code>'adam'</code> silently became
+  AdamW).</li>
 <li>For P-FRB classification, zero-order consequent biases are initialised from
-  class labels before DG training (one-hot per sampled rule point).</li>
+  class labels before DG training (one-hot per sampled rule point, Eq. 25), and
+  this label-initialised bias is <strong>carried over to the first-order consequent</strong>
+  when converting for fine-tuning (rather than being reset to zero). This is
+  essential to avoid collapse to the majority class on high-dimensional data.</li>
 <li><code>use_en_frb=True</code> starts from an enhanced rule base (<code>en</code> FRB), but the
   paper's point-based FRB (P-FRB) is not constructed by default.</li>
 <li>The DG-ALETSK paper justifies P-FRB as a way to initialize an abundant
@@ -1564,18 +1572,22 @@ coefficients <span class="arithmatex">\(\zeta_{\lambda}\)</span> and <span class
   <code>fit_dg_phase()</code>. The recommended Phase 2 workflow differs by task:<ul>
 <li><strong>Classification</strong> (<code>use_lse=False</code>): <code>search_thresholds</code> evaluates the
   zero-order model on the validation set directly. Call <code>fit_finetune</code>
-  afterwards to convert to first-order and retrain consequents with MFs
-  and λ-gates frozen (paper §3.3).</li>
+  afterwards to convert to first-order and train. By default
+  (<code>freeze_antecedents_finetune=False</code>) the fine-tune phase optimises all
+  system parameters — MF centres and spreads plus the consequents — as in
+  the paper; only the feature-selection gates (λ) stay frozen.</li>
 <li><strong>Regression</strong> (<code>use_lse=True</code>): <code>search_thresholds</code> prunes gates and fits
   first-order consequents via least squares in one step. The LSE result is
   the final model — <strong>do not call <code>fit_finetune</code></strong> afterwards, as it would
   reset the LSE-fitted weights and retrain from zero.</li>
 </ul>
 </li>
-<li><code>fit_finetune</code> freezes <strong>all MF parameters</strong> (centres and spreads) and the
-  <strong>feature-selection gates</strong> (λ) during gradient fine-tuning, retaining only
-  the consequent layer as trainable. This implements paper §3.3:
-  <em>"we fix the first group of gates and the membership functions."</em></li>
+<li>By default (<code>freeze_antecedents_finetune=False</code>), <code>fit_finetune</code> trains the
+  MF parameters (centres and spreads) together with the consequents, matching
+  the DG-ALETSK paper: <em>"In the FT phase, all of the system parameters
+  including centers, spreads and consequent parameters are optimized."</em> The
+  feature-selection gates (λ) are kept frozen. Set
+  <code>freeze_antecedents_finetune=True</code> to additionally freeze the MFs.</li>
 <li><strong>Loss function</strong>: the paper uses MSE throughout, including for classification
   (applied to one-hot targets). highFIS follows that paper contract in the DG
   path: classification uses MSE with one-hot targets and regression uses MSE on
@@ -1597,14 +1609,15 @@ coefficients <span class="arithmatex">\(\zeta_{\lambda}\)</span> and <span class
   from current gate activations.</li>
 <li><code>apply_thresholds(tau_lambda, tau_theta)</code> — prune low-value gates.</li>
 <li><code>search_thresholds(x, y, *, zeta_lambda, zeta_theta, x_val, y_val, use_lse, inplace, ...)</code> — grid-search over <code>(zeta_lambda, zeta_theta)</code> pairs and select the best gate thresholds by validation score. When <code>use_lse=True</code>, each candidate also fits first-order consequents via least squares before scoring (recommended for <strong>regression</strong>). When <code>use_lse=False</code>, the zero-order model is scored directly (recommended for <strong>classification</strong>). With <code>inplace=True</code>, the winning thresholds are applied to <code>self</code>.</li>
-<li><code>fit_finetune(x, y, **kwargs)</code> — convert the pruned zero-order model to first-order, reset consequent weights to zero, and retrain with MFs and λ-gates frozen. <strong>Call this only after <code>search_thresholds(use_lse=False)</code></strong> (classification path). Do not call it after <code>search_thresholds(use_lse=True)</code>, which already produces final first-order consequents via LSE.</li>
+<li><code>fit_finetune(x, y, **kwargs)</code> — convert the pruned zero-order model to first-order (carrying over the label-initialised consequent bias), reset the linear consequent weights to zero, and retrain. By default the MF centres and spreads are trained together with the consequents (only the λ-gates stay frozen); pass <code>freeze_antecedents_finetune=True</code> to freeze the MFs. <strong>Call this only after <code>search_thresholds(use_lse=False)</code></strong> (classification path). Do not call it after <code>search_thresholds(use_lse=True)</code>, which already produces final first-order consequents via LSE.</li>
 </ul>
 <h2 id="examples">Examples</h2>
 <h3 id="classification">Classification</h3>
 <p>For classification, Phase 2 uses <code>use_lse=False</code> so that threshold candidates are
 ranked by the zero-order model's accuracy on the validation set.  After selecting
 the best thresholds, <code>fit_finetune</code> converts the model to first-order and retrains
-consequents with MFs and feature gates frozen.</p>
+the consequents together with the MF centres and spreads (only the feature gates
+are kept frozen).</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">DGALETSKClassifierModel</span>
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis.memberships</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianMF</span>
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
@@ -1634,7 +1647,7 @@ consequents with MFs and feature gates frozen.</p>
 </span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="p">)</span>
 </span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
 </span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>
-</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="c1"># Phase 2b: convert to first-order and fine-tune (MFs and λ-gates frozen).</span>
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="c1"># Phase 2b: convert to first-order and fine-tune (MFs + consequents trained; λ-gates frozen).</span>
 </span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="n">model</span><span class="o">.</span><span class="n">fit_finetune</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="regression">Regression</h3>
