@@ -81,10 +81,14 @@ def _get_optimizer_config(
         ]
     elif model._optimizer_type == "sgd":
         return torch.optim.SGD, [{"params": list(model.parameters())}]
+    elif model._optimizer_type == "adam":
+        # Plain Adam, matching the DG-ALETSK paper (Section IV).
+        return torch.optim.Adam, [{"params": list(model.parameters())}]
+    elif model._optimizer_type == "adamw":
+        return torch.optim.AdamW, [
+            {"params": ante_params, "weight_decay": 0.0},
+            {"params": rule_params, "weight_decay": 0.0},
+            {"params": cons_params, "weight_decay": weight_decay},
+        ]
 
-    # Default: AdamW
-    return torch.optim.AdamW, [
-        {"params": ante_params, "weight_decay": 0.0},
-        {"params": rule_params, "weight_decay": 0.0},
-        {"params": cons_params, "weight_decay": weight_decay},
-    ]
+    raise ValueError(f"unsupported optimizer_type {model._optimizer_type!r}; expected 'sgd', 'adam', or 'adamw'")

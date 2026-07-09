@@ -123,13 +123,21 @@ Features and rules with gate values below these thresholds are pruned.
 
 ## Implementation notes
 
-- `DGALETSKClassifier` now defaults to a paper-strict-like profile for
-  classification: `rule_base='pfrb'`, `dg_epochs=10`,
-  `finetune_epochs=50`, `learning_rate=0.01`,
+- `DGALETSKClassifier` now defaults to the paper profile for classification:
+  `optimizer_type='adam'` (paper Section IV), `rule_base='pfrb'`,
+  `dg_epochs=10`, `finetune_epochs=50`, `learning_rate=0.01`,
+  `freeze_antecedents_finetune=False` (the fine-tune phase optimises all
+  parameters, including MF centres and spreads),
   `zeta_lambda=zeta_theta=[0.05, 0.1, 0.15, 0.2, 0.25, 0.3]`, and
   `use_lse=False`.
+- `optimizer_type` accepts `'adam'` (default, paper), `'sgd'`, and `'adamw'`;
+  any other value raises `ValueError` (previously `'adam'` silently became
+  AdamW).
 - For P-FRB classification, zero-order consequent biases are initialised from
-  class labels before DG training (one-hot per sampled rule point).
+  class labels before DG training (one-hot per sampled rule point, Eq. 25), and
+  this label-initialised bias is **carried over to the first-order consequent**
+  when converting for fine-tuning (rather than being reset to zero). This is
+  essential to avoid collapse to the majority class on high-dimensional data.
 - `use_en_frb=True` starts from an enhanced rule base (`en` FRB), but the
   paper's point-based FRB (P-FRB) is not constructed by default.
 - The DG-ALETSK paper justifies P-FRB as a way to initialize an abundant
@@ -145,16 +153,20 @@ Features and rules with gate values below these thresholds are pruned.
   `fit_dg_phase()`. The recommended Phase 2 workflow differs by task:
     - **Classification** (`use_lse=False`): `search_thresholds` evaluates the
       zero-order model on the validation set directly. Call `fit_finetune`
-      afterwards to convert to first-order and retrain consequents with MFs
-      and λ-gates frozen (paper §3.3).
+      afterwards to convert to first-order and train. By default
+      (`freeze_antecedents_finetune=False`) the fine-tune phase optimises all
+      system parameters — MF centres and spreads plus the consequents — as in
+      the paper; only the feature-selection gates (λ) stay frozen.
     - **Regression** (`use_lse=True`): `search_thresholds` prunes gates and fits
       first-order consequents via least squares in one step. The LSE result is
       the final model — **do not call `fit_finetune`** afterwards, as it would
       reset the LSE-fitted weights and retrain from zero.
-- `fit_finetune` freezes **all MF parameters** (centres and spreads) and the
-  **feature-selection gates** (λ) during gradient fine-tuning, retaining only
-  the consequent layer as trainable. This implements paper §3.3:
-  *"we fix the first group of gates and the membership functions."*
+- By default (`freeze_antecedents_finetune=False`), `fit_finetune` trains the
+  MF parameters (centres and spreads) together with the consequents, matching
+  the DG-ALETSK paper: *"In the FT phase, all of the system parameters
+  including centers, spreads and consequent parameters are optimized."* The
+  feature-selection gates (λ) are kept frozen. Set
+  `freeze_antecedents_finetune=True` to additionally freeze the MFs.
 - **Loss function**: the paper uses MSE throughout, including for classification
   (applied to one-hot targets). highFIS follows that paper contract in the DG
   path: classification uses MSE with one-hot targets and regression uses MSE on
@@ -176,7 +188,7 @@ Features and rules with gate values below these thresholds are pruned.
   from current gate activations.
 - `apply_thresholds(tau_lambda, tau_theta)` — prune low-value gates.
 - `search_thresholds(x, y, *, zeta_lambda, zeta_theta, x_val, y_val, use_lse, inplace, ...)` — grid-search over `(zeta_lambda, zeta_theta)` pairs and select the best gate thresholds by validation score. When `use_lse=True`, each candidate also fits first-order consequents via least squares before scoring (recommended for **regression**). When `use_lse=False`, the zero-order model is scored directly (recommended for **classification**). With `inplace=True`, the winning thresholds are applied to `self`.
-- `fit_finetune(x, y, **kwargs)` — convert the pruned zero-order model to first-order, reset consequent weights to zero, and retrain with MFs and λ-gates frozen. **Call this only after `search_thresholds(use_lse=False)`** (classification path). Do not call it after `search_thresholds(use_lse=True)`, which already produces final first-order consequents via LSE.
+- `fit_finetune(x, y, **kwargs)` — convert the pruned zero-order model to first-order (carrying over the label-initialised consequent bias), reset the linear consequent weights to zero, and retrain. By default the MF centres and spreads are trained together with the consequents (only the λ-gates stay frozen); pass `freeze_antecedents_finetune=True` to freeze the MFs. **Call this only after `search_thresholds(use_lse=False)`** (classification path). Do not call it after `search_thresholds(use_lse=True)`, which already produces final first-order consequents via LSE.
 
 ## Examples
 
@@ -185,7 +197,8 @@ Features and rules with gate values below these thresholds are pruned.
 For classification, Phase 2 uses `use_lse=False` so that threshold candidates are
 ranked by the zero-order model's accuracy on the validation set.  After selecting
 the best thresholds, `fit_finetune` converts the model to first-order and retrains
-consequents with MFs and feature gates frozen.
+the consequents together with the MF centres and spreads (only the feature gates
+are kept frozen).
 
 ```python
 from highfis.models import DGALETSKClassifierModel
@@ -217,7 +230,7 @@ result = model.search_thresholds(
 )
 print(result)
 
-# Phase 2b: convert to first-order and fine-tune (MFs and λ-gates frozen).
+# Phase 2b: convert to first-order and fine-tune (MFs + consequents trained; λ-gates frozen).
 model.fit_finetune(X_train, y_train, epochs=60, learning_rate=1e-3)
 ```
 
