@@ -839,6 +839,7 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
                 "n_features_in": int(self.n_features_in_),
                 "feature_names_in": _fnames.tolist() if _fnames is not None else None,
                 "classes": self.classes_.tolist(),
+                "classes_dtype": str(self.classes_.dtype),
             },
         )
         save_checkpoint(path, checkpoint)
@@ -889,7 +890,13 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
             estimator.feature_names_in_ = np.asarray(fitted["feature_names_in"], dtype=object)
         elif hasattr(estimator, "feature_names_in_"):
             delattr(estimator, "feature_names_in_")
-        estimator.classes_ = np.asarray(fitted["classes"], dtype=object)
+        # Restore ``classes_`` with its original dtype so the reloaded estimator
+        # matches the fitted one. Forcing ``object`` breaks scikit-learn metrics
+        # (``score``/``cross_val_score`` raise on an "unknown" target type). Older
+        # checkpoints lack ``classes_dtype``; fall back to natural inference
+        # (which yields int/str rather than object) for those.
+        classes_dtype = fitted.get("classes_dtype")
+        estimator.classes_ = np.asarray(fitted["classes"], dtype=np.dtype(classes_dtype) if classes_dtype else None)
         label_encoder = LabelEncoder()
         label_encoder.classes_ = estimator.classes_
         estimator._label_encoder_ = label_encoder
