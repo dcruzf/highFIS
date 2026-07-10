@@ -662,3 +662,28 @@ def test_regressor_load_consequent_mode_elif_branch() -> None:
         ):
             est_loaded = HTSKRegressor.load(path)
             assert est_loaded.model_ is not None
+
+
+def test_classifier_save_load_preserves_classes_dtype_and_scores() -> None:
+    """Reloaded classifier keeps ``classes_``/``predict`` dtype so sklearn metrics work.
+
+    Regression for ISSUE_reloaded_classifier_object_dtype.md: ``load`` used to
+    restore ``classes_`` as ``object`` dtype, which made ``predict`` return
+    ``object`` and ``score``/metrics raise
+    "can't handle a mix of multiclass and unknown targets".
+    """
+    import tempfile
+
+    x, y = _make_dataset(40)
+    est = HTSKClassifier(n_mfs=2, mf_init="kmeans", epochs=2, random_state=0, batch_size=16)
+    est.fit(x, y)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = f"{tmpdir}/clf.pt"
+        est.save(path)
+        reloaded = HTSKClassifier.load(path)
+
+    assert reloaded.classes_.dtype == est.classes_.dtype
+    assert reloaded.predict(x).dtype == est.predict(x).dtype
+    # Must not raise (object dtype used to break _check_targets) and match.
+    assert reloaded.score(x, y) == est.score(x, y)
