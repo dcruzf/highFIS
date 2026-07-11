@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import math
+import os
 import threading
 from abc import abstractmethod
-from collections.abc import Callable, Mapping, Sequence
+from collections import OrderedDict
+from collections.abc import Callable, Hashable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Self, cast
+from typing import Any, NamedTuple, Self, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -360,8 +362,132 @@ def _wrap_gaussian_pimf_input_mfs(
     }
 
 
-_MF_INITIALIZATION_CACHE: dict[tuple[Any, ...], tuple[dict[str, Any], list[str], str]] = {}
-_MF_CACHE_LOCK = threading.Lock()
+_DEFAULT_MF_CACHE_SIZE = 128
+_MFCacheValue = tuple[dict[str, Any], list[str], str]
+
+
+class MFCacheInfo(NamedTuple):
+    """Snapshot of the membership-function initialisation cache state.
+
+    Mirrors :meth:`functools.lru_cache().cache_info` with an extra ``enabled``
+    flag. Returned by :func:`mf_cache_info`.
+    """
+
+    hits: int
+    misses: int
+    maxsize: int
+    currsize: int
+    enabled: bool
+
+
+class _MFInitCache:
+    """Thread-safe LRU cache for membership-function initialisation results.
+
+    Keyed by :func:`_get_mf_cache_key`; values are the serialized MF config,
+    feature names and effective rule base. Used to avoid recomputing k-means /
+    grid initialisation on repeated ``fit`` calls with the same data and
+    hyperparameters. Least-recently-used entries are evicted first (a cache hit
+    renews the entry). Managed via the public helpers :func:`clear_mf_cache`,
+    :func:`mf_cache_info`, :func:`set_mf_cache_enabled` and
+    :func:`set_mf_cache_size`.
+    """
+
+    def __init__(self, maxsize: int = _DEFAULT_MF_CACHE_SIZE, enabled: bool = True) -> None:
+        self._store: OrderedDict[Hashable, _MFCacheValue] = OrderedDict()
+        self._lock = threading.Lock()
+        self._maxsize = max(1, int(maxsize))
+        self._enabled = bool(enabled)
+        self._hits = 0
+        self._misses = 0
+
+    def get(self, key: Hashable) -> _MFCacheValue | None:
+        with self._lock:
+            if not self._enabled or key not in self._store:
+                self._misses += 1
+                return None
+            self._store.move_to_end(key)  # LRU: renew on access
+            self._hits += 1
+            return self._store[key]
+
+    def set(self, key: Hashable, value: _MFCacheValue) -> None:
+        with self._lock:
+            if not self._enabled:
+                return
+            self._store[key] = value
+            self._store.move_to_end(key)
+            while len(self._store) > self._maxsize:
+                self._store.popitem(last=False)  # evict least-recently-used
+
+    def clear(self) -> None:
+        with self._lock:
+            self._store.clear()
+            self._hits = 0
+            self._misses = 0
+
+    def info(self) -> MFCacheInfo:
+        with self._lock:
+            return MFCacheInfo(self._hits, self._misses, self._maxsize, len(self._store), self._enabled)
+
+    def set_enabled(self, enabled: bool) -> None:
+        with self._lock:
+            self._enabled = bool(enabled)
+
+    def set_maxsize(self, maxsize: int) -> None:
+        if int(maxsize) < 1:
+            raise ValueError(f"maxsize must be >= 1, got {maxsize!r}")
+        with self._lock:
+            self._maxsize = int(maxsize)
+            while len(self._store) > self._maxsize:
+                self._store.popitem(last=False)
+
+
+def _read_cache_env() -> dict[str, Any]:
+    """Read cache configuration from environment variables (at import time).
+
+    - ``HIGHFIS_DISABLE_MF_CACHE`` (truthy: ``1/true/yes/on``) disables the cache.
+    - ``HIGHFIS_MF_CACHE_SIZE`` (positive int) sets the maximum number of entries;
+      invalid or missing values fall back to the default.
+    """
+    disable = str(os.environ.get("HIGHFIS_DISABLE_MF_CACHE", "")).strip().lower()
+    enabled = disable not in {"1", "true", "yes", "on"}
+
+    maxsize = _DEFAULT_MF_CACHE_SIZE
+    raw_size = os.environ.get("HIGHFIS_MF_CACHE_SIZE")
+    if raw_size is not None:
+        try:
+            parsed = int(raw_size)
+            if parsed >= 1:
+                maxsize = parsed
+        except (TypeError, ValueError):
+            pass  # keep the default on invalid input
+
+    return {"maxsize": maxsize, "enabled": enabled}
+
+
+_MF_INIT_CACHE = _MFInitCache(**_read_cache_env())
+
+
+def clear_mf_cache() -> None:
+    """Clear the membership-function initialisation cache and reset its stats."""
+    _MF_INIT_CACHE.clear()
+
+
+def mf_cache_info() -> MFCacheInfo:
+    """Return an :class:`MFCacheInfo` snapshot (hits, misses, maxsize, currsize, enabled)."""
+    return _MF_INIT_CACHE.info()
+
+
+def set_mf_cache_enabled(enabled: bool) -> None:
+    """Enable or disable the membership-function initialisation cache.
+
+    When disabled, every ``fit`` rebuilds the MFs and nothing is stored.
+    """
+    _MF_INIT_CACHE.set_enabled(enabled)
+
+
+def set_mf_cache_size(maxsize: int) -> None:
+    """Set the maximum number of cache entries (``>= 1``), evicting LRU entries if needed."""
+    _MF_INIT_CACHE.set_maxsize(maxsize)
 
 
 def _get_mf_cache_key(
@@ -422,28 +548,21 @@ def _build_input_mfs_cached(
         getattr(estimator, "rule_base", None),
     )
 
-    with _MF_CACHE_LOCK:
-        if cache_key in _MF_INITIALIZATION_CACHE:
-            serialized_config, feature_names, effective_rule_base = _MF_INITIALIZATION_CACHE[cache_key]
-            # Reconstruct new MF objects from serialized parameters to ensure separate memory space/gradients
-            new_mfs = deserialize_input_mfs(serialized_config)
-            return new_mfs, feature_names, effective_rule_base
+    cached = _MF_INIT_CACHE.get(cache_key)
+    if cached is not None:
+        serialized_config, feature_names, effective_rule_base = cached
+        # Reconstruct new MF objects from serialized parameters to ensure separate memory space/gradients
+        return deserialize_input_mfs(serialized_config), feature_names, effective_rule_base
 
-    # Otherwise, execute the real build function
+    # Otherwise, execute the real build function (outside the cache lock so the
+    # expensive initialisation is not serialised across threads).
     input_mfs, feature_names, effective_rule_base = build_func(x_arr)
 
-    # Serialize the resulting MFs to store in the cache
     serialized_config = serialize_input_mfs(input_mfs)
-    with _MF_CACHE_LOCK:
-        if cache_key not in _MF_INITIALIZATION_CACHE:
-            if len(_MF_INITIALIZATION_CACHE) >= 128:
-                oldest_key = next(iter(_MF_INITIALIZATION_CACHE))
-                _MF_INITIALIZATION_CACHE.pop(oldest_key, None)
-            _MF_INITIALIZATION_CACHE[cache_key] = (serialized_config, feature_names, effective_rule_base)
+    _MF_INIT_CACHE.set(cache_key, (serialized_config, feature_names, effective_rule_base))
 
-    # Reconstruct from serialized_config to match cached hits precisely
-    input_mfs = deserialize_input_mfs(serialized_config)
-    return input_mfs, feature_names, effective_rule_base
+    # Reconstruct from serialized_config to match cached hits precisely.
+    return deserialize_input_mfs(serialized_config), feature_names, effective_rule_base
 
 
 class _BaseTSKEstimator(BaseEstimator):

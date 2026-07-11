@@ -68,6 +68,15 @@ nav = [
         "guides/introspection.md",
         "guides/initialization.md",
         "guides/tuning.md",
+        "guides/caching.md",
+     ] },
+    { "Cookbook" = [
+        "cookbook/index.md",
+        "cookbook/quickstart.md",
+        "cookbook/choosing-a-model.md",
+        "cookbook/high-dimensional-feature-selection.md",
+        "cookbook/persistence-and-cache.md",
+        "cookbook/interpretability.md",
      ] },
     { "API Reference" = [
         "api/index.md",

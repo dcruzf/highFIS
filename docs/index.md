@@ -111,6 +111,7 @@ Each model family exposes both classifier and regressor variants.
 | [Quick Start](#quick-start) | Installation and first model run. |
 | [Model Families](models/index.md) | Guide to the 13 available neuro-fuzzy model architectures. |
 | [User Guides](guides/optimisers.md) | Guides for optimization, introspection, initialization, and tuning. |
+| [Cookbook](cookbook/index.md) | Short, runnable recipes for common tasks. |
 | [API Reference](api/index.md) | Complete reference documentation for all public modules. |
 | [Estimators](api/estimators.md) | sklearn-compatible estimator reference. |
 | [Models](api/models.md) | Model constructors and usage notes. |

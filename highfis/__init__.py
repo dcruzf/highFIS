@@ -122,10 +122,15 @@ from .estimators import (
     InputConfig,
     LogTSKClassifier,
     LogTSKRegressor,
+    MFCacheInfo,
     MHTSKClassifier,
     MHTSKRegressor,
     TSKClassifier,
     TSKRegressor,
+    clear_mf_cache,
+    mf_cache_info,
+    set_mf_cache_enabled,
+    set_mf_cache_size,
 )
 from .optim import BaseTrainer, DGTrainer, GradientTrainer
 from .version import __version__
@@ -159,9 +164,14 @@ __all__: list[str] = [
     "InputConfig",
     "LogTSKClassifier",
     "LogTSKRegressor",
+    "MFCacheInfo",
     "MHTSKClassifier",
     "MHTSKRegressor",
     "TSKClassifier",
     "TSKRegressor",
     "__version__",
+    "clear_mf_cache",
+    "mf_cache_info",
+    "set_mf_cache_enabled",
+    "set_mf_cache_size",
 ]

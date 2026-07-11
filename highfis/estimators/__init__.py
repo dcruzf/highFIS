@@ -11,6 +11,11 @@ from ._adaptive import (
 )
 from ._base import (
     InputConfig,
+    MFCacheInfo,
+    clear_mf_cache,
+    mf_cache_info,
+    set_mf_cache_enabled,
+    set_mf_cache_size,
 )
 from ._dg_aletsk import (
     DGALETSKClassifier,
@@ -82,9 +87,14 @@ __all__: list[str] = [
     "InputConfig",
     "LogTSKClassifier",
     "LogTSKRegressor",
+    "MFCacheInfo",
     "MHTSKClassifier",
     "MHTSKRegressor",
     "TSKClassifier",
     "TSKRegressor",
+    "clear_mf_cache",
     "feature_coverage_rate",
+    "mf_cache_info",
+    "set_mf_cache_enabled",
+    "set_mf_cache_size",
 ]
