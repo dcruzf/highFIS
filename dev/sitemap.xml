@@ -58,6 +58,27 @@
         <loc>https://dcruzf.github.io/highFIS/dev/guides/tuning/</loc>
       </url>
       <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/guides/caching/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/cookbook/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/cookbook/quickstart/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/cookbook/choosing-a-model/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/cookbook/high-dimensional-feature-selection/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/cookbook/persistence-and-cache/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/cookbook/interpretability/</loc>
+      </url>
+      <url>
         <loc>https://dcruzf.github.io/highFIS/dev/api/</loc>
       </url>
       <url>
