@@ -372,6 +372,7 @@ def _get_mf_cache_key(
     random_state: Any,
     pfrb_max_rules: Any,
     input_configs: list[InputConfig] | None,
+    rule_base: Any = None,
 ) -> tuple[Any, ...]:
     # Determine step for sampling to hash quickly
     step = max(1, x_arr.shape[0] // 1000)
@@ -401,6 +402,7 @@ def _get_mf_cache_key(
         random_state,
         pfrb_max_rules,
         input_configs_key,
+        rule_base,
     )
 
 
@@ -417,6 +419,7 @@ def _build_input_mfs_cached(
         estimator.random_state,
         estimator.pfrb_max_rules,
         estimator.input_configs,
+        getattr(estimator, "rule_base", None),
     )
 
     with _MF_CACHE_LOCK:
