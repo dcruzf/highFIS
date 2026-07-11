@@ -687,3 +687,29 @@ def test_classifier_save_load_preserves_classes_dtype_and_scores() -> None:
     assert reloaded.predict(x).dtype == est.predict(x).dtype
     # Must not raise (object dtype used to break _check_targets) and match.
     assert reloaded.score(x, y) == est.score(x, y)
+
+
+def test_rule_base_not_shared_across_cache_key() -> None:
+    """CoCo and Cartesian rule bases must yield different rule counts.
+
+    Regression: the MF-initialisation cache key omitted ``rule_base``, so fitting
+    ``rule_base="coco"`` and then ``rule_base="cartesian"`` on the same data
+    returned the cached CoCo result — Cartesian silently produced S rules instead
+    of S**D. The cache key must include ``rule_base``.
+    """
+    from highfis import TSKClassifier
+    from highfis.estimators._base import _MF_INITIALIZATION_CACHE
+
+    x, y = _make_dataset(40)  # D = 3
+    _MF_INITIALIZATION_CACHE.clear()
+
+    coco = TSKClassifier(n_mfs=3, mf_init="kmeans", rule_base="coco", epochs=1, random_state=0)
+    coco.fit(x, y)
+    # Same data/params, only rule_base differs -> must not hit the CoCo cache entry.
+    cart = TSKClassifier(n_mfs=3, mf_init="kmeans", rule_base="cartesian", epochs=1, random_state=0)
+    cart.fit(x, y)
+
+    assert coco.rule_base_ == "coco"
+    assert cart.rule_base_ == "cartesian"
+    assert coco.model_.n_rules == 3
+    assert cart.model_.n_rules == 3**3  # full Cartesian product over 3 features
