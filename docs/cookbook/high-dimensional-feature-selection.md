@@ -42,6 +42,12 @@ print("rules kept   :", clf.model_.n_rules)
 print("test accuracy:", round(clf.score(X_te, y_te), 3))
 ```
 
+```text
+features kept: 15 of 40
+rules kept   : 2
+test accuracy: 0.75
+```
+
 `clf.model_.n_inputs` and `clf.model_.n_rules` reflect the pruned model. The same
 workflow applies to `FSREADATSKClassifier`, which runs feature selection and rule
 extraction in separate phases.
