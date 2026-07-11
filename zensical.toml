@@ -68,6 +68,7 @@ nav = [
         "guides/introspection.md",
         "guides/initialization.md",
         "guides/tuning.md",
+        "guides/caching.md",
      ] },
     { "API Reference" = [
         "api/index.md",
