@@ -214,16 +214,17 @@ def test_normalize_importance_returns_uniform_distribution_for_zero_total() -> N
 
 
 def test_membership_functions_initialization_caching() -> None:
-    from highfis.estimators._base import _MF_INITIALIZATION_CACHE
+    from highfis import clear_mf_cache, mf_cache_info
 
     x, _ = _make_dataset(40)
-    _MF_INITIALIZATION_CACHE.clear()
+    clear_mf_cache()
     est1 = HTSKClassifier(n_mfs=2, mf_init="kmeans", epochs=1, random_state=42, batch_size=16)
     mfs1, names1, rb1 = est1._build_input_mfs(x)
-    assert len(_MF_INITIALIZATION_CACHE) == 1
+    assert mf_cache_info().currsize == 1
     est2 = HTSKClassifier(n_mfs=2, mf_init="kmeans", epochs=1, random_state=42, batch_size=16)
     mfs2, names2, rb2 = est2._build_input_mfs(x)
-    assert len(_MF_INITIALIZATION_CACHE) == 1
+    assert mf_cache_info().currsize == 1
+    assert mf_cache_info().hits == 1  # second build was a cache hit
     assert list(mfs1.keys()) == list(mfs2.keys())
     assert names1 == names2
     assert rb1 == rb2
@@ -237,24 +238,23 @@ def test_membership_functions_initialization_caching() -> None:
             assert val1 == val2
     est3 = HTSKClassifier(n_mfs=3, mf_init="kmeans", epochs=1, random_state=42, batch_size=16)
     est3._build_input_mfs(x)
-    assert len(_MF_INITIALIZATION_CACHE) == 2
+    assert mf_cache_info().currsize == 2
 
 
 def test_membership_functions_initialization_caching_eviction() -> None:
-    from highfis.estimators._base import _MF_INITIALIZATION_CACHE
+    from highfis import clear_mf_cache, mf_cache_info
 
     x, _ = _make_dataset(40)
-    _MF_INITIALIZATION_CACHE.clear()
+    clear_mf_cache()
     for rs in range(1, 129):
         est = HTSKClassifier(n_mfs=2, mf_init="kmeans", epochs=1, random_state=rs, batch_size=16)
         est._build_input_mfs(x)
-    assert len(_MF_INITIALIZATION_CACHE) == 128
-    keys_before = list(_MF_INITIALIZATION_CACHE.keys())
+    assert mf_cache_info().currsize == 128
     est_new = HTSKClassifier(n_mfs=2, mf_init="kmeans", epochs=1, random_state=129, batch_size=16)
     est_new._build_input_mfs(x)
-    assert len(_MF_INITIALIZATION_CACHE) == 128
-    assert keys_before[0] not in _MF_INITIALIZATION_CACHE
-    assert keys_before[1] in _MF_INITIALIZATION_CACHE
+    # Adding a 129th distinct key keeps the cache capped at maxsize (LRU eviction).
+    assert mf_cache_info().currsize == 128
+    assert mf_cache_info().maxsize == 128
 
 
 def test_get_mf_cache_key_edge_cases() -> None:
@@ -697,11 +697,10 @@ def test_rule_base_not_shared_across_cache_key() -> None:
     returned the cached CoCo result — Cartesian silently produced S rules instead
     of S**D. The cache key must include ``rule_base``.
     """
-    from highfis import TSKClassifier
-    from highfis.estimators._base import _MF_INITIALIZATION_CACHE
+    from highfis import TSKClassifier, clear_mf_cache
 
     x, y = _make_dataset(40)  # D = 3
-    _MF_INITIALIZATION_CACHE.clear()
+    clear_mf_cache()
 
     coco = TSKClassifier(n_mfs=3, mf_init="kmeans", rule_base="coco", epochs=1, random_state=0)
     coco.fit(x, y)
@@ -713,3 +712,87 @@ def test_rule_base_not_shared_across_cache_key() -> None:
     assert cart.rule_base_ == "cartesian"
     assert coco.model_.n_rules == 3
     assert cart.model_.n_rules == 3**3  # full Cartesian product over 3 features
+
+
+def test_mf_cache_lru_eviction_renews_on_access() -> None:
+    """A cache hit renews the entry (LRU): the least-recently-used is evicted."""
+    from highfis.estimators._base import _MFInitCache
+
+    cache = _MFInitCache(maxsize=2)
+    value: tuple[dict[str, Any], list[str], str] = ({}, [], "coco")
+    cache.set("a", value)
+    cache.set("b", value)
+    assert cache.get("a") is not None  # renews "a" -> "b" becomes least-recently-used
+    cache.set("c", value)  # evicts "b", not "a"
+    assert cache.get("b") is None
+    assert cache.get("a") is not None
+    assert cache.get("c") is not None
+    assert cache.info().currsize == 2
+
+
+def test_mf_cache_info_and_clear_reset_stats() -> None:
+    from highfis.estimators._base import MFCacheInfo, _MFInitCache
+
+    cache = _MFInitCache(maxsize=4)
+    value: tuple[dict[str, Any], list[str], str] = ({}, [], "coco")
+    assert cache.get("x") is None  # miss
+    cache.set("x", value)
+    assert cache.get("x") is not None  # hit
+    info = cache.info()
+    assert (info.hits, info.misses, info.currsize) == (1, 1, 1)
+    cache.clear()
+    assert cache.info() == MFCacheInfo(hits=0, misses=0, maxsize=4, currsize=0, enabled=True)
+
+
+def test_mf_cache_set_size_evicts_and_validates() -> None:
+    from highfis.estimators._base import _MFInitCache
+
+    cache = _MFInitCache(maxsize=5)
+    value: tuple[dict[str, Any], list[str], str] = ({}, [], "coco")
+    for k in range(5):
+        cache.set(k, value)
+    assert cache.info().currsize == 5
+    cache.set_maxsize(2)
+    assert cache.info().currsize == 2
+    with pytest.raises(ValueError, match="maxsize must be >= 1"):
+        cache.set_maxsize(0)
+
+
+def test_set_mf_cache_enabled_bypasses_cache() -> None:
+    from highfis import clear_mf_cache, mf_cache_info, set_mf_cache_enabled
+
+    x, _ = _make_dataset(40)
+    clear_mf_cache()
+    set_mf_cache_enabled(False)
+    try:
+        est = HTSKClassifier(n_mfs=2, mf_init="kmeans", epochs=1, random_state=7, batch_size=16)
+        mfs1, _, _ = est._build_input_mfs(x)
+        mfs2, _, _ = est._build_input_mfs(x)
+        info = mf_cache_info()
+        assert info.enabled is False
+        assert info.currsize == 0  # nothing stored while disabled
+        # Still produces valid, independent MFs each call.
+        assert list(mfs1.keys()) == list(mfs2.keys())
+    finally:
+        set_mf_cache_enabled(True)  # restore global state for other tests
+        clear_mf_cache()
+
+
+def test_read_cache_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    from highfis.estimators._base import _read_cache_env
+
+    monkeypatch.delenv("HIGHFIS_DISABLE_MF_CACHE", raising=False)
+    monkeypatch.delenv("HIGHFIS_MF_CACHE_SIZE", raising=False)
+    assert _read_cache_env() == {"maxsize": 128, "enabled": True}
+
+    monkeypatch.setenv("HIGHFIS_DISABLE_MF_CACHE", "1")
+    assert _read_cache_env()["enabled"] is False
+    monkeypatch.setenv("HIGHFIS_DISABLE_MF_CACHE", "no")  # not truthy -> enabled
+    assert _read_cache_env()["enabled"] is True
+
+    monkeypatch.setenv("HIGHFIS_MF_CACHE_SIZE", "10")
+    assert _read_cache_env()["maxsize"] == 10
+    monkeypatch.setenv("HIGHFIS_MF_CACHE_SIZE", "bogus")  # invalid -> default
+    assert _read_cache_env()["maxsize"] == 128
+    monkeypatch.setenv("HIGHFIS_MF_CACHE_SIZE", "0")  # < 1 -> default
+    assert _read_cache_env()["maxsize"] == 128

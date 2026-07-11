@@ -69,6 +69,18 @@ dependencies = [
 build = "zensical build --clean"
 serve = "zensical serve"
 
+[tool.hatch.envs.cookbook]
+installer = "uv"
+dependencies = [
+    "numpy>=1.24.1",
+    "scikit-learn>=1.3",
+    "torch>=2.3",
+    "pytest>=7.0.0",
+    "pytest-markdown-docs>=0.5",
+]
+[tool.hatch.envs.cookbook.scripts]
+run = "pytest --markdown-docs {args} docs/cookbook"
+
 [tool.hatch.build]
 include = ["docs/assets/logo.svg", "LICENSE"]
 
