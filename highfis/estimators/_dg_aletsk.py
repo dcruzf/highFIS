@@ -204,6 +204,12 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         if self.rule_base == "pfrb" and hasattr(model, "init_consequents_from_labels"):
             cast(PFRBModelProtocol, model).init_consequents_from_labels(self._pfrb_aligned_labels(x_t, y_t))
 
+    def _select_model_features(self, x_arr: np.ndarray) -> np.ndarray:
+        """Slice inputs to the surviving features when structural pruning shrank the model."""
+        from ._dg_tsk import _select_dgtsking_surviving_features
+
+        return _select_dgtsking_surviving_features(self, x_arr)
+
     def _build_model(
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
