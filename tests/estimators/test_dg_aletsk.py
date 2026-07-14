@@ -215,3 +215,41 @@ def test_dgaletsk_convert_to_first_order_carries_bias() -> None:
 # synthetic proxies (make_classification) do not faithfully reproduce these fuzzy
 # models' behaviour. The structural guards above lock in the fix (paper-faithful
 # defaults, Eq. 25 bias carried through fine-tuning, and optimizer routing).
+
+
+def test_dgaletsk_no_collapse_low_dimension() -> None:
+    """DG-ALETSK separates a trivially-separable low-dimensional task (no collapse).
+
+    Companion to the DG-TSK low-dimension collapse fix. DG-ALETSK uses Adam by
+    default (unlike DG-TSK's SGD), which opens the feature gates at a modest
+    learning rate, so it must not collapse to a single class at small D.
+    """
+    from sklearn.datasets import make_blobs
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import MinMaxScaler
+
+    blob = make_blobs(n_samples=200, centers=np.array([[-3.0, -3.0], [3.0, 3.0]]), cluster_std=0.8, random_state=0)
+    X, y = blob[0], blob[1]
+    X = MinMaxScaler().fit_transform(X).astype(np.float32)
+    x_tr, x_te, y_tr, y_te = train_test_split(X, y, test_size=0.25, random_state=0, stratify=y)
+
+    clf = DGALETSKClassifier(n_mfs=3, mf_init="kmeans", learning_rate=0.05, random_state=0)
+    clf.fit(x_tr, y_tr)
+    pred = clf.predict(x_te)
+    assert len(np.unique(pred)) == 2, f"collapsed to a single class: {np.bincount(pred).tolist()}"
+    assert float(np.mean(pred == y_te)) >= 0.9
+
+
+def test_dgaletsk_rule_activation_after_feature_pruning() -> None:
+    """rule_activation works on a DG-ALETSK model whose features were pruned during fit.
+
+    Regression: the introspection path went through forward_antecedents with the full
+    input width and raised "expected N inputs, got M" on a pruned model.
+    """
+    rng = np.random.default_rng(0)
+    x = rng.uniform(0.0, 1.0, (60, 12)).astype(np.float32)
+    y = (x[:, 0] > 0.5).astype(np.int64)
+    clf = DGALETSKClassifier(n_mfs=3, mf_init="kmeans", dg_epochs=5, finetune_epochs=5, random_state=0)
+    clf.fit(x, y)
+    acts = clf.rule_activation(x)
+    assert acts.shape == (60, clf.model_.n_rules)
