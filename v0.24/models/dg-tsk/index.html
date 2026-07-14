@@ -1663,7 +1663,7 @@ w_r(\mathbf{x}) = \prod_{d=1}^{D} \tilde{\mu}_{r,d}(x_d)
 <li><code>fit_finetune(x, y, **kwargs)</code> — convert the pruned zero-order model to first-order, reset consequent weights to zero, and retrain. Use <code>freeze_antecedents=True</code> to keep MFs and λ-gates fixed, or <code>freeze_antecedents=False</code> to optimize antecedents and consequents jointly. <strong>Call this only after <code>search_thresholds(use_lse=False)</code></strong> (classification path). Do not call it after <code>search_thresholds(use_lse=True)</code>, which already produces final first-order consequents via LSE.</li>
 </ul>
 <p>Estimator defaults (paper-conformance profile for classification):
-- <code>DGTSKClassifier</code>: <code>rule_base='pfrb'</code>, <code>pfrb_max_rules=300</code>, <code>zeta_lambda=[0.5]</code>, <code>zeta_theta=[0.01]</code>, <code>use_lse=False</code>, <code>freeze_antecedents_finetune=False</code>.</p>
+- <code>DGTSKClassifier</code>: <code>rule_base='pfrb'</code>, <code>pfrb_max_rules=300</code>, <code>zeta_lambda=[0.5]</code>, <code>zeta_theta=[0.01]</code>, <code>use_lse=False</code>, <code>freeze_antecedents_finetune=False</code>, <code>optimizer_type='sgd'</code>, <code>learning_rate=0.2</code>.</p>
 <h2 id="usage-examples">Usage examples</h2>
 <h3 id="classification">Classification</h3>
 <p>For classification, Phase 2 uses <code>use_lse=False</code> so that threshold candidates are
