@@ -1,8 +1,10 @@
 # Cookbook
 
 Short, task-focused recipes you can copy and run. Each recipe is self-contained and
-uses small, seeded datasets so it runs in seconds. For conceptual background see the
-[User Guides](../guides/tuning.md); for the full API see the
+uses small, seeded datasets so it runs in seconds. The code blocks are executed in
+CI to keep them working; the `text` blocks below them show illustrative output and
+may vary slightly across platforms and dependency versions. For conceptual
+background see the [User Guides](../guides/tuning.md); for the full API see the
 [API Reference](../api/index.md).
 
 - [Quickstart: train, predict, and score](quickstart.md) — the basic workflow plus

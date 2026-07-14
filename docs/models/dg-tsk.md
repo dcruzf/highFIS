@@ -127,7 +127,7 @@ The paper describes DG-TSK as a single training phase in which feature gates, ru
 - `fit_finetune(x, y, **kwargs)` — convert the pruned zero-order model to first-order, reset consequent weights to zero, and retrain. Use `freeze_antecedents=True` to keep MFs and λ-gates fixed, or `freeze_antecedents=False` to optimize antecedents and consequents jointly. **Call this only after `search_thresholds(use_lse=False)`** (classification path). Do not call it after `search_thresholds(use_lse=True)`, which already produces final first-order consequents via LSE.
 
 Estimator defaults (paper-conformance profile for classification):
-- `DGTSKClassifier`: `rule_base='pfrb'`, `pfrb_max_rules=300`, `zeta_lambda=[0.5]`, `zeta_theta=[0.01]`, `use_lse=False`, `freeze_antecedents_finetune=False`.
+- `DGTSKClassifier`: `rule_base='pfrb'`, `pfrb_max_rules=300`, `zeta_lambda=[0.5]`, `zeta_theta=[0.01]`, `use_lse=False`, `freeze_antecedents_finetune=False`, `optimizer_type='sgd'`, `learning_rate=0.2`.
 
 ## Usage examples
 

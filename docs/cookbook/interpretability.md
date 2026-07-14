@@ -37,5 +37,14 @@ mf_params = clf.get_mf_params()
 print("mf params for first feature:", list(mf_params)[0])
 ```
 
+```text
+n_rules: 3
+features: ['x1', 'x2', 'x3', 'x4']
+rule base: coco
+importance shape: (4,)
+activations shape: (5, 3)
+mf params for first feature: x1
+```
+
 Use `inspect()` for a quick overview, `get_mf_params()` / `get_rule_table()` for the
 exact antecedents, and `rule_activation()` to see which rules fire for given inputs.
