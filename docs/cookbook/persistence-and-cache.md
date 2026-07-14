@@ -30,6 +30,11 @@ print("same dtype:", reloaded.classes_.dtype == clf.classes_.dtype)
 print("reloaded score:", round(reloaded.score(X, y), 3))
 ```
 
+```text
+same dtype: True
+reloaded score: 0.733
+```
+
 ## Managing the membership-function cache
 
 highFIS caches membership-function initialization so repeated `fit` calls with the
@@ -53,6 +58,11 @@ print("after disable:", mf_cache_info())
 
 set_mf_cache_enabled(True)   # restore the default
 clear_mf_cache()
+```
+
+```text
+enabled: True | size limit: 128
+after disable: MFCacheInfo(hits=0, misses=0, maxsize=256, currsize=0, enabled=False)
 ```
 
 See the [Membership-function cache guide](../guides/caching.md) for details and the

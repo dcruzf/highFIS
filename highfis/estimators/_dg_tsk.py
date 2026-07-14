@@ -74,7 +74,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         random_state: int | None = None,
         dg_epochs: int = 100,
         finetune_epochs: int = 200,
-        learning_rate: float = 1e-2,
+        learning_rate: float = 0.2,
         verbose: bool | int = False,
         rule_base: str | None = "pfrb",
         batch_size: int | None = 512,
@@ -109,7 +109,11 @@ class DGTSKClassifier(_BaseClassifierEstimator):
                 ``10`` matches the paper's experimental setting.
             finetune_epochs: Maximum epochs for phase 3 (fine-tune).
                 Default ``200``.
-            learning_rate: Adam learning rate for both phase 1 and phase 3.
+            learning_rate: Learning rate for the full-batch SGD (gradient descent)
+                used in both phases. Default ``0.2`` matches the paper (Section IV).
+                DG-TSK uses SGD, so it needs a larger rate than the Adam-based
+                estimators to open the M-gates; too small a value under-converges
+                and collapses to a single class in low dimension.
             verbose: Print per-epoch progress.
             rule_base: ``"coco"``, ``"cartesian"``, or ``"pfrb"``.  Defaults
                 to ``"pfrb"`` for the paper-strict DG-TSK path, which
@@ -250,6 +254,10 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         if self.rule_base == "pfrb" and hasattr(model, "init_consequents_from_labels"):
             cast(PFRBModelProtocol, model).init_consequents_from_labels(self._pfrb_aligned_labels(x_t, y_t))
 
+    def _select_model_features(self, x_arr: np.ndarray) -> np.ndarray:
+        """Slice inputs to the surviving features when structural pruning shrank the model."""
+        return _select_dgtsking_surviving_features(self, x_arr)
+
     def save(self, path: str) -> None:
         """Persist estimator including first-order architecture flag."""
         from sklearn.utils.validation import check_is_fitted
@@ -382,7 +390,7 @@ class DGTSKRegressor(_BaseRegressorEstimator):
         random_state: int | None = None,
         dg_epochs: int = 100,
         finetune_epochs: int = 200,
-        learning_rate: float = 1e-2,
+        learning_rate: float = 0.2,
         verbose: bool | int = False,
         rule_base: str | None = "pfrb",
         batch_size: int | None = 512,
@@ -417,7 +425,11 @@ class DGTSKRegressor(_BaseRegressorEstimator):
                 ``10`` matches the paper's experimental setting.
             finetune_epochs: Maximum epochs for phase 3 (fine-tune).
                 Default ``200``.
-            learning_rate: Adam learning rate for both phase 1 and phase 3.
+            learning_rate: Learning rate for the full-batch SGD (gradient descent)
+                used in both phases. Default ``0.2`` matches the paper (Section IV).
+                DG-TSK uses SGD, so it needs a larger rate than the Adam-based
+                estimators to open the M-gates; too small a value under-converges
+                and collapses to a single class in low dimension.
             verbose: Print per-epoch progress.
             rule_base: ``"coco"``, ``"cartesian"``, or ``"pfrb"``.  Defaults
                 to ``"pfrb"`` for the paper-strict DG-TSK regressor path.

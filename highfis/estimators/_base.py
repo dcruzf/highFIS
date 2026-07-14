@@ -795,10 +795,19 @@ class _BaseTSKEstimator(BaseEstimator):
         check_is_fitted(self, "model_")
         return self.model_.get_mf_params()
 
+    def _select_model_features(self, x_arr: np.ndarray) -> np.ndarray:
+        """Map validated inputs to the fitted model's feature space.
+
+        Identity by default. Estimators that structurally prune features during
+        ``fit`` (e.g. DG-TSK) override this to slice inputs to the surviving
+        features, so introspection paths match the pruned model width.
+        """
+        return x_arr
+
     def rule_activation(self, X: npt.ArrayLike) -> np.ndarray:
         """Return normalized rule activations for the provided inputs."""
         check_is_fitted(self, "model_")
-        x_arr = validate_data(self, X, reset=False)
+        x_arr = self._select_model_features(validate_data(self, X, reset=False))
 
         was_training = self.model_.training
         try:

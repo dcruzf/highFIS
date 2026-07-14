@@ -23,6 +23,11 @@ print("accuracy:", round(clf.score(X_te, y_te), 3))
 print("classes:", clf.classes_.tolist())
 ```
 
+```text
+accuracy: 0.733
+classes: [0, 1, 2]
+```
+
 ## Inside a scikit-learn pipeline
 
 highFIS estimators plug into `Pipeline`, `cross_val_score`, and `GridSearchCV`.
@@ -49,4 +54,9 @@ print("cv mean:", round(float(np.mean(scores)), 3))
 search = GridSearchCV(pipe, {"tsk__n_mfs": [2, 3]}, cv=3)
 search.fit(X, y)
 print("best n_mfs:", search.best_params_["tsk__n_mfs"])
+```
+
+```text
+cv mean: 0.74
+best n_mfs: 3
 ```

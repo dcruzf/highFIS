@@ -605,3 +605,47 @@ def test_dgtsk_fit_with_pfrb_subsampling_runs() -> None:
     clf = DGTSKClassifier(pfrb_max_rules=10, dg_epochs=1, finetune_epochs=1, random_state=0)
     clf.fit(x, y)
     assert clf.model_ is not None
+
+
+def test_dgtsk_default_learning_rate_matches_paper() -> None:
+    """DG-TSK defaults to the paper's SGD learning rate (0.2), not a small value.
+
+    Regression for FINDING_dgtsk_low_dimension_collapse.md: with the previous small
+    default (0.01) the M-gates never opened, collapsing the model to one class in low
+    dimension. The paper (Section IV) uses full-batch GD at 0.2.
+    """
+    assert DGTSKClassifier().learning_rate == 0.2
+    assert DGTSKRegressor().learning_rate == 0.2
+
+
+def test_dgtsk_no_collapse_low_dimension() -> None:
+    """DG-TSK must separate a trivially-separable low-dimensional task (no collapse)."""
+    from sklearn.datasets import make_blobs
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import MinMaxScaler
+
+    blob = make_blobs(n_samples=200, centers=np.array([[-3.0, -3.0], [3.0, 3.0]]), cluster_std=0.8, random_state=0)
+    X, y = blob[0], blob[1]
+    X = MinMaxScaler().fit_transform(X).astype(np.float32)
+    x_tr, x_te, y_tr, y_te = train_test_split(X, y, test_size=0.25, random_state=0, stratify=y)
+
+    clf = DGTSKClassifier(n_mfs=3, mf_init="kmeans", dg_epochs=50, finetune_epochs=100, random_state=0)
+    clf.fit(x_tr, y_tr)
+    pred = clf.predict(x_te)
+    assert len(np.unique(pred)) == 2, f"collapsed to a single class: {np.bincount(pred).tolist()}"
+    assert float(np.mean(pred == y_te)) >= 0.9
+
+
+def test_dgtsk_rule_activation_after_feature_pruning() -> None:
+    """rule_activation works on a DG-TSK model whose features were pruned during fit.
+
+    Regression: the introspection path went through forward_antecedents with the full
+    input width and raised "expected N inputs, got M" on a pruned model.
+    """
+    rng = np.random.default_rng(0)
+    x = rng.uniform(0.0, 1.0, (60, 12)).astype(np.float32)
+    y = (x[:, 0] > 0.5).astype(np.int64)
+    clf = DGTSKClassifier(n_mfs=3, mf_init="kmeans", dg_epochs=5, finetune_epochs=5, random_state=0)
+    clf.fit(x, y)
+    acts = clf.rule_activation(x)
+    assert acts.shape == (60, clf.model_.n_rules)
