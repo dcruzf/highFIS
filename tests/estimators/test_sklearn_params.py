@@ -28,15 +28,31 @@ import highfis
 ESTIMATORS: list[str] = sorted(n for n in highfis.__all__ if n.endswith(("Classifier", "Regressor")))
 
 
-def _probe_value(default: Any) -> Any:
-    """Return a value distinguishable from *default*, or ``None`` if we can't build one."""
-    if isinstance(default, bool):
-        return not default
-    if isinstance(default, int):
-        return default + 3
-    if isinstance(default, float):
-        return 0.25 if default == 0.5 else default + 0.5
-    return None
+class _Sentinel:
+    """A value no constructor can confuse with a default, of no particular type.
+
+    Probing with a typed value (an int for an int param, and nothing at all for a ``str``)
+    leaves holes: it silently skipped ``device`` and let ``LogTSKClassifier(device="cuda")``
+    train on the CPU. The estimators store constructor arguments verbatim and validate at
+    ``fit`` time, so an opaque object round-trips through ``get_params`` exactly like a real
+    one -- which makes this a test of the plumbing rather than of the types.
+    """
+
+    _next_tag = 0
+
+    def __init__(self) -> None:
+        _Sentinel._next_tag += 1
+        self.tag = _Sentinel._next_tag
+
+    def __eq__(self, other: object) -> bool:
+        # ``clone`` deep-copies every parameter value, so equality has to survive a copy.
+        return isinstance(other, _Sentinel) and other.tag == self.tag
+
+    def __hash__(self) -> int:
+        return hash(self.tag)
+
+    def __repr__(self) -> str:
+        return f"<sentinel {self.tag}>"
 
 
 def _declared_params(name: str) -> list[tuple[str, Any]]:
@@ -63,13 +79,11 @@ def test_constructor_params_round_trip_through_get_params(name: str) -> None:
     """
     cls = getattr(highfis, name)
     dropped = []
-    for param, default in _declared_params(name):
-        probe = _probe_value(default)
-        if probe is None:
-            continue
+    for param, _default in _declared_params(name):
+        probe = _Sentinel()
         got = cls(**{param: probe}).get_params().get(param, "<missing>")
-        if got != probe:
-            dropped.append(f"{param}: passed {probe!r}, get_params returned {got!r}")
+        if got is not probe:
+            dropped.append(f"{param}: passed the sentinel, get_params returned {got!r}")
     assert not dropped, f"{name} drops constructor arguments: " + "; ".join(dropped)
 
 
@@ -86,12 +100,7 @@ def test_constructor_params_are_visible_to_get_params(name: str) -> None:
 def test_clone_preserves_non_default_params(name: str) -> None:
     """``clone`` must reproduce non-default parameters; this is what cross-validation relies on."""
     cls = getattr(highfis, name)
-    overrides = {}
-    for param, default in _declared_params(name):
-        probe = _probe_value(default)
-        if probe is not None:
-            overrides[param] = probe
-    est = cls(**overrides)
-    cloned = clone(est)
+    overrides = {param: _Sentinel() for param, _ in _declared_params(name)}
+    cloned = clone(cls(**overrides))
     for param, expected in overrides.items():
         assert cloned.get_params()[param] == expected, f"{name}.{param} lost by clone()"

@@ -109,6 +109,7 @@ class LogTSKClassifier(_BaseClassifierEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
 
     def _build_model(
@@ -218,6 +219,7 @@ class LogTSKRegressor(_BaseRegressorEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
         )
 
     def _build_regressor_model(

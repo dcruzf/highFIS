@@ -225,6 +225,7 @@ class HTSKRegressor(_BaseRegressorEstimator):
             ur_weight=ur_weight,
             ur_target=ur_target,
             consequent_batch_norm=consequent_batch_norm,
+            pfrb_max_rules=pfrb_max_rules,
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
