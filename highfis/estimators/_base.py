@@ -30,6 +30,7 @@ from ..memberships import (
 )
 from ..metrics import compute_metrics
 from ..models import BaseTSK
+from ..models._base import set_training_flag
 from ..optim._base import BaseTrainer
 from ..optim._gradient import GradientTrainer
 from ..persistence import (
@@ -811,11 +812,11 @@ class _BaseTSKEstimator(BaseEstimator):
 
         was_training = self.model_.training
         try:
-            self.model_.eval()
+            set_training_flag(self.model_, False)
             with torch.no_grad():
                 norm_w = self.model_.forward_antecedents(self._as_tensor_x(x_arr, torch.device(str(self.device))))
         finally:
-            self.model_.train(was_training)
+            set_training_flag(self.model_, was_training)
 
         return _to_numpy(norm_w)
 
