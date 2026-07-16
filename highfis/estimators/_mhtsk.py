@@ -517,7 +517,8 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         if not bool(self.rule_extraction):
             return self
 
-        x_t = self._as_tensor_x(x_arr)
+        _device = torch.device(str(self.device))
+        x_t = self._as_tensor_x(x_arr, _device)
         self.model_.eval()
         with torch.no_grad():
             norm_w = self.model_.forward_antecedents(x_t)
@@ -530,30 +531,17 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         self._build_extracted_model(input_mfs, selected)
 
         if self.retrain_after_extraction:
-            from ..optim import GradientTrainer
-
             x_val_t: torch.Tensor | None = None
             y_val_t: torch.Tensor | None = None
             if x_val is not None and y_val is not None:
                 x_v_arr, y_v_arr = check_X_y(x_val, y_val)
-                x_val_t = self._as_tensor_x(x_v_arr)
+                x_val_t = self._as_tensor_x(x_v_arr, _device)
                 y_val_t = torch.as_tensor(
                     self._label_encoder_.transform(np.asarray(y_v_arr)),
                     dtype=torch.long,
                 )
-            trainer = GradientTrainer(
-                epochs=int(self.epochs),
-                learning_rate=float(self.learning_rate),
-                batch_size=self.batch_size,
-                shuffle=bool(self.shuffle),
-                ur_weight=float(self.ur_weight),
-                ur_target=self.ur_target,
-                verbose=self.verbose,
-                patience=self.patience,
-                restore_best=self.restore_best,
-                weight_decay=float(self.weight_decay),
-            )
-            self.history_ = trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t)
+            trainer = self.trainer if self.trainer is not None else self._get_trainer()
+            self.history_ = trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
         return self
 
 
@@ -748,7 +736,8 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         if not bool(self.rule_extraction):
             return self
 
-        x_t = self._as_tensor_x(x_arr)
+        _device = torch.device(str(self.device))
+        x_t = self._as_tensor_x(x_arr, _device)
         self.model_.eval()
         with torch.no_grad():
             norm_w = self.model_.forward_antecedents(x_t)
@@ -760,28 +749,15 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         self._build_extracted_model(input_mfs, selected)
 
         if self.retrain_after_extraction:
-            from ..optim import GradientTrainer
-
             y_t = torch.as_tensor(np.asarray(y_arr), dtype=torch.float32)
             x_val_t: torch.Tensor | None = None
             y_val_t: torch.Tensor | None = None
             if x_val is not None and y_val is not None:
                 x_v_arr, y_v_arr = check_X_y(x_val, y_val)
-                x_val_t = self._as_tensor_x(x_v_arr)
+                x_val_t = self._as_tensor_x(x_v_arr, _device)
                 y_val_t = torch.as_tensor(np.asarray(y_v_arr, dtype=np.float32), dtype=torch.float32)
-            trainer = GradientTrainer(
-                epochs=int(self.epochs),
-                learning_rate=float(self.learning_rate),
-                batch_size=self.batch_size,
-                shuffle=bool(self.shuffle),
-                ur_weight=float(self.ur_weight),
-                ur_target=self.ur_target,
-                verbose=self.verbose,
-                patience=self.patience,
-                restore_best=self.restore_best,
-                weight_decay=float(self.weight_decay),
-            )
-            self.history_ = trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t)
+            trainer = self.trainer if self.trainer is not None else self._get_trainer()
+            self.history_ = trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
         return self
 
     def _build_regressor_model(

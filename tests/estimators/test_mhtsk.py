@@ -546,3 +546,51 @@ def test_resolve_mhtsk_scale_parameters_large_features() -> None:
     )
     assert h == 60  # round(6000 * 0.01)
     assert n > 0
+
+
+def test_mhtsk_classifier_retrain_keeps_requested_metrics() -> None:
+    """The post-extraction retrain must honour ``fit(metrics=...)``.
+
+    It overwrites ``history_``, so dropping ``metrics`` there silently reverted the
+    reported metric to the default accuracy even though the caller asked for something
+    else -- and, since early stopping keys off ``metrics_list[0]``, changed what the
+    retrain optimised for.
+    """
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=(30, 3)).astype(np.float32)
+    y = (x[:, 0] > 0).astype(np.int64)
+
+    clf = MHTSKClassifier(
+        n_mfs=2,
+        n_heads=2,
+        epochs=2,
+        rule_extraction=True,
+        retrain_after_extraction=True,
+        random_state=0,
+        verbose=False,
+    )
+    clf.fit(x, y, metrics=["f1_macro"])
+
+    assert "train_f1_macro" in clf.history_
+    assert "train_accuracy" not in clf.history_
+
+
+def test_mhtsk_regressor_retrain_keeps_requested_metrics() -> None:
+    """Same contract on the regressor's post-extraction retrain."""
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=(30, 3)).astype(np.float32)
+    y = (x[:, 0] + 0.5 * x[:, 1]).astype(np.float32)
+
+    reg = MHTSKRegressor(
+        n_mfs=2,
+        n_heads=2,
+        epochs=2,
+        rule_extraction=True,
+        retrain_after_extraction=True,
+        random_state=0,
+        verbose=False,
+    )
+    reg.fit(x, y, metrics=["mae"])
+
+    assert "train_mae" in reg.history_
+    assert "train_mse" not in reg.history_

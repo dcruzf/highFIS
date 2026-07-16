@@ -174,6 +174,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             rule_base=rule_base,
             batch_size=batch_size,
             shuffle=shuffle,
+            weight_decay=weight_decay,
             ur_weight=ur_weight,
             ur_target=ur_target,
             consequent_batch_norm=consequent_batch_norm,
