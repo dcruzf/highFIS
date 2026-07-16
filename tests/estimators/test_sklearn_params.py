@@ -104,3 +104,63 @@ def test_clone_preserves_non_default_params(name: str) -> None:
     cloned = clone(cls(**overrides))
     for param, expected in overrides.items():
         assert cloned.get_params()[param] == expected, f"{name}.{param} lost by clone()"
+
+
+def test_scheduler_reaches_training_through_the_estimator_api() -> None:
+    """A learning-rate schedule configured on an estimator must actually decay the rate.
+
+    In 0.24.1 this was unreachable: GradientTrainer.fit accepted a ``scheduler`` argument
+    but no estimator ever forwarded one, and no estimator exposed the option.
+    """
+    import numpy as np
+    from torch.optim.lr_scheduler import StepLR
+
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=(30, 3)).astype(np.float32)
+    y = (x[:, 0] > 0).astype(np.int64)
+
+    clf = highfis.HTSKClassifier(
+        n_mfs=2,
+        epochs=4,
+        learning_rate=0.1,
+        patience=None,
+        scheduler_class=StepLR,
+        scheduler_params={"step_size": 1, "gamma": 0.5},
+        random_state=0,
+        verbose=False,
+    )
+    clf.fit(x, y)
+
+    lrs = clf.history_["lr"]
+    assert len(lrs) == 4
+    assert lrs == pytest.approx([0.05, 0.025, 0.0125, 0.00625])
+
+
+def test_scheduler_class_is_not_written_into_checkpoints(tmp_path: Any) -> None:
+    """``torch.load(weights_only=True)`` refuses class objects, so they must not be saved.
+
+    Storing ``scheduler_class`` in the checkpoint would make the file unloadable.
+    """
+    import numpy as np
+    from torch.optim.lr_scheduler import StepLR
+
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=(30, 3)).astype(np.float32)
+    y = (x[:, 0] > 0).astype(np.int64)
+
+    clf = highfis.HTSKClassifier(
+        n_mfs=2,
+        epochs=2,
+        scheduler_class=StepLR,
+        scheduler_params={"step_size": 1},
+        random_state=0,
+        verbose=False,
+    )
+    clf.fit(x, y)
+
+    target = tmp_path / "model.pt"
+    clf.save(target)
+    reloaded = highfis.HTSKClassifier.load(target)
+
+    assert reloaded.scheduler_class is None
+    assert np.array_equal(reloaded.predict(x), clf.predict(x))

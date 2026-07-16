@@ -597,6 +597,9 @@ class _BaseTSKEstimator(BaseEstimator):
         restore_best: bool = True,
         weight_decay: float = 1e-8,
         device: str = "cpu",
+        eval_metrics_every: int = 1,
+        scheduler_class: type[Any] | None = None,
+        scheduler_params: Mapping[str, Any] | None = None,
         trainer: BaseTrainer | None = None,
     ) -> None:
         self.input_configs = input_configs
@@ -618,6 +621,9 @@ class _BaseTSKEstimator(BaseEstimator):
         self.restore_best = restore_best
         self.weight_decay = weight_decay
         self.device = device
+        self.eval_metrics_every = eval_metrics_every
+        self.scheduler_class = scheduler_class
+        self.scheduler_params = scheduler_params
         self.trainer = trainer
 
     # -- helpers ----------------------------------------------------------
@@ -729,6 +735,9 @@ class _BaseTSKEstimator(BaseEstimator):
             ur_weight=float(self.ur_weight),
             ur_target=self.ur_target,
             verbose=self.verbose,
+            eval_metrics_every=self.eval_metrics_every,
+            scheduler_class=self.scheduler_class,
+            scheduler_params=self.scheduler_params,
         )
 
     def _pre_train_hook(self, model: BaseTSK, x_t: Tensor, y_t: Tensor) -> None:
@@ -780,6 +789,12 @@ class _BaseTSKEstimator(BaseEstimator):
         # Exclude non-serialisable trainer objects from the checkpoint; they
         # are reconstructed from the estimator's hyperparameters on load.
         params.pop("trainer", None)
+        # ``scheduler_class`` holds a class object, which ``torch.load(weights_only=True)``
+        # refuses to unpickle -- keeping it would make the checkpoint unloadable. Its
+        # partner goes with it: a schedule with no class to build is meaningless. Both are
+        # training-time settings, and a reloaded estimator is not mid-training.
+        params.pop("scheduler_class", None)
+        params.pop("scheduler_params", None)
         return {
             "format": CHECKPOINT_FORMAT,
             "format_version": CHECKPOINT_FORMAT_VERSION,

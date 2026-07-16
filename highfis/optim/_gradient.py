@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any, cast
 
 import numpy as np
@@ -68,6 +68,8 @@ class GradientTrainer(BaseTrainer):
         verbose: bool | int = False,
         loss: Callable[..., Any] | None = None,
         eval_metrics_every: int = 1,
+        scheduler_class: type[Any] | None = None,
+        scheduler_params: Mapping[str, Any] | None = None,
     ) -> None:
         """Initialise a gradient trainer.
 
@@ -95,6 +97,13 @@ class GradientTrainer(BaseTrainer):
                 entries are diagnostic only -- they never feed early stopping, which
                 consults validation metrics alone. Validation metrics are unaffected and
                 are always evaluated every epoch.
+            scheduler_class: Learning-rate scheduler *class* (e.g.
+                ``torch.optim.lr_scheduler.StepLR``), not an instance. A scheduler binds
+                to an optimiser when constructed and the optimiser is only built inside
+                :meth:`fit`, so an instance made in advance would decay an optimiser that
+                is never stepped.
+            scheduler_params: Keyword arguments for ``scheduler_class``. The optimiser is
+                supplied automatically as the first positional argument.
         """
         self.epochs = epochs
         self.learning_rate = learning_rate
@@ -108,6 +117,22 @@ class GradientTrainer(BaseTrainer):
         self.verbose = verbose
         self.loss = loss
         self.eval_metrics_every = eval_metrics_every
+        self.scheduler_class = scheduler_class
+        self.scheduler_params = scheduler_params
+
+    def _build_scheduler(self, optimizer: torch.optim.Optimizer, scheduler: Any) -> Any:
+        """Resolve the learning-rate scheduler to use for this run.
+
+        An explicit *scheduler* instance wins; otherwise one is built from
+        :attr:`scheduler_class` and bound to *optimizer*. Building it here rather than
+        accepting an instance is what makes the decay actually reach training: the
+        optimiser does not exist until :meth:`fit` runs.
+        """
+        if scheduler is not None:
+            return scheduler
+        if self.scheduler_class is None:
+            return None
+        return self.scheduler_class(optimizer, **dict(self.scheduler_params or {}))
 
     def _should_eval_train_metrics(self, epoch: int) -> bool:
         """Whether the training-metric pass runs on this (0-based) epoch."""
@@ -286,6 +311,7 @@ class GradientTrainer(BaseTrainer):
         has_val = self._validate_fit_inputs(model, x, y, x_val, y_val, self.ur_weight, self.ur_target)
         train_criterion = self.loss or model.default_criterion()
         train_optimizer = self._build_optimizer(model, optimizer, self.learning_rate, self.weight_decay)
+        scheduler = self._build_scheduler(train_optimizer, scheduler)
 
         train_loader = self._build_train_loader(x, y)
         metrics_list, maximize = self._resolve_metrics(metrics, model.task_type)
@@ -319,6 +345,7 @@ class GradientTrainer(BaseTrainer):
             if metrics_list and self._should_eval_train_metrics(epoch):
                 self._evaluate_epoch_metrics(model, x, y, metrics_list, history, "train")
 
+            should_stop = False
             if has_val and x_val is not None and y_val is not None:
                 best_metric, epochs_no_improve, best_state, should_stop = self._handle_validation_epoch(
                     model,
@@ -336,12 +363,13 @@ class GradientTrainer(BaseTrainer):
                     epoch_total_loss,
                     pbar,
                 )
-                if should_stop:
-                    break
             else:
                 self._log_epoch_no_val(model, epoch, self.epochs, epoch_total_loss, verbose_level, pbar)
 
-            if scheduler is not None:
+            # Do not advance the schedule on the epoch that stops training -- nothing
+            # would train at the new rate -- but do record the rate this epoch ran at,
+            # so ``lr`` stays the same length as the other per-epoch series.
+            if scheduler is not None and not should_stop:
                 if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
                     val_loss_val = history["val_loss"][-1] if (has_val and history["val_loss"]) else epoch_main_loss
                     scheduler.step(val_loss_val)
@@ -350,6 +378,9 @@ class GradientTrainer(BaseTrainer):
 
             current_lr = train_optimizer.param_groups[0]["lr"]
             history["lr"].append(current_lr)
+
+            if should_stop:
+                break
 
         self._finalize_training(model, best_state, pbar)
 

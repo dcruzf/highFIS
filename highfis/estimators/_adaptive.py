@@ -143,6 +143,9 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         eps: float | None = None,
         zero_consequent_init: bool = True,
         device: str = "cpu",
+        eval_metrics_every: int = 1,
+        scheduler_class: type[Any] | None = None,
+        scheduler_params: Mapping[str, Any] | None = None,
     ) -> None:
         """Initialise an ADPTSK classifier estimator.
 
@@ -186,6 +189,14 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
                 consequent parameters to zeros.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
+            eval_metrics_every: Evaluate training metrics every ``n`` epochs; ``0``
+                skips them. Each evaluation is an extra forward pass over the training
+                set and only fills ``history_["train_<metric>"]``; early stopping uses
+                validation metrics regardless.
+            scheduler_class: Learning-rate scheduler *class* (e.g.
+                ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
+                it must bind to is only built inside ``fit``.
+            scheduler_params: Keyword arguments for ``scheduler_class``.
         """
         super().__init__(
             input_configs=input_configs,
@@ -207,6 +218,9 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
             restore_best=restore_best,
             weight_decay=weight_decay,
             device=device,
+            eval_metrics_every=eval_metrics_every,
+            scheduler_class=scheduler_class,
+            scheduler_params=scheduler_params,
         )
         self.kappa = kappa
         self.xi = xi
@@ -354,6 +368,9 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         eps: float | None = None,
         zero_consequent_init: bool = True,
         device: str = "cpu",
+        eval_metrics_every: int = 1,
+        scheduler_class: type[Any] | None = None,
+        scheduler_params: Mapping[str, Any] | None = None,
     ) -> None:
         """Initialise an ADPTSK regressor estimator.
 
@@ -397,6 +414,14 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
                 consequent parameters to zeros.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
+            eval_metrics_every: Evaluate training metrics every ``n`` epochs; ``0``
+                skips them. Each evaluation is an extra forward pass over the training
+                set and only fills ``history_["train_<metric>"]``; early stopping uses
+                validation metrics regardless.
+            scheduler_class: Learning-rate scheduler *class* (e.g.
+                ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
+                it must bind to is only built inside ``fit``.
+            scheduler_params: Keyword arguments for ``scheduler_class``.
         """
         super().__init__(
             input_configs=input_configs,
@@ -418,6 +443,9 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
             restore_best=restore_best,
             weight_decay=weight_decay,
             device=device,
+            eval_metrics_every=eval_metrics_every,
+            scheduler_class=scheduler_class,
+            scheduler_params=scheduler_params,
         )
         self.kappa = kappa
         self.xi = xi
@@ -556,6 +584,9 @@ class ADATSKClassifier(_BaseClassifierEstimator):
         freeze_antecedent_in_high_dim: bool = True,
         high_dim_threshold: int = 1000,
         device: str = "cpu",
+        eval_metrics_every: int = 1,
+        scheduler_class: type[Any] | None = None,
+        scheduler_params: Mapping[str, Any] | None = None,
     ) -> None:
         """Initialise an ADATSK classifier.
 
@@ -596,6 +627,14 @@ class ADATSKClassifier(_BaseClassifierEstimator):
                 antecedent freezing (default ``1000``).
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
+            eval_metrics_every: Evaluate training metrics every ``n`` epochs; ``0``
+                skips them. Each evaluation is an extra forward pass over the training
+                set and only fills ``history_["train_<metric>"]``; early stopping uses
+                validation metrics regardless.
+            scheduler_class: Learning-rate scheduler *class* (e.g.
+                ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
+                it must bind to is only built inside ``fit``.
+            scheduler_params: Keyword arguments for ``scheduler_class``.
         """
         resolved_n_mfs = n_mfs
         resolved_mf_init = mf_init
@@ -624,6 +663,9 @@ class ADATSKClassifier(_BaseClassifierEstimator):
             restore_best=restore_best,
             weight_decay=weight_decay,
             device=device,
+            eval_metrics_every=eval_metrics_every,
+            scheduler_class=scheduler_class,
+            scheduler_params=scheduler_params,
         )
         self.freeze_antecedent_in_high_dim = freeze_antecedent_in_high_dim
         self.high_dim_threshold = high_dim_threshold
@@ -722,6 +764,9 @@ class ADATSKRegressor(_BaseRegressorEstimator):
         freeze_antecedent_in_high_dim: bool = True,
         high_dim_threshold: int = 1000,
         device: str = "cpu",
+        eval_metrics_every: int = 1,
+        scheduler_class: type[Any] | None = None,
+        scheduler_params: Mapping[str, Any] | None = None,
     ) -> None:
         """Initialise an ADATSK regressor.
 
@@ -760,6 +805,14 @@ class ADATSKRegressor(_BaseRegressorEstimator):
                 antecedent freezing (default ``1000``).
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
+            eval_metrics_every: Evaluate training metrics every ``n`` epochs; ``0``
+                skips them. Each evaluation is an extra forward pass over the training
+                set and only fills ``history_["train_<metric>"]``; early stopping uses
+                validation metrics regardless.
+            scheduler_class: Learning-rate scheduler *class* (e.g.
+                ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
+                it must bind to is only built inside ``fit``.
+            scheduler_params: Keyword arguments for ``scheduler_class``.
         """
         super().__init__(
             input_configs=input_configs,
@@ -780,6 +833,9 @@ class ADATSKRegressor(_BaseRegressorEstimator):
             restore_best=restore_best,
             weight_decay=weight_decay,
             device=device,
+            eval_metrics_every=eval_metrics_every,
+            scheduler_class=scheduler_class,
+            scheduler_params=scheduler_params,
         )
         self.freeze_antecedent_in_high_dim = freeze_antecedent_in_high_dim
         self.high_dim_threshold = high_dim_threshold

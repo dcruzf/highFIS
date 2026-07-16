@@ -368,6 +368,9 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         restore_best: bool = True,
         weight_decay: float = 1e-8,
         device: str = "cpu",
+        eval_metrics_every: int = 1,
+        scheduler_class: type[Any] | None = None,
+        scheduler_params: Mapping[str, Any] | None = None,
     ) -> None:
         """Initialize a MHTSK classifier estimator.
 
@@ -405,6 +408,14 @@ class MHTSKClassifier(_BaseClassifierEstimator):
             weight_decay: Weight decay coefficient for the optimizer.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
+            eval_metrics_every: Evaluate training metrics every ``n`` epochs; ``0``
+                skips them. Each evaluation is an extra forward pass over the training
+                set and only fills ``history_["train_<metric>"]``; early stopping uses
+                validation metrics regardless.
+            scheduler_class: Learning-rate scheduler *class* (e.g.
+                ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
+                it must bind to is only built inside ``fit``.
+            scheduler_params: Keyword arguments for ``scheduler_class``.
         """
         super().__init__(
             input_configs=input_configs,
@@ -426,6 +437,9 @@ class MHTSKClassifier(_BaseClassifierEstimator):
             restore_best=restore_best,
             weight_decay=weight_decay,
             device=device,
+            eval_metrics_every=eval_metrics_every,
+            scheduler_class=scheduler_class,
+            scheduler_params=scheduler_params,
         )
         self.n_heads = n_heads
         self.head_size = head_size
@@ -601,6 +615,9 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         restore_best: bool = True,
         weight_decay: float = 1e-8,
         device: str = "cpu",
+        eval_metrics_every: int = 1,
+        scheduler_class: type[Any] | None = None,
+        scheduler_params: Mapping[str, Any] | None = None,
     ) -> None:
         """Initialize a MHTSK regressor estimator.
 
@@ -637,6 +654,14 @@ class MHTSKRegressor(_BaseRegressorEstimator):
             weight_decay: Weight decay coefficient for the optimizer.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
+            eval_metrics_every: Evaluate training metrics every ``n`` epochs; ``0``
+                skips them. Each evaluation is an extra forward pass over the training
+                set and only fills ``history_["train_<metric>"]``; early stopping uses
+                validation metrics regardless.
+            scheduler_class: Learning-rate scheduler *class* (e.g.
+                ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
+                it must bind to is only built inside ``fit``.
+            scheduler_params: Keyword arguments for ``scheduler_class``.
 
         Notes:
             The regressor supports only unsupervised rule extraction via
@@ -662,6 +687,9 @@ class MHTSKRegressor(_BaseRegressorEstimator):
             restore_best=restore_best,
             weight_decay=weight_decay,
             device=device,
+            eval_metrics_every=eval_metrics_every,
+            scheduler_class=scheduler_class,
+            scheduler_params=scheduler_params,
         )
         self.n_heads = n_heads
         self.head_size = head_size

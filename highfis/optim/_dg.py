@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from torch import Tensor
@@ -73,6 +73,9 @@ class DGTrainer(BaseTrainer):
         # ── Shared ────────────────────────────────────────────────────────
         verbose: bool | int = False,
         loss: Callable[..., Any] | None = None,
+        eval_metrics_every: int = 1,
+        scheduler_class: type[Any] | None = None,
+        scheduler_params: Mapping[str, Any] | None = None,
         # ── Paper-conformance options ─────────────────────────────────────
         optimizer_type: str = "sgd",
         structural_pruning: bool = True,
@@ -107,6 +110,13 @@ class DGTrainer(BaseTrainer):
             verbose: Verbosity level forwarded to all three phases.
             loss: Custom loss function ``f(output, target) -> scalar``.
                 ``None`` uses the model's built-in criterion.
+            eval_metrics_every: Evaluate training metrics every ``n`` epochs in each
+                gradient phase; ``0`` skips them. See
+                :class:`~highfis.optim.GradientTrainer`.
+            scheduler_class: Learning-rate scheduler *class*, applied to every gradient
+                phase. Each phase builds its own optimiser, so each also gets its own
+                scheduler instance -- one shared instance could not span them.
+            scheduler_params: Keyword arguments for ``scheduler_class``.
             optimizer_type: Optimiser type used in all three phases.  ``"sgd"``
                 (paper default) or ``"adamw"`` (AdamW with weight decay).
             structural_pruning: If ``True`` (paper default), hard-prune the
@@ -138,6 +148,9 @@ class DGTrainer(BaseTrainer):
         self.finetune_ur_target = finetune_ur_target
         self.verbose = verbose
         self.loss = loss
+        self.eval_metrics_every = eval_metrics_every
+        self.scheduler_class = scheduler_class
+        self.scheduler_params = scheduler_params
         self.optimizer_type = optimizer_type
         self.structural_pruning = structural_pruning
         self.finetune_freeze_antecedents = finetune_freeze_antecedents
@@ -168,6 +181,9 @@ class DGTrainer(BaseTrainer):
                 verbose=self.verbose,
                 patience=self.dg_patience,
                 weight_decay=float(self.dg_weight_decay),
+                eval_metrics_every=self.eval_metrics_every,
+                scheduler_class=self.scheduler_class,
+                scheduler_params=self.scheduler_params,
             )
             return dg_trainer.fit(model, x, y, x_val=x_val, y_val=y_val, metrics=metrics)
         finally:
@@ -229,6 +245,9 @@ class DGTrainer(BaseTrainer):
                 patience=self.finetune_patience,
                 restore_best=bool(self.finetune_restore_best),
                 weight_decay=float(self.finetune_weight_decay),
+                eval_metrics_every=self.eval_metrics_every,
+                scheduler_class=self.scheduler_class,
+                scheduler_params=self.scheduler_params,
             )
             return ft_trainer.fit(model, x_ft, y, x_val=x_val_ft, y_val=y_val, metrics=metrics)
         finally:

@@ -94,6 +94,9 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         structural_pruning: bool = True,
         freeze_antecedents_finetune: bool = False,
         device: str = "cpu",
+        eval_metrics_every: int = 1,
+        scheduler_class: type[Any] | None = None,
+        scheduler_params: Mapping[str, Any] | None = None,
     ) -> None:
         """Initialise a DG-TSK classifier.
 
@@ -152,6 +155,14 @@ class DGTSKClassifier(_BaseClassifierEstimator):
                 to optimize antecedents and consequents in fine-tuning.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
+            eval_metrics_every: Evaluate training metrics every ``n`` epochs; ``0``
+                skips them. Each evaluation is an extra forward pass over the training
+                set and only fills ``history_["train_<metric>"]``; early stopping uses
+                validation metrics regardless.
+            scheduler_class: Learning-rate scheduler *class* (e.g.
+                ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
+                it must bind to is only built inside ``fit``.
+            scheduler_params: Keyword arguments for ``scheduler_class``.
         """
         self.use_en_frb = use_en_frb
         self.dg_epochs = dg_epochs
@@ -182,6 +193,9 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             patience=patience,
             restore_best=restore_best,
             device=device,
+            eval_metrics_every=eval_metrics_every,
+            scheduler_class=scheduler_class,
+            scheduler_params=scheduler_params,
             trainer=trainer,
         )
 
@@ -245,6 +259,9 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             finetune_ur_weight=float(self.ur_weight),
             finetune_ur_target=self.ur_target,
             verbose=self.verbose,
+            eval_metrics_every=self.eval_metrics_every,
+            scheduler_class=self.scheduler_class,
+            scheduler_params=self.scheduler_params,
             optimizer_type=self.optimizer_type,
             structural_pruning=bool(self.structural_pruning),
             finetune_freeze_antecedents=bool(self.freeze_antecedents_finetune),
@@ -411,6 +428,9 @@ class DGTSKRegressor(_BaseRegressorEstimator):
         structural_pruning: bool = True,
         freeze_antecedents_finetune: bool = True,
         device: str = "cpu",
+        eval_metrics_every: int = 1,
+        scheduler_class: type[Any] | None = None,
+        scheduler_params: Mapping[str, Any] | None = None,
     ) -> None:
         """Initialise a DG-TSK regressor.
 
@@ -461,6 +481,14 @@ class DGTSKRegressor(_BaseRegressorEstimator):
                 parameters and feature gates during fine-tuning.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
+            eval_metrics_every: Evaluate training metrics every ``n`` epochs; ``0``
+                skips them. Each evaluation is an extra forward pass over the training
+                set and only fills ``history_["train_<metric>"]``; early stopping uses
+                validation metrics regardless.
+            scheduler_class: Learning-rate scheduler *class* (e.g.
+                ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
+                it must bind to is only built inside ``fit``.
+            scheduler_params: Keyword arguments for ``scheduler_class``.
         """
         self.use_en_frb = use_en_frb
         self.dg_epochs = dg_epochs
@@ -491,6 +519,9 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             restore_best=restore_best,
             weight_decay=weight_decay,
             device=device,
+            eval_metrics_every=eval_metrics_every,
+            scheduler_class=scheduler_class,
+            scheduler_params=scheduler_params,
             trainer=trainer,
         )
 
@@ -537,6 +568,9 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             finetune_ur_weight=float(self.ur_weight),
             finetune_ur_target=self.ur_target,
             verbose=self.verbose,
+            eval_metrics_every=self.eval_metrics_every,
+            scheduler_class=self.scheduler_class,
+            scheduler_params=self.scheduler_params,
             optimizer_type=self.optimizer_type,
             structural_pruning=bool(self.structural_pruning),
             finetune_freeze_antecedents=bool(self.freeze_antecedents_finetune),

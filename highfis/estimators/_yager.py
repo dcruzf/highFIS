@@ -92,6 +92,9 @@ class AYATSKClassifier(_BaseClassifierEstimator):
         weight_decay: float = 0.0,
         k: float = 10.0,
         device: str = "cpu",
+        eval_metrics_every: int = 1,
+        scheduler_class: type[Any] | None = None,
+        scheduler_params: Mapping[str, Any] | None = None,
     ) -> None:
         """Initialise an AYATSK classifier.
 
@@ -122,6 +125,14 @@ class AYATSKClassifier(_BaseClassifierEstimator):
             k: CEMF lower-bound control parameter. Must be ``> 1``.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
+            eval_metrics_every: Evaluate training metrics every ``n`` epochs; ``0``
+                skips them. Each evaluation is an extra forward pass over the training
+                set and only fills ``history_["train_<metric>"]``; early stopping uses
+                validation metrics regardless.
+            scheduler_class: Learning-rate scheduler *class* (e.g.
+                ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
+                it must bind to is only built inside ``fit``.
+            scheduler_params: Keyword arguments for ``scheduler_class``.
         """
         super().__init__(
             input_configs=input_configs,
@@ -143,6 +154,9 @@ class AYATSKClassifier(_BaseClassifierEstimator):
             restore_best=restore_best,
             weight_decay=weight_decay,
             device=device,
+            eval_metrics_every=eval_metrics_every,
+            scheduler_class=scheduler_class,
+            scheduler_params=scheduler_params,
         )
         self.k = k
 
@@ -249,6 +263,9 @@ class AYATSKRegressor(_BaseRegressorEstimator):
         weight_decay: float = 0.0,
         k: float = 10.0,
         device: str = "cpu",
+        eval_metrics_every: int = 1,
+        scheduler_class: type[Any] | None = None,
+        scheduler_params: Mapping[str, Any] | None = None,
     ) -> None:
         """Initialise an AYATSK regressor.
 
@@ -277,6 +294,14 @@ class AYATSKRegressor(_BaseRegressorEstimator):
             k: CEMF lower-bound control parameter. Must be ``> 1``.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
+            eval_metrics_every: Evaluate training metrics every ``n`` epochs; ``0``
+                skips them. Each evaluation is an extra forward pass over the training
+                set and only fills ``history_["train_<metric>"]``; early stopping uses
+                validation metrics regardless.
+            scheduler_class: Learning-rate scheduler *class* (e.g.
+                ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
+                it must bind to is only built inside ``fit``.
+            scheduler_params: Keyword arguments for ``scheduler_class``.
         """
         super().__init__(
             input_configs=input_configs,
@@ -297,6 +322,9 @@ class AYATSKRegressor(_BaseRegressorEstimator):
             restore_best=restore_best,
             weight_decay=weight_decay,
             device=device,
+            eval_metrics_every=eval_metrics_every,
+            scheduler_class=scheduler_class,
+            scheduler_params=scheduler_params,
         )
         self.k = k
 
