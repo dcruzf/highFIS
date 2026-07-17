@@ -36,6 +36,12 @@ You can configure the trainer directly through the estimator's constructor argum
 *   `learning_rate`: Step size for weight updates (default: `0.01`).
 *   `batch_size`: Size of mini-batches. If `None`, full-batch training is performed.
 *   `weight_decay`: L2 regularization strength.
+*   `eval_metrics_every`: Evaluate training metrics every `n` epochs (default: `1`); `0`
+    skips the training-metric pass entirely. This only affects the `"train_<metric>"`
+    entries in `history_` — validation metrics, which drive early stopping, are evaluated
+    every epoch regardless. Raising it (or setting `0`) is a cheap speed-up when you do
+    not need per-epoch training curves.
+*   `scheduler_class` / `scheduler_params`: Learning-rate schedule; see below.
 
 ### Example: Training with GradientTrainer and Inspecting History
 
@@ -198,29 +204,49 @@ clf.fit(X, y)
 
 ---
 
-## Configuring Custom Optimizers
+## Optimizer selection
 
-While estimators provide a scikit-learn API, you can customize the underlying optimizer class (e.g., using `SGD`, `RMSprop`, or `AdamW`) and learning rate scheduler by overriding the estimator's `optimizer_class`.
+The optimizer is chosen automatically from the model family, so there is no
+`optimizer_class` constructor argument. ADATSK models train with `SGD`; ADPTSK,
+ADMTSK, DombiTSK and AYATSK use `Adam`; the remaining single-phase models use `AdamW`
+with weight decay applied only to the consequent parameters. The `DG-TSK` and
+`DG-ALETSK` estimators additionally expose an `optimizer_type` argument
+(`"sgd"`, `"adam"`, or `"adamw"`) to follow their respective papers.
 
-### Example: Custom PyTorch Optimizers and Parameters
+To supply a fully custom optimizer instance, build a `GradientTrainer` yourself and
+pass it via `trainer=` (only the DG and FSRE estimators accept a `trainer=` argument),
+or call `GradientTrainer.fit(model, x, y, optimizer=my_optimizer)` directly.
 
-You can pass the class reference of any standard PyTorch optimizer (from `torch.optim`) to the `optimizer_class` parameter.
+## Learning-rate schedules
+
+Every estimator accepts a `scheduler_class` plus `scheduler_params`. You pass the
+scheduler **class**, not an instance — the scheduler must bind to the optimizer, and
+the optimizer is only built inside `fit`, so a pre-constructed scheduler would decay an
+optimizer that is never stepped.
 
 ```python
-from torch.optim import AdamW
+from torch.optim.lr_scheduler import StepLR
 from highfis import HTSKClassifier
 
-# Instantiate HTSK with a custom optimizer configuration
 clf = HTSKClassifier(
     epochs=150,
-    learning_rate=1e-3,
-    optimizer_class=AdamW,  # Pass the PyTorch optimizer class
-    random_state=42
+    learning_rate=1e-2,
+    scheduler_class=StepLR,
+    scheduler_params={"step_size": 50, "gamma": 0.5},
+    random_state=42,
 )
-
-# Fit the model
 clf.fit(X_train, y_train)
+
+# The realised rate for each epoch is recorded in history_.
+print("Learning rate per epoch:", clf.history_["lr"])
 ```
+
+For the multi-phase `DG-TSK`, `DG-ALETSK` and `FSRE-ADATSK` estimators each phase builds
+its own optimizer, so the class is instantiated once per phase.
+
+> **Note:** `scheduler_class` is a class object, which `torch.load(weights_only=True)`
+> cannot unpickle, so it is not written into checkpoints. A model reloaded from disk is
+> not resuming training and does not need it.
 
 ---
 
@@ -243,6 +269,10 @@ The `history_` dictionary contains the following keys depending on the trainer a
 If no metrics are explicitly specified, the trainers automatically configure task-appropriate defaults:
 *   **Classification**: Defaults to `"accuracy"` (creating `"train_accuracy"` and `"val_accuracy"` keys).
 *   **Regression**: Defaults to `"mse"` (creating `"train_mse"` and `"val_mse"` keys).
+
+The `"train_<metric>"` keys are only present when `eval_metrics_every` is greater than `0`
+(the default is `1`). The `"val_<metric>"` keys are present whenever a validation set is
+supplied. Passing `metrics=[]` to `.fit()` disables both.
 
 To track additional metrics, pass them as a list of strings to the `.fit()` method:
 

@@ -22,11 +22,9 @@ Concrete subclasses must implement:
   module.
 - `BaseTSK._default_criterion` — return the default loss function.
 
-Optional overridable hooks:
-
-- `BaseTSK._compute_loss` — customize target preparation or loss composition.
-- `BaseTSK._evaluate_validation` — customize the validation metric used for
-  early stopping.
+Loss composition and validation scoring are hooks on the trainer
+(`highfis.optim.GradientTrainer._compute_loss` and
+`._evaluate_validation`), not on the model.
 """
 
 from __future__ import annotations
