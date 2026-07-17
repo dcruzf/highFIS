@@ -460,3 +460,16 @@ class TestSigmoidalMF:
         y = mf(x)
         assert bool(torch.all(y >= 0.0))
         assert bool(torch.all(y <= 1.0 + 1e-05))
+
+
+def test_adatsk_gaussian_mf_forward_matches_paper_form() -> None:
+    from highfis.memberships import ADATSKGaussianMF
+
+    mf = ADATSKGaussianMF(mean=0.5, sigma=2.0)
+    x = torch.tensor([0.5, 2.5, -1.5])
+    with torch.no_grad():
+        out = mf.forward(x)
+    # ADATSK form: exp(-((x - c) / sigma) ** 2), NOT the 1/2 factor of a standard Gaussian.
+    expected = torch.exp(-(((x - 0.5) / 2.0) ** 2))
+    assert torch.allclose(out, expected)
+    assert float(out[0]) == pytest.approx(1.0)  # peaks at the mean

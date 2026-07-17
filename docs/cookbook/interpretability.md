@@ -46,5 +46,6 @@ activations shape: (5, 3)
 mf params for first feature: x1
 ```
 
-Use `inspect()` for a quick overview, `get_mf_params()` / `get_rule_table()` for the
-exact antecedents, and `rule_activation()` to see which rules fire for given inputs.
+Use `inspect()` for a quick overview (its `"rule_table"` and `"mf_params"` entries give
+the exact antecedents), `get_mf_params()` for the raw membership parameters, and
+`rule_activation()` to see which rules fire for given inputs.

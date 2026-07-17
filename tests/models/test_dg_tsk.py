@@ -99,15 +99,35 @@ def test_dgtsk_regressor_search_thresholds_on_first_order_model() -> None:
 def test_dgtsk_classifier_convert_to_first_order_idempotent() -> None:
     model = DGTSKClassifierModel(_build_input_mfs(), n_classes=2)
     model.convert_to_first_order()
+    with torch.no_grad():
+        for p in model.consequent_layer.parameters():
+            p.fill_(0.5)
+    trained = {k: v.clone() for k, v in model.consequent_layer.state_dict().items()}
+
     model.convert_to_first_order()
+
     assert model.consequent_layer.__class__.__name__ == "GatedClassificationConsequentLayer"
+    after = model.consequent_layer.state_dict()
+    assert set(after) == set(trained)
+    for k, expected in trained.items():
+        assert torch.equal(after[k], expected), f"{k} was reset by a second conversion"
 
 
 def test_dgtsk_regressor_convert_to_first_order_idempotent() -> None:
     model = DGTSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     model.convert_to_first_order()
+    with torch.no_grad():
+        for p in model.consequent_layer.parameters():
+            p.fill_(0.5)
+    trained = {k: v.clone() for k, v in model.consequent_layer.state_dict().items()}
+
     model.convert_to_first_order()
+
     assert model.consequent_layer.__class__.__name__ == "GatedRegressionConsequentLayer"
+    after = model.consequent_layer.state_dict()
+    assert set(after) == set(trained)
+    for k, expected in trained.items():
+        assert torch.equal(after[k], expected), f"{k} was reset by a second conversion"
 
 
 def test_dgtsk_regressor_search_thresholds_no_candidates_raises() -> None:

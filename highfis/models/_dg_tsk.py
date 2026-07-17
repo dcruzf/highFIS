@@ -139,11 +139,16 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
     default_criterion = nn.MSELoss
 
     def convert_to_first_order(self) -> None:
-        """Convert the DG-TSK model from zero-order to first-order consequent."""
+        """Convert the DG-TSK model from zero-order to first-order consequent.
+
+        No-op when the consequent is already first-order: rebuilding it would
+        discard the trained parameters and re-initialise the rule gates.
+        """
         previous = self.consequent_layer
+        if not isinstance(previous, GatedClassificationZeroOrderConsequentLayer):
+            return
         new_consequent = self._build_consequent_layer()
-        if isinstance(previous, GatedClassificationZeroOrderConsequentLayer):
-            new_consequent.theta_gates.data.copy_(previous.theta_gates.data)
+        new_consequent.theta_gates.data.copy_(previous.theta_gates.data)
         self.consequent_layer = new_consequent
 
     def get_feature_gate_values(self) -> Tensor:
@@ -481,11 +486,16 @@ class DGTSKRegressorModel(BaseTSKRegressorModel):
     default_criterion = nn.MSELoss
 
     def convert_to_first_order(self) -> None:
-        """Convert the DG-TSK regressor from zero-order to first-order consequent."""
+        """Convert the DG-TSK regressor from zero-order to first-order consequent.
+
+        No-op when the consequent is already first-order: rebuilding it would
+        discard the trained parameters and re-initialise the rule gates.
+        """
         previous = self.consequent_layer
+        if not isinstance(previous, GatedRegressionZeroOrderConsequentLayer):
+            return
         new_consequent = self._build_consequent_layer()
-        if isinstance(previous, GatedRegressionZeroOrderConsequentLayer):
-            new_consequent.theta_gates.data.copy_(previous.theta_gates.data)
+        new_consequent.theta_gates.data.copy_(previous.theta_gates.data)
         self.consequent_layer = new_consequent
 
     def get_feature_gate_values(self) -> Tensor:

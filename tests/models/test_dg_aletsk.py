@@ -206,8 +206,18 @@ def test_dg_aletsk_classifier_search_thresholds_inplace_true_converts_zero_order
 def test_dg_aletsk_classifier_convert_to_first_order_idempotent() -> None:
     model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     model.convert_to_first_order()
+    with torch.no_grad():
+        for p in model.consequent_layer.parameters():
+            p.fill_(0.5)
+    trained = {k: v.clone() for k, v in model.consequent_layer.state_dict().items()}
+
     model.convert_to_first_order()
+
     assert isinstance(model.consequent_layer, GatedClassificationConsequentLayer)
+    after = model.consequent_layer.state_dict()
+    assert set(after) == set(trained)
+    for k, expected in trained.items():
+        assert torch.equal(after[k], expected), f"{k} was reset by a second conversion"
 
 
 def test_dg_aletsk_regressor_thresholds_apply_and_search() -> None:
@@ -245,8 +255,18 @@ def test_dg_aletsk_regressor_search_thresholds_inplace_true_keeps_zero_order_whe
 def test_dg_aletsk_regressor_convert_to_first_order_idempotent() -> None:
     model = DGALETSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
     model.convert_to_first_order()
+    with torch.no_grad():
+        for p in model.consequent_layer.parameters():
+            p.fill_(0.5)
+    trained = {k: v.clone() for k, v in model.consequent_layer.state_dict().items()}
+
     model.convert_to_first_order()
+
     assert isinstance(model.consequent_layer, GatedRegressionConsequentLayer)
+    after = model.consequent_layer.state_dict()
+    assert set(after) == set(trained)
+    for k, expected in trained.items():
+        assert torch.equal(after[k], expected), f"{k} was reset by a second conversion"
 
 
 def test_dg_aletsk_classifier_convert_to_first_order_preserves_theta() -> None:

@@ -368,6 +368,9 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         restore_best: bool = True,
         weight_decay: float = 1e-8,
         device: str = "cpu",
+        eval_metrics_every: int = 1,
+        scheduler_class: type[Any] | None = None,
+        scheduler_params: Mapping[str, Any] | None = None,
     ) -> None:
         """Initialize a MHTSK classifier estimator.
 
@@ -405,6 +408,14 @@ class MHTSKClassifier(_BaseClassifierEstimator):
             weight_decay: Weight decay coefficient for the optimizer.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
+            eval_metrics_every: Evaluate training metrics every ``n`` epochs; ``0``
+                skips them. Each evaluation is an extra forward pass over the training
+                set and only fills ``history_["train_<metric>"]``; early stopping uses
+                validation metrics regardless.
+            scheduler_class: Learning-rate scheduler *class* (e.g.
+                ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
+                it must bind to is only built inside ``fit``.
+            scheduler_params: Keyword arguments for ``scheduler_class``.
         """
         super().__init__(
             input_configs=input_configs,
@@ -426,6 +437,9 @@ class MHTSKClassifier(_BaseClassifierEstimator):
             restore_best=restore_best,
             weight_decay=weight_decay,
             device=device,
+            eval_metrics_every=eval_metrics_every,
+            scheduler_class=scheduler_class,
+            scheduler_params=scheduler_params,
         )
         self.n_heads = n_heads
         self.head_size = head_size
@@ -517,7 +531,8 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         if not bool(self.rule_extraction):
             return self
 
-        x_t = self._as_tensor_x(x_arr)
+        _device = torch.device(str(self.device))
+        x_t = self._as_tensor_x(x_arr, _device)
         self.model_.eval()
         with torch.no_grad():
             norm_w = self.model_.forward_antecedents(x_t)
@@ -530,30 +545,17 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         self._build_extracted_model(input_mfs, selected)
 
         if self.retrain_after_extraction:
-            from ..optim import GradientTrainer
-
             x_val_t: torch.Tensor | None = None
             y_val_t: torch.Tensor | None = None
             if x_val is not None and y_val is not None:
                 x_v_arr, y_v_arr = check_X_y(x_val, y_val)
-                x_val_t = self._as_tensor_x(x_v_arr)
+                x_val_t = self._as_tensor_x(x_v_arr, _device)
                 y_val_t = torch.as_tensor(
                     self._label_encoder_.transform(np.asarray(y_v_arr)),
                     dtype=torch.long,
                 )
-            trainer = GradientTrainer(
-                epochs=int(self.epochs),
-                learning_rate=float(self.learning_rate),
-                batch_size=self.batch_size,
-                shuffle=bool(self.shuffle),
-                ur_weight=float(self.ur_weight),
-                ur_target=self.ur_target,
-                verbose=self.verbose,
-                patience=self.patience,
-                restore_best=self.restore_best,
-                weight_decay=float(self.weight_decay),
-            )
-            self.history_ = trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t)
+            trainer = self.trainer if self.trainer is not None else self._get_trainer()
+            self.history_ = trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
         return self
 
 
@@ -613,6 +615,9 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         restore_best: bool = True,
         weight_decay: float = 1e-8,
         device: str = "cpu",
+        eval_metrics_every: int = 1,
+        scheduler_class: type[Any] | None = None,
+        scheduler_params: Mapping[str, Any] | None = None,
     ) -> None:
         """Initialize a MHTSK regressor estimator.
 
@@ -649,6 +654,14 @@ class MHTSKRegressor(_BaseRegressorEstimator):
             weight_decay: Weight decay coefficient for the optimizer.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
+            eval_metrics_every: Evaluate training metrics every ``n`` epochs; ``0``
+                skips them. Each evaluation is an extra forward pass over the training
+                set and only fills ``history_["train_<metric>"]``; early stopping uses
+                validation metrics regardless.
+            scheduler_class: Learning-rate scheduler *class* (e.g.
+                ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
+                it must bind to is only built inside ``fit``.
+            scheduler_params: Keyword arguments for ``scheduler_class``.
 
         Notes:
             The regressor supports only unsupervised rule extraction via
@@ -674,6 +687,9 @@ class MHTSKRegressor(_BaseRegressorEstimator):
             restore_best=restore_best,
             weight_decay=weight_decay,
             device=device,
+            eval_metrics_every=eval_metrics_every,
+            scheduler_class=scheduler_class,
+            scheduler_params=scheduler_params,
         )
         self.n_heads = n_heads
         self.head_size = head_size
@@ -748,7 +764,8 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         if not bool(self.rule_extraction):
             return self
 
-        x_t = self._as_tensor_x(x_arr)
+        _device = torch.device(str(self.device))
+        x_t = self._as_tensor_x(x_arr, _device)
         self.model_.eval()
         with torch.no_grad():
             norm_w = self.model_.forward_antecedents(x_t)
@@ -760,28 +777,15 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         self._build_extracted_model(input_mfs, selected)
 
         if self.retrain_after_extraction:
-            from ..optim import GradientTrainer
-
             y_t = torch.as_tensor(np.asarray(y_arr), dtype=torch.float32)
             x_val_t: torch.Tensor | None = None
             y_val_t: torch.Tensor | None = None
             if x_val is not None and y_val is not None:
                 x_v_arr, y_v_arr = check_X_y(x_val, y_val)
-                x_val_t = self._as_tensor_x(x_v_arr)
+                x_val_t = self._as_tensor_x(x_v_arr, _device)
                 y_val_t = torch.as_tensor(np.asarray(y_v_arr, dtype=np.float32), dtype=torch.float32)
-            trainer = GradientTrainer(
-                epochs=int(self.epochs),
-                learning_rate=float(self.learning_rate),
-                batch_size=self.batch_size,
-                shuffle=bool(self.shuffle),
-                ur_weight=float(self.ur_weight),
-                ur_target=self.ur_target,
-                verbose=self.verbose,
-                patience=self.patience,
-                restore_best=self.restore_best,
-                weight_decay=float(self.weight_decay),
-            )
-            self.history_ = trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t)
+            trainer = self.trainer if self.trainer is not None else self._get_trainer()
+            self.history_ = trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
         return self
 
     def _build_regressor_model(

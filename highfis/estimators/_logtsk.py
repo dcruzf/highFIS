@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from typing import Any
 
 from ..memberships import (
     MembershipFunction,
@@ -65,6 +66,9 @@ class LogTSKClassifier(_BaseClassifierEstimator):
         restore_best: bool = True,
         weight_decay: float = 1e-8,
         device: str = "cpu",
+        eval_metrics_every: int = 1,
+        scheduler_class: type[Any] | None = None,
+        scheduler_params: Mapping[str, Any] | None = None,
     ) -> None:
         """Initialise a LogTSK classifier.
 
@@ -90,6 +94,14 @@ class LogTSKClassifier(_BaseClassifierEstimator):
             weight_decay: L2 weight decay for consequent parameters.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
+            eval_metrics_every: Evaluate training metrics every ``n`` epochs; ``0``
+                skips them. Each evaluation is an extra forward pass over the training
+                set and only fills ``history_["train_<metric>"]``; early stopping uses
+                validation metrics regardless.
+            scheduler_class: Learning-rate scheduler *class* (e.g.
+                ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
+                it must bind to is only built inside ``fit``.
+            scheduler_params: Keyword arguments for ``scheduler_class``.
         """
         super().__init__(
             input_configs=input_configs,
@@ -109,6 +121,10 @@ class LogTSKClassifier(_BaseClassifierEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
+            eval_metrics_every=eval_metrics_every,
+            scheduler_class=scheduler_class,
+            scheduler_params=scheduler_params,
         )
 
     def _build_model(
@@ -174,6 +190,9 @@ class LogTSKRegressor(_BaseRegressorEstimator):
         restore_best: bool = True,
         weight_decay: float = 1e-8,
         device: str = "cpu",
+        eval_metrics_every: int = 1,
+        scheduler_class: type[Any] | None = None,
+        scheduler_params: Mapping[str, Any] | None = None,
     ) -> None:
         """Initialise a LogTSK regressor.
 
@@ -199,6 +218,14 @@ class LogTSKRegressor(_BaseRegressorEstimator):
             weight_decay: L2 weight decay for consequent parameters.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
+            eval_metrics_every: Evaluate training metrics every ``n`` epochs; ``0``
+                skips them. Each evaluation is an extra forward pass over the training
+                set and only fills ``history_["train_<metric>"]``; early stopping uses
+                validation metrics regardless.
+            scheduler_class: Learning-rate scheduler *class* (e.g.
+                ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
+                it must bind to is only built inside ``fit``.
+            scheduler_params: Keyword arguments for ``scheduler_class``.
         """
         super().__init__(
             input_configs=input_configs,
@@ -218,6 +245,10 @@ class LogTSKRegressor(_BaseRegressorEstimator):
             patience=patience,
             restore_best=restore_best,
             weight_decay=weight_decay,
+            device=device,
+            eval_metrics_every=eval_metrics_every,
+            scheduler_class=scheduler_class,
+            scheduler_params=scheduler_params,
         )
 
     def _build_regressor_model(

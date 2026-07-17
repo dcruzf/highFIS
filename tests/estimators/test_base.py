@@ -796,3 +796,41 @@ def test_read_cache_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert _read_cache_env()["maxsize"] == 128
     monkeypatch.setenv("HIGHFIS_MF_CACHE_SIZE", "0")  # < 1 -> default
     assert _read_cache_env()["maxsize"] == 128
+
+
+def test_set_mf_cache_size_changes_capacity_and_evicts() -> None:
+    from highfis import clear_mf_cache, mf_cache_info, set_mf_cache_size
+
+    x, _ = _make_dataset(40)
+    clear_mf_cache()
+    try:
+        set_mf_cache_size(4)
+        assert mf_cache_info().maxsize == 4
+        for rs in range(1, 7):  # six distinct keys into a size-4 cache
+            HTSKClassifier(n_mfs=2, mf_init="kmeans", epochs=1, random_state=rs, batch_size=16)._build_input_mfs(x)
+        assert mf_cache_info().currsize == 4  # capped, LRU-evicted
+    finally:
+        set_mf_cache_size(128)  # restore the default for other tests
+    assert mf_cache_info().maxsize == 128
+
+
+def test_restore_consequent_structure_noop_when_model_lacks_mode_support() -> None:
+    """The consequent restorer tolerates a model that exposes neither mode mechanism.
+
+    ``consequent_mode`` is only persisted for gated layers, so a stored value normally
+    implies a matching setter on load. This guards the base loader against a model whose
+    consequent layer has no ``mode`` and no ``set_consequent_mode``: it must no-op rather
+    than raise.
+    """
+    from highfis.estimators._base import _BaseTSKEstimator
+
+    class _PlainLayer:
+        pass
+
+    class _PlainModel:
+        consequent_layer = _PlainLayer()
+
+    model = _PlainModel()
+    # Neither is_first_order nor a mode setter applies; the call must simply do nothing.
+    _BaseTSKEstimator._restore_consequent_structure(model, {"consequent_mode": "re"})
+    assert not hasattr(model.consequent_layer, "mode")

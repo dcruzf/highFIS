@@ -22,11 +22,9 @@ Concrete subclasses must implement:
   module.
 - `BaseTSK._default_criterion` — return the default loss function.
 
-Optional overridable hooks:
-
-- `BaseTSK._compute_loss` — customize target preparation or loss composition.
-- `BaseTSK._evaluate_validation` — customize the validation metric used for
-  early stopping.
+Loss composition and validation scoring are hooks on the trainer
+(`highfis.optim.GradientTrainer._compute_loss` and
+`._evaluate_validation`), not on the model.
 """
 
 from __future__ import annotations
@@ -47,6 +45,22 @@ from ..protocols import Defuzzifier
 from ..t_norms import TNormFn
 
 logger: logging.Logger = logging.getLogger(__name__)
+
+
+def set_training_flag(module: nn.Module, mode: bool) -> None:
+    """Set ``training`` on *module* and every descendant, bypassing ``nn.Module.train()``.
+
+    Equivalent to ``module.train(mode)``, but ``train()`` walks ``children()`` and routes
+    every assignment through ``nn.Module.__setattr__``. A TSK model carries one membership
+    submodule per (feature, MF) pair -- 8007 of them at 2000 features -- so a single
+    eval/train switch costs thousands of Python calls, which dominated every metric and
+    inference pass. For a plain ``bool`` ``nn.Module.__setattr__`` merely falls through to
+    ``object.__setattr__``, so this performs the identical assignment without the dispatch.
+    """
+    object.__setattr__(module, "training", mode)
+    for child in module._modules.values():
+        if child is not None:
+            set_training_flag(child, mode)
 
 
 class BaseTSK(nn.Module):
@@ -200,12 +214,12 @@ class BaseTSK(nn.Module):
         if use_double:
             self.double()
         try:
-            self.eval()
+            set_training_flag(self, False)
             return fn(x)
         finally:
             if use_double:
                 self.float()
-            self.train(was_training)
+            set_training_flag(self, was_training)
 
 
-__all__: list[str] = ["BaseTSK"]
+__all__: list[str] = ["BaseTSK", "set_training_flag"]

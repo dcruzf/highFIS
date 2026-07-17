@@ -132,12 +132,16 @@ class DGALETSKClassifierModel(BaseTSKClassifierModel):
         paper's Eq. 25 and refined during the DG phase) is carried over to the
         first-order consequent so the fine-tuning phase starts from a
         label-aligned consequent rather than from scratch.
+
+        No-op when the consequent is already first-order: rebuilding it would
+        discard the trained parameters and re-initialise the rule gates.
         """
         previous = self.consequent_layer
+        if not isinstance(previous, GatedClassificationZeroOrderConsequentLayer):
+            return
         new_consequent = self._build_consequent_layer()
-        if isinstance(previous, GatedClassificationZeroOrderConsequentLayer):
-            new_consequent.theta_gates.data.copy_(previous.theta_gates.data)
-            new_consequent.bias.data.copy_(previous.bias.data)
+        new_consequent.theta_gates.data.copy_(previous.theta_gates.data)
+        new_consequent.bias.data.copy_(previous.bias.data)
         self.consequent_layer = new_consequent
 
     def get_feature_gate_values(self) -> Tensor:
@@ -481,12 +485,16 @@ class DGALETSKRegressorModel(BaseTSKRegressorModel):
         The DG-phase zero-order ``bias`` is carried over to the first-order
         consequent so fine-tuning starts from the refined consequent rather
         than from scratch.
+
+        No-op when the consequent is already first-order: rebuilding it would
+        discard the trained parameters and re-initialise the rule gates.
         """
         previous = self.consequent_layer
+        if not isinstance(previous, GatedRegressionZeroOrderConsequentLayer):
+            return
         new_consequent = self._build_consequent_layer()
-        if isinstance(previous, GatedRegressionZeroOrderConsequentLayer):
-            new_consequent.theta_gates.data.copy_(previous.theta_gates.data)
-            new_consequent.bias.data.copy_(previous.bias.data)
+        new_consequent.theta_gates.data.copy_(previous.theta_gates.data)
+        new_consequent.bias.data.copy_(previous.bias.data)
         self.consequent_layer = new_consequent
 
     def get_feature_gate_values(self) -> Tensor:

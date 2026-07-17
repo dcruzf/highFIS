@@ -108,9 +108,9 @@ print("Test Score:", best_pipeline.score(X_test, y_test))
 
 ## 4. RandomizedSearchCV for Large Spaces
 
-If you are tuning multiple parameters across a wide search space, `RandomizedSearchCV` is more efficient than exhaustive grid search:
+If you are tuning multiple parameters across a wide search space, `RandomizedSearchCV` is more efficient than exhaustive grid search. This reuses the `pipe` built in the previous section:
 
-```python
+```{.python continuation}
 from sklearn.model_selection import RandomizedSearchCV
 from scipy.stats import loguniform, randint
 from sklearn.pipeline import Pipeline

@@ -475,3 +475,118 @@ def test_gradient_trainer_scheduler_and_edge_cases() -> None:
     history_cls = trainer.fit(model, x, y, x_val=x, y_val=y, metrics=["precision_macro"])
     assert "val_accuracy" in history_cls
     assert "val_acc" in history_cls
+
+
+def test_set_training_flag_matches_module_train() -> None:
+    """The fast mode switch must be indistinguishable from ``nn.Module.train()``.
+
+    It bypasses ``nn.Module.__setattr__``, which for a plain bool is just
+    ``object.__setattr__``; this pins that equivalence across every submodule.
+    """
+    from highfis.models._base import set_training_flag
+    from highfis.models._fsre import FSREADATSKClassifierModel
+
+    model = FSREADATSKClassifierModel(_build_input_mfs(3, 2), n_classes=2, consequent_batch_norm=True)
+
+    model.train()
+    set_training_flag(model, False)
+    assert [m.training for m in model.modules()] == [False] * len(list(model.modules()))
+
+    set_training_flag(model, True)
+    assert [m.training for m in model.modules()] == [True] * len(list(model.modules()))
+
+    # Reference: the flags train()/eval() themselves produce, module for module.
+    model.eval()
+    expected_eval = [m.training for m in model.modules()]
+    model.train()
+    set_training_flag(model, False)
+    assert [m.training for m in model.modules()] == expected_eval
+
+
+def test_metric_pass_does_not_disturb_batch_norm_running_stats() -> None:
+    """The metric pass must stay in eval mode: BatchNorm running stats are not training data.
+
+    This is the case where the mode switch actually has to happen -- if it were skipped,
+    the extra forward would silently fold the training set into the running statistics.
+    """
+    from highfis.models._fsre import FSREADATSKClassifierModel
+
+    model = FSREADATSKClassifierModel(_build_input_mfs(3, 2), n_classes=2, consequent_batch_norm=True)
+    x = torch.randn(15, 3)
+    bn = model.consequent_bn
+    assert bn is not None
+
+    model.train()
+    trainer = GradientTrainer(epochs=1)
+    before_mean = bn.running_mean.clone()
+    before_var = bn.running_var.clone()
+    before_batches = bn.num_batches_tracked.clone()
+
+    trainer._forward_batched(model, x)
+
+    assert torch.equal(bn.running_mean, before_mean)
+    assert torch.equal(bn.running_var, before_var)
+    assert torch.equal(bn.num_batches_tracked, before_batches)
+    assert model.training is True
+
+
+def test_gradient_trainer_validation_runs_a_single_forward_per_epoch() -> None:
+    """Validation loss and validation metrics share one forward pass.
+
+    They are evaluated under the same weights and the same eval mode, so a second pass
+    was pure overhead.
+    """
+    from highfis.models._fsre import FSREADATSKClassifierModel
+
+    model = FSREADATSKClassifierModel(_build_input_mfs(3, 2), n_classes=2)
+    x = torch.randn(15, 3)
+    y = torch.randint(0, 2, (15,))
+
+    trainer = GradientTrainer(epochs=3, eval_metrics_every=0)
+    calls = {"n": 0}
+    original = GradientTrainer._forward_batched
+
+    def spy(self, m, xx):  # type: ignore[no-untyped-def]
+        calls["n"] += 1
+        return original(self, m, xx)
+
+    GradientTrainer._forward_batched = spy  # type: ignore[method-assign]
+    try:
+        trainer.fit(model, x, y, x_val=x, y_val=y)
+    finally:
+        GradientTrainer._forward_batched = original  # type: ignore[method-assign]
+
+    assert calls["n"] == 3
+
+
+def test_gradient_trainer_eval_metrics_every() -> None:
+    """``eval_metrics_every`` thins out the train-metric pass without touching validation."""
+    from highfis.models._fsre import FSREADATSKClassifierModel
+
+    x = torch.randn(15, 3)
+    y = torch.randint(0, 2, (15,))
+
+    model = FSREADATSKClassifierModel(_build_input_mfs(3, 2), n_classes=2)
+    history = GradientTrainer(epochs=4, eval_metrics_every=2).fit(model, x, y, x_val=x, y_val=y)
+    assert len(history["train_accuracy"]) == 2
+    assert len(history["val_accuracy"]) == 4
+
+    model = FSREADATSKClassifierModel(_build_input_mfs(3, 2), n_classes=2)
+    history = GradientTrainer(epochs=4, eval_metrics_every=0).fit(model, x, y, x_val=x, y_val=y)
+    assert "train_accuracy" not in history
+    assert len(history["val_accuracy"]) == 4
+
+
+def test_set_training_flag_skips_none_children() -> None:
+    """``nn.Module`` may register a submodule slot as ``None``; the walk must skip it."""
+    import torch.nn as nn
+
+    from highfis.models._base import set_training_flag
+
+    module = nn.Module()
+    module.register_module("real", nn.Linear(2, 2))
+    module.register_module("absent", None)  # a None slot in ``_modules``
+
+    set_training_flag(module, False)
+    assert module.training is False
+    assert module.real.training is False  # type: ignore[union-attr]

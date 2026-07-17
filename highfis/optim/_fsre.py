@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any
 
 import torch
@@ -90,6 +90,9 @@ class FSRETrainer(BaseTrainer):
         # ── Shared ────────────────────────────────────────────────────────
         verbose: bool | int = False,
         loss: Callable[..., Any] | None = None,
+        eval_metrics_every: int = 1,
+        scheduler_class: type[Any] | None = None,
+        scheduler_params: Mapping[str, Any] | None = None,
     ) -> None:
         """Initialise an FSRE trainer.
 
@@ -137,6 +140,13 @@ class FSRETrainer(BaseTrainer):
             verbose: Verbosity level forwarded to all three phases.
             loss: Custom loss function ``f(output, target) -> scalar``.
                 ``None`` uses the model's built-in criterion.
+            eval_metrics_every: Evaluate training metrics every ``n`` epochs in each
+                gradient phase; ``0`` skips them. See
+                :class:`~highfis.optim.GradientTrainer`.
+            scheduler_class: Learning-rate scheduler *class*, applied to every gradient
+                phase. Each phase builds its own optimiser, so each also gets its own
+                scheduler instance -- one shared instance could not span them.
+            scheduler_params: Keyword arguments for ``scheduler_class``.
         """
         self.fs_epochs = fs_epochs
         self.fs_learning_rate = fs_learning_rate
@@ -171,6 +181,9 @@ class FSRETrainer(BaseTrainer):
         self.structural_pruning = structural_pruning
         self.verbose = verbose
         self.loss = loss
+        self.eval_metrics_every = eval_metrics_every
+        self.scheduler_class = scheduler_class
+        self.scheduler_params = scheduler_params
 
     def fit(
         self,
@@ -219,6 +232,9 @@ class FSRETrainer(BaseTrainer):
             epochs=int(self.fs_epochs),
             learning_rate=float(self.fs_learning_rate),
             loss=self.loss,
+            eval_metrics_every=self.eval_metrics_every,
+            scheduler_class=self.scheduler_class,
+            scheduler_params=self.scheduler_params,
             batch_size=self.fs_batch_size,
             shuffle=bool(self.fs_shuffle),
             ur_weight=float(self.fs_ur_weight),
@@ -251,6 +267,9 @@ class FSRETrainer(BaseTrainer):
             epochs=int(self.re_epochs),
             learning_rate=float(self.re_learning_rate),
             loss=self.loss,
+            eval_metrics_every=self.eval_metrics_every,
+            scheduler_class=self.scheduler_class,
+            scheduler_params=self.scheduler_params,
             batch_size=self.re_batch_size,
             shuffle=bool(self.re_shuffle),
             ur_weight=float(self.re_ur_weight),
@@ -285,6 +304,9 @@ class FSRETrainer(BaseTrainer):
             epochs=int(self.finetune_epochs),
             learning_rate=float(self.finetune_learning_rate),
             loss=self.loss,
+            eval_metrics_every=self.eval_metrics_every,
+            scheduler_class=self.scheduler_class,
+            scheduler_params=self.scheduler_params,
             batch_size=self.finetune_batch_size,
             shuffle=bool(self.finetune_shuffle),
             ur_weight=float(self.finetune_ur_weight),
