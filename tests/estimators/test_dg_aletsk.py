@@ -253,3 +253,48 @@ def test_dgaletsk_rule_activation_after_feature_pruning() -> None:
     clf.fit(x, y)
     acts = clf.rule_activation(x)
     assert acts.shape == (60, clf.model_.n_rules)
+
+
+def test_dgaletsk_effective_pfrb_max_rules_returns_explicit_value() -> None:
+    """An explicit ``pfrb_max_rules`` is used verbatim, bypassing the dimension default."""
+    est = DGALETSKClassifier(rule_base="pfrb", pfrb_max_rules=17)
+    assert est._effective_pfrb_max_rules(10_000) == 17
+
+
+def test_dgaletsk_classifier_save_load_round_trip(tmp_path: object) -> None:
+    """A fitted DG-ALETSK classifier round-trips through save/load.
+
+    Regression: the fine-tune phase converts the consequent to first order, but the base
+    loader rebuilt it zero-order and raised on ``load_state_dict``. The base now records
+    ``is_first_order`` and rebuilds the first-order consequent before loading.
+    """
+    import numpy as np
+
+    x, y = _make_dataset(40)
+    clf = DGALETSKClassifier(n_mfs=2, mf_init="kmeans", dg_epochs=2, finetune_epochs=2, random_state=0)
+    clf.fit(x, y)
+    saved_mode = clf.model_.consequent_layer.mode
+
+    target = str(tmp_path) + "/dgaletsk_clf.pt"  # type: ignore[operator]
+    clf.save(target)
+    reloaded = DGALETSKClassifier.load(target)
+
+    assert reloaded.model_.consequent_layer.mode == saved_mode
+    assert np.array_equal(reloaded.predict(x), clf.predict(x))
+
+
+def test_dgaletsk_regressor_save_load_round_trip(tmp_path: object) -> None:
+    """A fitted DG-ALETSK regressor round-trips through save/load (same fix as the classifier)."""
+    import numpy as np
+
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=(40, 3)).astype(np.float32)
+    y = (x[:, 0] + 0.5 * x[:, 1]).astype(np.float32)
+    reg = DGALETSKRegressor(n_mfs=2, mf_init="kmeans", dg_epochs=2, finetune_epochs=2, random_state=0)
+    reg.fit(x, y)
+
+    target = str(tmp_path) + "/dgaletsk_reg.pt"  # type: ignore[operator]
+    reg.save(target)
+    reloaded = DGALETSKRegressor.load(target)
+
+    assert np.allclose(reloaded.predict(x), reg.predict(x))

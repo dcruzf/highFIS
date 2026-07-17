@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any, cast
 
 import numpy as np
@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from tqdm.auto import trange
 
 from ..metrics import compute_metrics
-from ..models._base import BaseTSK
+from ..models._base import BaseTSK, set_training_flag
 from ._base import BaseTrainer
 from ._utils import (
     _get_optimizer_config,
@@ -67,6 +67,9 @@ class GradientTrainer(BaseTrainer):
         ur_target: float | None = None,
         verbose: bool | int = False,
         loss: Callable[..., Any] | None = None,
+        eval_metrics_every: int = 1,
+        scheduler_class: type[Any] | None = None,
+        scheduler_params: Mapping[str, Any] | None = None,
     ) -> None:
         """Initialise a gradient trainer.
 
@@ -88,6 +91,19 @@ class GradientTrainer(BaseTrainer):
                 - ``3``: log every epoch.
             loss: Custom loss function ``f(output, target) -> scalar``.
                 ``None`` uses the model's built-in criterion.
+            eval_metrics_every: Evaluate the *training* metrics every ``n`` epochs;
+                ``0`` skips them entirely. Each evaluation is a full extra forward pass
+                over the training set, and the resulting ``history["train_<metric>"]``
+                entries are diagnostic only -- they never feed early stopping, which
+                consults validation metrics alone. Validation metrics are unaffected and
+                are always evaluated every epoch.
+            scheduler_class: Learning-rate scheduler *class* (e.g.
+                ``torch.optim.lr_scheduler.StepLR``), not an instance. A scheduler binds
+                to an optimiser when constructed and the optimiser is only built inside
+                :meth:`fit`, so an instance made in advance would decay an optimiser that
+                is never stepped.
+            scheduler_params: Keyword arguments for ``scheduler_class``. The optimiser is
+                supplied automatically as the first positional argument.
         """
         self.epochs = epochs
         self.learning_rate = learning_rate
@@ -100,6 +116,28 @@ class GradientTrainer(BaseTrainer):
         self.ur_target = ur_target
         self.verbose = verbose
         self.loss = loss
+        self.eval_metrics_every = eval_metrics_every
+        self.scheduler_class = scheduler_class
+        self.scheduler_params = scheduler_params
+
+    def _build_scheduler(self, optimizer: torch.optim.Optimizer, scheduler: Any) -> Any:
+        """Resolve the learning-rate scheduler to use for this run.
+
+        An explicit *scheduler* instance wins; otherwise one is built from
+        :attr:`scheduler_class` and bound to *optimizer*. Building it here rather than
+        accepting an instance is what makes the decay actually reach training: the
+        optimiser does not exist until :meth:`fit` runs.
+        """
+        if scheduler is not None:
+            return scheduler
+        if self.scheduler_class is None:
+            return None
+        return self.scheduler_class(optimizer, **dict(self.scheduler_params or {}))
+
+    def _should_eval_train_metrics(self, epoch: int) -> bool:
+        """Whether the training-metric pass runs on this (0-based) epoch."""
+        every = int(self.eval_metrics_every)
+        return every > 0 and (epoch + 1) % every == 0
 
     def _init_history(self, has_val: bool, metrics_list: list[str]) -> dict[str, Any]:
         """Initialize history dictionary with a fixed schema."""
@@ -122,7 +160,8 @@ class GradientTrainer(BaseTrainer):
         if has_val:
             history["val"] = []
         for m in metrics_list:
-            history[f"train_{m}"] = []
+            if int(self.eval_metrics_every) > 0:
+                history[f"train_{m}"] = []
             if has_val:
                 history[f"val_{m}"] = []
         return history
@@ -135,8 +174,10 @@ class GradientTrainer(BaseTrainer):
         metrics_list: list[str],
         history: dict[str, Any],
         prefix: str,
+        preds: Tensor | None = None,
     ) -> dict[str, float]:
-        preds = self._predict_tensor(model, x)
+        if preds is None:
+            preds = self._predict_tensor(model, x)
         m_vals = compute_metrics(cast(Any, model.task_type), y, preds, metrics=metrics_list)
         for m in metrics_list:
             history.setdefault(f"{prefix}_{m}", []).append(m_vals[m])
@@ -160,13 +201,19 @@ class GradientTrainer(BaseTrainer):
         pbar: Any,
     ) -> tuple[float, int, dict[str, Any] | None, bool]:
         """Run validation evaluation, logging, and early-stopping logic."""
-        model.eval()
-        val_info = self._evaluate_validation(model, train_criterion, x_val, y_val)
+        set_training_flag(model, False)
+        # One forward pass feeds both the loss and the metrics; they are evaluated under
+        # the same weights and the same eval mode, so recomputing it would be pure waste.
+        val_output = self._forward_batched(model, x_val)
+        val_info = self._evaluate_validation(model, train_criterion, y_val, output=val_output)
         history["val"].append(val_info["val_loss"])
         history["val_loss"].append(val_info["val_loss"])
 
         if metrics_list:
-            val_metrics = self._evaluate_epoch_metrics(model, x_val, y_val, metrics_list, history, "val")
+            val_preds = self._preds_from_output(model, val_output)
+            val_metrics = self._evaluate_epoch_metrics(
+                model, x_val, y_val, metrics_list, history, "val", preds=val_preds
+            )
             for m in metrics_list:
                 val_info[f"val_{m}"] = val_metrics[m]
 
@@ -182,7 +229,7 @@ class GradientTrainer(BaseTrainer):
             history.setdefault("val_accuracy", []).append(val_info["val_accuracy"])
             history.setdefault("val_acc", []).append(val_info["val_accuracy"])
 
-        model.train()
+        set_training_flag(model, True)
 
         should_stop = False
         if metric > best_metric:
@@ -264,6 +311,7 @@ class GradientTrainer(BaseTrainer):
         has_val = self._validate_fit_inputs(model, x, y, x_val, y_val, self.ur_weight, self.ur_target)
         train_criterion = self.loss or model.default_criterion()
         train_optimizer = self._build_optimizer(model, optimizer, self.learning_rate, self.weight_decay)
+        scheduler = self._build_scheduler(train_optimizer, scheduler)
 
         train_loader = self._build_train_loader(x, y)
         metrics_list, maximize = self._resolve_metrics(metrics, model.task_type)
@@ -294,9 +342,10 @@ class GradientTrainer(BaseTrainer):
             history["train_total_loss"].append(epoch_total_loss)
 
             # Evaluate metrics on train set
-            if metrics_list:
+            if metrics_list and self._should_eval_train_metrics(epoch):
                 self._evaluate_epoch_metrics(model, x, y, metrics_list, history, "train")
 
+            should_stop = False
             if has_val and x_val is not None and y_val is not None:
                 best_metric, epochs_no_improve, best_state, should_stop = self._handle_validation_epoch(
                     model,
@@ -314,12 +363,13 @@ class GradientTrainer(BaseTrainer):
                     epoch_total_loss,
                     pbar,
                 )
-                if should_stop:
-                    break
             else:
                 self._log_epoch_no_val(model, epoch, self.epochs, epoch_total_loss, verbose_level, pbar)
 
-            if scheduler is not None:
+            # Do not advance the schedule on the epoch that stops training -- nothing
+            # would train at the new rate -- but do record the rate this epoch ran at,
+            # so ``lr`` stays the same length as the other per-epoch series.
+            if scheduler is not None and not should_stop:
                 if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
                     val_loss_val = history["val_loss"][-1] if (has_val and history["val_loss"]) else epoch_main_loss
                     scheduler.step(val_loss_val)
@@ -328,6 +378,9 @@ class GradientTrainer(BaseTrainer):
 
             current_lr = train_optimizer.param_groups[0]["lr"]
             history["lr"].append(current_lr)
+
+            if should_stop:
+                break
 
         self._finalize_training(model, best_state, pbar)
 
@@ -395,7 +448,7 @@ class GradientTrainer(BaseTrainer):
     def _forward_batched(self, model: BaseTSK, x: Tensor) -> Tensor:
         """Execute forward pass in mini-batches without gradients. Restore training mode."""
         was_training = model.training
-        model.eval()
+        set_training_flag(model, False)
         try:
             with torch.no_grad():
                 outputs = []
@@ -404,14 +457,17 @@ class GradientTrainer(BaseTrainer):
                     outputs.append(model(x_b))
                 return torch.cat(outputs, dim=0)
         finally:
-            model.train(was_training)
+            set_training_flag(model, was_training)
 
-    def _predict_tensor(self, model: BaseTSK, x: Tensor) -> Tensor:
-        """Helper to get PyTorch Tensor predictions of the model on *x* using DataLoader."""
-        output = self._forward_batched(model, x)
+    def _preds_from_output(self, model: BaseTSK, output: Tensor) -> Tensor:
+        """Reduce raw forward outputs to predictions for the model's task."""
         if model.task_type == "classification":
             return output.argmax(dim=1)
         return output.squeeze(1) if output.ndim > 1 and output.shape[1] == 1 else output
+
+    def _predict_tensor(self, model: BaseTSK, x: Tensor) -> Tensor:
+        """Helper to get PyTorch Tensor predictions of the model on *x* using DataLoader."""
+        return self._preds_from_output(model, self._forward_batched(model, x))
 
     def _predict_numpy(self, model: BaseTSK, x: Tensor) -> np.ndarray:
         """Helper to get numpy predictions of the model on *x* using DataLoader."""
@@ -457,11 +513,14 @@ class GradientTrainer(BaseTrainer):
         self,
         model: BaseTSK,
         criterion: Callable[[Tensor, Tensor], Tensor],
-        x_val: Tensor,
         y_val: Tensor,
+        output: Tensor,
     ) -> dict[str, float]:
-        """Evaluate on validation set.  Return dict with at least ``'metric'``."""
-        output = self._forward_batched(model, x_val)
+        """Evaluate the validation set from a forward pass the caller already ran.
+
+        Return a dict with at least ``'metric'``. The single caller shares one forward
+        pass between the loss and the metrics, so ``output`` is always supplied.
+        """
         val_loss = float(self._compute_loss(model, criterion, output, y_val).item())
         if model.task_type == "classification":
             val_acc = float((output.argmax(dim=1) == y_val).float().mean().item())

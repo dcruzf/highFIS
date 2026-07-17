@@ -126,31 +126,47 @@ def _run_threshold_grid_search(
     best_zeta_lambda = 0.0
     best_zeta_theta = 0.0
 
-    for zeta_l in zeta_lambda:
-        for zeta_t in zeta_theta:
-            candidate = copy.deepcopy(model)
-            if use_lse:
-                class_name = candidate.consequent_layer.__class__.__name__
-                if "ZeroOrder" in class_name:
-                    candidate.convert_to_first_order()
-                tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
-                candidate.apply_thresholds(tau_l, tau_t)
-                candidate._fit_first_order_consequents_lse(x, y)
-            else:
-                tau_l, tau_t = candidate.compute_thresholds(zeta_l, zeta_t)
-                candidate.apply_thresholds(tau_l, tau_t)
+    # Callers require ``model`` to come back untouched: ``search_thresholds`` derives the
+    # surviving feature/rule indices from its gate values *after* this returns, and a
+    # pruned gate would never clear the threshold. Restoring from a state_dict snapshot
+    # is enough because ``apply_thresholds`` and the LSE refit only write registered
+    # parameters and buffers. Only the zero-order -> first-order conversion rebuilds the
+    # module graph, so it is the one case that still needs a private copy.
+    needs_conversion = use_lse and "ZeroOrder" in model.consequent_layer.__class__.__name__
+    work = copy.deepcopy(model) if needs_conversion else model
+    if needs_conversion:
+        work.convert_to_first_order()
 
-            score = candidate._evaluate_threshold_score(x_eval, y_eval)
-            if verbose:
-                model.logger.info("zeta_lambda=%s zeta_theta=%s score=%.6f", zeta_l, zeta_t, score)
+    snapshot = {k: v.detach().clone() for k, v in work.state_dict().items()}
+    was_training = work.training
 
-            if score > best_score:
-                best_score = score
-                best_state = copy.deepcopy(candidate.state_dict()) if use_lse else None
-                best_tau_lambda = tau_l
-                best_tau_theta = tau_t
-                best_zeta_lambda = zeta_l
-                best_zeta_theta = zeta_t
+    try:
+        for zeta_l in zeta_lambda:
+            for zeta_t in zeta_theta:
+                tau_l, tau_t = work.compute_thresholds(zeta_l, zeta_t)
+                work.apply_thresholds(tau_l, tau_t)
+                if use_lse:
+                    work._fit_first_order_consequents_lse(x, y)
+
+                score = work._evaluate_threshold_score(x_eval, y_eval)
+                if verbose:
+                    model.logger.info("zeta_lambda=%s zeta_theta=%s score=%.6f", zeta_l, zeta_t, score)
+
+                if score > best_score:
+                    best_score = score
+                    best_state = copy.deepcopy(work.state_dict()) if use_lse else None
+                    best_tau_lambda = tau_l
+                    best_tau_theta = tau_t
+                    best_zeta_lambda = zeta_l
+                    best_zeta_theta = zeta_t
+
+                work.load_state_dict(snapshot)
+    finally:
+        # ``_fit_first_order_consequents_lse`` flips the module to eval mode, and that
+        # flag lives outside ``state_dict``.
+        work.load_state_dict(snapshot)
+        if work.training != was_training:
+            work.train(was_training)
 
     if best_score == float("-inf"):
         raise RuntimeError("threshold search did not yield a valid candidate")

@@ -30,6 +30,7 @@ from ..memberships import (
 )
 from ..metrics import compute_metrics
 from ..models import BaseTSK
+from ..models._base import set_training_flag
 from ..optim._base import BaseTrainer
 from ..optim._gradient import GradientTrainer
 from ..persistence import (
@@ -596,6 +597,9 @@ class _BaseTSKEstimator(BaseEstimator):
         restore_best: bool = True,
         weight_decay: float = 1e-8,
         device: str = "cpu",
+        eval_metrics_every: int = 1,
+        scheduler_class: type[Any] | None = None,
+        scheduler_params: Mapping[str, Any] | None = None,
         trainer: BaseTrainer | None = None,
     ) -> None:
         self.input_configs = input_configs
@@ -617,6 +621,9 @@ class _BaseTSKEstimator(BaseEstimator):
         self.restore_best = restore_best
         self.weight_decay = weight_decay
         self.device = device
+        self.eval_metrics_every = eval_metrics_every
+        self.scheduler_class = scheduler_class
+        self.scheduler_params = scheduler_params
         self.trainer = trainer
 
     # -- helpers ----------------------------------------------------------
@@ -728,6 +735,9 @@ class _BaseTSKEstimator(BaseEstimator):
             ur_weight=float(self.ur_weight),
             ur_target=self.ur_target,
             verbose=self.verbose,
+            eval_metrics_every=self.eval_metrics_every,
+            scheduler_class=self.scheduler_class,
+            scheduler_params=self.scheduler_params,
         )
 
     def _pre_train_hook(self, model: BaseTSK, x_t: Tensor, y_t: Tensor) -> None:
@@ -763,6 +773,33 @@ class _BaseTSKEstimator(BaseEstimator):
         )
         return y_t[torch.as_tensor(indices, dtype=torch.long, device=y_t.device)]
 
+    @staticmethod
+    def _model_is_first_order(model: Any) -> bool:
+        """Whether *model* has been converted to a first-order gated consequent.
+
+        Only models with a zero-order -> first-order conversion (DG-TSK, DG-ALETSK) can be
+        in this state; the conversion swaps the consequent-layer class, so the persisted
+        structure must be rebuilt on load before the weights fit.
+        """
+        return hasattr(model, "convert_to_first_order") and "ZeroOrder" not in type(model.consequent_layer).__name__
+
+    @staticmethod
+    def _restore_consequent_structure(model: Any, model_init: Mapping[str, Any]) -> None:
+        """Rebuild a persisted gated consequent before loading its state dict.
+
+        Mirrors the DG-TSK loader for every estimator that goes through the base ``load``:
+        first re-apply the zero-order -> first-order conversion (so the parameter shapes
+        match the checkpoint), then restore the consequent gate ``mode``.
+        """
+        if model_init.get("is_first_order", False) and hasattr(model, "convert_to_first_order"):
+            cast(Any, model).convert_to_first_order()
+        consequent_mode = model_init.get("consequent_mode")
+        if consequent_mode is not None:
+            if hasattr(model, "set_consequent_mode"):
+                cast(Any, model).set_consequent_mode(consequent_mode)
+            elif hasattr(model.consequent_layer, "mode"):
+                model.consequent_layer.mode = consequent_mode
+
     def _build_checkpoint_base(
         self,
         *,
@@ -779,6 +816,12 @@ class _BaseTSKEstimator(BaseEstimator):
         # Exclude non-serialisable trainer objects from the checkpoint; they
         # are reconstructed from the estimator's hyperparameters on load.
         params.pop("trainer", None)
+        # ``scheduler_class`` holds a class object, which ``torch.load(weights_only=True)``
+        # refuses to unpickle -- keeping it would make the checkpoint unloadable. Its
+        # partner goes with it: a schedule with no class to build is meaningless. Both are
+        # training-time settings, and a reloaded estimator is not mid-training.
+        params.pop("scheduler_class", None)
+        params.pop("scheduler_params", None)
         return {
             "format": CHECKPOINT_FORMAT,
             "format_version": CHECKPOINT_FORMAT_VERSION,
@@ -811,11 +854,11 @@ class _BaseTSKEstimator(BaseEstimator):
 
         was_training = self.model_.training
         try:
-            self.model_.eval()
+            set_training_flag(self.model_, False)
             with torch.no_grad():
                 norm_w = self.model_.forward_antecedents(self._as_tensor_x(x_arr, torch.device(str(self.device))))
         finally:
-            self.model_.train(was_training)
+            set_training_flag(self.model_, was_training)
 
         return _to_numpy(norm_w)
 
@@ -965,6 +1008,7 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
                 "rule_base": self.rule_base_,
                 "rules": rules,
                 "consequent_mode": consequent_mode,
+                "is_first_order": self._model_is_first_order(self.model_),
             },
             fitted_attrs={
                 "n_features_in": int(self.n_features_in_),
@@ -1005,12 +1049,7 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
                 str(model_init["rule_base"]),
             )
 
-        consequent_mode = model_init.get("consequent_mode")
-        if consequent_mode is not None:
-            if hasattr(estimator.model_, "set_consequent_mode"):
-                cast(Any, estimator.model_).set_consequent_mode(consequent_mode)
-            elif hasattr(estimator.model_.consequent_layer, "mode"):
-                estimator.model_.consequent_layer.mode = consequent_mode
+        estimator._restore_consequent_structure(estimator.model_, model_init)
 
         estimator.model_.load_state_dict(checkpoint["model_state_dict"])
         estimator.model_.to(torch.device(str(estimator.device)))
@@ -1174,6 +1213,7 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
                 "rule_base": self.rule_base_,
                 "rules": rules,
                 "consequent_mode": consequent_mode,
+                "is_first_order": self._model_is_first_order(self.model_),
             },
             fitted_attrs={
                 "n_features_in": int(self.n_features_in_),
@@ -1210,12 +1250,7 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
                 str(model_init["rule_base"]),
             )
 
-        consequent_mode = model_init.get("consequent_mode")
-        if consequent_mode is not None:
-            if hasattr(estimator.model_, "set_consequent_mode"):
-                cast(Any, estimator.model_).set_consequent_mode(consequent_mode)
-            elif hasattr(estimator.model_.consequent_layer, "mode"):
-                estimator.model_.consequent_layer.mode = consequent_mode
+        estimator._restore_consequent_structure(estimator.model_, model_init)
 
         estimator.model_.load_state_dict(checkpoint["model_state_dict"])
         estimator.model_.to(torch.device(str(estimator.device)))
