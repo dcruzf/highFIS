@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="zensical-0.0.50">
+      <meta name="generator" content="zensical-0.0.51">
     
     
       
@@ -748,6 +748,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#high-level-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        High-level summary
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#membership-function-parameters" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -770,10 +781,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#consequent-weights" class="md-nav__link">
+  <a href="#feature-importance" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Consequent Weights
+        Feature Importance
       </span>
     </span>
   </a>
@@ -1200,34 +1211,55 @@
 
 
 <h1 id="introspection-and-persistence">Introspection and Persistence</h1>
-<p>Fuzzy systems provide a major advantage over black-box deep learning architectures: their internal decision-making structures are fully interpretable. <strong>highFIS</strong> provides dedicated utilities for model introspection (extracting membership parameters, rule tables, and consequent weights) and a versioned, secure persistence mechanism.</p>
+<p>Fuzzy systems provide a major advantage over black-box deep learning architectures: their internal decision-making structures are fully interpretable. <strong>highFIS</strong> provides dedicated utilities for model introspection (extracting membership parameters, rule tables, and feature importance) and a versioned, secure persistence mechanism.</p>
 <hr />
 <h2 id="1-model-introspection">1. Model Introspection</h2>
-<p>Fitted estimators can be introspected to analyze and explain their decision rules. The base estimator interface exposes three key methods:</p>
+<p>Fitted estimators can be introspected to analyze and explain their decision rules. The base estimator interface exposes:</p>
+<ul>
+<li><code>inspect()</code> — a high-level summary dictionary of the fitted model;</li>
+<li><code>get_mf_params()</code> — the membership-function parameters per input feature;</li>
+<li><code>feature_importance()</code> — a normalized importance vector derived from the consequent weights;</li>
+<li><code>rule_activation(X)</code> — the normalized rule firing strengths for given inputs.</li>
+</ul>
+<h3 id="high-level-summary">High-level summary</h3>
+<p><code>inspect()</code> returns a dictionary describing the fitted structure. Its keys are
+<code>n_rules</code>, <code>n_inputs</code>, <code>feature_names</code>, <code>rule_base</code>, <code>defuzzifier_type</code>, <code>mf_params</code>,
+and <code>rule_table</code>.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">summary</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">inspect</span><span class="p">()</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Rules:&quot;</span><span class="p">,</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;n_rules&quot;</span><span class="p">])</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Features:&quot;</span><span class="p">,</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;feature_names&quot;</span><span class="p">])</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Rule base:&quot;</span><span class="p">,</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;rule_base&quot;</span><span class="p">])</span>
+</span></code></pre></div>
 <h3 id="membership-function-parameters">Membership Function Parameters</h3>
-<p><code>get_mf_params()</code> returns a serializable dictionary mapping each input feature to a list of its membership function configurations (including their types, centers, and widths).</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Extract membership parameters</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">mf_params</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">get_mf_params</span><span class="p">()</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">for</span> <span class="n">feature</span><span class="p">,</span> <span class="n">mfs</span> <span class="ow">in</span> <span class="n">mf_params</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Feature: </span><span class="si">{</span><span class="n">feature</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">mf</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">mfs</span><span class="p">):</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  MF </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">mf</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">mf</span><span class="p">[</span><span class="s1">&#39;params&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<p><code>get_mf_params()</code> returns a serializable dictionary mapping each input feature to a
+list of its membership-function configurations. Each entry has a <code>type</code> key naming the
+MF class, plus that type's own parameter keys (for example a <code>GaussianMF</code> adds <code>mean</code>
+and <code>sigma</code>). The same dictionary is available as <code>summary["mf_params"]</code>.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">mf_params</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">get_mf_params</span><span class="p">()</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">for</span> <span class="n">feature</span><span class="p">,</span> <span class="n">mfs</span> <span class="ow">in</span> <span class="n">mf_params</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Feature: </span><span class="si">{</span><span class="n">feature</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">mf</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">mfs</span><span class="p">):</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>        <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">mf</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s2">&quot;type&quot;</span><span class="p">}</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  MF </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">mf</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">params</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="the-rule-base-table">The Rule Base Table</h3>
-<p><code>get_rule_table()</code> returns the antecedent rule structure as a list of dictionaries. Each dictionary maps the input features to their corresponding fuzzy set index (Membership Function index) for that rule.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Print rule table</span>
-</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">rules</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">get_rule_table</span><span class="p">()</span>
-</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="n">rules</span><span class="p">:</span>
-</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">rule_id</span> <span class="o">=</span> <span class="n">rule</span><span class="p">[</span><span class="s2">&quot;rule_id&quot;</span><span class="p">]</span>
-</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">antecedents</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">feat</span><span class="si">}</span><span class="s2"> is MF_</span><span class="si">{</span><span class="n">rule</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">clf</span><span class="o">.</span><span class="n">feature_names_in_</span><span class="p">]</span>
-</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rule </span><span class="si">{</span><span class="n">rule_id</span><span class="si">}</span><span class="s2">: IF </span><span class="si">{</span><span class="s1">&#39; AND &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">antecedents</span><span class="p">)</span><span class="si">}</span><span class="s2"> THEN [consequent]&quot;</span><span class="p">)</span>
+<p>The antecedent rule structure is available as <code>summary["rule_table"]</code>: a list of
+dictionaries, one per rule. Each dictionary carries a <code>rule_id</code> and maps every input
+feature to the index of the membership function it uses in that rule.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">summary</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">inspect</span><span class="p">()</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="k">for</span> <span class="n">rule</span> <span class="ow">in</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;rule_table&quot;</span><span class="p">]:</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">rule_id</span> <span class="o">=</span> <span class="n">rule</span><span class="p">[</span><span class="s2">&quot;rule_id&quot;</span><span class="p">]</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">antecedents</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">feat</span><span class="si">}</span><span class="s2"> is MF_</span><span class="si">{</span><span class="n">rule</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">summary</span><span class="p">[</span><span class="s2">&quot;feature_names&quot;</span><span class="p">]]</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rule </span><span class="si">{</span><span class="n">rule_id</span><span class="si">}</span><span class="s2">: IF </span><span class="si">{</span><span class="s1">&#39; AND &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">antecedents</span><span class="p">)</span><span class="si">}</span><span class="s2"> THEN [consequent]&quot;</span><span class="p">)</span>
 </span></code></pre></div>
-<h3 id="consequent-weights">Consequent Weights</h3>
-<p><code>get_consequent_weights()</code> extracts the linear coefficients of the consequent equations. For a zero-order TSK system, these represent the constant output values associated with each rule. For a first-order TSK system, these represent the linear combination coefficients.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Retrieve consequent weights tensor</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">weights</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">get_consequent_weights</span><span class="p">()</span>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="k">if</span> <span class="n">weights</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Consequent weights shape:&quot;</span><span class="p">,</span> <span class="n">weights</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+<h3 id="feature-importance">Feature Importance</h3>
+<p><code>feature_importance()</code> returns a normalized vector (summing to 1) that ranks the input
+features by their contribution to the consequent, or <code>None</code> when the model has no
+first-order consequent to read it from.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">importance</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">feature_importance</span><span class="p">()</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="k">if</span> <span class="n">importance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="k">for</span> <span class="n">feat</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">clf</span><span class="o">.</span><span class="n">inspect</span><span class="p">()[</span><span class="s2">&quot;feature_names&quot;</span><span class="p">],</span> <span class="n">importance</span><span class="p">):</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">feat</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">score</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </span></code></pre></div>
 <hr />
 <h2 id="2-model-persistence">2. Model Persistence</h2>
@@ -1236,25 +1268,25 @@
 <p><strong>Warning:</strong> Standard python <code>pickle</code> is not recommended for production environments. highFIS checkpointing uses <code>weights_only=True</code> PyTorch loading to prevent arbitrary code execution vulnerabilities.</p>
 </blockquote>
 <h3 id="saving-a-model">Saving a Model</h3>
-<p>Fitted estimators (both classifiers and regressors) expose a <code>.save_checkpoint(path)</code> method:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKClassifier</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="c1"># Fit the classifier</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">HTSKClassifier</span><span class="p">(</span><span class="n">n_mfs</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>
-</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="c1"># Save checkpoint to a file</span>
-</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="n">clf</span><span class="o">.</span><span class="n">save_checkpoint</span><span class="p">(</span><span class="s2">&quot;models/htsk_iris.pt&quot;</span><span class="p">)</span>
-</span></code></pre></div>
-<h3 id="loading-a-model">Loading a Model</h3>
-<p>To restore a saved estimator, call the <code>.load_checkpoint(path)</code> classmethod on the corresponding estimator class:</p>
+<p>Fitted estimators (both classifiers and regressors) expose a <code>.save(path)</code> method:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKClassifier</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="c1"># Load and restore the estimator state</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">loaded_clf</span> <span class="o">=</span> <span class="n">HTSKClassifier</span><span class="o">.</span><span class="n">load_checkpoint</span><span class="p">(</span><span class="s2">&quot;models/htsk_iris.pt&quot;</span><span class="p">)</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
-</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="c1"># Predict using the restored estimator</span>
-</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="n">predictions</span> <span class="o">=</span> <span class="n">loaded_clf</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="c1"># Fit the classifier</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">HTSKClassifier</span><span class="p">(</span><span class="n">n_mfs</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="c1"># Save checkpoint to a file</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="n">clf</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;models/htsk_iris.pt&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<h3 id="loading-a-model">Loading a Model</h3>
+<p>To restore a saved estimator, call the <code>.load(path)</code> classmethod on the corresponding estimator class:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKClassifier</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1"># Load and restore the estimator state</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">loaded_clf</span> <span class="o">=</span> <span class="n">HTSKClassifier</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">&quot;models/htsk_iris.pt&quot;</span><span class="p">)</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1"># Predict using the restored estimator</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="n">predictions</span> <span class="o">=</span> <span class="n">loaded_clf</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="checkpoint-validation-and-versioning">Checkpoint Validation and Versioning</h3>
 <p>Behind the scenes, highFIS validates every checkpoint payload. The loader verifies:

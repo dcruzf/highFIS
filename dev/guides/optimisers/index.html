@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="zensical-0.0.50">
+      <meta name="generator" content="zensical-0.0.51">
     
     
       
@@ -848,30 +848,24 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#configuring-custom-optimizers" class="md-nav__link">
+  <a href="#optimizer-selection" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Configuring Custom Optimizers
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Configuring Custom Optimizers">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#example-custom-pytorch-optimizers-and-parameters" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Example: Custom PyTorch Optimizers and Parameters
+        Optimizer selection
       </span>
     </span>
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
+      
+        <li class="md-nav__item">
+  <a href="#learning-rate-schedules" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Learning-rate schedules
+      </span>
+    </span>
+  </a>
   
 </li>
       
@@ -1393,7 +1387,13 @@
 *   <code>epochs</code>: Total training epochs (default: <code>100</code>).
 *   <code>learning_rate</code>: Step size for weight updates (default: <code>0.01</code>).
 *   <code>batch_size</code>: Size of mini-batches. If <code>None</code>, full-batch training is performed.
-*   <code>weight_decay</code>: L2 regularization strength.</p>
+*   <code>weight_decay</code>: L2 regularization strength.
+*   <code>eval_metrics_every</code>: Evaluate training metrics every <code>n</code> epochs (default: <code>1</code>); <code>0</code>
+    skips the training-metric pass entirely. This only affects the <code>"train_&lt;metric&gt;"</code>
+    entries in <code>history_</code> — validation metrics, which drive early stopping, are evaluated
+    every epoch regardless. Raising it (or setting <code>0</code>) is a cheap speed-up when you do
+    not need per-epoch training curves.
+*   <code>scheduler_class</code> / <code>scheduler_params</code>: Learning-rate schedule; see below.</p>
 <h3 id="example-training-with-gradienttrainer-and-inspecting-history">Example: Training with GradientTrainer and Inspecting History</h3>
 <p>This example shows how to configure a model using standard gradient optimization, and then inspect the resulting training logs.</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_classification</span>
@@ -1489,9 +1489,10 @@
 </span><span id="__span-3-29"><a id="__codelineno-3-29" name="__codelineno-3-29" href="#__codelineno-3-29"></a><span class="c1"># Train the model (automatically cycles through DG optimization, threshold search, and fine-tuning)</span>
 </span><span id="__span-3-30"><a id="__codelineno-3-30" name="__codelineno-3-30" href="#__codelineno-3-30"></a><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">x_val</span><span class="o">=</span><span class="n">X_val</span><span class="p">,</span> <span class="n">y_val</span><span class="o">=</span><span class="n">y_val</span><span class="p">)</span>
 </span><span id="__span-3-31"><a id="__codelineno-3-31" name="__codelineno-3-31" href="#__codelineno-3-31"></a>
-</span><span id="__span-3-32"><a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a><span class="c1"># Introspect the pruned structural statistics</span>
-</span><span id="__span-3-33"><a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Retained Feature Indices:&quot;</span><span class="p">,</span> <span class="n">clf</span><span class="o">.</span><span class="n">model_</span><span class="o">.</span><span class="n">surviving_feature_indices</span><span class="p">)</span>
-</span><span id="__span-3-34"><a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Retained Rules:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">clf</span><span class="o">.</span><span class="n">model_</span><span class="o">.</span><span class="n">surviving_rule_indices</span><span class="p">))</span>
+</span><span id="__span-3-32"><a id="__codelineno-3-32" name="__codelineno-3-32" href="#__codelineno-3-32"></a><span class="c1"># Introspect the pruned structural statistics (recorded during threshold search)</span>
+</span><span id="__span-3-33"><a id="__codelineno-3-33" name="__codelineno-3-33" href="#__codelineno-3-33"></a><span class="n">threshold</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">history_</span><span class="p">[</span><span class="s2">&quot;threshold&quot;</span><span class="p">]</span>
+</span><span id="__span-3-34"><a id="__codelineno-3-34" name="__codelineno-3-34" href="#__codelineno-3-34"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Retained Feature Indices:&quot;</span><span class="p">,</span> <span class="n">threshold</span><span class="p">[</span><span class="s2">&quot;surviving_feature_indices&quot;</span><span class="p">])</span>
+</span><span id="__span-3-35"><a id="__codelineno-3-35" name="__codelineno-3-35" href="#__codelineno-3-35"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Retained Rules:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">threshold</span><span class="p">[</span><span class="s2">&quot;surviving_rule_indices&quot;</span><span class="p">]))</span>
 </span></code></pre></div>
 <hr />
 <h2 id="3-fsretrainer-feature-selection-rule-extraction">3. FSRETrainer (Feature Selection &amp; Rule Extraction)</h2>
@@ -1540,24 +1541,43 @@
 </span><span id="__span-4-29"><a id="__codelineno-4-29" name="__codelineno-4-29" href="#__codelineno-4-29"></a><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
 </span></code></pre></div>
 <hr />
-<h2 id="configuring-custom-optimizers">Configuring Custom Optimizers</h2>
-<p>While estimators provide a scikit-learn API, you can customize the underlying optimizer class (e.g., using <code>SGD</code>, <code>RMSprop</code>, or <code>AdamW</code>) and learning rate scheduler by overriding the estimator's <code>optimizer_class</code>.</p>
-<h3 id="example-custom-pytorch-optimizers-and-parameters">Example: Custom PyTorch Optimizers and Parameters</h3>
-<p>You can pass the class reference of any standard PyTorch optimizer (from <code>torch.optim</code>) to the <code>optimizer_class</code> parameter.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">torch.optim</span><span class="w"> </span><span class="kn">import</span> <span class="n">AdamW</span>
+<h2 id="optimizer-selection">Optimizer selection</h2>
+<p>The optimizer is chosen automatically from the model family, so there is no
+<code>optimizer_class</code> constructor argument. ADATSK models train with <code>SGD</code>; ADPTSK,
+ADMTSK, DombiTSK and AYATSK use <code>Adam</code>; the remaining single-phase models use <code>AdamW</code>
+with weight decay applied only to the consequent parameters. The <code>DG-TSK</code> and
+<code>DG-ALETSK</code> estimators additionally expose an <code>optimizer_type</code> argument
+(<code>"sgd"</code>, <code>"adam"</code>, or <code>"adamw"</code>) to follow their respective papers.</p>
+<p>To supply a fully custom optimizer instance, build a <code>GradientTrainer</code> yourself and
+pass it via <code>trainer=</code> (only the DG and FSRE estimators accept a <code>trainer=</code> argument),
+or call <code>GradientTrainer.fit(model, x, y, optimizer=my_optimizer)</code> directly.</p>
+<h2 id="learning-rate-schedules">Learning-rate schedules</h2>
+<p>Every estimator accepts a <code>scheduler_class</code> plus <code>scheduler_params</code>. You pass the
+scheduler <strong>class</strong>, not an instance — the scheduler must bind to the optimizer, and
+the optimizer is only built inside <code>fit</code>, so a pre-constructed scheduler would decay an
+optimizer that is never stepped.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">torch.optim.lr_scheduler</span><span class="w"> </span><span class="kn">import</span> <span class="n">StepLR</span>
 </span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKClassifier</span>
 </span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># Instantiate HTSK with a custom optimizer configuration</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">HTSKClassifier</span><span class="p">(</span>
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="n">epochs</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span>
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span>
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="n">optimizer_class</span><span class="o">=</span><span class="n">AdamW</span><span class="p">,</span>  <span class="c1"># Pass the PyTorch optimizer class</span>
-</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">HTSKClassifier</span><span class="p">(</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="n">epochs</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">,</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="n">scheduler_class</span><span class="o">=</span><span class="n">StepLR</span><span class="p">,</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="n">scheduler_params</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;step_size&quot;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span> <span class="s2">&quot;gamma&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">},</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
 </span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="p">)</span>
-</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>
-</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="c1"># Fit the model</span>
-</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="c1"># The realised rate for each epoch is recorded in history_.</span>
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Learning rate per epoch:&quot;</span><span class="p">,</span> <span class="n">clf</span><span class="o">.</span><span class="n">history_</span><span class="p">[</span><span class="s2">&quot;lr&quot;</span><span class="p">])</span>
 </span></code></pre></div>
+<p>For the multi-phase <code>DG-TSK</code>, <code>DG-ALETSK</code> and <code>FSRE-ADATSK</code> estimators each phase builds
+its own optimizer, so the class is instantiated once per phase.</p>
+<blockquote>
+<p><strong>Note:</strong> <code>scheduler_class</code> is a class object, which <code>torch.load(weights_only=True)</code>
+cannot unpickle, so it is not written into checkpoints. A model reloaded from disk is
+not resuming training and does not need it.</p>
+</blockquote>
 <hr />
 <h2 id="4-training-history-and-metric-logging">4. Training History and Metric Logging</h2>
 <p>Each trainer populates the estimator's <code>history_</code> attribute after fitting the model. Internally, the optimization loop computes all metrics on the training and validation sets using <strong>pure PyTorch</strong> on the active device (e.g., CPU or CUDA GPU) to avoid expensive, synchronous data transfers to the host memory during training. Only the final scalar metrics are converted to Python floats when written to the history dictionary at the end of each epoch.</p>
@@ -1574,6 +1594,9 @@
 <p>If no metrics are explicitly specified, the trainers automatically configure task-appropriate defaults:
 *   <strong>Classification</strong>: Defaults to <code>"accuracy"</code> (creating <code>"train_accuracy"</code> and <code>"val_accuracy"</code> keys).
 *   <strong>Regression</strong>: Defaults to <code>"mse"</code> (creating <code>"train_mse"</code> and <code>"val_mse"</code> keys).</p>
+<p>The <code>"train_&lt;metric&gt;"</code> keys are only present when <code>eval_metrics_every</code> is greater than <code>0</code>
+(the default is <code>1</code>). The <code>"val_&lt;metric&gt;"</code> keys are present whenever a validation set is
+supplied. Passing <code>metrics=[]</code> to <code>.fit()</code> disables both.</p>
 <p>To track additional metrics, pass them as a list of strings to the <code>.fit()</code> method:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Train the model while tracking accuracy and macro F1 score</span>
 </span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
