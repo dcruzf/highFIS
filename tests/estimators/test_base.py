@@ -812,3 +812,25 @@ def test_set_mf_cache_size_changes_capacity_and_evicts() -> None:
     finally:
         set_mf_cache_size(128)  # restore the default for other tests
     assert mf_cache_info().maxsize == 128
+
+
+def test_restore_consequent_structure_noop_when_model_lacks_mode_support() -> None:
+    """The consequent restorer tolerates a model that exposes neither mode mechanism.
+
+    ``consequent_mode`` is only persisted for gated layers, so a stored value normally
+    implies a matching setter on load. This guards the base loader against a model whose
+    consequent layer has no ``mode`` and no ``set_consequent_mode``: it must no-op rather
+    than raise.
+    """
+    from highfis.estimators._base import _BaseTSKEstimator
+
+    class _PlainLayer:
+        pass
+
+    class _PlainModel:
+        consequent_layer = _PlainLayer()
+
+    model = _PlainModel()
+    # Neither is_first_order nor a mode setter applies; the call must simply do nothing.
+    _BaseTSKEstimator._restore_consequent_structure(model, {"consequent_mode": "re"})
+    assert not hasattr(model.consequent_layer, "mode")
