@@ -205,7 +205,7 @@ class GradientTrainer(BaseTrainer):
         # One forward pass feeds both the loss and the metrics; they are evaluated under
         # the same weights and the same eval mode, so recomputing it would be pure waste.
         val_output = self._forward_batched(model, x_val)
-        val_info = self._evaluate_validation(model, train_criterion, x_val, y_val, output=val_output)
+        val_info = self._evaluate_validation(model, train_criterion, y_val, output=val_output)
         history["val"].append(val_info["val_loss"])
         history["val_loss"].append(val_info["val_loss"])
 
@@ -513,17 +513,14 @@ class GradientTrainer(BaseTrainer):
         self,
         model: BaseTSK,
         criterion: Callable[[Tensor, Tensor], Tensor],
-        x_val: Tensor,
         y_val: Tensor,
-        output: Tensor | None = None,
+        output: Tensor,
     ) -> dict[str, float]:
-        """Evaluate on validation set.  Return dict with at least ``'metric'``.
+        """Evaluate the validation set from a forward pass the caller already ran.
 
-        *output* lets the caller supply a forward pass it has already run, so the
-        per-epoch validation metrics do not repeat it.
+        Return a dict with at least ``'metric'``. The single caller shares one forward
+        pass between the loss and the metrics, so ``output`` is always supplied.
         """
-        if output is None:
-            output = self._forward_batched(model, x_val)
         val_loss = float(self._compute_loss(model, criterion, output, y_val).item())
         if model.task_type == "classification":
             val_acc = float((output.argmax(dim=1) == y_val).float().mean().item())

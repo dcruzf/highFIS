@@ -773,6 +773,33 @@ class _BaseTSKEstimator(BaseEstimator):
         )
         return y_t[torch.as_tensor(indices, dtype=torch.long, device=y_t.device)]
 
+    @staticmethod
+    def _model_is_first_order(model: Any) -> bool:
+        """Whether *model* has been converted to a first-order gated consequent.
+
+        Only models with a zero-order -> first-order conversion (DG-TSK, DG-ALETSK) can be
+        in this state; the conversion swaps the consequent-layer class, so the persisted
+        structure must be rebuilt on load before the weights fit.
+        """
+        return hasattr(model, "convert_to_first_order") and "ZeroOrder" not in type(model.consequent_layer).__name__
+
+    @staticmethod
+    def _restore_consequent_structure(model: Any, model_init: Mapping[str, Any]) -> None:
+        """Rebuild a persisted gated consequent before loading its state dict.
+
+        Mirrors the DG-TSK loader for every estimator that goes through the base ``load``:
+        first re-apply the zero-order -> first-order conversion (so the parameter shapes
+        match the checkpoint), then restore the consequent gate ``mode``.
+        """
+        if model_init.get("is_first_order", False) and hasattr(model, "convert_to_first_order"):
+            cast(Any, model).convert_to_first_order()
+        consequent_mode = model_init.get("consequent_mode")
+        if consequent_mode is not None:
+            if hasattr(model, "set_consequent_mode"):
+                cast(Any, model).set_consequent_mode(consequent_mode)
+            elif hasattr(model.consequent_layer, "mode"):
+                model.consequent_layer.mode = consequent_mode
+
     def _build_checkpoint_base(
         self,
         *,
@@ -981,6 +1008,7 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
                 "rule_base": self.rule_base_,
                 "rules": rules,
                 "consequent_mode": consequent_mode,
+                "is_first_order": self._model_is_first_order(self.model_),
             },
             fitted_attrs={
                 "n_features_in": int(self.n_features_in_),
@@ -1021,12 +1049,7 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
                 str(model_init["rule_base"]),
             )
 
-        consequent_mode = model_init.get("consequent_mode")
-        if consequent_mode is not None:
-            if hasattr(estimator.model_, "set_consequent_mode"):
-                cast(Any, estimator.model_).set_consequent_mode(consequent_mode)
-            elif hasattr(estimator.model_.consequent_layer, "mode"):
-                estimator.model_.consequent_layer.mode = consequent_mode
+        estimator._restore_consequent_structure(estimator.model_, model_init)
 
         estimator.model_.load_state_dict(checkpoint["model_state_dict"])
         estimator.model_.to(torch.device(str(estimator.device)))
@@ -1190,6 +1213,7 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
                 "rule_base": self.rule_base_,
                 "rules": rules,
                 "consequent_mode": consequent_mode,
+                "is_first_order": self._model_is_first_order(self.model_),
             },
             fitted_attrs={
                 "n_features_in": int(self.n_features_in_),
@@ -1226,12 +1250,7 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
                 str(model_init["rule_base"]),
             )
 
-        consequent_mode = model_init.get("consequent_mode")
-        if consequent_mode is not None:
-            if hasattr(estimator.model_, "set_consequent_mode"):
-                cast(Any, estimator.model_).set_consequent_mode(consequent_mode)
-            elif hasattr(estimator.model_.consequent_layer, "mode"):
-                estimator.model_.consequent_layer.mode = consequent_mode
+        estimator._restore_consequent_structure(estimator.model_, model_init)
 
         estimator.model_.load_state_dict(checkpoint["model_state_dict"])
         estimator.model_.to(torch.device(str(estimator.device)))

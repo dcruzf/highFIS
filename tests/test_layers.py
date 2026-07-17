@@ -672,3 +672,38 @@ def test_membership_layer_vectorized_state_dict_roundtrip() -> None:
     layer_b.load_state_dict(layer_a.state_dict())
     x = torch.rand(8, 1)
     assert torch.equal(layer_a(x)["x1"], layer_b(x)["x1"])
+
+
+def test_membership_layer_constant_mf_fast_kernel() -> None:
+    """A layer of only ConstantMF uses the parameter-free fast kernel.
+
+    ConstantMF carries no mean/raw_sigma, so the vectorized path stores a value buffer and
+    skips the flat parameter tensors; MHTSK builds exactly such layers for its "don't care"
+    subantecedents.
+    """
+    from highfis.memberships import ConstantMF
+
+    input_mfs: dict[str, list] = {  # type: ignore[type-arg]
+        "x1": [ConstantMF(1.0), ConstantMF(1.0)],
+        "x2": [ConstantMF(1.0), ConstantMF(1.0)],
+    }
+    layer = MembershipLayer(input_mfs)
+    assert layer._flat_mean is None  # parameter-free MFs leave the flat params unset
+    out = layer(torch.randn(5, 2))
+    for name in ("x1", "x2"):
+        assert out[name].shape == (5, 2)
+        assert torch.allclose(out[name], torch.ones(5, 2))
+
+
+def test_membership_layer_legacy_hook_ignores_incomplete_state_dict() -> None:
+    """The legacy-checkpoint migration hook bails out when per-MF keys are absent.
+
+    A vectorized layer stores ``_flat_mean``/``_flat_raw_sigma``; when neither those nor
+    the old per-MF ``mean``/``raw_sigma`` entries are present, the hook must leave the
+    state dict untouched instead of raising.
+    """
+    layer = MembershipLayer(_build_input_mfs())
+    assert layer._flat_mean is not None  # vectorized: eligible for legacy migration
+    incomplete: dict[str, torch.Tensor] = {}
+    layer._load_legacy_state_dict_hook(layer, incomplete, "")
+    assert incomplete == {}  # early return: nothing added, nothing raised

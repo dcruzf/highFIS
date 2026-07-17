@@ -796,3 +796,19 @@ def test_read_cache_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert _read_cache_env()["maxsize"] == 128
     monkeypatch.setenv("HIGHFIS_MF_CACHE_SIZE", "0")  # < 1 -> default
     assert _read_cache_env()["maxsize"] == 128
+
+
+def test_set_mf_cache_size_changes_capacity_and_evicts() -> None:
+    from highfis import clear_mf_cache, mf_cache_info, set_mf_cache_size
+
+    x, _ = _make_dataset(40)
+    clear_mf_cache()
+    try:
+        set_mf_cache_size(4)
+        assert mf_cache_info().maxsize == 4
+        for rs in range(1, 7):  # six distinct keys into a size-4 cache
+            HTSKClassifier(n_mfs=2, mf_init="kmeans", epochs=1, random_state=rs, batch_size=16)._build_input_mfs(x)
+        assert mf_cache_info().currsize == 4  # capped, LRU-evicted
+    finally:
+        set_mf_cache_size(128)  # restore the default for other tests
+    assert mf_cache_info().maxsize == 128

@@ -575,3 +575,18 @@ def test_gradient_trainer_eval_metrics_every() -> None:
     history = GradientTrainer(epochs=4, eval_metrics_every=0).fit(model, x, y, x_val=x, y_val=y)
     assert "train_accuracy" not in history
     assert len(history["val_accuracy"]) == 4
+
+
+def test_set_training_flag_skips_none_children() -> None:
+    """``nn.Module`` may register a submodule slot as ``None``; the walk must skip it."""
+    import torch.nn as nn
+
+    from highfis.models._base import set_training_flag
+
+    module = nn.Module()
+    module.register_module("real", nn.Linear(2, 2))
+    module.register_module("absent", None)  # a None slot in ``_modules``
+
+    set_training_flag(module, False)
+    assert module.training is False
+    assert module.real.training is False  # type: ignore[union-attr]
