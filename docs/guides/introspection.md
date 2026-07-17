@@ -81,7 +81,7 @@ highFIS features a native, versioned checkpointing mechanism built on top of PyT
 
 Fitted estimators (both classifiers and regressors) expose a `.save(path)` method:
 
-```python
+```{.python notest}
 from highfis import HTSKClassifier
 
 # Fit the classifier
@@ -96,7 +96,7 @@ clf.save("models/htsk_iris.pt")
 
 To restore a saved estimator, call the `.load(path)` classmethod on the corresponding estimator class:
 
-```python
+```{.python notest}
 from highfis import HTSKClassifier
 
 # Load and restore the estimator state

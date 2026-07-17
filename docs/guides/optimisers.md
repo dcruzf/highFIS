@@ -147,9 +147,10 @@ clf = DGTSKClassifier(
 # Train the model (automatically cycles through DG optimization, threshold search, and fine-tuning)
 clf.fit(X_train, y_train, x_val=X_val, y_val=y_val)
 
-# Introspect the pruned structural statistics
-print("Retained Feature Indices:", clf.model_.surviving_feature_indices)
-print("Retained Rules:", len(clf.model_.surviving_rule_indices))
+# Introspect the pruned structural statistics (recorded during threshold search)
+threshold = clf.history_["threshold"]
+print("Retained Feature Indices:", threshold["surviving_feature_indices"])
+print("Retained Rules:", len(threshold["surviving_rule_indices"]))
 ```
 
 ---

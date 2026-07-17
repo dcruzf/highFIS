@@ -79,7 +79,7 @@ dependencies = [
     "pytest-markdown-docs>=0.5",
 ]
 [tool.hatch.envs.cookbook.scripts]
-run = "pytest --markdown-docs {args} docs/cookbook"
+run = "pytest --markdown-docs --markdown-docs-syntax=superfences {args} docs/cookbook docs/guides"
 
 [tool.hatch.build]
 include = ["docs/assets/logo.svg", "LICENSE"]
