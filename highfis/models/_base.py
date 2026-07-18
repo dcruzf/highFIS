@@ -20,7 +20,9 @@ Concrete subclasses must implement:
 
 - `BaseTSK._build_consequent_layer` — return the task-specific consequent
   module.
-- `BaseTSK._default_criterion` — return the default loss function.
+- `BaseTSK.default_criterion` — class attribute naming the default loss class
+  (``CrossEntropyLoss`` for classification, ``MSELoss`` for regression); the
+  trainer instantiates it via ``model.default_criterion()``.
 
 Loss composition and validation scoring are hooks on the trainer
 (`highfis.optim.GradientTrainer._compute_loss` and

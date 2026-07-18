@@ -83,5 +83,6 @@ def test_mhtsk_default_criteria() -> None:
     clf = MHTSKClassifierModel(input_mfs, rule_feature_mask, rules, n_classes=2)
     reg = MHTSKRegressorModel(input_mfs, rule_feature_mask, rules)
 
-    assert isinstance(clf._default_criterion(), nn.CrossEntropyLoss)
-    assert isinstance(reg._default_criterion(), nn.MSELoss)
+    # Paper-faithful: MHTSK uses MSE on one-hot targets (Bian et al. 2025, eq. 12).
+    assert isinstance(clf.default_criterion(), nn.MSELoss)
+    assert isinstance(reg.default_criterion(), nn.MSELoss)

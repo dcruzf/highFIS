@@ -111,3 +111,6 @@ $$
   paper's TSK output aggregation.
 - The package also includes building blocks for the ADMTSK extension, including
   `CompositeGaussianMF` and `AdaptiveDombiRuleLayer`, wrapped under `ADMTSKClassifier`.
+- **Loss function**: `DombiTSKClassifier` defaults to `MSELoss` on one-hot targets,
+  matching the paper (eq. 9, referenced by the DombiTSK construction in eq. 21) and
+  `ADMTSKClassifier` from the same article; regression uses `MSELoss`.

@@ -82,7 +82,8 @@ def test_hdfis_default_criteria() -> None:
     clf_m = HDFISMinClassifierModel(_build_input_mfs(), n_classes=2)
     reg_m = HDFISMinRegressorModel(_build_input_mfs())
 
-    assert isinstance(clf_p._default_criterion(), nn.CrossEntropyLoss)
-    assert isinstance(reg_p._default_criterion(), nn.MSELoss)
-    assert isinstance(clf_m._default_criterion(), nn.CrossEntropyLoss)
-    assert isinstance(reg_m._default_criterion(), nn.MSELoss)
+    # Paper-faithful: both HDFIS classifiers use MSE on one-hot targets (eq. 14).
+    assert isinstance(clf_p.default_criterion(), nn.MSELoss)
+    assert isinstance(reg_p.default_criterion(), nn.MSELoss)
+    assert isinstance(clf_m.default_criterion(), nn.MSELoss)
+    assert isinstance(reg_m.default_criterion(), nn.MSELoss)

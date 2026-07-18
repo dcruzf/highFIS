@@ -117,9 +117,9 @@ def test_tsk_classifier_forward_shapes() -> None:
 
 def test_tsk_classifier_default_criterion() -> None:
     model = TSKClassifierModel(_build_input_mfs(), n_classes=2)
-    assert isinstance(model._default_criterion(), nn.CrossEntropyLoss)
+    assert isinstance(model.default_criterion(), nn.CrossEntropyLoss)
 
 
 def test_tsk_regressor_default_criterion() -> None:
     model = TSKRegressorModel(_build_input_mfs())
-    assert isinstance(model._default_criterion(), nn.MSELoss)
+    assert isinstance(model.default_criterion(), nn.MSELoss)

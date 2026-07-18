@@ -70,7 +70,7 @@ def test_htsk_default_criteria() -> None:
     clf_t = TSKClassifierModel(_build_input_mfs(), n_classes=2)
     reg_t = TSKRegressorModel(_build_input_mfs())
 
-    assert isinstance(clf_h._default_criterion(), nn.CrossEntropyLoss)
-    assert isinstance(reg_h._default_criterion(), nn.MSELoss)
-    assert isinstance(clf_t._default_criterion(), nn.CrossEntropyLoss)
-    assert isinstance(reg_t._default_criterion(), nn.MSELoss)
+    assert isinstance(clf_h.default_criterion(), nn.CrossEntropyLoss)
+    assert isinstance(reg_h.default_criterion(), nn.MSELoss)
+    assert isinstance(clf_t.default_criterion(), nn.CrossEntropyLoss)
+    assert isinstance(reg_t.default_criterion(), nn.MSELoss)

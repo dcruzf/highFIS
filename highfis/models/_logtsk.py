@@ -80,10 +80,6 @@ class LogTSKClassifierModel(BaseTSKClassifierModel):
         """Build classification consequent head."""
         return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
 
-    def _default_criterion(self) -> nn.Module:
-        """Return CrossEntropyLoss as the default classification loss."""
-        return nn.CrossEntropyLoss()
-
 
 class LogTSKRegressorModel(BaseTSKRegressorModel):
     r"""LogTSK regressor with inverse-log normalization of log-domain rules.
@@ -136,7 +132,3 @@ class LogTSKRegressorModel(BaseTSKRegressorModel):
     def _build_consequent_layer(self) -> nn.Module:
         """Build regression consequent head."""
         return RegressionConsequentLayer(self.n_rules, self.n_inputs)
-
-    def _default_criterion(self) -> nn.Module:
-        """Return MSELoss as the default regression loss."""
-        return nn.MSELoss()
