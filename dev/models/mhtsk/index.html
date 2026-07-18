@@ -1714,6 +1714,7 @@ f^{r}(\mathbf{x}) = p^{r}_0 + \sum_{s \in \mathcal{S}_t} p^{r}_{s} x_s
 <li>The default <code>head_size</code> and <code>n_heads</code> resolution follows the paper-inspired scale parameter strategy using <code>xi</code>, <code>sigma</code>, <code>fcr_target</code>, and <code>h_value</code>.</li>
 <li>The sparse consequent layers mirror the paper's per-rule subspace-specific linear consequents.</li>
 <li>The <code>MHTSKClassifier</code> and <code>MHTSKRegressor</code> provide a user-facing API that maps to paper symbols <code>S</code>, <code>T</code>, <code>K</code>, and rule extraction workflow.</li>
+<li><strong>Loss function</strong>: <code>MHTSKClassifier</code> defaults to <code>MSELoss</code> on one-hot targets, matching the paper (Bian et al. 2025, eq. 12); regression uses <code>MSELoss</code>.</li>
 </ul>
 
 

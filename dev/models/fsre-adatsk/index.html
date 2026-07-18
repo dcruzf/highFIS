@@ -1704,6 +1704,9 @@ feature selection, rule extraction, and En-FRB support.</p>
   mirrors the ADATSK default and is consistent with the CoCo-FRB TSK lineage the
   method builds on (Cui et al., 2020). It can be set to <code>False</code> for
   low-dimensional problems where divergence does not occur.</li>
+<li><strong>Loss function</strong>: <code>FSREADATSKClassifier</code> defaults to <code>MSELoss</code> on one-hot
+  targets, matching the ADATSK paper (eq. 8) that FSRE-ADATSK extends -- the same
+  objective as <code>ADATSKClassifier</code>; regression uses <code>MSELoss</code>.</li>
 </ul>
 <h2 id="example">Example</h2>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">FSREADATSKClassifier</span>
