@@ -149,16 +149,13 @@ class GradientTrainer(BaseTrainer):
                 "ur_target": self.ur_target,
             },
             "stopped_epoch": 0,
-            "train": [],
-            "ur": [],
+            "best_epoch": None,
             "train_loss": [],
             "train_ur_loss": [],
             "train_total_loss": [],
             "val_loss": [] if has_val else None,
             "lr": [],
         }
-        if has_val:
-            history["val"] = []
         for m in metrics_list:
             if int(self.eval_metrics_every) > 0:
                 history[f"train_{m}"] = []
@@ -206,7 +203,6 @@ class GradientTrainer(BaseTrainer):
         # the same weights and the same eval mode, so recomputing it would be pure waste.
         val_output = self._forward_batched(model, x_val)
         val_info = self._evaluate_validation(model, train_criterion, y_val, output=val_output)
-        history["val"].append(val_info["val_loss"])
         history["val_loss"].append(val_info["val_loss"])
 
         if metrics_list:
@@ -227,7 +223,6 @@ class GradientTrainer(BaseTrainer):
         # val_accuracy de classificação: salvar somente se "accuracy" não está nas métricas explícitas
         if "val_accuracy" in val_info and "accuracy" not in metrics_list:
             history.setdefault("val_accuracy", []).append(val_info["val_accuracy"])
-            history.setdefault("val_acc", []).append(val_info["val_accuracy"])
 
         set_training_flag(model, True)
 
@@ -236,6 +231,10 @@ class GradientTrainer(BaseTrainer):
             best_metric = metric
             epochs_no_improve = 0
             best_state = copy.deepcopy(model.state_dict())
+            # Index of the row describing the weights kept by ``restore_best``. Without it
+            # the last row of every series belongs to a *different* model than the one
+            # returned, since training continues past the best epoch.
+            history["best_epoch"] = epoch
         else:
             epochs_no_improve += 1
 
@@ -335,8 +334,6 @@ class GradientTrainer(BaseTrainer):
                 self.ur_weight,
                 self.ur_target,
             )
-            history["train"].append(epoch_total_loss)
-            history["ur"].append(epoch_ur_loss)
             history["train_loss"].append(epoch_main_loss)
             history["train_ur_loss"].append(epoch_ur_loss)
             history["train_total_loss"].append(epoch_total_loss)

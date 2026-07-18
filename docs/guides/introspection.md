@@ -69,6 +69,21 @@ if importance is not None:
         print(f"{feat}: {score:.3f}")
 ```
 
+### Consequent Parameters
+
+A first-order rule computes `score_r^c(x) = b_{r,c} + sum_d w_{r,c,d} x_d`. Both halves are
+available on the model: `get_consequent_weights()` returns `w` and `get_consequent_bias()`
+returns the intercept `b`, so a complete rule can be reconstructed without reaching into
+the layer internals.
+
+```python
+weights = clf.model_.get_consequent_weights()  # (rules, classes, features)
+bias = clf.model_.get_consequent_bias()        # (rules, classes)
+if weights is not None and bias is not None:
+    print("rule 0, class 0 intercept:", float(bias[0, 0]))
+    print("rule 0, class 0 slopes:", weights[0, 0].tolist())
+```
+
 ---
 
 ## 2. Model Persistence

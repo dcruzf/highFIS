@@ -189,10 +189,27 @@ class BaseTSK(nn.Module):
         ]
 
     def get_consequent_weights(self) -> Tensor | None:
-        """Return the consequent layer weights or ``None`` when unavailable."""
+        """Return the consequent layer weights or ``None`` when unavailable.
+
+        These are the ``w`` coefficients of the first-order consequent
+        ``score_r^c(x) = b_{r,c} + sum_d w_{r,c,d} x_d``; pair them with
+        :meth:`get_consequent_bias` to reconstruct a complete rule.
+        """
         weight = getattr(self.consequent_layer, "weight", None)
         if isinstance(weight, Tensor):
             return weight.detach()
+        return None
+
+    def get_consequent_bias(self) -> Tensor | None:
+        """Return the consequent layer bias or ``None`` when unavailable.
+
+        The intercept ``b`` of the first-order consequent, shaped ``(rules, classes)`` for
+        classification and ``(rules,)`` for regression. Without it a rule read from
+        :meth:`get_consequent_weights` alone is incomplete.
+        """
+        bias = getattr(self.consequent_layer, "bias", None)
+        if isinstance(bias, Tensor):
+            return bias.detach()
         return None
 
     def _forward_train(self, x: Tensor) -> tuple[Tensor, Tensor]:

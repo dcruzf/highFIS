@@ -133,3 +133,10 @@ def test_get_consequent_weights_none() -> None:
     model = _ConcreteClassifier(_make_input_mfs(), n_classes=3)
     model.consequent_layer = nn.Identity()
     assert model.get_consequent_weights() is None
+
+
+def test_get_consequent_bias_none() -> None:
+    """A consequent layer without a bias yields ``None`` rather than raising."""
+    model = _ConcreteClassifier(_make_input_mfs(), n_classes=3)
+    model.consequent_layer = nn.Identity()
+    assert model.get_consequent_bias() is None
