@@ -106,7 +106,9 @@ class DombiTSKClassifierModel(BaseTSKClassifierModel):
     def _build_consequent_layer(self) -> nn.Module:
         return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
 
-    default_criterion = nn.CrossEntropyLoss
+    #: MSE on one-hot targets, matching the DombiTSK paper (Xue et al. 2025, eq. 9 via
+    #: eq. 21) and ADMTSK from the same article. See ``_compute_loss`` for the one-hot path.
+    default_criterion = nn.MSELoss
 
 
 class DombiTSKRegressorModel(BaseTSKRegressorModel):

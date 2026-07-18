@@ -91,6 +91,10 @@ class FSREADATSKClassifierModel(_FSREADATSKMixin, BaseTSKClassifierModel):
         July 2023, doi: 10.1109/TFUZZ.2022.3220950.
     """
 
+    #: MSE on one-hot targets, matching the ADATSK paper (Xue et al. 2023, eq. 8) that
+    #: FSRE-ADATSK extends -- the same objective as ADATSKClassifier from that article.
+    default_criterion = nn.MSELoss
+
     consequent_layer: GatedClassificationConsequentLayer
 
     def __init__(
@@ -160,9 +164,6 @@ class FSREADATSKClassifierModel(_FSREADATSKMixin, BaseTSKClassifierModel):
     def set_consequent_mode(self, mode: Literal["fs", "re", "finetune", "both"]) -> None:
         """Set training mode for the consequent layer."""
         self.consequent_layer.mode = mode
-
-    def _default_criterion(self) -> nn.Module:
-        return nn.CrossEntropyLoss()
 
     def expand_to_en_frb(self) -> None:
         """Switch the rule layer to an Enhanced Fuzzy Rule Base for RE phase."""
@@ -286,9 +287,6 @@ class FSREADATSKRegressorModel(_FSREADATSKMixin, BaseTSKRegressorModel):
     def set_consequent_mode(self, mode: Literal["fs", "re", "finetune", "both"]) -> None:
         """Set training mode for the consequent layer."""
         self.consequent_layer.mode = mode
-
-    def _default_criterion(self) -> nn.Module:
-        return nn.MSELoss()
 
     def expand_to_en_frb(self) -> None:
         """Switch the rule layer to an Enhanced Fuzzy Rule Base for RE phase."""
