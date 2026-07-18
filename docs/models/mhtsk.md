@@ -162,3 +162,4 @@ $$
 - The default `head_size` and `n_heads` resolution follows the paper-inspired scale parameter strategy using `xi`, `sigma`, `fcr_target`, and `h_value`.
 - The sparse consequent layers mirror the paper's per-rule subspace-specific linear consequents.
 - The `MHTSKClassifier` and `MHTSKRegressor` provide a user-facing API that maps to paper symbols `S`, `T`, `K`, and rule extraction workflow.
+- **Loss function**: `MHTSKClassifier` defaults to `MSELoss` on one-hot targets, matching the paper (Bian et al. 2025, eq. 12); regression uses `MSELoss`.

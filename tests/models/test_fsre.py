@@ -257,7 +257,8 @@ def test_fsre_adatsk_classifier_invalid_n_classes() -> None:
 
 def test_fsre_adatsk_default_criterion() -> None:
     model_clf = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
-    assert isinstance(model_clf._default_criterion(), nn.CrossEntropyLoss)
+    # Paper-faithful: FSRE-ADATSK extends ADATSK, whose loss is MSE on one-hot (eq. 8).
+    assert isinstance(model_clf.default_criterion(), nn.MSELoss)
 
     model_reg = FSREADATSKRegressorModel(_build_input_mfs(n_inputs=2, n_mfs=2))
-    assert isinstance(model_reg._default_criterion(), nn.MSELoss)
+    assert isinstance(model_reg.default_criterion(), nn.MSELoss)

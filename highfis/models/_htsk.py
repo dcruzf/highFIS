@@ -80,10 +80,6 @@ class HTSKClassifierModel(BaseTSKClassifierModel):
         """Build classification consequent head."""
         return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
 
-    def _default_criterion(self) -> nn.Module:
-        """Return CrossEntropyLoss as the default classification loss."""
-        return nn.CrossEntropyLoss()
-
 
 class HTSKRegressorModel(BaseTSKRegressorModel):
     r"""HTSK regressor for high-dimensional TSK inference.
@@ -134,10 +130,6 @@ class HTSKRegressorModel(BaseTSKRegressorModel):
     def _build_consequent_layer(self) -> nn.Module:
         """Build regression consequent head."""
         return RegressionConsequentLayer(self.n_rules, self.n_inputs)
-
-    def _default_criterion(self) -> nn.Module:
-        """Return MSELoss as the default regression loss."""
-        return nn.MSELoss()
 
 
 class TSKClassifierModel(BaseTSKClassifierModel):
@@ -199,10 +191,6 @@ class TSKClassifierModel(BaseTSKClassifierModel):
         """Build classification consequent head."""
         return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
 
-    def _default_criterion(self) -> nn.Module:
-        """Return CrossEntropyLoss as the default classification loss."""
-        return nn.CrossEntropyLoss()
-
 
 class TSKRegressorModel(BaseTSKRegressorModel):
     r"""Vanilla TSK regressor with sum-based rule normalization.
@@ -254,7 +242,3 @@ class TSKRegressorModel(BaseTSKRegressorModel):
     def _build_consequent_layer(self) -> nn.Module:
         """Build regression consequent head."""
         return RegressionConsequentLayer(self.n_rules, self.n_inputs)
-
-    def _default_criterion(self) -> nn.Module:
-        """Return MSELoss as the default regression loss."""
-        return nn.MSELoss()

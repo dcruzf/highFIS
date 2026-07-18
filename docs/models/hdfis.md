@@ -199,3 +199,5 @@ highFIS provides an opt-in strict mode on HDFIS estimators:
   **HDFIS-min**.
 - HDFIS-min in highFIS uses frozen antecedents to avoid nondifferentiability
   and keep training focused on consequent parameters.
+- **Loss function**: both classifiers default to `MSELoss` on one-hot targets,
+  matching the paper (eq. 14); regression uses `MSELoss` on scalar targets.

@@ -32,6 +32,9 @@ class MHTSKClassifierModel(BaseTSKClassifierModel):
         doi: 10.1109/TFUZZ.2025.3569227.
     """
 
+    #: MSE on one-hot targets, matching the MHTSK paper (Bian et al. 2025, eq. 12).
+    default_criterion = nn.MSELoss
+
     def __init__(
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
@@ -76,10 +79,6 @@ class MHTSKClassifierModel(BaseTSKClassifierModel):
             self.rule_feature_mask,
         )
 
-    def _default_criterion(self) -> nn.Module:
-        """Return CrossEntropyLoss as the default classification loss."""
-        return nn.CrossEntropyLoss()
-
 
 class MHTSKRegressorModel(BaseTSKRegressorModel):
     """Multihead TSK regressor with sparse rule consequents.
@@ -122,7 +121,3 @@ class MHTSKRegressorModel(BaseTSKRegressorModel):
             self.n_inputs,
             self.rule_feature_mask,
         )
-
-    def _default_criterion(self) -> nn.Module:
-        """Return MSELoss as the default regression loss."""
-        return nn.MSELoss()

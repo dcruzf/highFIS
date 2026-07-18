@@ -31,8 +31,7 @@ class _ConcreteClassifier(BaseTSK):
 
         return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self._n_classes)
 
-    def _default_criterion(self) -> nn.Module:
-        return nn.CrossEntropyLoss()
+    default_criterion = nn.CrossEntropyLoss
 
 
 def _make_input_mfs():
@@ -127,8 +126,7 @@ class _ConcreteRegressor(BaseTSK):
 
         return RegressionConsequentLayer(self.n_rules, self.n_inputs)
 
-    def _default_criterion(self) -> nn.Module:
-        return nn.MSELoss()
+    default_criterion = nn.MSELoss
 
 
 def test_get_consequent_weights_none() -> None:

@@ -44,6 +44,9 @@ class HDFISProdClassifierModel(BaseTSKClassifierModel):
         doi: 10.1109/TSMC.2023.3311475.
     """
 
+    #: MSE on one-hot targets, matching the HDFIS paper (Xue et al. 2023, eq. 14).
+    default_criterion = nn.MSELoss
+
     def __init__(
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
@@ -72,9 +75,6 @@ class HDFISProdClassifierModel(BaseTSKClassifierModel):
 
     def _build_consequent_layer(self) -> nn.Module:
         return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
-
-    def _default_criterion(self) -> nn.Module:
-        return nn.CrossEntropyLoss()
 
 
 class HDFISProdRegressorModel(BaseTSKRegressorModel):
@@ -118,9 +118,6 @@ class HDFISProdRegressorModel(BaseTSKRegressorModel):
     def _build_consequent_layer(self) -> nn.Module:
         return RegressionConsequentLayer(self.n_rules, self.n_inputs)
 
-    def _default_criterion(self) -> nn.Module:
-        return nn.MSELoss()
-
 
 class HDFISMinClassifierModel(BaseTSKClassifierModel):
     r"""HDFIS-min classifier with frozen antecedents and minimum aggregation.
@@ -135,6 +132,9 @@ class HDFISMinClassifierModel(BaseTSKClassifierModel):
         Cybernetics: Systems, vol. 54, no. 1, pp. 507-519, Jan. 2024,
         doi: 10.1109/TSMC.2023.3311475.
     """
+
+    #: MSE on one-hot targets, matching the HDFIS paper (Xue et al. 2023, eq. 14).
+    default_criterion = nn.MSELoss
 
     def __init__(
         self,
@@ -166,9 +166,6 @@ class HDFISMinClassifierModel(BaseTSKClassifierModel):
 
     def _build_consequent_layer(self) -> nn.Module:
         return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
-
-    def _default_criterion(self) -> nn.Module:
-        return nn.CrossEntropyLoss()
 
 
 class HDFISMinRegressorModel(BaseTSKRegressorModel):
@@ -211,6 +208,3 @@ class HDFISMinRegressorModel(BaseTSKRegressorModel):
 
     def _build_consequent_layer(self) -> nn.Module:
         return RegressionConsequentLayer(self.n_rules, self.n_inputs)
-
-    def _default_criterion(self) -> nn.Module:
-        return nn.MSELoss()
