@@ -122,8 +122,8 @@ def test_estimator_fit_accepts_validation_data_in_fit() -> None:
     est = HTSKClassifier(n_mfs=2, epochs=1, batch_size=16)
     est = est.fit(x, y, x_val=x_val, y_val=y_val)
     assert hasattr(est, "history_")
-    assert "train" in est.history_
-    assert "val" in est.history_
+    assert "train_total_loss" in est.history_
+    assert "val_loss" in est.history_
     assert est.model_ is not None
 
 
@@ -202,8 +202,8 @@ def test_estimator_early_stopping_with_validation_data() -> None:
     y_train, y_val = (y[:60], y[60:])
     est = HTSKClassifier(n_mfs=2, mf_init="kmeans", epochs=1000, learning_rate=0.05, random_state=7, patience=3)
     est.fit(x_train, y_train, x_val=x_val, y_val=y_val)
-    assert "val" in est.history_
-    assert len(est.history_["val"]) > 0
+    assert "val_loss" in est.history_
+    assert len(est.history_["val_loss"]) > 0
     assert est.history_["stopped_epoch"] < 1000
 
 
@@ -221,7 +221,7 @@ def test_estimator_patience_none_disables_early_stopping() -> None:
     est = HTSKClassifier(n_mfs=2, mf_init="kmeans", epochs=10, learning_rate=0.05, random_state=7, patience=None)
     est.fit(x_train, y_train, x_val=x_val, y_val=y_val)
     assert est.history_["stopped_epoch"] == 10
-    assert len(est.history_["val"]) == 10
+    assert len(est.history_["val_loss"]) == 10
 
 
 def test_estimator_restore_best_false_does_not_restore_best_model() -> None:
@@ -233,7 +233,7 @@ def test_estimator_restore_best_false_does_not_restore_best_model() -> None:
     )
     est.fit(x_train, y_train, x_val=x_val, y_val=y_val)
     assert est.history_["stopped_epoch"] == 5
-    assert len(est.history_["val"]) == 5
+    assert len(est.history_["val_loss"]) == 5
 
 
 def test_estimator_passes_restore_best_to_model_fit() -> None:
@@ -573,8 +573,8 @@ def test_regressor_estimator_early_stopping_with_validation_data() -> None:
     y_train, y_val = (y[:60], y[60:])
     est = HTSKRegressor(n_mfs=2, mf_init="kmeans", epochs=1000, learning_rate=0.05, random_state=7, patience=3)
     est.fit(x_train, y_train, x_val=x_val, y_val=y_val)
-    assert "val" in est.history_
-    assert len(est.history_["val"]) > 0
+    assert "val_loss" in est.history_
+    assert len(est.history_["val_loss"]) > 0
     assert est.history_["stopped_epoch"] < 1000
 
 
