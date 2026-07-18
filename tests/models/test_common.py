@@ -263,3 +263,25 @@ def test_run_threshold_grid_search_restores_training_mode() -> None:
     _run_threshold_grid_search(model, x, y, x, y, [0.25, 0.5], [0.5], True, False)
 
     assert model.training is True
+
+
+def test_get_consequent_bias_completes_the_rule() -> None:
+    """The consequent intercept is reachable through the public introspection API.
+
+    A first-order rule is ``score_r^c(x) = b_{r,c} + sum_d w_{r,c,d} x_d``;
+    ``get_consequent_weights`` alone returns only ``w``, so reconstructing a full rule
+    used to require reaching into ``consequent_layer.bias``.
+    """
+    from highfis.models import HTSKClassifierModel, HTSKRegressorModel
+
+    clf = HTSKClassifierModel(_grid_mfs(n_inputs=3, n_mfs=2), n_classes=4)
+    weight = clf.get_consequent_weights()
+    bias = clf.get_consequent_bias()
+    assert weight is not None and bias is not None
+    assert weight.shape[:2] == bias.shape  # (rules, classes) shared prefix
+    raw_bias = clf.consequent_layer.bias
+    assert isinstance(raw_bias, torch.Tensor)
+    assert torch.equal(bias, raw_bias.detach())
+
+    reg = HTSKRegressorModel(_grid_mfs(n_inputs=3, n_mfs=2))
+    assert reg.get_consequent_bias() is not None

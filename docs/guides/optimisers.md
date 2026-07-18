@@ -72,7 +72,7 @@ clf = HTSKClassifier(
 clf.fit(X_scaled, y)
 
 # The training history is captured in clf.history_
-print("Final training loss:", clf.history_["train"][-1])
+print("Final training loss:", clf.history_["train_total_loss"][-1])
 print("Epochs executed:", clf.history_["stopped_epoch"])
 ```
 
@@ -275,6 +275,45 @@ The `"train_<metric>"` keys are only present when `eval_metrics_every` is greate
 (the default is `1`). The `"val_<metric>"` keys are present whenever a validation set is
 supplied. Passing `metrics=[]` to `.fit()` disables both.
 
+### Reading `history_` correctly
+
+Each series carries one canonical name — the loss decomposition is
+`train_total_loss = train_loss + ur_weight * train_ur_loss`:
+
+| key | meaning |
+|---|---|
+| `train_loss` | main task loss per epoch |
+| `train_ur_loss` | uniform-regularisation term per epoch (logged even when `ur_weight=0`) |
+| `train_total_loss` | the optimised objective per epoch |
+| `val_loss`, `val_<metric>` | validation series (only with a validation set) |
+| `lr` | learning rate used in each epoch |
+| `stopped_epoch` | number of epochs actually executed |
+| `best_epoch` | index of the best-validation epoch, or `None` without validation |
+
+!!! warning "The last row is not always the fitted model"
+
+    With a validation set and `restore_best=True` (the default), training continues past
+    the best epoch and the returned model is rolled back to it — so `history_[...][-1]`
+    describes a **different** model than the one you hold. Index with `best_epoch`
+    instead.
+
+```python
+from highfis import HTSKClassifier
+
+clf = HTSKClassifier(n_mfs=3, epochs=30, random_state=42)
+clf.fit(X_train, y_train, x_val=X_val, y_val=y_val)
+
+best = clf.history_["best_epoch"]
+print("best epoch:", best)
+print("last row (a discarded model):", round(clf.history_["train_accuracy"][-1], 3))
+print("the returned model:          ", round(clf.history_["train_accuracy"][best], 3))
+```
+
+`best_epoch` is an epoch index, so it lines up with the per-epoch series. Without a
+validation set it is `None` — the last row *is* the returned model. If you set
+`eval_metrics_every` above `1`, the `train_<metric>` series are subsampled and no longer
+indexed by epoch.
+
 To track additional metrics, pass them as a list of strings to the `.fit()` method:
 
 ```python
@@ -317,7 +356,7 @@ Where:
 ### Configuration Parameters
 
 Uniform Regularization is configured using two hyperparameters on the estimator:
-*   **`ur_weight`**: The regularization strength (default: `0.0`). If set to `0.0`, no UR penalty is added to the loss function during backpropagation. However, the value of the metric is still computed and logged to `history_["ur"]` for monitoring.
+*   **`ur_weight`**: The regularization strength (default: `0.0`). If set to `0.0`, no UR penalty is added to the loss function during backpropagation. However, the value of the metric is still computed and logged to `history_["train_ur_loss"]` for monitoring.
 *   **`ur_target`**: The target activation level $t$ (default: `None`, which defaults to $1/R$).
 
 ### Interpretation of UR Values

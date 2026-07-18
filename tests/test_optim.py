@@ -217,7 +217,7 @@ def test_gradient_trainer_classification_mseloss() -> None:
 
     trainer = GradientTrainer(epochs=2, loss=nn.MSELoss())
     history = trainer.fit(model, x, y)
-    assert len(history["train"]) == 2
+    assert len(history["train_total_loss"]) == 2
 
 
 # ==============================================================================
@@ -365,7 +365,7 @@ def test_gradient_trainer_custom_optimizer() -> None:
     trainer = GradientTrainer(epochs=1)
     # Fit using custom optimizer to cover the optimizer is not None branch (line 266)
     history = trainer.fit(model, x, y, optimizer=custom_opt)
-    assert len(history["train"]) == 1
+    assert len(history["train_total_loss"]) == 1
 
 
 def test_predict_numpy_different_shapes() -> None:
@@ -474,7 +474,6 @@ def test_gradient_trainer_scheduler_and_edge_cases() -> None:
     # 5. classification with validation but accuracy is not in metrics (e.g. metrics=["precision_macro"])
     history_cls = trainer.fit(model, x, y, x_val=x, y_val=y, metrics=["precision_macro"])
     assert "val_accuracy" in history_cls
-    assert "val_acc" in history_cls
 
 
 def test_set_training_flag_matches_module_train() -> None:
@@ -590,3 +589,61 @@ def test_set_training_flag_skips_none_children() -> None:
     set_training_flag(module, False)
     assert module.training is False
     assert module.real.training is False  # type: ignore[union-attr]
+
+
+def test_history_has_no_redundant_alias_keys() -> None:
+    """``history_`` carries one canonical name per series.
+
+    ``train`` / ``ur`` / ``val`` / ``val_acc`` used to duplicate ``train_total_loss`` /
+    ``train_ur_loss`` / ``val_loss`` / ``val_accuracy``, leaving users unsure which was
+    authoritative.
+    """
+    from highfis.models._fsre import FSREADATSKClassifierModel
+
+    model = FSREADATSKClassifierModel(_build_input_mfs(3, 2), n_classes=2)
+    x = torch.randn(15, 3)
+    y = torch.randint(0, 2, (15,))
+
+    history = GradientTrainer(epochs=2).fit(model, x, y, x_val=x, y_val=y)
+
+    for alias in ("train", "ur", "val", "val_acc"):
+        assert alias not in history, f"redundant alias {alias!r} is back in history_"
+    for canonical in ("train_total_loss", "train_ur_loss", "val_loss"):
+        assert canonical in history
+
+
+def test_history_best_epoch_indexes_the_restored_model() -> None:
+    """``best_epoch`` points at the row describing the weights ``restore_best`` keeps.
+
+    Training continues past the best epoch, so the *last* row of every series belongs to a
+    different model than the one returned; ``best_epoch`` is the index that does not.
+    """
+    from highfis.models._fsre import FSREADATSKClassifierModel
+
+    torch.manual_seed(0)
+    model = FSREADATSKClassifierModel(_build_input_mfs(3, 2), n_classes=2)
+    x = torch.randn(30, 3)
+    y = (x[:, 0] > 0).long()
+
+    trainer = GradientTrainer(epochs=8, patience=None, restore_best=True)
+    history = trainer.fit(model, x, y, x_val=x, y_val=y)
+
+    best = history["best_epoch"]
+    assert best is not None
+    assert 0 <= best < len(history["val_loss"])
+    # Early stopping maximises the primary metric (accuracy by default for
+    # classification), so the recorded row must hold the best validation accuracy seen.
+    assert history["val_accuracy"][best] == pytest.approx(max(history["val_accuracy"]))
+
+
+def test_history_best_epoch_is_none_without_validation() -> None:
+    """With no validation set there is no best-epoch selection; the last row is the model."""
+    from highfis.models._fsre import FSREADATSKClassifierModel
+
+    model = FSREADATSKClassifierModel(_build_input_mfs(3, 2), n_classes=2)
+    x = torch.randn(15, 3)
+    y = torch.randint(0, 2, (15,))
+
+    history = GradientTrainer(epochs=3).fit(model, x, y)
+
+    assert history["best_epoch"] is None
