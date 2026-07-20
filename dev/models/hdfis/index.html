@@ -1720,7 +1720,7 @@ standard Gaussian MFs and then freezes the antecedent parameters.</p>
 <li><code>mf_init="grid"</code></li>
 <li><code>rule_base="coco"</code></li>
 <li><code>n_mfs=3</code> (three rules)</li>
-<li><code>batch_size=64</code></li>
+<li><code>batch_size=64</code> (the default via <code>batch_size="auto"</code>, matching the paper)</li>
 <li>For HDFIS-prod, strict mode also enables the paper-form DMF equation
   denominator (<code>D^rho + sigma^2</code>) and zero consequent initialization.</li>
 <li>For HDFIS-min, strict mode enables zero consequent initialization while

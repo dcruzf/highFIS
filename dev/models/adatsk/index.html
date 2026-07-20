@@ -1625,7 +1625,7 @@ operator.</p>
 <ul>
 <li><code>ADATSKClassifier</code> is the paper-strict default wrapper.</li>
 <li>Default settings follow the paper protocol: <code>n_mfs=3</code>, <code>mf_init="grid"</code>,
-  <code>rule_base="coco"</code>, full-batch updates (<code>batch_size=None</code>), and no
+  <code>rule_base="coco"</code>, full-batch updates (the default <code>batch_size="auto"</code>), and no
   shuffling.</li>
 <li>For grid initialization, MF centers are placed directly on
   <code>[V_{\min}, V_{\max}]</code> with no margin padding.</li>

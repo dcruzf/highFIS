@@ -1565,7 +1565,7 @@ w_r = 1 - \left[\sum_{d=1}^{D} (1 - \mu_{r,d}(x_d))^{\lambda}\right]^{1/\lambda}
 <li><code>AYATSKClassifierModel</code> uses MSE loss, Adam, and zero-initialized consequents by default.</li>
 <li><code>AYATSKClassifier</code> defaults to <code>n_mfs=3</code>, <code>mf_init="grid"</code>, <code>rule_base="coco"</code>, <code>epochs=200</code>, and <code>learning_rate=0.001</code>.</li>
 <li><code>AYATSKClassifier</code> and <code>AYATSKRegressor</code> expose <code>k</code> (CEMF parameter), with required constraint <code>k &gt; 1</code>.</li>
-<li>When <code>batch_size=None</code>, the AYATSK estimator uses full-batch for <code>N &lt; 500</code> and <code>0.1 * N</code> otherwise, matching the paper’s training policy.</li>
+<li>With the default <code>batch_size="auto"</code>, AYATSK uses full batch for <code>N &lt; 500</code> and <code>0.1 * N</code> otherwise, matching the paper's training policy. Pass <code>batch_size=None</code> to force full batch at any size.</li>
 <li><code>AYATSKRegressor</code> remains available as a framework extension, but the paper itself evaluates classification only.</li>
 </ul>
 <h2 id="estimator-wrappers">Estimator wrappers</h2>

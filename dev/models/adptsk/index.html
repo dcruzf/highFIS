@@ -1671,7 +1671,7 @@ a regression consequent head and MSE loss.</p>
   antecedents as Gaussian MFs with centers <code>[0.0, 0.5, 1.0]</code> and <code>sigma=1.0</code>,</li>
 <li>wraps them as <code>GaussianPiMF</code> with the chosen <code>K</code> value,</li>
 <li>defaults to <code>rule_base="coco"</code>,</li>
-<li>applies paper-style batch sizing when <code>batch_size=None</code>,</li>
+<li>applies paper-style batch sizing with the default <code>batch_size="auto"</code>,</li>
 <li>constructs <code>ADPTSKClassifierModel</code> with <code>kappa</code>, <code>xi</code>, <code>eps</code>, and
   zero consequent initialization. No automatic normalization is applied.</li>
 </ul>
