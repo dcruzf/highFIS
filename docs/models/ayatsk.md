@@ -89,7 +89,7 @@ $$
 - `AYATSKClassifierModel` uses MSE loss, Adam, and zero-initialized consequents by default.
 - `AYATSKClassifier` defaults to `n_mfs=3`, `mf_init="grid"`, `rule_base="coco"`, `epochs=200`, and `learning_rate=0.001`.
 - `AYATSKClassifier` and `AYATSKRegressor` expose `k` (CEMF parameter), with required constraint `k > 1`.
-- When `batch_size=None`, the AYATSK estimator uses full-batch for `N < 500` and `0.1 * N` otherwise, matching the paper’s training policy.
+- With the default `batch_size="auto"`, AYATSK uses full batch for `N < 500` and `0.1 * N` otherwise, matching the paper's training policy. Pass `batch_size=None` to force full batch at any size.
 - `AYATSKRegressor` remains available as a framework extension, but the paper itself evaluates classification only.
 
 ## Estimator wrappers
