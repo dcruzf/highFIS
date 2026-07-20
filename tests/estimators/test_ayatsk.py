@@ -83,4 +83,7 @@ def test_ayatsk_default_profile_and_errors() -> None:
     x_small, y_small = _make_dataset(40)
     clf_small = AYATSKClassifier(epochs=1)
     clf_small.fit(x_small, y_small)
-    assert clf_small.batch_size is None
+    # The paper policy resolves to full batch below 500 samples, and the constructor
+    # parameter itself is left untouched by fit.
+    assert clf_small.batch_size_ is None
+    assert clf_small.batch_size == "auto"
