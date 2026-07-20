@@ -18,11 +18,17 @@ from ..models import (
     HDFISProdRegressorModel,
 )
 from ._base import (
+    BatchSizeSpec,
     InputConfig,
     _BaseClassifierEstimator,
     _BaseRegressorEstimator,
     _wrap_dimension_dependent_gaussian_input_mfs,
 )
+
+
+def _hdfis_paper_batch_size(n_samples: int) -> int:
+    """HDFIS_2023 eq. settings: a fixed batch of 64 ("the numbers of samples are not large")."""
+    return 64
 
 
 class HDFISProdClassifier(_BaseClassifierEstimator):
@@ -60,7 +66,7 @@ class HDFISProdClassifier(_BaseClassifierEstimator):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = 512,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -142,6 +148,10 @@ class HDFISProdClassifier(_BaseClassifierEstimator):
         self.xi = xi
         self.rho = rho
 
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """HDFIS_2023: a fixed batch of 64."""
+        return _hdfis_paper_batch_size(n_samples)
+
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         if x_arr.shape[1] < 2:
             raise ValueError(f"HDFISProdClassifier requires at least 2 features; got n_features={x_arr.shape[1]}.")
@@ -209,7 +219,7 @@ class HDFISProdRegressor(_BaseRegressorEstimator):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = 512,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -287,6 +297,10 @@ class HDFISProdRegressor(_BaseRegressorEstimator):
         self.xi = xi
         self.rho = rho
 
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """HDFIS_2023: a fixed batch of 64."""
+        return _hdfis_paper_batch_size(n_samples)
+
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         if x_arr.shape[1] < 2:
             raise ValueError(f"HDFISProdRegressor requires at least 2 features; got n_features={x_arr.shape[1]}.")
@@ -355,7 +369,7 @@ class HDFISMinClassifier(_BaseClassifierEstimator):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = 512,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -429,6 +443,10 @@ class HDFISMinClassifier(_BaseClassifierEstimator):
             scheduler_params=scheduler_params,
         )
 
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """HDFIS_2023: a fixed batch of 64."""
+        return _hdfis_paper_batch_size(n_samples)
+
     def _build_model(
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
@@ -482,7 +500,7 @@ class HDFISMinRegressor(_BaseRegressorEstimator):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = 512,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -551,6 +569,10 @@ class HDFISMinRegressor(_BaseRegressorEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """HDFIS_2023: a fixed batch of 64."""
+        return _hdfis_paper_batch_size(n_samples)
 
     def _build_regressor_model(
         self,

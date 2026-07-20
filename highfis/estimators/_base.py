@@ -9,7 +9,7 @@ from abc import abstractmethod
 from collections import OrderedDict
 from collections.abc import Callable, Hashable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, NamedTuple, Self, cast
+from typing import Any, Final, Literal, NamedTuple, Self, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -42,6 +42,14 @@ from ..persistence import (
     serialize_input_mfs,
     validate_checkpoint_payload,
 )
+
+#: Sentinel for ``batch_size``: defer to the family's paper policy, resolved from the
+#: training-set size at ``fit`` time. Distinct from ``None``, which forces full batch.
+_AUTO_BATCH_SIZE: Final = "auto"
+
+#: Accepted values for ``batch_size``: an explicit size, ``None`` for full batch, or
+#: ``"auto"`` for the source paper's policy.
+BatchSizeSpec = int | None | Literal["auto"]
 
 
 @dataclass(frozen=True)
@@ -587,7 +595,7 @@ class _BaseTSKEstimator(BaseEstimator):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = 512,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -718,6 +726,35 @@ class _BaseTSKEstimator(BaseEstimator):
 
         return input_mfs, feature_names, effective_rule_base
 
+    def _resolve_batch_size(self, n_samples: int) -> int | None:
+        """Return the batch size to train with, given the training-set size.
+
+        Implements the three-valued contract of ``batch_size``: an explicit ``int`` (or
+        ``None`` for full batch) always wins, while ``"auto"`` defers to the family's
+        paper policy. ``fit`` calls this once and stores the answer in ``batch_size_``.
+        Resolving here, rather than mutating ``self.batch_size``, keeps the constructor
+        parameter immutable as scikit-learn requires.
+
+        Subclasses override :meth:`_paper_batch_size`, never this method, so honouring an
+        explicit choice is written once and cannot be forgotten by a family.
+        """
+        if self.batch_size != _AUTO_BATCH_SIZE:
+            return cast("int | None", self.batch_size)
+        return self._paper_batch_size(n_samples)
+
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """Batch size for ``batch_size="auto"``, from this family's source paper.
+
+        The base default is full batch, which is what the papers without a mini-batch
+        protocol prescribe (AdaTSK/FSRE-ADATSK, DG-TSK).
+        """
+        return None
+
+    @property
+    def _effective_batch_size(self) -> int | None:
+        """Batch size chosen for the current fit, falling back to the raw parameter."""
+        return cast("int | None", getattr(self, "batch_size_", self.batch_size))
+
     def _get_trainer(self) -> BaseTrainer:
         """Return the default :class:`~highfis.optim.GradientTrainer` for this estimator.
 
@@ -727,7 +764,7 @@ class _BaseTSKEstimator(BaseEstimator):
         return GradientTrainer(
             epochs=int(self.epochs),
             learning_rate=float(self.learning_rate),
-            batch_size=self.batch_size,
+            batch_size=self._effective_batch_size,
             shuffle=bool(self.shuffle),
             patience=self.patience,
             restore_best=bool(self.restore_best),
@@ -990,6 +1027,9 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
         x_t = self._as_tensor_x(x_arr, _device)
         self.rule_base_ = effective_rule_base
         self._pre_train_hook(self.model_, x_t, y_t)
+        # Resolve the effective batch size once, from the training-set size, and expose it
+        # as a fitted attribute; the trainer is built from it below.
+        self.batch_size_ = self._resolve_batch_size(int(x_t.shape[0]))
         _trainer = self.trainer if self.trainer is not None else self._get_trainer()
         self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
         return self
@@ -1196,6 +1236,9 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
         x_t = self._as_tensor_x(x_arr, _device)
         self.rule_base_ = effective_rule_base
         self._pre_train_hook(self.model_, x_t, y_t)
+        # Resolve the effective batch size once, from the training-set size, and expose it
+        # as a fitted attribute; the trainer is built from it below.
+        self.batch_size_ = self._resolve_batch_size(int(x_t.shape[0]))
         _trainer = self.trainer if self.trainer is not None else self._get_trainer()
         self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
         return self

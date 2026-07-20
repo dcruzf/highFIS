@@ -97,7 +97,7 @@ The default settings are:
 - `rule_base='coco'`
 - `n_mfs=3`, `mf_init='grid'`
 - paper-initialized antecedents with centers `[0.0, 0.5, 1.0]` and `sigma=1.0`
-- `epochs=50`, `batch_size=None`
+- `epochs=50`, `batch_size="auto"` (resolves to `0.1 * N`, the paper's proportion)
 - `ADAM` optimizer (paper-style default in ADMTSK path)
 - zero-initialized consequent weights and biases
 

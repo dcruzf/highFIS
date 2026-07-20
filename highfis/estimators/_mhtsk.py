@@ -19,6 +19,7 @@ from ..models import (
     MHTSKRegressorModel,
 )
 from ._base import (
+    BatchSizeSpec,
     InputConfig,
     _BaseClassifierEstimator,
     _BaseRegressorEstimator,
@@ -312,6 +313,11 @@ def _extract_mhtsk_rule_indices_unsupervised(norm_w: Tensor, crcr_us: float) -> 
     return _select_rule_indices(torch.max(norm_w, dim=0).values, crcr_us)
 
 
+def _mhtsk_default_batch_size(n_samples: int) -> int:
+    """MHTSK_2025 does not specify a batch size; use 64, matching HDFIS's small-data choice."""
+    return 64
+
+
 class MHTSKClassifier(_BaseClassifierEstimator):
     """Estimator for the multihead Takagi-Sugeno-Kang fuzzy system.
 
@@ -359,7 +365,7 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         epochs: int = 100,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
-        batch_size: int | None = 512,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -454,6 +460,10 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         self.crcr_us = crcr_us
         self.crcr_s = crcr_s
         self.retrain_after_extraction = retrain_after_extraction
+
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """MHTSK_2025 specifies no batch size; default to 64."""
+        return _mhtsk_default_batch_size(n_samples)
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:  # type: ignore[override]
         feature_names = self._resolve_feature_names(x_arr)
@@ -606,7 +616,7 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         epochs: int = 100,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
-        batch_size: int | None = 512,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -703,6 +713,10 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         self.rule_extraction = rule_extraction
         self.crcr_us = crcr_us
         self.retrain_after_extraction = retrain_after_extraction
+
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """MHTSK_2025 specifies no batch size; default to 64."""
+        return _mhtsk_default_batch_size(n_samples)
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:  # type: ignore[override]
         feature_names = self._resolve_feature_names(x_arr)

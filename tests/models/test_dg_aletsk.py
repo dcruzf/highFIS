@@ -399,3 +399,22 @@ def test_dgaletsk_search_thresholds_inplace_true_structural_false_use_lse_true()
         use_lse=True,
     )
     assert "best_score" in res_reg
+
+
+def test_dg_aletsk_structural_pruning_keeps_all_rules_when_none_survive() -> None:
+    """A threshold that prunes every rule falls back to keeping them all.
+
+    ``zeta_theta=0`` maps to ``tau = max(gate)``, and the survivor test is strict ``>``,
+    so no rule clears it. Pruning to an empty rule base would leave an unusable model.
+    """
+    torch.manual_seed(0)
+    model = DGALETSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
+    x = torch.randn(16, 2)
+    y = (x[:, 0] > 0).long()
+    n_rules_before = model.n_rules
+
+    result = model.search_thresholds(
+        x, y, zeta_lambda=[0.5], zeta_theta=[0.0], x_val=x, y_val=y, use_lse=False, inplace=True
+    )
+
+    assert result["surviving_rule_indices"] == list(range(n_rules_before))

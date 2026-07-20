@@ -110,7 +110,7 @@ This estimator:
   antecedents as Gaussian MFs with centers `[0.0, 0.5, 1.0]` and `sigma=1.0`,
 - wraps them as `GaussianPiMF` with the chosen `K` value,
 - defaults to `rule_base="coco"`,
-- applies paper-style batch sizing when `batch_size=None`,
+- applies paper-style batch sizing with the default `batch_size="auto"`,
 - constructs `ADPTSKClassifierModel` with `kappa`, `xi`, `eps`, and
   zero consequent initialization. No automatic normalization is applied.
 

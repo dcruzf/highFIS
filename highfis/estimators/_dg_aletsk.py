@@ -17,13 +17,18 @@ from ..models import (
 from ..optim._base import BaseTrainer
 from ..optim._dg import DGTrainer
 from ..optim._protocols import PFRBModelProtocol
-from ._base import InputConfig
+from ._base import BatchSizeSpec, InputConfig
 from ._fsre import (
     FSREADATSKClassifier,
     FSREADATSKRegressor,
 )
 
 _DG_ALETSK_PAPER_ZETA_GRID: list[float] = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3]
+
+
+def _dg_aletsk_paper_batch_size(n_samples: int) -> int:
+    """DG-ALETSK_2023: batch size is 10% of the training samples."""
+    return max(1, round(0.1 * float(n_samples)))
 
 
 class DGALETSKClassifier(FSREADATSKClassifier):
@@ -76,7 +81,7 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = "pfrb",
-        batch_size: int | None = 512,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -194,6 +199,10 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         self.zeta_theta: list[float] | None = zeta_theta
         self.pfrb_max_rules = pfrb_max_rules
 
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """DG-ALETSK_2023: 10% of the training samples."""
+        return _dg_aletsk_paper_batch_size(n_samples)
+
     @staticmethod
     def _resolve_default_pfrb_max_rules(n_features: int) -> int:
         return 50 if int(n_features) >= 10_000 else 100
@@ -251,7 +260,7 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         return DGTrainer(
             dg_epochs=int(self.dg_epochs),
             dg_learning_rate=float(self.learning_rate),
-            dg_batch_size=self.batch_size,
+            dg_batch_size=self._effective_batch_size,
             dg_shuffle=bool(self.shuffle),
             dg_patience=self.patience,
             dg_weight_decay=float(self.weight_decay),
@@ -262,7 +271,7 @@ class DGALETSKClassifier(FSREADATSKClassifier):
             use_lse=bool(self.use_lse),
             finetune_epochs=int(self.finetune_epochs),
             finetune_learning_rate=float(self.learning_rate),
-            finetune_batch_size=self.batch_size,
+            finetune_batch_size=self._effective_batch_size,
             finetune_shuffle=bool(self.shuffle),
             finetune_patience=self.patience,
             finetune_restore_best=bool(self.restore_best),
@@ -334,7 +343,7 @@ class DGALETSKRegressor(FSREADATSKRegressor):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = 512,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -442,6 +451,10 @@ class DGALETSKRegressor(FSREADATSKRegressor):
         self.zeta_lambda: list[float] | None = zeta_lambda
         self.zeta_theta: list[float] | None = zeta_theta
 
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """DG-ALETSK_2023: 10% of the training samples."""
+        return _dg_aletsk_paper_batch_size(n_samples)
+
     def _build_regressor_model(
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
@@ -468,7 +481,7 @@ class DGALETSKRegressor(FSREADATSKRegressor):
         return DGTrainer(
             dg_epochs=int(self.dg_epochs),
             dg_learning_rate=float(self.learning_rate),
-            dg_batch_size=self.batch_size,
+            dg_batch_size=self._effective_batch_size,
             dg_shuffle=bool(self.shuffle),
             dg_patience=self.patience,
             dg_weight_decay=float(self.weight_decay),
@@ -479,7 +492,7 @@ class DGALETSKRegressor(FSREADATSKRegressor):
             use_lse=bool(self.use_lse),
             finetune_epochs=int(self.finetune_epochs),
             finetune_learning_rate=float(self.learning_rate),
-            finetune_batch_size=self.batch_size,
+            finetune_batch_size=self._effective_batch_size,
             finetune_shuffle=bool(self.shuffle),
             finetune_patience=self.patience,
             finetune_restore_best=bool(self.restore_best),
