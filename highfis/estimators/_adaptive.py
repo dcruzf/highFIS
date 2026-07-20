@@ -228,8 +228,8 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         self.eps = eps
         self.zero_consequent_init = zero_consequent_init
 
-    def _resolve_default_batch_size(self, n_samples: int) -> int | None:
-        """Resolve paper-style ADPTSK default batch sizing."""
+    def _resolve_batch_size(self, n_samples: int) -> int | None:
+        """Paper-style ADPTSK batch sizing: full-batch below 500 samples, else 20% of N."""
         if self.batch_size is not None:
             return self.batch_size
         if int(n_samples) < 500:
@@ -258,24 +258,6 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
             feature_names,
             effective_rule_base,
         )
-
-    def fit(
-        self,
-        x: npt.ArrayLike,
-        y: npt.ArrayLike,
-        *,
-        x_val: npt.ArrayLike | None = None,
-        y_val: npt.ArrayLike | None = None,
-        metrics: list[str] | None = None,
-    ) -> ADPTSKClassifier:
-        original_batch_size = self.batch_size
-        try:
-            y_arr = np.asarray(y)
-            n_samples = y_arr.shape[0] if y_arr.ndim >= 1 else 0
-            self.batch_size = self._resolve_default_batch_size(n_samples)
-            return cast(ADPTSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics))
-        finally:
-            self.batch_size = original_batch_size
 
     def _build_model(
         self,
@@ -453,8 +435,8 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         self.eps = eps
         self.zero_consequent_init = zero_consequent_init
 
-    def _resolve_default_batch_size(self, n_samples: int) -> int | None:
-        """Resolve paper-style ADPTSK default batch sizing."""
+    def _resolve_batch_size(self, n_samples: int) -> int | None:
+        """Paper-style ADPTSK batch sizing: full-batch below 500 samples, else 20% of N."""
         if self.batch_size is not None:
             return self.batch_size
         if int(n_samples) < 500:
@@ -483,24 +465,6 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
             feature_names,
             effective_rule_base,
         )
-
-    def fit(
-        self,
-        x: npt.ArrayLike,
-        y: npt.ArrayLike,
-        *,
-        x_val: npt.ArrayLike | None = None,
-        y_val: npt.ArrayLike | None = None,
-        metrics: list[str] | None = None,
-    ) -> ADPTSKRegressor:
-        original_batch_size = self.batch_size
-        try:
-            y_arr = np.asarray(y)
-            n_samples = y_arr.shape[0] if y_arr.ndim >= 1 else 0
-            self.batch_size = self._resolve_default_batch_size(n_samples)
-            return cast(ADPTSKRegressor, super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics))
-        finally:
-            self.batch_size = original_batch_size
 
     def _build_regressor_model(
         self,

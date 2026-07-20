@@ -178,7 +178,10 @@ class AYATSKClassifier(_BaseClassifierEstimator):
             return input_mfs, feature_names, self.rule_base if self.rule_base is not None else "coco"
         return super()._build_input_mfs(x_arr)
 
-    def _resolve_default_batch_size(self, n_samples: int) -> int | None:
+    def _resolve_batch_size(self, n_samples: int) -> int | None:
+        """Paper-style AYATSK batch sizing: full-batch below 500 samples, else 10% of N."""
+        if self.batch_size is not None:
+            return self.batch_size
         return _resolve_ayatsk_default_batch_size(n_samples)
 
     def fit(
@@ -192,15 +195,7 @@ class AYATSKClassifier(_BaseClassifierEstimator):
     ) -> AYATSKClassifier:
         if float(self.k) <= 1.0:
             raise ValueError("k must be > 1.0")
-        original_batch_size = self.batch_size
-        try:
-            y_arr = np.asarray(y)
-            n_samples = y_arr.shape[0] if y_arr.ndim >= 1 else 0
-            if original_batch_size is None:
-                self.batch_size = self._resolve_default_batch_size(n_samples)
-            return super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics)
-        finally:
-            self.batch_size = original_batch_size
+        return super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics)
 
     def _build_model(
         self,
@@ -346,7 +341,10 @@ class AYATSKRegressor(_BaseRegressorEstimator):
             return input_mfs, feature_names, self.rule_base if self.rule_base is not None else "coco"
         return super()._build_input_mfs(x_arr)
 
-    def _resolve_default_batch_size(self, n_samples: int) -> int | None:
+    def _resolve_batch_size(self, n_samples: int) -> int | None:
+        """Paper-style AYATSK batch sizing: full-batch below 500 samples, else 10% of N."""
+        if self.batch_size is not None:
+            return self.batch_size
         return _resolve_ayatsk_default_batch_size(n_samples)
 
     def fit(
@@ -360,15 +358,7 @@ class AYATSKRegressor(_BaseRegressorEstimator):
     ) -> AYATSKRegressor:
         if float(self.k) <= 1.0:
             raise ValueError("k must be > 1.0")
-        original_batch_size = self.batch_size
-        try:
-            y_arr = np.asarray(y)
-            n_samples = y_arr.shape[0] if y_arr.ndim >= 1 else 0
-            if original_batch_size is None:
-                self.batch_size = self._resolve_default_batch_size(n_samples)
-            return super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics)
-        finally:
-            self.batch_size = original_batch_size
+        return super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics)
 
     def __sklearn_tags__(self) -> Any:
         """Mark as poor_score: AYATSK is designed for high-dimensional data."""

@@ -134,8 +134,8 @@ def test_adptsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
 
 def test_adptsk_default_batch_size_policy() -> None:
     est = ADPTSKClassifier()
-    assert est._resolve_default_batch_size(499) is None
-    assert est._resolve_default_batch_size(500) == 100
+    assert est._resolve_batch_size(499) is None
+    assert est._resolve_batch_size(500) == 100
 
 
 def test_adptsk_regressor_estimator_fit_predict() -> None:
@@ -148,8 +148,8 @@ def test_adptsk_regressor_estimator_fit_predict() -> None:
 
 def test_adptsk_regressor_default_batch_size_policy() -> None:
     est = ADPTSKRegressor()
-    assert est._resolve_default_batch_size(499) is None
-    assert est._resolve_default_batch_size(500) == 100
+    assert est._resolve_batch_size(499) is None
+    assert est._resolve_batch_size(500) == 100
 
 
 def test_admtsk_classifier_estimator_uses_composite_gmf() -> None:
