@@ -34,7 +34,9 @@ The `GradientTrainer` implements standard single-phase mini-batch gradient desce
 You can configure the trainer directly through the estimator's constructor arguments:
 *   `epochs`: Total training epochs (default: `100`).
 *   `learning_rate`: Step size for weight updates (default: `0.01`).
-*   `batch_size`: Size of mini-batches. If `None`, full-batch training is performed.
+*   `batch_size`: Size of mini-batches — see [Batch size](#batch-size) below. Accepts an
+    integer, `None` for full-batch training, or `"auto"` (the default) to follow the
+    source paper's protocol for that model family.
 *   `weight_decay`: L2 regularization strength.
 *   `eval_metrics_every`: Evaluate training metrics every `n` epochs (default: `1`); `0`
     skips the training-metric pass entirely. This only affects the `"train_<metric>"`
@@ -42,6 +44,41 @@ You can configure the trainer directly through the estimator's constructor argum
     every epoch regardless. Raising it (or setting `0`) is a cheap speed-up when you do
     not need per-epoch training curves.
 *   `scheduler_class` / `scheduler_params`: Learning-rate schedule; see below.
+
+### Batch size
+
+`batch_size` takes three kinds of value:
+
+| value | meaning |
+|---|---|
+| an `int` | exactly that batch size. Always wins. |
+| `"auto"` *(default)* | the batch protocol of the family's source paper, resolved from the training-set size when `fit` runs. |
+| `None` | full-batch training. |
+
+The papers these models come from prescribe different protocols, so there is no single
+sensible number; `"auto"` follows each one:
+
+| family | policy | source |
+|---|---|---|
+| TSK, HTSK, LogTSK | `512`, clamped to `min(N, 60)` when it exceeds the training set | Cui et al. 2021 |
+| HDFIS-prod / HDFIS-min | `64` | Xue et al. 2023 |
+| DombiTSK, ADMTSK | `0.1 · N` | Xue et al. 2025 |
+| DG-ALETSK | `0.1 · N` | Xue et al. 2023 |
+| ADPTSK | full batch below 500 samples, else `0.2 · N` | Xue et al. 2025 |
+| AYATSK | full batch below 500 samples, else `0.1 · N` | Xue et al. 2025 |
+| AdaTSK, FSRE-AdaTSK, DG-TSK | full batch | Xue et al. 2022 / 2023 |
+| MHTSK | `64` (the paper specifies no batch size) | — |
+
+After `fit`, the size actually used is available as `batch_size_`, while the `batch_size`
+parameter keeps the value you passed:
+
+```python
+from highfis import HDFISProdClassifier
+
+clf = HDFISProdClassifier(n_mfs=3, epochs=5, random_state=42)
+clf.fit(X_train, y_train)
+print("configured:", clf.batch_size, "| used:", clf.batch_size_)
+```
 
 ### Example: Training with GradientTrainer and Inspecting History
 

@@ -20,6 +20,7 @@ from ..models import (
     DombiTSKRegressorModel,
 )
 from ._base import (
+    BatchSizeSpec,
     InputConfig,
     _BaseClassifierEstimator,
     _BaseRegressorEstimator,
@@ -35,6 +36,11 @@ def _build_admtsk_default_input_mfs(n_features: int) -> dict[str, list[GaussianM
     centers = [0.0, 0.5, 1.0]
     sigma = 1.0
     return {f"x{i + 1}": [GaussianMF(mean=center, sigma=sigma) for center in centers] for i in range(n_features)}
+
+
+def _dombi_paper_batch_size(n_samples: int) -> int:
+    """ADMTSK_2025: batch size is a proportion of N; highFIS uses the 10% end of {0.1, 0.2}."""
+    return max(1, round(0.1 * float(n_samples)))
 
 
 class DombiTSKClassifier(_BaseClassifierEstimator):
@@ -72,7 +78,7 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = 512,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -157,6 +163,10 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
         self.lower_bound = lower_bound
         self.zero_consequent_init = zero_consequent_init
 
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """ADMTSK_2025: a proportion of N; highFIS uses 10%."""
+        return _dombi_paper_batch_size(n_samples)
+
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         use_paper_default = (
             self.input_configs is None
@@ -239,7 +249,7 @@ class DombiTSKRegressor(_BaseRegressorEstimator):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = 512,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -309,6 +319,10 @@ class DombiTSKRegressor(_BaseRegressorEstimator):
             scheduler_params=scheduler_params,
         )
 
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """ADMTSK_2025: a proportion of N; highFIS uses 10%."""
+        return _dombi_paper_batch_size(n_samples)
+
     def _build_regressor_model(
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
@@ -359,7 +373,7 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = "coco",
-        batch_size: int | None = None,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -454,6 +468,10 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
         self.k = k
         self.zero_consequent_init = zero_consequent_init
 
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """ADMTSK_2025: a proportion of N; highFIS uses 10%."""
+        return _dombi_paper_batch_size(n_samples)
+
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         if x_arr.shape[1] < 2:
             raise ValueError(f"ADMTSKClassifier requires at least 2 features; got n_features={x_arr.shape[1]}.")
@@ -539,7 +557,7 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = "coco",
-        batch_size: int | None = None,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -630,6 +648,10 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
         self.lower_bound = lower_bound
         self.k = k
         self.zero_consequent_init = zero_consequent_init
+
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """ADMTSK_2025: a proportion of N; highFIS uses 10%."""
+        return _dombi_paper_batch_size(n_samples)
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         if x_arr.shape[1] < 2:

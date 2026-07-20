@@ -23,6 +23,7 @@ from ..models import (
     BaseTSK,
 )
 from ._base import (
+    BatchSizeSpec,
     InputConfig,
     _BaseClassifierEstimator,
     _BaseRegressorEstimator,
@@ -128,7 +129,7 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         learning_rate: float = 1e-3,
         verbose: bool | int = False,
         rule_base: str | None = "coco",
-        batch_size: int | None = None,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -228,10 +229,8 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         self.eps = eps
         self.zero_consequent_init = zero_consequent_init
 
-    def _resolve_default_batch_size(self, n_samples: int) -> int | None:
-        """Resolve paper-style ADPTSK default batch sizing."""
-        if self.batch_size is not None:
-            return self.batch_size
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """ADPTSK_2025: full batch below 500 training samples, otherwise 20% of N."""
         if int(n_samples) < 500:
             return None
         return max(1, round(0.2 * float(n_samples)))
@@ -258,24 +257,6 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
             feature_names,
             effective_rule_base,
         )
-
-    def fit(
-        self,
-        x: npt.ArrayLike,
-        y: npt.ArrayLike,
-        *,
-        x_val: npt.ArrayLike | None = None,
-        y_val: npt.ArrayLike | None = None,
-        metrics: list[str] | None = None,
-    ) -> ADPTSKClassifier:
-        original_batch_size = self.batch_size
-        try:
-            y_arr = np.asarray(y)
-            n_samples = y_arr.shape[0] if y_arr.ndim >= 1 else 0
-            self.batch_size = self._resolve_default_batch_size(n_samples)
-            return cast(ADPTSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics))
-        finally:
-            self.batch_size = original_batch_size
 
     def _build_model(
         self,
@@ -353,7 +334,7 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         learning_rate: float = 1e-3,
         verbose: bool | int = False,
         rule_base: str | None = "coco",
-        batch_size: int | None = None,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -453,10 +434,8 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         self.eps = eps
         self.zero_consequent_init = zero_consequent_init
 
-    def _resolve_default_batch_size(self, n_samples: int) -> int | None:
-        """Resolve paper-style ADPTSK default batch sizing."""
-        if self.batch_size is not None:
-            return self.batch_size
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """ADPTSK_2025: full batch below 500 training samples, otherwise 20% of N."""
         if int(n_samples) < 500:
             return None
         return max(1, round(0.2 * float(n_samples)))
@@ -483,24 +462,6 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
             feature_names,
             effective_rule_base,
         )
-
-    def fit(
-        self,
-        x: npt.ArrayLike,
-        y: npt.ArrayLike,
-        *,
-        x_val: npt.ArrayLike | None = None,
-        y_val: npt.ArrayLike | None = None,
-        metrics: list[str] | None = None,
-    ) -> ADPTSKRegressor:
-        original_batch_size = self.batch_size
-        try:
-            y_arr = np.asarray(y)
-            n_samples = y_arr.shape[0] if y_arr.ndim >= 1 else 0
-            self.batch_size = self._resolve_default_batch_size(n_samples)
-            return cast(ADPTSKRegressor, super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics))
-        finally:
-            self.batch_size = original_batch_size
 
     def _build_regressor_model(
         self,
@@ -573,7 +534,7 @@ class ADATSKClassifier(_BaseClassifierEstimator):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = "coco",
-        batch_size: int | None = None,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = False,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -753,7 +714,7 @@ class ADATSKRegressor(_BaseRegressorEstimator):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = "coco",
-        batch_size: int | None = None,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = False,
         ur_weight: float = 0.0,
         ur_target: float | None = None,

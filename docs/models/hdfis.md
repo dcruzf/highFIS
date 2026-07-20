@@ -132,7 +132,7 @@ highFIS provides an opt-in strict mode on HDFIS estimators:
   - `mf_init="grid"`
   - `rule_base="coco"`
   - `n_mfs=3` (three rules)
-  - `batch_size=64`
+  - `batch_size=64` (the default via `batch_size="auto"`, matching the paper)
 - For HDFIS-prod, strict mode also enables the paper-form DMF equation
   denominator (`D^rho + sigma^2`) and zero consequent initialization.
 - For HDFIS-min, strict mode enables zero consequent initialization while
