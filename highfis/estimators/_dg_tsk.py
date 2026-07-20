@@ -27,6 +27,7 @@ from ..persistence import (
     validate_checkpoint_payload,
 )
 from ._base import (
+    BatchSizeSpec,
     InputConfig,
     _BaseClassifierEstimator,
     _BaseRegressorEstimator,
@@ -77,7 +78,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         learning_rate: float = 0.2,
         verbose: bool | int = False,
         rule_base: str | None = "pfrb",
-        batch_size: int | None = 512,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -411,7 +412,7 @@ class DGTSKRegressor(_BaseRegressorEstimator):
         learning_rate: float = 0.2,
         verbose: bool | int = False,
         rule_base: str | None = "pfrb",
-        batch_size: int | None = 512,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,

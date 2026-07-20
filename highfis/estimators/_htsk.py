@@ -16,10 +16,22 @@ from ..models import (
     TSKRegressorModel,
 )
 from ._base import (
+    BatchSizeSpec,
     InputConfig,
     _BaseClassifierEstimator,
     _BaseRegressorEstimator,
 )
+
+
+def _htsk_paper_batch_size(n_samples: int) -> int | None:
+    """HTSK_2021 batching: 512, clamped to ``min(N, 60)`` when it exceeds the training set.
+
+    The paper pairs the 512 with a mandatory clamp; without it the batch silently becomes
+    full-batch on the small datasets these models target, giving one update per epoch.
+    """
+    if n_samples < 512:
+        return min(n_samples, 60)
+    return 512
 
 
 class HTSKClassifier(_BaseClassifierEstimator):
@@ -55,7 +67,7 @@ class HTSKClassifier(_BaseClassifierEstimator):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = 512,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -129,6 +141,10 @@ class HTSKClassifier(_BaseClassifierEstimator):
             scheduler_params=scheduler_params,
         )
 
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """HTSK_2021: 512, clamped to ``min(N, 60)`` on smaller training sets."""
+        return _htsk_paper_batch_size(n_samples)
+
     def _build_model(
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
@@ -179,7 +195,7 @@ class HTSKRegressor(_BaseRegressorEstimator):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = 512,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -235,7 +251,6 @@ class HTSKRegressor(_BaseRegressorEstimator):
         resolved_rule_base = rule_base
         resolved_epochs = 100 if epochs is None else epochs
         resolved_learning_rate = 1e-2 if learning_rate is None else learning_rate
-        resolved_batch_size = 512 if batch_size is None else batch_size
         super().__init__(
             input_configs=input_configs,
             n_mfs=resolved_n_mfs,
@@ -246,7 +261,7 @@ class HTSKRegressor(_BaseRegressorEstimator):
             learning_rate=resolved_learning_rate,
             verbose=verbose,
             rule_base=resolved_rule_base,
-            batch_size=resolved_batch_size,
+            batch_size=batch_size,
             shuffle=shuffle,
             ur_weight=ur_weight,
             ur_target=ur_target,
@@ -260,6 +275,10 @@ class HTSKRegressor(_BaseRegressorEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """HTSK_2021: 512, clamped to ``min(N, 60)`` on smaller training sets."""
+        return _htsk_paper_batch_size(n_samples)
 
     def _build_regressor_model(
         self,
@@ -316,7 +335,7 @@ class TSKClassifier(_BaseClassifierEstimator):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = 512,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -393,6 +412,10 @@ class TSKClassifier(_BaseClassifierEstimator):
             scheduler_params=scheduler_params,
         )
 
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """HTSK_2021: 512, clamped to ``min(N, 60)`` on smaller training sets."""
+        return _htsk_paper_batch_size(n_samples)
+
     def _build_model(
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
@@ -444,7 +467,7 @@ class TSKRegressor(_BaseRegressorEstimator):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = 512,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -516,6 +539,10 @@ class TSKRegressor(_BaseRegressorEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """HTSK_2021: 512, clamped to ``min(N, 60)`` on smaller training sets."""
+        return _htsk_paper_batch_size(n_samples)
 
     def _build_regressor_model(
         self,

@@ -18,6 +18,7 @@ from ..models import (
     BaseTSK,
 )
 from ._base import (
+    BatchSizeSpec,
     InputConfig,
     _BaseClassifierEstimator,
     _BaseRegressorEstimator,
@@ -81,7 +82,7 @@ class AYATSKClassifier(_BaseClassifierEstimator):
         learning_rate: float = 1e-3,
         verbose: bool | int = False,
         rule_base: str | None = "coco",
-        batch_size: int | None = None,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -178,10 +179,8 @@ class AYATSKClassifier(_BaseClassifierEstimator):
             return input_mfs, feature_names, self.rule_base if self.rule_base is not None else "coco"
         return super()._build_input_mfs(x_arr)
 
-    def _resolve_batch_size(self, n_samples: int) -> int | None:
-        """Paper-style AYATSK batch sizing: full-batch below 500 samples, else 10% of N."""
-        if self.batch_size is not None:
-            return self.batch_size
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """AYATSK_2025: full batch below 500 training samples, otherwise 10% of N."""
         return _resolve_ayatsk_default_batch_size(n_samples)
 
     def fit(
@@ -248,7 +247,7 @@ class AYATSKRegressor(_BaseRegressorEstimator):
         learning_rate: float = 1e-3,
         verbose: bool | int = False,
         rule_base: str | None = "coco",
-        batch_size: int | None = None,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -341,10 +340,8 @@ class AYATSKRegressor(_BaseRegressorEstimator):
             return input_mfs, feature_names, self.rule_base if self.rule_base is not None else "coco"
         return super()._build_input_mfs(x_arr)
 
-    def _resolve_batch_size(self, n_samples: int) -> int | None:
-        """Paper-style AYATSK batch sizing: full-batch below 500 samples, else 10% of N."""
-        if self.batch_size is not None:
-            return self.batch_size
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """AYATSK_2025: full batch below 500 training samples, otherwise 10% of N."""
         return _resolve_ayatsk_default_batch_size(n_samples)
 
     def fit(

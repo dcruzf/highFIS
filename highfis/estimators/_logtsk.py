@@ -14,10 +14,12 @@ from ..models import (
     LogTSKRegressorModel,
 )
 from ._base import (
+    BatchSizeSpec,
     InputConfig,
     _BaseClassifierEstimator,
     _BaseRegressorEstimator,
 )
+from ._htsk import _htsk_paper_batch_size
 
 
 class LogTSKClassifier(_BaseClassifierEstimator):
@@ -57,7 +59,7 @@ class LogTSKClassifier(_BaseClassifierEstimator):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = 512,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -127,6 +129,10 @@ class LogTSKClassifier(_BaseClassifierEstimator):
             scheduler_params=scheduler_params,
         )
 
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """Shares the HTSK_2021 batching protocol (512, clamped to ``min(N, 60)``)."""
+        return _htsk_paper_batch_size(n_samples)
+
     def _build_model(
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
@@ -181,7 +187,7 @@ class LogTSKRegressor(_BaseRegressorEstimator):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = None,
-        batch_size: int | None = 512,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -250,6 +256,10 @@ class LogTSKRegressor(_BaseRegressorEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """Shares the HTSK_2021 batching protocol (512, clamped to ``min(N, 60)``)."""
+        return _htsk_paper_batch_size(n_samples)
 
     def _build_regressor_model(
         self,

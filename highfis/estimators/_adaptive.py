@@ -23,6 +23,7 @@ from ..models import (
     BaseTSK,
 )
 from ._base import (
+    BatchSizeSpec,
     InputConfig,
     _BaseClassifierEstimator,
     _BaseRegressorEstimator,
@@ -128,7 +129,7 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         learning_rate: float = 1e-3,
         verbose: bool | int = False,
         rule_base: str | None = "coco",
-        batch_size: int | None = None,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -228,10 +229,8 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         self.eps = eps
         self.zero_consequent_init = zero_consequent_init
 
-    def _resolve_batch_size(self, n_samples: int) -> int | None:
-        """Paper-style ADPTSK batch sizing: full-batch below 500 samples, else 20% of N."""
-        if self.batch_size is not None:
-            return self.batch_size
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """ADPTSK_2025: full batch below 500 training samples, otherwise 20% of N."""
         if int(n_samples) < 500:
             return None
         return max(1, round(0.2 * float(n_samples)))
@@ -335,7 +334,7 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         learning_rate: float = 1e-3,
         verbose: bool | int = False,
         rule_base: str | None = "coco",
-        batch_size: int | None = None,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -435,10 +434,8 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         self.eps = eps
         self.zero_consequent_init = zero_consequent_init
 
-    def _resolve_batch_size(self, n_samples: int) -> int | None:
-        """Paper-style ADPTSK batch sizing: full-batch below 500 samples, else 20% of N."""
-        if self.batch_size is not None:
-            return self.batch_size
+    def _paper_batch_size(self, n_samples: int) -> int | None:
+        """ADPTSK_2025: full batch below 500 training samples, otherwise 20% of N."""
         if int(n_samples) < 500:
             return None
         return max(1, round(0.2 * float(n_samples)))
@@ -537,7 +534,7 @@ class ADATSKClassifier(_BaseClassifierEstimator):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = "coco",
-        batch_size: int | None = None,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = False,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
@@ -717,7 +714,7 @@ class ADATSKRegressor(_BaseRegressorEstimator):
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
         rule_base: str | None = "coco",
-        batch_size: int | None = None,
+        batch_size: BatchSizeSpec = "auto",
         shuffle: bool = False,
         ur_weight: float = 0.0,
         ur_target: float | None = None,

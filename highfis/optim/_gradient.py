@@ -58,7 +58,7 @@ class GradientTrainer(BaseTrainer):
         *,
         epochs: int = 200,
         learning_rate: float = 1e-2,
-        batch_size: int | None = 512,
+        batch_size: int | None = None,
         shuffle: bool = True,
         patience: int | None = 20,
         restore_best: bool = True,
@@ -76,7 +76,8 @@ class GradientTrainer(BaseTrainer):
         Args:
             epochs: Maximum number of full passes over the training data.
             learning_rate: Initial learning rate for the Adam optimiser.
-            batch_size: Mini-batch size. ``None`` uses the full dataset.
+            batch_size: Mini-batch size. ``None`` (default) uses the full dataset.
+                Estimators resolve their own paper-derived size and pass it explicitly.
             shuffle: Reshuffle samples before each epoch.
             patience: Early-stopping patience.  ``None`` disables early
                 stopping.
