@@ -182,3 +182,72 @@ def test_weight_decay_is_a_no_op_at_zero_but_real_when_set() -> None:
             return float(torch.cat([p.flatten() for p in m.model_.consequent_layer.parameters()]).norm())
 
     assert cons_norm(1.0) < 0.5 * cons_norm(0.0)
+
+
+# --- float64 end-to-end ----------------------------------------------------------------
+# Model parameters follow torch's default dtype, but the input/target/prediction paths
+# used to hard-code float32, crashing with a Float/Double mismatch in the consequent
+# layer when a user set torch.set_default_dtype(torch.float64) before fitting.
+
+
+@pytest.mark.parametrize(
+    "name,extra",
+    [
+        ("HTSKClassifier", {}),
+        ("ADPTSKClassifier", {"k": 1.5}),
+        ("ADATSKClassifier", {}),
+        ("MHTSKClassifier", {"n_heads": 3}),
+        ("FSREADATSKClassifier", {"fs_epochs": 4, "re_epochs": 4, "finetune_epochs": 4}),
+        ("DGALETSKClassifier", {"dg_epochs": 4, "finetune_epochs": 4}),
+    ],
+)
+def test_fit_and_predict_in_float64(name: str, extra: dict) -> None:  # type: ignore[type-arg]
+    """Training and inference run end to end under a float64 default dtype."""
+    import torch
+
+    prev = torch.get_default_dtype()
+    torch.set_default_dtype(torch.float64)
+    try:
+        rng = np.random.default_rng(0)
+        x = rng.random((60, 5))  # float64 numpy
+        y = (x[:, 0] > 0.5).astype(np.int64)
+        kw = {"n_mfs": 2, "random_state": 0, "verbose": False, **extra}
+        if "epochs" not in kw and not any(k.endswith("epochs") for k in extra):
+            kw["epochs"] = 6
+
+        clf = getattr(highfis, name)(**kw).fit(x, y)
+
+        param = next(clf.model_.parameters())
+        assert param.dtype == torch.float64, f"{name} did not train in float64"
+        preds = clf.predict(x)
+        assert preds.shape == (60,)
+        assert 0.0 <= clf.score(x, y) <= 1.0
+    finally:
+        torch.set_default_dtype(prev)
+
+
+def test_default_float32_path_is_unchanged() -> None:
+    """The normal single-precision path still produces float32 models."""
+    import torch
+
+    assert torch.get_default_dtype() == torch.float32  # test isolation sanity
+    rng = np.random.default_rng(0)
+    x = rng.random((40, 4)).astype(np.float32)
+    y = (x[:, 0] > 0.5).astype(np.int64)
+    clf = highfis.HTSKClassifier(n_mfs=2, epochs=3, random_state=0).fit(x, y)
+    assert next(clf.model_.parameters()).dtype == torch.float32
+
+
+def test_model_dtype_falls_back_to_default_before_fit() -> None:
+    """Before fitting there is no model, so the input dtype follows the global default."""
+    import torch
+
+    est = highfis.HTSKClassifier(n_mfs=2)
+    assert est._model_dtype() == torch.get_default_dtype()
+
+    prev = torch.get_default_dtype()
+    torch.set_default_dtype(torch.float64)
+    try:
+        assert est._model_dtype() == torch.float64
+    finally:
+        torch.set_default_dtype(prev)
