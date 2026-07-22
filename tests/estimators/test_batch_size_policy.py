@@ -123,3 +123,62 @@ def test_htsk_regressor_honours_full_batch() -> None:
     reg = highfis.HTSKRegressor(n_mfs=2, epochs=1, batch_size=None)
     reg.fit(x, y)
     assert reg.batch_size_ is None
+
+
+# --- weight_decay contract -------------------------------------------------------------
+# weight_decay is documented as "L2 weight decay for consequent parameters" on every
+# estimator, but several families used to drop it in _get_optimizer_config, making it a
+# silent no-op. These guards pin that it reaches the consequent group (and only that
+# group) for *every* family.
+
+
+def _model_of(name: str):  # type: ignore[no-untyped-def]
+    """Fit a tiny model of the named estimator and return its underlying module."""
+    rng = np.random.default_rng(0)
+    x = rng.random((40, 4)).astype(np.float32)
+    y = (x[:, 0] > 0.5).astype(np.int64)
+    extra = {}
+    n = name
+    if "ADPTSK" in n or "ADMTSK" in n or "AYATSK" in n:
+        extra["k"] = 1.5
+    if "DombiTSK" in n:
+        extra["lambda_"] = 1.5
+    est = getattr(highfis, name)(n_mfs=2, random_state=0, **extra)
+    return est.fit(x, y).model_
+
+
+@pytest.mark.parametrize("name", [n for n in ESTIMATORS if n.endswith("Classifier")])
+def test_weight_decay_reaches_the_consequent_group_for_every_family(name: str) -> None:
+    """``weight_decay`` must land on the consequent parameters, whatever the optimizer."""
+    from highfis.optim._utils import _get_optimizer_config
+
+    model = _model_of(name)
+    _opt_cls, groups = _get_optimizer_config(model, learning_rate=0.01, weight_decay=0.5)
+
+    # The consequent group is the consequent layer plus its optional BatchNorm.
+    cons_ids = {id(p) for p in model.consequent_layer.parameters()}
+    if model.consequent_bn is not None:
+        cons_ids |= {id(p) for p in model.consequent_bn.parameters()}
+    decayed = [wd for g in groups if (wd := g.get("weight_decay", 0.0)) > 0.0]
+    assert decayed, f"{name}: weight_decay dropped for every group (silent no-op)"
+    for g in groups:
+        group_ids = {id(p) for p in g["params"]}
+        if g.get("weight_decay", 0.0) > 0.0:
+            # a decayed group must be the consequent one, not antecedent/rule
+            assert group_ids <= cons_ids, f"{name}: weight_decay applied outside the consequent group"
+
+
+def test_weight_decay_is_a_no_op_at_zero_but_real_when_set() -> None:
+    """End-to-end: a previously-broken family (ADPTSK) shrinks the consequent under decay."""
+    import torch
+
+    def cons_norm(wd: float) -> float:
+        model = highfis.ADPTSKClassifier
+        rng = np.random.default_rng(0)
+        x = rng.random((200, 8)).astype(np.float32)
+        y = (x[:, 0] + x[:, 1] > 1).astype(np.int64)
+        m = model(n_mfs=2, epochs=40, learning_rate=0.05, k=1.5, weight_decay=wd, random_state=0).fit(x, y)
+        with torch.no_grad():
+            return float(torch.cat([p.flatten() for p in m.model_.consequent_layer.parameters()]).norm())
+
+    assert cons_norm(1.0) < 0.5 * cons_norm(0.0)
