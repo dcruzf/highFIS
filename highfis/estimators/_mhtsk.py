@@ -791,13 +791,13 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         self._build_extracted_model(input_mfs, selected)
 
         if self.retrain_after_extraction:
-            y_t = torch.as_tensor(np.asarray(y_arr), dtype=torch.float32)
+            y_t = torch.as_tensor(np.asarray(y_arr), dtype=self._model_dtype())
             x_val_t: torch.Tensor | None = None
             y_val_t: torch.Tensor | None = None
             if x_val is not None and y_val is not None:
                 x_v_arr, y_v_arr = check_X_y(x_val, y_val)
                 x_val_t = self._as_tensor_x(x_v_arr, _device)
-                y_val_t = torch.as_tensor(np.asarray(y_v_arr, dtype=np.float32), dtype=torch.float32)
+                y_val_t = torch.as_tensor(np.asarray(y_v_arr), dtype=self._model_dtype())
             trainer = self.trainer if self.trainer is not None else self._get_trainer()
             self.history_ = trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
         return self

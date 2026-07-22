@@ -656,9 +656,23 @@ class _BaseTSKEstimator(BaseEstimator):
             return [cfg.name for cfg in self.input_configs]
         return [f"x{i + 1}" for i in range(x.shape[1])]
 
-    @staticmethod
-    def _as_tensor_x(x: np.ndarray, device: torch.device | str | None = None) -> torch.Tensor:
-        """Convert numpy array to a float32 tensor on *device*.
+    def _model_dtype(self) -> torch.dtype:
+        """Floating dtype the fitted model runs in; the default dtype before fitting.
+
+        Model parameters are created under ``torch.get_default_dtype()``, so under the
+        usual single-precision default this is ``float32``. Reading it from the model keeps
+        inputs matching the parameters — which is what lets the whole pipeline run in
+        ``float64`` when the user sets ``torch.set_default_dtype(torch.float64)`` before
+        fitting, instead of crashing on a Float/Double mismatch in the consequent layer.
+        """
+        model = getattr(self, "model_", None)
+        if model is not None:
+            for param in model.parameters():  # pragma: no branch - a fitted model always has parameters
+                return param.dtype
+        return torch.get_default_dtype()
+
+    def _as_tensor_x(self, x: np.ndarray, device: torch.device | str | None = None) -> torch.Tensor:
+        """Convert a numpy array to a tensor matching the model's dtype, on *device*.
 
         Args:
             x: Input array to convert.
@@ -669,7 +683,7 @@ class _BaseTSKEstimator(BaseEstimator):
         """
         if not x.flags.writeable:
             x = x.copy()
-        return torch.as_tensor(x, dtype=torch.float32, device=device)
+        return torch.as_tensor(x, dtype=self._model_dtype(), device=device)
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         """Build MFs and resolve rule_base from the initialization mode."""
@@ -1119,7 +1133,7 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
         check_is_fitted(self, "model_")
         x_arr = validate_data(self, x, reset=False)
         device_str = str(self.device).lower()
-        x_tensor = torch.as_tensor(x_arr, dtype=torch.float32, device=torch.device(device_str))
+        x_tensor = self._as_tensor_x(x_arr, torch.device(device_str))
         probs = cast(Any, self.model_).predict_proba(x_tensor)
         return probs.detach().cpu().numpy()
 
@@ -1221,7 +1235,7 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
         _device = torch.device(str(self.device))
         self.model_ = self._build_regressor_model(input_mfs, effective_rule_base).to(_device)
 
-        y_t = torch.as_tensor(np.asarray(y_arr, dtype=np.float32), dtype=torch.float32, device=_device)
+        y_t = torch.as_tensor(np.asarray(y_arr), dtype=self._model_dtype(), device=_device)
 
         # Prepare validation tensors if provided via fit.
         x_val_t: torch.Tensor | None = None
@@ -1231,7 +1245,7 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
         if x_val is not None and y_val is not None:
             x_v_arr, y_v_arr = validate_data(self, x_val, y_val, reset=False)
             x_val_t = self._as_tensor_x(x_v_arr, _device)
-            y_val_t = torch.as_tensor(np.asarray(y_v_arr, dtype=np.float32), dtype=torch.float32, device=_device)
+            y_val_t = torch.as_tensor(np.asarray(y_v_arr), dtype=self._model_dtype(), device=_device)
 
         x_t = self._as_tensor_x(x_arr, _device)
         self.rule_base_ = effective_rule_base
@@ -1313,7 +1327,7 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
         check_is_fitted(self, "model_")
         x_arr = validate_data(self, x, reset=False)
         device_str = str(self.device).lower()
-        x_tensor = torch.as_tensor(x_arr, dtype=torch.float32, device=torch.device(device_str))
+        x_tensor = self._as_tensor_x(x_arr, torch.device(device_str))
         preds = cast(Any, self.model_).predict(x_tensor)
         return preds.detach().cpu().numpy()
 
