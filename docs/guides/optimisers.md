@@ -37,13 +37,27 @@ You can configure the trainer directly through the estimator's constructor argum
 *   `batch_size`: Size of mini-batches — see [Batch size](#batch-size) below. Accepts an
     integer, `None` for full-batch training, or `"auto"` (the default) to follow the
     source paper's protocol for that model family.
-*   `weight_decay`: L2 regularization strength.
+*   `weight_decay`: L2 regularization strength, applied to the consequent parameters
+    (antecedent and rule parameters are left decay-free).
 *   `eval_metrics_every`: Evaluate training metrics every `n` epochs (default: `1`); `0`
     skips the training-metric pass entirely. This only affects the `"train_<metric>"`
     entries in `history_` — validation metrics, which drive early stopping, are evaluated
     every epoch regardless. Raising it (or setting `0`) is a cheap speed-up when you do
     not need per-epoch training curves.
 *   `scheduler_class` / `scheduler_params`: Learning-rate schedule; see below.
+
+### Numerical precision
+
+Models train in whatever floating-point precision is PyTorch's default when `fit` is
+called. The default is single precision (`float32`); to train and predict in double
+precision, set it before fitting:
+
+```{.python notest}
+import torch
+
+torch.set_default_dtype(torch.float64)
+clf.fit(X, y)  # parameters, inputs and predictions are all float64
+```
 
 ### Batch size
 

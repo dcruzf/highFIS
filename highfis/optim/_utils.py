@@ -47,48 +47,51 @@ def _log(
     logger.log(level, message, *args, **kwargs)
 
 
+def _select_optimizer_class(model: BaseTSK) -> type[torch.optim.Optimizer]:
+    """Pick the optimizer class each model family trains with (per its source paper).
+
+    ADATSK (and its FSRE-ADATSK extension) use SGD; the ADPTSK/DombiTSK/ADMTSK and AYATSK
+    families use Adam; everything else follows the model's ``_optimizer_type``.
+    """
+    class_name = model.__class__.__name__
+    if "ADATSK" in class_name:
+        return torch.optim.SGD
+    if any(family in class_name for family in ("ADPTSK", "DombiTSK", "ADMTSK", "AYATSK")):
+        return torch.optim.Adam
+
+    optimizer_type = model._optimizer_type
+    if optimizer_type == "sgd":
+        return torch.optim.SGD
+    if optimizer_type == "adam":
+        # Plain Adam, matching the DG-ALETSK paper (Section IV).
+        return torch.optim.Adam
+    if optimizer_type == "adamw":
+        return torch.optim.AdamW
+    raise ValueError(f"unsupported optimizer_type {optimizer_type!r}; expected 'sgd', 'adam', or 'adamw'")
+
+
 def _get_optimizer_config(
     model: BaseTSK,
     learning_rate: float,
     weight_decay: float,
 ) -> tuple[type[torch.optim.Optimizer], list[dict[str, Any]]]:
-    """Return the optimizer class and parameter groups for a model."""
+    """Return the optimizer class and parameter groups for a model.
+
+    ``weight_decay`` is applied to the **consequent** parameters only, matching the
+    estimators' documented contract ("L2 weight decay for consequent parameters"); the
+    antecedent and rule groups are decay-free. Building the groups once here — rather than
+    per optimizer branch — is what keeps ``weight_decay`` from being silently dropped for a
+    family, as it was for ADATSK/ADPTSK/ADMTSK/DombiTSK and the SGD/Adam DG paths.
+    """
     ante_params = list(model.membership_layer.parameters())
     rule_params = list(model.rule_layer.parameters())
     cons_params = list(model.consequent_layer.parameters())
     if model.consequent_bn is not None:
         cons_params.extend(model.consequent_bn.parameters())
 
-    class_name = model.__class__.__name__
-
-    if "ADATSK" in class_name:
-        return torch.optim.SGD, [
-            {"params": ante_params},
-            {"params": rule_params},
-            {"params": cons_params},
-        ]
-    elif "ADPTSK" in class_name or "DombiTSK" in class_name or "ADMTSK" in class_name:
-        return torch.optim.Adam, [
-            {"params": ante_params},
-            {"params": rule_params},
-            {"params": cons_params},
-        ]
-    elif "AYATSK" in class_name:
-        return torch.optim.Adam, [
-            {"params": ante_params, "weight_decay": weight_decay},
-            {"params": rule_params, "weight_decay": weight_decay},
-            {"params": cons_params, "weight_decay": weight_decay},
-        ]
-    elif model._optimizer_type == "sgd":
-        return torch.optim.SGD, [{"params": list(model.parameters())}]
-    elif model._optimizer_type == "adam":
-        # Plain Adam, matching the DG-ALETSK paper (Section IV).
-        return torch.optim.Adam, [{"params": list(model.parameters())}]
-    elif model._optimizer_type == "adamw":
-        return torch.optim.AdamW, [
-            {"params": ante_params, "weight_decay": 0.0},
-            {"params": rule_params, "weight_decay": 0.0},
-            {"params": cons_params, "weight_decay": weight_decay},
-        ]
-
-    raise ValueError(f"unsupported optimizer_type {model._optimizer_type!r}; expected 'sgd', 'adam', or 'adamw'")
+    param_groups: list[dict[str, Any]] = [
+        {"params": ante_params, "weight_decay": 0.0},
+        {"params": rule_params, "weight_decay": 0.0},
+        {"params": cons_params, "weight_decay": weight_decay},
+    ]
+    return _select_optimizer_class(model), param_groups

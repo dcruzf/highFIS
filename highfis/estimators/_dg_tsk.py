@@ -364,7 +364,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         x_arr = validate_data(self, x, reset=False)
         x_model = _select_dgtsking_surviving_features(self, x_arr)
         device_str = str(self.device).lower()
-        x_tensor = torch.as_tensor(x_model, dtype=torch.float32, device=torch.device(device_str))
+        x_tensor = self._as_tensor_x(x_model, torch.device(device_str))
         probs = cast(Any, self.model_).predict_proba(x_tensor)
         return probs.detach().cpu().numpy()
 
@@ -660,7 +660,7 @@ class DGTSKRegressor(_BaseRegressorEstimator):
         x_arr = validate_data(self, x, reset=False)
         x_model = _select_dgtsking_surviving_features(self, x_arr)
         device_str = str(self.device).lower()
-        x_tensor = torch.as_tensor(x_model, dtype=torch.float32, device=torch.device(device_str))
+        x_tensor = self._as_tensor_x(x_model, torch.device(device_str))
         preds = cast(Any, self.model_).predict(x_tensor)
         return preds.detach().cpu().numpy()
 
