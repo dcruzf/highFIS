@@ -18,14 +18,22 @@ identifiers:
     value: 10.5281/zenodo.19489225
 repository-code: 'https://github.com/dcruzf/highFIS'
 url: 'https://dcruzf.github.io/highFIS'
+repository-artifact: 'https://pypi.org/project/highfis/'
 abstract: >-
-  Python library for high-dimensional Takagi-Sugeno-Kang
-  (TSK) fuzzy inference systems, built on PyTorch with a
-  scikit-learn compatible API.
+  highFIS is a PyTorch-based library for high-dimensional
+  Takagi-Sugeno-Kang (TSK) fuzzy systems. It provides
+  differentiable fuzzy inference, numerical stability, and
+  scikit-learn compatible estimators for classification
+  and regression, covering thirteen model families from
+  the literature.
 keywords:
-  - fuzzy
-  - Machine Learning
-  - High-dimensional problems
   - Takagi-Sugeno-Kang
-  - Fuzzy systems
+  - TSK
+  - fuzzy systems
+  - neuro-fuzzy
+  - high-dimensional data
+  - machine learning
+  - PyTorch
+  - scikit-learn
+  - Python
 license: GPL-3.0

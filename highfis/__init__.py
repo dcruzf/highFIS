@@ -21,7 +21,8 @@ Estimator families
 ------------------
 Each family comes in a ``*Classifier`` and ``*Regressor`` variant.
 
-- **TSK / HTSK** — baseline TSK and hierarchical-softmax activation.
+- **TSK / HTSK** — vanilla TSK and high-dimensional TSK with geometric mean
+  aggregation and log-space softmax normalization.
   ``TSKClassifier``, ``TSKRegressor``, ``HTSKClassifier``, ``HTSKRegressor``.
 
 - **ADATSK** — adaptive softmin antecedent.
@@ -30,30 +31,32 @@ Each family comes in a ``*Classifier`` and ``*Regressor`` variant.
 - **ADPTSK** — adaptive double-parameter softmin antecedent.
   ``ADPTSKClassifier``, ``ADPTSKRegressor``.
 
-- **ADMTSK / DombiTSK** — Dombi T-norm antecedent.
+- **ADMTSK / DombiTSK** — adaptive and fixed-parameter Dombi T-norm antecedent.
   ``ADMTSKClassifier``, ``ADMTSKRegressor``,
   ``DombiTSKClassifier``, ``DombiTSKRegressor``.
 
-- **DGTSK** — data-driven Gaussian antecedent.
+- **DGTSK** — double groups of gates for simultaneous feature selection and
+  rule extraction.
   ``DGTSKClassifier``, ``DGTSKRegressor``.
 
-- **DGALETSK** — dimension-adaptive extension of DGTSK.
+- **DGALETSK** — adaptive Ln-Exp softmin with simultaneous feature selection
+  and rule extraction.
   ``DGALETSKClassifier``, ``DGALETSKRegressor``.
 
 - **FSREADATSK** — feature selection and rule extraction over ADATSK.
   ``FSREADATSKClassifier``, ``FSREADATSKRegressor``.
 
-- **HDFIS** — hierarchical defuzzification via minimum or product T-norm.
+- **HDFIS** — high-dimensional inference via minimum or product T-norm.
   ``HDFISMinClassifier``, ``HDFISMinRegressor``,
   ``HDFISProdClassifier``, ``HDFISProdRegressor``.
 
-- **LogTSK** — log-domain consequent.
+- **LogTSK** — inverse-log normalization of log-domain rule weights.
   ``LogTSKClassifier``, ``LogTSKRegressor``.
 
-- **MHTSK** — multi-hierarchical TSK.
+- **MHTSK** — multihead TSK with sparse subantecedents.
   ``MHTSKClassifier``, ``MHTSKRegressor``.
 
-- **AYATSK** — Yager T-norm antecedent.
+- **AYATSK** — adaptive Yager T-norm antecedent.
   ``AYATSKClassifier``, ``AYATSKRegressor``.
 
 Common parameters
@@ -64,7 +67,7 @@ n_mfs : int
     ``"coco"`` produces exactly ``n_mfs`` rules; ``"cartesian"`` produces
     ``n_mfs ** n_features`` rules).  Ignored when ``input_mfs`` is
     supplied.
-mf_init : {"kmeans", "grid"}
+mf_init : {"kmeans", "minibatch_kmeans", "fcm", "grid"} or clustering instance
     Strategy for initialising input membership functions.
     ``"kmeans"`` (default) fits Gaussian MF centres from k-means cluster
     centroids computed on the training data.

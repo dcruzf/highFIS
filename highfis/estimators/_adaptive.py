@@ -170,8 +170,11 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
                 defaults: full-batch for ``N < 500`` and ``20%`` of samples
                 for ``N >= 500``.
             shuffle: Whether to shuffle training samples each epoch.
-            ur_weight: Uniform-rule regularization weight.
-            ur_target: Target average rule activation for UR.
+            ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
+                each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
+                2020). ``0.0`` disables the penalty.
+            ur_target: Target average normalized firing strength of each rule. ``None`` uses ``1/R``,
+                where ``R`` is the number of rules.
             consequent_batch_norm: Apply batch normalization to consequent
                 linear layers.
             pfrb_max_rules: Maximum rules for point-based FRB when
@@ -375,8 +378,11 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
                 defaults: full-batch for ``N < 500`` and ``20%`` of samples
                 for ``N >= 500``.
             shuffle: Whether to shuffle training samples each epoch.
-            ur_weight: Uniform-rule regularization weight.
-            ur_target: Target average rule activation for UR.
+            ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
+                each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
+                2020). ``0.0`` disables the penalty.
+            ur_target: Target average normalized firing strength of each rule. ``None`` uses ``1/R``,
+                where ``R`` is the number of rules.
             consequent_batch_norm: Apply batch normalization to consequent
                 linear layers.
             pfrb_max_rules: Maximum rules for point-based FRB when
@@ -569,8 +575,11 @@ class ADATSKClassifier(_BaseClassifierEstimator):
             rule_base: Rule-base strategy. Default ``"coco"`` to match the paper.
             batch_size: Mini-batch size. Default ``None`` (full-batch GD).
             shuffle: Whether to reshuffle each epoch. Default ``False``.
-            ur_weight: Uncertainty regularisation weight.
-            ur_target: Uncertainty regularisation target.
+            ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
+                each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
+                2020). ``0.0`` disables the penalty.
+            ur_target: Target average normalized firing strength of each rule. ``None`` uses ``1/R``,
+                where ``R`` is the number of rules.
             consequent_batch_norm: Batch normalisation on consequent inputs.
                 Default ``True``. Required for numerical stability: the
                 first-order consequent over all features is optimized with
@@ -747,8 +756,11 @@ class ADATSKRegressor(_BaseRegressorEstimator):
             rule_base: Rule-base strategy. Default ``"coco"``.
             batch_size: Mini-batch size. Default ``None`` (full-batch GD).
             shuffle: Whether to reshuffle each epoch. Default ``False``.
-            ur_weight: Uncertainty regularisation weight.
-            ur_target: Uncertainty regularisation target.
+            ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
+                each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
+                2020). ``0.0`` disables the penalty.
+            ur_target: Target average normalized firing strength of each rule. ``None`` uses ``1/R``,
+                where ``R`` is the number of rules.
             consequent_batch_norm: Batch normalisation on consequent inputs.
                 Default ``True``. Required for numerical stability: the
                 first-order consequent over all features is optimized with

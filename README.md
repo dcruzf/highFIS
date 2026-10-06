@@ -7,18 +7,18 @@
 [![PyPI - Version](https://img.shields.io/pypi/v/highfis?color=%2333CA56)](https://pypi.org/project/highfis/)
 [![PyPI - License](https://img.shields.io/pypi/l/highfis?color=%2333CA56)](https://raw.githubusercontent.com/dcruzf/highFIS/refs/heads/main/LICENSE)
 
-highFIS is a PyTorch-based framework for high-dimensional Takagi–Sugeno–Kang
+highFIS is a PyTorch-based library for high-dimensional Takagi–Sugeno–Kang
 (TSK) fuzzy systems. It brings differentiable fuzzy inference, numerical
-stability, and sklearn-compatible estimators to both classification and
-regression. The library also includes DGTSK dynamic-gating models for feature
-and rule selection in high-dimensional fuzzy systems.
+stability, and scikit-learn compatible estimators to both classification and
+regression.
 
 ## 🚀 Overview
 
 - Differentiable TSK fuzzy systems built for high-dimensional data.
-- Supports both concrete PyTorch model classes and sklearn-compatible estimators.
-- Includes adaptive and gated inference variants for feature selection and
-  sparse rule extraction.
+- Thirteen model families from the literature behind one API, each with a
+  classifier and a regressor.
+- Available as scikit-learn compatible estimators and as plain PyTorch model
+  classes.
 - Designed for numerical stability with log-space and inverse-log defuzzifiers.
 
 ## 📦 Installation
@@ -29,20 +29,35 @@ Install from PyPI:
 pip install highfis
 ```
 
+highFIS requires Python 3.11 or newer and depends on PyTorch, NumPy,
+scikit-learn, and tqdm.
+
 ## 🧠 Quick Start
 
 ```python
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
+
 from highfis import HTSKClassifier
 
+X, y = make_classification(n_samples=800, n_features=10, n_informative=8, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+
+# Membership functions are sensitive to feature scale.
+scaler = MinMaxScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
 clf = HTSKClassifier(
-    n_mfs=5,
+    n_mfs=3,
     mf_init="kmeans",
-    epochs=150,
-    learning_rate=1e-3,
+    epochs=100,
+    learning_rate=0.01,
     random_state=42,
 )
 clf.fit(X_train, y_train)
-print(f"Test accuracy: {clf.score(X_test, y_test):.4f}")
+print(f"Test accuracy: {clf.score(X_test, y_test):.2%}")
 ```
 
 highFIS integrates with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and
@@ -50,24 +65,30 @@ highFIS integrates with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and
 
 ## 🧩 Model families
 
-highFIS provides a full family of TSK models, each tuned for a specific
+highFIS implements thirteen TSK model families, each following a published
 high-dimensional inference strategy.
 
 - `TSK` — vanilla TSK with product antecedent aggregation and sum-based
   normalization.
-- `HTSK` — high-dimensional TSK with geometric mean aggregation and log-space
-  normalization.
-- `LogTSK` — log-domain inverse-log normalization for stable aggregation.
-- `MHTSK` — multihead sparse TSK with feature-subset heads and sparse consequents.
-- `DombiTSK` — Dombi T-norm aggregation with a learnable shape parameter.
-- `ADMTSK` — adaptive Dombi TSK with composite Gaussian Pi membership functions.
-- `AYATSK` — Yager T-norm aggregation for flexible antecedent behavior.
-- `ADATSK` — adaptive softmin-style inference with dynamic rule weighting.
-- `ADPTSK` — adaptive double-parameter softmin inference with stable normalized rule weights.
-- `FSRE-ADATSK` — adaptive model with gated feature selection and rule extraction.
-- `DGTSK` — double-gated training for feature selection and rule extraction.
-- `DGALETSK` — adaptive Ln-Exp softmin with embedded feature and rule gates.
-- `HDFIS` — high-dimensional inference with product T-norm (`HDFISProd`) and minimum T-norm (`HDFISMin`) variants.
+- `HTSK` — geometric mean aggregation with log-space softmax normalization.
+- `LogTSK` — inverse-log normalization of log-domain rule weights.
+- `HDFIS` — high-dimensional inference with product T-norm (`HDFISProd`) and
+  minimum T-norm (`HDFISMin`) variants.
+- `DombiTSK` — Dombi T-norm aggregation with a fixed shape parameter.
+- `ADMTSK` — adaptive Dombi T-norm, with the shape parameter derived from the
+  input dimensionality, and composite Gaussian membership functions.
+- `AYATSK` — adaptive Yager T-norm with composite exponential membership
+  functions.
+- `ADATSK` — adaptive softmin antecedent aggregation.
+- `ADPTSK` — adaptive double-parameter softmin antecedent aggregation.
+- `FSRE-ADATSK` — ADATSK extended with embedded feature selection and rule
+  extraction.
+- `DGTSK` — double groups of gates for simultaneous feature selection and rule
+  extraction.
+- `DGALETSK` — adaptive Ln-Exp softmin with simultaneous feature selection and
+  rule extraction.
+- `MHTSK` — multihead TSK built from sparse subantecedents over random feature
+  subsets.
 
 Each family exposes classifier and regressor variants.
 
@@ -76,14 +97,16 @@ Each family exposes classifier and regressor variants.
 highFIS exposes a compact, model-family-driven API with both concrete
 model classes and sklearn-compatible estimator wrappers.
 
-- Model families: `TSK`, `HTSK`, `LogTSK`, `MHTSK`, `DombiTSK`, `ADMTSK`,
-  `AYATSK`, `ADATSK`, `ADPTSK`, `FSRE-ADATSK`, `DGTSK`, `DGALETSK`,
-  `HDFIS`
 - Estimators: `*Classifier` and `*Regressor` variants for each model family,
-  accessible directly from `import highfis`
+  importable directly from `highfis` (for example `HTSKClassifier`,
+  `FSREADATSKRegressor`, `HDFISProdClassifier`)
+- PyTorch models: the underlying `*ClassifierModel` and `*RegressorModel`
+  classes in `highfis.models`
 - Building blocks: membership functions (`highfis.memberships`), defuzzifiers
-  (`highfis.defuzzifiers`), T-norms (`highfis.t_norms`), and PyTorch model
-  classes (`highfis.models`)
+  (`highfis.defuzzifiers`), T-norms (`highfis.t_norms`), and layers
+  (`highfis.layers`)
+- Utilities: evaluation metrics (`highfis.metrics`), estimator checkpoints
+  (`highfis.persistence`), and a membership-function initialization cache
 
 For the full class list and API reference, see the documentation:
 
@@ -94,10 +117,14 @@ For the full class list and API reference, see the documentation:
 
 highFIS uses gradient-based optimization and supports:
 
-- adaptive optimizers like Adam/W and standard SGD
-- early stopping with validation
-- uniform rule regularization for balanced rule activation
-- custom T-norms, custom rule bases, and custom defuzzifiers
+- an optimizer selected per model family (SGD, Adam, or AdamW), following the
+  source paper
+- mini-batch training with learning-rate schedulers and weight decay on the
+  consequent parameters
+- early stopping on a validation set passed to `fit`
+- uniform regularization (`ur_weight`) for balanced rule activation
+- custom T-norms, rule bases, and defuzzifiers through the PyTorch model
+  classes
 
 ## 📚 Documentation
 
@@ -105,7 +132,11 @@ The published documentation is available at:
 
 https://dcruzf.github.io/highFIS
 
-Key reference pages:
+Start with the [model families](https://dcruzf.github.io/highFIS/latest/models/)
+overview, the [user guides](https://dcruzf.github.io/highFIS/latest/guides/optimisers/),
+and the [cookbook](https://dcruzf.github.io/highFIS/latest/cookbook/).
+
+Model reference pages:
 
 - [TSK Vanilla](https://dcruzf.github.io/highFIS/latest/models/tsk-vanilla)
 - [LogTSK](https://dcruzf.github.io/highFIS/latest/models/logtsk)
@@ -140,6 +171,12 @@ Run security scan:
 ```bash
 hatch run security
 ```
+
+## 📝 Citation
+
+If you use highFIS in your research, please cite it using the metadata in
+[CITATION.cff](CITATION.cff) or the
+[Zenodo DOI](https://doi.org/10.5281/zenodo.19489225).
 
 ## 🤝 Contributing
 
