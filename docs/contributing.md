@@ -4,7 +4,8 @@ Thank you for your interest in improving highFIS.
 
 ## Ways to Contribute
 
-- Report bugs or request features through GitHub issues.
+- Report bugs or request features through GitHub issues. For bugs, include the output of
+  `highfis.show_versions()`.
 - Improve documentation, examples, and test coverage.
 - Submit focused bug fixes and incremental feature improvements.
 

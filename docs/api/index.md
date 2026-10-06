@@ -42,3 +42,4 @@ highFIS builds neuro-fuzzy systems by combining custom PyTorch layer modules:
 *   [`highfis.persistence`](persistence.md) — Checkpoint Serialization: Versioned, secure checkpoint saving and loading utilities.
 *   [`highfis.metrics`](metrics.md) — Evaluation Metrics: Custom statistical metrics for regression and classification validation.
 *   [`highfis.protocols`](protocols.md) — Type Protocols: Structural typing interfaces ensuring API compatibility.
+*   `highfis.show_versions()` — Environment Report: Prints the versions of highFIS, PyTorch, NumPy and scikit-learn, the default floating-point type, the thread count and the CPU.

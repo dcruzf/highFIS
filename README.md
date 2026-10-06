@@ -183,6 +183,8 @@ If you use highFIS in your research, please cite it using the metadata in
 Contributions are welcome! Please open issues or pull requests, and refer to
 our development guide in the documentation: [contributing](https://dcruzf.github.io/highFIS/latest/contributing/).
 
+When reporting a bug, include the output of `highfis.show_versions()`.
+
 ## 📄 License
 
 Distributed under the [GPLv3](LICENSE).

@@ -97,8 +97,15 @@ For evaluation metrics (beyond sklearn's ``score``)::
 For direct access to the underlying PyTorch models::
 
     from highfis.models import HTSKClassifierModel
+
+To report the versions and runtime settings in use::
+
+    import highfis
+
+    highfis.show_versions()
 """
 
+from ._show_versions import show_versions
 from .estimators import (
     ADATSKClassifier,
     ADATSKRegressor,
@@ -177,4 +184,5 @@ __all__: list[str] = [
     "mf_cache_info",
     "set_mf_cache_enabled",
     "set_mf_cache_size",
+    "show_versions",
 ]
