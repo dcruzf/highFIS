@@ -80,12 +80,22 @@ def float64_default() -> Iterator[None]:
         torch.set_default_dtype(previous)
 
 
+def _estimator_checks() -> pytest.MarkDecorator:
+    """Return the ``parametrize_with_checks`` mark with its cases materialized.
+
+    scikit-learn hands pytest a generator, which pytest deprecates in favour of a list.
+    """
+    mark: Any = parametrize_with_checks([_make(name, FAST_EPOCHS) for name in ESTIMATORS])
+    argnames, cases = mark.args
+    return pytest.mark.parametrize(argnames, list(cases), **mark.kwargs)
+
+
 def test_estimators_are_discovered() -> None:
     """Guard the sweep itself: an empty list would make the checks below vacuous."""
     assert len(ESTIMATORS) >= 28
 
 
-@parametrize_with_checks([_make(name, FAST_EPOCHS) for name in ESTIMATORS])  # type: ignore[misc]
+@_estimator_checks()
 def test_sklearn_estimator_checks(
     estimator: BaseEstimator, check: Callable[..., Any], request: pytest.FixtureRequest
 ) -> None:
