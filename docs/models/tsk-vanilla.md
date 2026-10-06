@@ -59,6 +59,22 @@ $$
 \tag{5}
 $$
 
+## Selectable building blocks
+
+The formulation above is the default of `TSKClassifier` and `TSKRegressor`. They are also
+the generic estimators of highFIS: the membership function, the T-norm and the defuzzifier
+can be chosen with the `mf`, `t_norm` and `defuzzifier` arguments.
+
+```python
+from highfis import TSKClassifier
+
+clf = TSKClassifier(n_mfs=3, mf="bell", t_norm="min", defuzzifier="softmax_log")
+```
+
+The available values and what each one does are described in
+[Building Blocks of the Generic TSK](../guides/building-blocks.md). The other families
+keep their published combination and do not take these arguments.
+
 ## Code ↔ Paper Correspondence
 
 | Equation | Class / Method | Description |

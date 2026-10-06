@@ -78,6 +78,13 @@ def test_ale_softmin_yager_tnorm_class_matches_function() -> None:
     assert out_cls.shape == torch.Size([2])
 
 
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+def test_ale_softmin_yager_keeps_the_input_dtype(dtype: torch.dtype) -> None:
+    """The softmin is computed in double precision but must not leak it to the caller."""
+    out = ALESoftminYagerTNorm()(torch.tensor([[0.25, 0.5], [0.4, 0.9]], dtype=dtype), dim=1)
+    assert out.dtype == dtype
+
+
 def test_yager_tnorm_clips_to_zero() -> None:
     terms = torch.tensor([[0.0, 0.0]], dtype=torch.float32)
     out = YagerTNorm(lambda_=0.5)(terms, dim=1)

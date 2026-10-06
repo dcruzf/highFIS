@@ -5,7 +5,13 @@ from __future__ import annotations
 import pytest
 import torch
 
-from highfis.defuzzifiers import InvLogDefuzzifier, LogSumDefuzzifier, SoftmaxLogDefuzzifier, SumBasedDefuzzifier
+from highfis.defuzzifiers import (
+    InvLogDefuzzifier,
+    LogSumDefuzzifier,
+    SoftmaxLogDefuzzifier,
+    SumBasedDefuzzifier,
+    resolve_defuzzifier,
+)
 
 
 @pytest.fixture
@@ -126,3 +132,26 @@ class TestInvLogDefuzzifier:
         d = InvLogDefuzzifier()
         out = d(w)
         assert out.max(dim=1).values.mean().item() < 0.99
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        ("sum", SumBasedDefuzzifier),
+        ("softmax_log", SoftmaxLogDefuzzifier),
+        ("log_sum", LogSumDefuzzifier),
+        ("inv_log", InvLogDefuzzifier),
+    ],
+)
+def test_resolve_defuzzifier_by_name(name: str, expected: type) -> None:
+    assert isinstance(resolve_defuzzifier(name), expected)
+
+
+def test_resolve_defuzzifier_returns_modules_unchanged() -> None:
+    module = SumBasedDefuzzifier()
+    assert resolve_defuzzifier(module) is module
+
+
+def test_resolve_defuzzifier_rejects_unknown_name() -> None:
+    with pytest.raises(ValueError, match="defuzzifier must be one of"):
+        resolve_defuzzifier("centroid")

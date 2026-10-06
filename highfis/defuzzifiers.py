@@ -192,9 +192,27 @@ class InvLogDefuzzifier(nn.Module):
         return inv_log / inv_log.sum(dim=1, keepdim=True)
 
 
+_DEFUZZIFIERS: dict[str, type[nn.Module]] = {
+    "sum": SumBasedDefuzzifier,
+    "softmax_log": SoftmaxLogDefuzzifier,
+    "log_sum": LogSumDefuzzifier,
+    "inv_log": InvLogDefuzzifier,
+}
+
+
+def resolve_defuzzifier(name: str | nn.Module) -> nn.Module:
+    """Resolve a defuzzifier by name or return a module directly."""
+    if isinstance(name, nn.Module):
+        return name
+    if name not in _DEFUZZIFIERS:
+        raise ValueError(f"defuzzifier must be one of {sorted(_DEFUZZIFIERS)}; got {name!r}")
+    return _DEFUZZIFIERS[name]()
+
+
 __all__: list[str] = [
     "InvLogDefuzzifier",
     "LogSumDefuzzifier",
     "SoftmaxLogDefuzzifier",
     "SumBasedDefuzzifier",
+    "resolve_defuzzifier",
 ]

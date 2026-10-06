@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+import math
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
+from ..defuzzifiers import resolve_defuzzifier
 from ..memberships import (
+    BellMF,
+    GaussianMF,
+    GaussianPiMF,
     MembershipFunction,
+    TrapezoidalMF,
+    TriangularMF,
 )
 from ..models import (
     BaseTSK,
@@ -15,12 +22,59 @@ from ..models import (
     TSKClassifierModel,
     TSKRegressorModel,
 )
+from ..t_norms import resolve_t_norm
 from ._base import (
     BatchSizeSpec,
     InputConfig,
     _BaseClassifierEstimator,
     _BaseRegressorEstimator,
 )
+
+# Half width at half maximum of a Gaussian, in units of its sigma.
+_GAUSSIAN_HWHM = math.sqrt(2.0 * math.log(2.0))
+
+# Membership functions the generic TSK estimators can build. Initialization always yields a
+# centre and a Gaussian width. Bell, triangular and trapezoidal sets are placed on the same
+# centre with the same width at half maximum, so changing ``mf`` changes the shape and nothing
+# else; ``gaussian_pi`` reuses the mean and sigma, since it is the Gaussian with a lower bound.
+_MF_BUILDERS: dict[str, Callable[[float, float], MembershipFunction]] = {
+    "gaussian": lambda c, s: GaussianMF(mean=c, sigma=s),
+    "gaussian_pi": lambda c, s: GaussianPiMF(mean=c, sigma=s),
+    "bell": lambda c, s: BellMF(a=_GAUSSIAN_HWHM * s, center=c),
+    "triangular": lambda c, s: TriangularMF(
+        left=c - 2.0 * _GAUSSIAN_HWHM * s, center=c, right=c + 2.0 * _GAUSSIAN_HWHM * s
+    ),
+    "trapezoidal": lambda c, s: TrapezoidalMF(
+        a=c - 1.5 * _GAUSSIAN_HWHM * s,
+        b=c - 0.5 * _GAUSSIAN_HWHM * s,
+        c=c + 0.5 * _GAUSSIAN_HWHM * s,
+        d=c + 1.5 * _GAUSSIAN_HWHM * s,
+    ),
+}
+
+
+def _convert_input_mfs(
+    input_mfs: Mapping[str, Sequence[MembershipFunction]], mf: str
+) -> Mapping[str, Sequence[MembershipFunction]]:
+    """Replace the Gaussian sets produced by initialization with sets of type *mf*.
+
+    Sets that are not plain Gaussians are kept as they are: that is the case when a saved
+    estimator is reloaded, whose membership functions already have the chosen type.
+    """
+    if mf not in _MF_BUILDERS:
+        raise ValueError(f"mf must be one of {sorted(_MF_BUILDERS)}; got {mf!r}")
+    if mf == "gaussian":
+        return input_mfs
+    build = _MF_BUILDERS[mf]
+    return {
+        name: [
+            build(float(m.mean.detach().cpu().item()), float(m.sigma.detach().cpu().item()))
+            if type(m) is GaussianMF
+            else m
+            for m in mfs
+        ]
+        for name, mfs in input_mfs.items()
+    }
 
 
 def _htsk_paper_batch_size(n_samples: int) -> int | None:
@@ -308,10 +362,13 @@ class HTSKRegressor(_BaseRegressorEstimator):
 
 
 class TSKClassifier(_BaseClassifierEstimator):
-    r"""Vanilla TSK classifier with sum-based rule normalization.
+    r"""Generic TSK classifier; by default the classical (vanilla) system.
 
-    The vanilla Takagi-Sugeno-Kang inference computes rule firing strengths
-    with the product t-norm and normalizes them by their total sum.
+    The classical Takagi-Sugeno-Kang inference uses Gaussian membership functions,
+    computes rule firing strengths with the product t-norm and normalizes them by
+    their total sum. That is the default. The three building blocks can be changed
+    one at a time through ``mf``, ``t_norm`` and ``defuzzifier``; for example the
+    geometric mean with the softmax-in-log defuzzifier gives HTSK.
 
     References:
         T. Takagi and M. Sugeno, "Fuzzy identification of systems and
@@ -336,6 +393,9 @@ class TSKClassifier(_BaseClassifierEstimator):
         n_mfs: int = 3,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
+        mf: str = "gaussian",
+        t_norm: str = "prod",
+        defuzzifier: str = "sum",
         random_state: int | None = None,
         epochs: int = 100,
         learning_rate: float = 1e-2,
@@ -366,6 +426,17 @@ class TSKClassifier(_BaseClassifierEstimator):
                 for high-dimensional data to mitigate softmax saturation
                 (Cui et al., IJCNN 2021). ``1.0`` is appropriate for low-
                 to medium-dimensional problems.
+            mf: Shape of the membership functions: ``"gaussian"`` (default),
+                ``"gaussian_pi"``, ``"bell"``, ``"triangular"`` or ``"trapezoidal"``. Every
+                shape is placed on the centre found by ``mf_init``. Bell, triangular and
+                trapezoidal sets get the same width at half maximum as the Gaussian;
+                ``"gaussian_pi"`` keeps the Gaussian's mean and sigma and adds a positive
+                lower bound.
+            t_norm: T-norm that aggregates the membership degrees of a rule: ``"prod"``
+                (default), ``"min"``, ``"gmean"``, ``"dombi"``, ``"yager"``,
+                ``"yager_simple"`` or ``"ale_softmin_yager"``.
+            defuzzifier: Normalization of the rule firing strengths: ``"sum"`` (default),
+                ``"softmax_log"``, ``"log_sum"`` or ``"inv_log"``.
             random_state: Seed for k-means and weight initialisation.
             epochs: Maximum training epochs (default ``10``).
             learning_rate: Adam learning rate (default ``0.01``).
@@ -420,6 +491,9 @@ class TSKClassifier(_BaseClassifierEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.mf = mf
+        self.t_norm = t_norm
+        self.defuzzifier = defuzzifier
 
     def _paper_batch_size(self, n_samples: int) -> int | None:
         """HTSK_2021: 512, clamped to ``min(N, 60)`` on smaller training sets."""
@@ -434,19 +508,24 @@ class TSKClassifier(_BaseClassifierEstimator):
     ) -> BaseTSK:
         """Create TSKClassifierModel."""
         return TSKClassifierModel(
-            input_mfs,
+            _convert_input_mfs(input_mfs, self.mf),
             n_classes=n_classes,
             rule_base=rule_base,
+            t_norm=resolve_t_norm(self.t_norm),
             rules=rules,
+            defuzzifier=resolve_defuzzifier(self.defuzzifier),
             consequent_batch_norm=bool(self.consequent_batch_norm),
         )
 
 
 class TSKRegressor(_BaseRegressorEstimator):
-    r"""Vanilla TSK regressor with sum-based rule normalization.
+    r"""Generic TSK regressor; by default the classical (vanilla) system.
 
-    The vanilla Takagi-Sugeno-Kang inference computes rule firing strengths
-    with the product t-norm and normalizes them by their total sum.
+    The classical Takagi-Sugeno-Kang inference uses Gaussian membership functions,
+    computes rule firing strengths with the product t-norm and normalizes them by
+    their total sum. That is the default. The three building blocks can be changed
+    one at a time through ``mf``, ``t_norm`` and ``defuzzifier``; for example the
+    geometric mean with the softmax-in-log defuzzifier gives HTSK.
 
     References:
         T. Takagi and M. Sugeno, "Fuzzy identification of systems and
@@ -471,6 +550,9 @@ class TSKRegressor(_BaseRegressorEstimator):
         n_mfs: int = 3,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
+        mf: str = "gaussian",
+        t_norm: str = "prod",
+        defuzzifier: str = "sum",
         random_state: int | None = None,
         epochs: int = 100,
         learning_rate: float = 1e-2,
@@ -499,6 +581,17 @@ class TSKRegressor(_BaseRegressorEstimator):
             sigma_scale: Sigma scale factor. Use ``"auto"`` (= ``sqrt(D)``)
                 to mitigate softmax saturation on high-dimensional data.
                 ``1.0`` is appropriate for low-to-medium-dimensional problems.
+            mf: Shape of the membership functions: ``"gaussian"`` (default),
+                ``"gaussian_pi"``, ``"bell"``, ``"triangular"`` or ``"trapezoidal"``. Every
+                shape is placed on the centre found by ``mf_init``. Bell, triangular and
+                trapezoidal sets get the same width at half maximum as the Gaussian;
+                ``"gaussian_pi"`` keeps the Gaussian's mean and sigma and adds a positive
+                lower bound.
+            t_norm: T-norm that aggregates the membership degrees of a rule: ``"prod"``
+                (default), ``"min"``, ``"gmean"``, ``"dombi"``, ``"yager"``,
+                ``"yager_simple"`` or ``"ale_softmin_yager"``.
+            defuzzifier: Normalization of the rule firing strengths: ``"sum"`` (default),
+                ``"softmax_log"``, ``"log_sum"`` or ``"inv_log"``.
             random_state: Seed for k-means and weight initialisation.
             epochs: Maximum training epochs (default ``10``).
             learning_rate: Adam learning rate (default ``0.01``).
@@ -551,6 +644,9 @@ class TSKRegressor(_BaseRegressorEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.mf = mf
+        self.t_norm = t_norm
+        self.defuzzifier = defuzzifier
 
     def _paper_batch_size(self, n_samples: int) -> int | None:
         """HTSK_2021: 512, clamped to ``min(N, 60)`` on smaller training sets."""
@@ -564,8 +660,10 @@ class TSKRegressor(_BaseRegressorEstimator):
         rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         return TSKRegressorModel(
-            input_mfs,
+            _convert_input_mfs(input_mfs, self.mf),
             rule_base=rule_base,
+            t_norm=resolve_t_norm(self.t_norm),
             rules=rules,
+            defuzzifier=resolve_defuzzifier(self.defuzzifier),
             consequent_batch_norm=bool(self.consequent_batch_norm),
         )
