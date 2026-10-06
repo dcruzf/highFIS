@@ -6,11 +6,36 @@ Every model family exposes both a scikit-learn compatible **Classifier** (e.g., 
 
 ---
 
+## What each family fixes
+
+A family is defined by its membership function, the way it aggregates the membership
+degrees of a rule, and the way it normalizes the rule firing strengths. These are fixed in
+the named estimators. Only the generic TSK lets you choose them; see
+[Building Blocks of the Generic TSK](../guides/building-blocks.md).
+
+| Family | Membership function | Aggregation | Normalization | Use this when |
+|---|---|---|---|---|
+| TSK | Gaussian (selectable) | product (selectable) | sum (selectable) | You have few features, want a baseline, or want to study one building block at a time. |
+| HTSK | Gaussian | geometric mean | softmax in log space | You have many features and the product saturates. |
+| LogTSK | Gaussian | geometric mean | inverse log | Same setting as HTSK, with a normalization that does not depend on the scale of the firing strengths. |
+| HDFIS | dimension-dependent Gaussian (prod), Gaussian (min) | product or minimum | sum | You have very many features and want to keep the product or the minimum T-norm. |
+| DombiTSK | Gaussian with a positive lower bound | Dombi, fixed parameter | sum | You want a parametric T-norm with a parameter you set yourself. |
+| ADMTSK | Gaussian with a positive lower bound | Dombi, parameter set from the dimension | sum | You want the Dombi T-norm adapted to the number of features. |
+| AYATSK | composite exponential | Yager, parameter set from the dimension | sum | You want the Yager T-norm adapted to the number of features. |
+| ADATSK | Gaussian | adaptive softmin | sum | You want a smooth minimum that stays stable as the number of features grows. |
+| ADPTSK | Gaussian with a positive lower bound | adaptive double-parameter softmin | sum | Same setting as ADATSK, with a second parameter for more stable normalized rule weights. |
+| FSRE-ADATSK | Gaussian | adaptive softmin | softmax in log space | You also want feature selection and rule extraction. |
+| DG-TSK | Gaussian | gated layer | softmax in log space | You want features and rules pruned by gates during training. |
+| DG-ALETSK | Gaussian | gated layer with adaptive Ln-Exp softmin | softmax in log space | Same goal as DG-TSK, with an aggregation designed for high-dimensional data. |
+| MHTSK | Gaussian, on feature subsets | product, per head | sum | You have many features and want rules that each use a small subset of them. |
+
+---
+
 ## 1. Baselines
 
 These models implement standard, textbook fuzzy logic structures. They are ideal as simple baselines for low-dimensional problems.
 
-*   [**TSK (Vanilla)**](tsk-vanilla.md) — Standard TSK fuzzy system with product antecedent aggregation and sum-based normalization.
+*   [**TSK**](tsk-vanilla.md) — Generic TSK fuzzy system. By default the standard (vanilla) system with product antecedent aggregation and sum-based normalization; the membership function, T-norm and defuzzifier can be chosen.
 
 ---
 

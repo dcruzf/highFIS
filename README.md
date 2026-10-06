@@ -68,8 +68,9 @@ highFIS integrates with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and
 highFIS implements thirteen TSK model families, each following a published
 high-dimensional inference strategy.
 
-- `TSK` — vanilla TSK with product antecedent aggregation and sum-based
-  normalization.
+- `TSK` — generic TSK; by default the vanilla system with product antecedent
+  aggregation and sum-based normalization, with selectable membership
+  function, T-norm, and defuzzifier.
 - `HTSK` — geometric mean aggregation with log-space softmax normalization.
 - `LogTSK` — inverse-log normalization of log-domain rule weights.
 - `HDFIS` — high-dimensional inference with product T-norm (`HDFISProd`) and
@@ -123,6 +124,9 @@ highFIS uses gradient-based optimization and supports:
   consequent parameters
 - early stopping on a validation set passed to `fit`
 - uniform regularization (`ur_weight`) for balanced rule activation
+- a choice of membership function, T-norm, and defuzzifier in the generic
+  `TSKClassifier` and `TSKRegressor`; the other families keep their published
+  combination
 - custom T-norms, rule bases, and defuzzifiers through the PyTorch model
   classes
 
