@@ -1214,7 +1214,7 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
         Validation data should be supplied using ``x_val`` and ``y_val``
         when available.
         """
-        x_arr, y_arr = validate_data(self, x, y, reset=True)
+        x_arr, y_arr = validate_data(self, x, y, reset=True, y_numeric=True)
         n_samples = x_arr.shape[0]
         n_mfs_val = getattr(self, "n_mfs", 3)
         n_mfs_val = 3 if n_mfs_val is None else n_mfs_val
@@ -1243,7 +1243,7 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
         if (x_val is None) != (y_val is None):
             raise ValueError("x_val and y_val must be provided together")
         if x_val is not None and y_val is not None:
-            x_v_arr, y_v_arr = validate_data(self, x_val, y_val, reset=False)
+            x_v_arr, y_v_arr = validate_data(self, x_val, y_val, reset=False, y_numeric=True)
             x_val_t = self._as_tensor_x(x_v_arr, _device)
             y_val_t = torch.as_tensor(np.asarray(y_v_arr), dtype=self._model_dtype(), device=_device)
 
