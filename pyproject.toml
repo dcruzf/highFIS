@@ -143,6 +143,10 @@ isort = { known-first-party = ["highfis", "tests"] }
 [tool.pytest.ini_options]
 testpaths = "tests"
 xfail_strict = true
+addopts = "-m 'not sklearn_checks'"
+markers = [
+    "sklearn_checks: scikit-learn estimator checks, slow and deselected by default (run with `-m sklearn_checks`)",
+]
 
 [tool.coverage.run]
 source = ["highfis"]

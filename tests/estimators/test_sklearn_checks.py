@@ -6,6 +6,10 @@ fitted attributes, pickling, ``clone``, pipeline and meta-estimator behaviour --
 
 The checks are run on short trainings to keep the sweep fast, with two exceptions that are
 handled in :func:`test_sklearn_estimator_checks`.
+
+The sweep is still about 1500 tests, so it is deselected by default. Run it with::
+
+    hatch test -m sklearn_checks
 """
 
 from __future__ import annotations
@@ -20,6 +24,8 @@ from sklearn.base import BaseEstimator
 from sklearn.utils.estimator_checks import parametrize_with_checks
 
 import highfis
+
+pytestmark = pytest.mark.sklearn_checks
 
 ESTIMATORS: list[str] = sorted(n for n in highfis.__all__ if n.endswith(("Classifier", "Regressor")))
 
