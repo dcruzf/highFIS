@@ -4,88 +4,19 @@
         <loc>https://dcruzf.github.io/highFIS/dev/</loc>
       </url>
       <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/models/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/models/tsk-vanilla/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/models/logtsk/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/models/htsk/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/models/dombitsk/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/models/adatsk/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/models/fsre-adatsk/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/models/dg-tsk/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/models/dg-aletsk/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/models/ayatsk/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/models/hdfis/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/models/admtsk/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/models/adptsk/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/models/mhtsk/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/guides/optimisers/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/guides/introspection/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/guides/initialization/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/guides/tuning/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/guides/caching/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/cookbook/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/cookbook/quickstart/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/cookbook/choosing-a-model/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/cookbook/high-dimensional-feature-selection/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/cookbook/persistence-and-cache/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/cookbook/interpretability/</loc>
-      </url>
-      <url>
         <loc>https://dcruzf.github.io/highFIS/dev/api/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/api/clustering/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/api/defuzzifiers/</loc>
       </url>
       <url>
         <loc>https://dcruzf.github.io/highFIS/dev/api/estimators/</loc>
       </url>
       <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/api/models/</loc>
+        <loc>https://dcruzf.github.io/highFIS/dev/api/gates/</loc>
       </url>
       <url>
         <loc>https://dcruzf.github.io/highFIS/dev/api/layers/</loc>
@@ -94,19 +25,10 @@
         <loc>https://dcruzf.github.io/highFIS/dev/api/memberships/</loc>
       </url>
       <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/api/t_norms/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/api/defuzzifiers/</loc>
-      </url>
-      <url>
         <loc>https://dcruzf.github.io/highFIS/dev/api/metrics/</loc>
       </url>
       <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/api/clustering/</loc>
-      </url>
-      <url>
-        <loc>https://dcruzf.github.io/highFIS/dev/api/gates/</loc>
+        <loc>https://dcruzf.github.io/highFIS/dev/api/models/</loc>
       </url>
       <url>
         <loc>https://dcruzf.github.io/highFIS/dev/api/optimisers/</loc>
@@ -118,6 +40,84 @@
         <loc>https://dcruzf.github.io/highFIS/dev/api/protocols/</loc>
       </url>
       <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/api/t_norms/</loc>
+      </url>
+      <url>
         <loc>https://dcruzf.github.io/highFIS/dev/contributing/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/cookbook/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/cookbook/choosing-a-model/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/cookbook/high-dimensional-feature-selection/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/cookbook/interpretability/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/cookbook/persistence-and-cache/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/cookbook/quickstart/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/guides/caching/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/guides/initialization/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/guides/introspection/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/guides/optimisers/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/guides/tuning/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/models/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/models/adatsk/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/models/admtsk/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/models/adptsk/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/models/ayatsk/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/models/dg-aletsk/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/models/dg-tsk/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/models/dombitsk/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/models/fsre-adatsk/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/models/hdfis/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/models/htsk/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/models/logtsk/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/models/mhtsk/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/models/tsk-vanilla/</loc>
       </url>
 </urlset>
