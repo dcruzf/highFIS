@@ -33,8 +33,9 @@ hatch run security   # security scan (bandit)
 hatch test -c        # tests with coverage (pytest + coverage)
 ```
 
-The scikit-learn estimator checks are slow and deselected by default. Run them when you
-change an estimator's `fit`, `predict`, or input validation:
+The scikit-learn estimator checks are slow and deselected by default. CI runs them only on
+pull requests into `main`, so run them locally when you change an estimator's `fit`,
+`predict`, or input validation:
 
 ```bash
 hatch test -m sklearn_checks

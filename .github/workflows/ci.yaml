@@ -42,3 +42,24 @@ jobs:
       - name: Run cookbook and guide docs
         if: runner.os == 'Linux' && matrix.python-version == '3.14'
         run: hatch run cookbook:run
+
+  sklearn-checks:
+    # Slow sweep: only for pull requests into main, on a single OS and Python version.
+    if: github.event.pull_request.base.ref == 'main' && contains(github.event.head_commit.message, '[skip]') == false && github.event.action != 'closed'
+    name: scikit-learn estimator checks (ubuntu-latest, Python 3.13)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Hatch
+        uses: pypa/hatch@install
+
+      - name: Run scikit-learn estimator checks
+        run: hatch test -py 3.13 -m sklearn_checks
