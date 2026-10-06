@@ -229,15 +229,18 @@ class BaseTSK(nn.Module):
     def _run_inference(self, x: Tensor, fn: Callable[[Tensor], Tensor]) -> Tensor:
         """Run *fn(x)* in eval mode, restoring training state and dtype afterward."""
         was_training = self.training
-        use_double = x.dtype == torch.float64
-        if use_double:
+        # A float64 input promotes a single-precision model for the call only. The model's own
+        # dtype is restored afterwards, so one fitted in float64 is never downcast to float32.
+        original_dtype = next((p.dtype for p in self.parameters() if p.is_floating_point()), None)
+        promote = x.dtype == torch.float64 and original_dtype not in (None, torch.float64)
+        if promote:
             self.double()
         try:
             set_training_flag(self, False)
             return fn(x)
         finally:
-            if use_double:
-                self.float()
+            if promote:
+                self.to(original_dtype)
             set_training_flag(self, was_training)
 
 
