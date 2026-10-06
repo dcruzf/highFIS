@@ -674,6 +674,9 @@ class _BaseTSKEstimator(BaseEstimator):
     def _as_tensor_x(self, x: np.ndarray, device: torch.device | str | None = None) -> torch.Tensor:
         """Convert a numpy array to a tensor matching the model's dtype, on *device*.
 
+        Also used for regression targets. Read-only arrays (e.g. memory-mapped data) are
+        copied first, since PyTorch does not support non-writable tensors.
+
         Args:
             x: Input array to convert.
             device: Target PyTorch device. ``None`` uses the PyTorch default
@@ -1235,7 +1238,7 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
         _device = torch.device(str(self.device))
         self.model_ = self._build_regressor_model(input_mfs, effective_rule_base).to(_device)
 
-        y_t = torch.as_tensor(np.asarray(y_arr), dtype=self._model_dtype(), device=_device)
+        y_t = self._as_tensor_x(np.asarray(y_arr), _device)
 
         # Prepare validation tensors if provided via fit.
         x_val_t: torch.Tensor | None = None
@@ -1245,7 +1248,7 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
         if x_val is not None and y_val is not None:
             x_v_arr, y_v_arr = validate_data(self, x_val, y_val, reset=False, y_numeric=True)
             x_val_t = self._as_tensor_x(x_v_arr, _device)
-            y_val_t = torch.as_tensor(np.asarray(y_v_arr), dtype=self._model_dtype(), device=_device)
+            y_val_t = self._as_tensor_x(np.asarray(y_v_arr), _device)
 
         x_t = self._as_tensor_x(x_arr, _device)
         self.rule_base_ = effective_rule_base
