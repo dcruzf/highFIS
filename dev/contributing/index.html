@@ -994,7 +994,8 @@
 <p>Thank you for your interest in improving highFIS.</p>
 <h2 id="ways-to-contribute">Ways to Contribute</h2>
 <ul>
-<li>Report bugs or request features through GitHub issues.</li>
+<li>Report bugs or request features through GitHub issues. For bugs, include the output of
+  <code>highfis.show_versions()</code>.</li>
 <li>Improve documentation, examples, and test coverage.</li>
 <li>Submit focused bug fixes and incremental feature improvements.</li>
 </ul>
@@ -1012,22 +1013,27 @@ management, testing, formatting, and builds.</p>
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>hatch<span class="w"> </span>run<span class="w"> </span>security<span class="w">   </span><span class="c1"># security scan (bandit)</span>
 </span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>hatch<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-c<span class="w">        </span><span class="c1"># tests with coverage (pytest + coverage)</span>
 </span></code></pre></div>
+<p>The scikit-learn estimator checks are slow and deselected by default. CI runs them only on
+pull requests into <code>main</code>, so run them locally when you change an estimator's <code>fit</code>,
+<code>predict</code>, or input validation:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>hatch<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-m<span class="w"> </span>sklearn_checks
+</span></code></pre></div>
 <p>To run all pre-commit hooks at once:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>hatch<span class="w"> </span>run<span class="w"> </span>all
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>hatch<span class="w"> </span>run<span class="w"> </span>all
 </span></code></pre></div>
 <h3 id="test-matrix">Test Matrix</h3>
 <p>Tests run against Python 3.11, 3.12, 3.13, and 3.14. To run against a
 specific version:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>hatch<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-py<span class="w"> </span><span class="m">3</span>.12
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>hatch<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-py<span class="w"> </span><span class="m">3</span>.12
 </span></code></pre></div>
 <h3 id="coverage">Coverage</h3>
 <p>Coverage must stay at or above <strong>90 %</strong>. To generate an HTML report:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>hatch<span class="w"> </span>run<span class="w"> </span>html-report
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>hatch<span class="w"> </span>run<span class="w"> </span>html-report
 </span></code></pre></div>
 <h2 id="documentation-workflow">Documentation Workflow</h2>
 <p>Documentation is built with <a href="https://github.com/dcruzf/zensical">Zensical</a>.</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>hatch<span class="w"> </span>run<span class="w"> </span>docs:serve<span class="w">   </span><span class="c1"># live preview</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>hatch<span class="w"> </span>run<span class="w"> </span>docs:build<span class="w">   </span><span class="c1"># build static site</span>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>hatch<span class="w"> </span>run<span class="w"> </span>docs:serve<span class="w">   </span><span class="c1"># live preview</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>hatch<span class="w"> </span>run<span class="w"> </span>docs:build<span class="w">   </span><span class="c1"># build static site</span>
 </span></code></pre></div>
 <h2 id="pull-request-guidelines">Pull Request Guidelines</h2>
 <ol>
