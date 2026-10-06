@@ -70,6 +70,7 @@ nav = [
         "guides/tuning.md",
         "guides/caching.md",
         "guides/building-blocks.md",
+        "guides/plotting.md",
      ] },
     { "Cookbook" = [
         "cookbook/index.md",
@@ -88,6 +89,7 @@ nav = [
         "api/t_norms.md",
         "api/defuzzifiers.md",
         "api/metrics.md",
+        "api/plotting.md",
         "api/clustering.md",
         "api/gates.md",
         "api/optimisers.md",

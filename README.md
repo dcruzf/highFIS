@@ -30,7 +30,12 @@ pip install highfis
 ```
 
 highFIS requires Python 3.11 or newer and depends on PyTorch, NumPy,
-scikit-learn, and tqdm.
+scikit-learn, and tqdm. The diagnostic plots need matplotlib, an optional
+dependency:
+
+```bash
+pip install highfis[plot]
+```
 
 ## 🧠 Quick Start
 
@@ -106,6 +111,8 @@ model classes and sklearn-compatible estimator wrappers.
 - Building blocks: membership functions (`highfis.memberships`), defuzzifiers
   (`highfis.defuzzifiers`), T-norms (`highfis.t_norms`), and layers
   (`highfis.layers`)
+- Diagnostic plots: `estimator.plot(kind=...)` for the learned membership
+  functions, the training history, the rule activations, and the predictions
 - Utilities: evaluation metrics (`highfis.metrics`), estimator checkpoints
   (`highfis.persistence`), and a membership-function initialization cache
 
@@ -138,7 +145,9 @@ https://dcruzf.github.io/highFIS
 
 Start with the [model families](https://dcruzf.github.io/highFIS/latest/models/)
 overview, the [user guides](https://dcruzf.github.io/highFIS/latest/guides/optimisers/),
-and the [cookbook](https://dcruzf.github.io/highFIS/latest/cookbook/).
+and the [cookbook](https://dcruzf.github.io/highFIS/latest/cookbook/). The
+[diagnostic plots](https://dcruzf.github.io/highFIS/latest/guides/plotting/) guide
+shows how to inspect a fitted model.
 
 Model reference pages:
 
