@@ -12,10 +12,7 @@ experimentation.
 ## Why highFIS?
 
 - Built for high-dimensional data and numerical stability.
-- Supports adaptive and gated fuzzy inference, including feature selection
-  and rule extraction.
-- Includes HDFIS variants for product T-norm and minimum T-norm
-  high-dimensional inference.
+- Implements thirteen model families from the literature behind one API.
 - Ships sklearn-compatible estimators (`*Classifier` / `*Regressor`) for every
   model family.
 - Works seamlessly with `Pipeline`, `GridSearchCV`, and standard
@@ -84,11 +81,11 @@ highFIS includes the following concrete TSK model families:
   product-DMF aggregation (HDFIS-prod) and minimum frozen-antecedent
   inference (HDFIS-min).
 - [`DombiTSK`](models/dombitsk.md) — Dombi parametric aggregation with a
-  learnable shape parameter.
-- [`ADMTSK`](models/admtsk.md) — adaptive Dombi TSK with dimension-dependent
-  Gaussian membership functions.
-- [`AYATSK`](models/ayatsk.md) — Yager-style aggregation for more flexible
-  antecedent behavior.
+  fixed shape parameter.
+- [`ADMTSK`](models/admtsk.md) — adaptive Dombi TSK whose shape parameter is
+  derived from the input dimensionality.
+- [`AYATSK`](models/ayatsk.md) — adaptive Yager T-norm aggregation with
+  composite exponential membership functions.
 - [`ADATSK`](models/adatsk.md) — adaptive softmin aggregation with dynamic
   rule weighting.
 - [`ADPTSK`](models/adptsk.md) — adaptive double-parameter softmin aggregation

@@ -26,9 +26,9 @@ Standard fuzzy inference suffers from the **saturation phenomenon** in high-dime
 
 ## 3. Parametric & Adaptive T-Norms
 
-These models replace static T-norms (like standard product or minimum) with parametric or adaptive aggregation functions whose shape parameters are trained via gradient descent.
+These models replace static T-norms (like standard product or minimum) with parametric or adaptive aggregation functions. Their shape parameters are either fixed hyperparameters or computed from the input dimensionality and the membership values, rather than trained by gradient descent.
 
-*   [**DombiTSK**](dombitsk.md) — Parametric antecedent aggregation based on the Dombi T-norm with a learnable shape parameter $\lambda$.
+*   [**DombiTSK**](dombitsk.md) — Parametric antecedent aggregation based on the Dombi T-norm with a fixed shape parameter $\lambda$.
 *   [**ADMTSK**](admtsk.md) — Adaptive Dombi TSK utilizing dimension-dependent Gaussian membership functions.
 *   [**AYATSK**](ayatsk.md) — Flexible antecedent aggregation utilizing the Yager T-norm.
 *   [**ADATSK**](adatsk.md) — Adaptive softmin aggregation offering dynamic rule weight scaling.
