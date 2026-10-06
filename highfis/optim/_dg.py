@@ -90,8 +90,8 @@ class DGTrainer(BaseTrainer):
             dg_shuffle: Reshuffle samples each epoch in the DG phase.
             dg_patience: Early-stopping patience for the DG phase.
             dg_weight_decay: L2 weight-decay for the DG phase.
-            dg_ur_weight: Uncertainty regularisation weight for the DG phase.
-            dg_ur_target: Uncertainty regularisation target for the DG phase.
+            dg_ur_weight: Uniform regularization weight for the DG phase.
+            dg_ur_target: Uniform regularization target for the DG phase.
             zeta_lambda: Grid of λ-threshold candidates for pruning.  If
                 ``None``, uses ``[0.0, 0.25, 0.5, 0.75, 1.0]``.
             zeta_theta: Grid of θ-threshold candidates.  Same default.
@@ -105,8 +105,8 @@ class DGTrainer(BaseTrainer):
             finetune_restore_best: Restore best validation weights after
                 fine-tuning.
             finetune_weight_decay: L2 weight-decay for fine-tuning.
-            finetune_ur_weight: Uncertainty regularisation weight for fine-tuning.
-            finetune_ur_target: Uncertainty regularisation target for fine-tuning.
+            finetune_ur_weight: Uniform regularization weight for fine-tuning.
+            finetune_ur_target: Uniform regularization target for fine-tuning.
             verbose: Verbosity level forwarded to all three phases.
             loss: Custom loss function ``f(output, target) -> scalar``.
                 ``None`` uses the model's built-in criterion.

@@ -406,8 +406,11 @@ class MHTSKClassifier(_BaseClassifierEstimator):
             verbose: Verbosity level during training.
             batch_size: Mini-batch size for gradient descent.
             shuffle: Whether to shuffle training samples each epoch.
-            ur_weight: Weight of the uncertainty regularization term.
-            ur_target: Target firing-level for uncertainty regularization.
+            ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
+                each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
+                2020). ``0.0`` disables the penalty.
+            ur_target: Target average normalized firing strength of each rule. ``None`` uses ``1/R``,
+                where ``R`` is the number of rules.
             consequent_batch_norm: Apply batch normalization to the consequent layer inputs.
             patience: Early-stopping patience for validation.
             restore_best: Whether to restore the best validation model weights after training.
@@ -656,8 +659,11 @@ class MHTSKRegressor(_BaseRegressorEstimator):
             verbose: Verbosity level during training.
             batch_size: Mini-batch size for gradient descent.
             shuffle: Whether to shuffle training samples each epoch.
-            ur_weight: Weight of the uncertainty regularization term.
-            ur_target: Target firing-level for uncertainty regularization.
+            ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
+                each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
+                2020). ``0.0`` disables the penalty.
+            ur_target: Target average normalized firing strength of each rule. ``None`` uses ``1/R``,
+                where ``R`` is the number of rules.
             consequent_batch_norm: Apply batch normalization to the consequent layer inputs.
             patience: Early-stopping patience for validation.
             restore_best: Whether to restore the best validation model weights after training.

@@ -112,8 +112,11 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
             rule_base: ``"coco"`` or ``"cartesian"``.
             batch_size: Mini-batch size (default ``512``).
             shuffle: Reshuffle each epoch.
-            ur_weight: Uncertainty regularisation weight.
-            ur_target: Uncertainty regularisation target.
+            ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
+                each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
+                2020). ``0.0`` disables the penalty.
+            ur_target: Target average normalized firing strength of each rule. ``None`` uses ``1/R``,
+                where ``R`` is the number of rules.
             consequent_batch_norm: Batch normalisation on consequent layers.
             pfrb_max_rules: Maximum point-based FRB rules (unused by
                 DombiTSK).
@@ -277,8 +280,11 @@ class DombiTSKRegressor(_BaseRegressorEstimator):
             rule_base: ``"coco"`` or ``"cartesian"``.
             batch_size: Mini-batch size (default ``512``).
             shuffle: Reshuffle each epoch.
-            ur_weight: Uncertainty regularisation weight.
-            ur_target: Uncertainty regularisation target.
+            ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
+                each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
+                2020). ``0.0`` disables the penalty.
+            ur_target: Target average normalized firing strength of each rule. ``None`` uses ``1/R``,
+                where ``R`` is the number of rules.
             consequent_batch_norm: Batch normalisation on consequent layers.
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
             restore_best: If ``True`` (default), restore the best validation
@@ -410,8 +416,11 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
                 ``"cartesian"``.
             batch_size: Mini-batch size for training.
             shuffle: Whether to shuffle training data each epoch.
-            ur_weight: Uniform-rule regularisation weight.
-            ur_target: Target average rule activation for uniform regularisation.
+            ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
+                each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
+                2020). ``0.0`` disables the penalty.
+            ur_target: Target average normalized firing strength of each rule. ``None`` uses ``1/R``,
+                where ``R`` is the number of rules.
             consequent_batch_norm: If True, apply batch normalization to
                 consequent inputs.
             pfrb_max_rules: Maximum number of rules for point-based FRB.
@@ -593,8 +602,11 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
                 ``"cartesian"``.
             batch_size: Mini-batch size for training.
             shuffle: Whether to shuffle training data each epoch.
-            ur_weight: Uniform-rule regularisation weight.
-            ur_target: Target average rule activation for uniform regularisation.
+            ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
+                each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
+                2020). ``0.0`` disables the penalty.
+            ur_target: Target average normalized firing strength of each rule. ``None`` uses ``1/R``,
+                where ``R`` is the number of rules.
             consequent_batch_norm: If True, apply batch normalization to
                 consequent inputs.
             patience: Early stopping patience. Use ``None`` to disable.

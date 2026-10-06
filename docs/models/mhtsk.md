@@ -139,7 +139,7 @@ $$
 - The paper trains MHTSK end-to-end with gradient-based optimization over joint rule weights and consequents.
 - highFIS preserves this approach via `BaseTSK.fit()`, with mini-batch Adam training and optional early stopping.
 - The main difference is that highFIS builds the sparse model structure explicitly before training, while the paper describes the same structure in algorithmic form.
-- highFIS also supports optional uniform-rule regularization (`ur_weight`, `ur_target`) to encourage balanced rule activations.
+- highFIS also supports optional uniform regularization (`ur_weight`, `ur_target`) to encourage balanced rule activations.
 
 ## Rule extraction (MHTSK_RE)
 

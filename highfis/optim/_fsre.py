@@ -103,16 +103,16 @@ class FSRETrainer(BaseTrainer):
             fs_shuffle: Reshuffle samples each epoch in the FS phase.
             fs_patience: Early-stopping patience for the FS phase.
             fs_weight_decay: L2 weight-decay for the FS phase.
-            fs_ur_weight: Uncertainty regularisation weight for the FS phase.
-            fs_ur_target: Uncertainty regularisation target for the FS phase.
+            fs_ur_weight: Uniform regularization weight for the FS phase.
+            fs_ur_target: Uniform regularization target for the FS phase.
             re_epochs: Epochs for the RE phase (phase 2).  Default ``10``.
             re_learning_rate: Adam learning rate for the RE phase.
             re_batch_size: Mini-batch size for the RE phase.
             re_shuffle: Reshuffle samples each epoch in the RE phase.
             re_patience: Early-stopping patience for the RE phase.
             re_weight_decay: L2 weight-decay for the RE phase.
-            re_ur_weight: Uncertainty regularisation weight for the RE phase.
-            re_ur_target: Uncertainty regularisation target for the RE phase.
+            re_ur_weight: Uniform regularization weight for the RE phase.
+            re_ur_target: Uniform regularization target for the RE phase.
             finetune_epochs: Epochs for the fine-tune phase (phase 3).
                 Default ``100``.
             finetune_learning_rate: Adam learning rate for fine-tuning.
@@ -122,9 +122,9 @@ class FSRETrainer(BaseTrainer):
             finetune_restore_best: Restore best validation weights after
                 fine-tuning.
             finetune_weight_decay: L2 weight-decay for fine-tuning.
-            finetune_ur_weight: Uncertainty regularisation weight for
+            finetune_ur_weight: Uniform regularization weight for
                 fine-tuning.
-            finetune_ur_target: Uncertainty regularisation target for
+            finetune_ur_target: Uniform regularization target for
                 fine-tuning.
             zeta_lambda: Coefficient to compute the feature-selection
                 threshold τ_λ (paper eq. 28).  Larger values retain more

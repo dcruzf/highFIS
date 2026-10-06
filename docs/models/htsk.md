@@ -115,7 +115,7 @@ $$
   modest learning rate, typically `0.01`.
 - highFIS follows the same end-to-end gradient-based training paradigm using
   `BaseTSK.fit()`, which supports mini-batch AdamW, optional early stopping,
-  and optional uniform-rule regularization (`ur_weight`, `ur_target`).
+  and optional uniform regularization (`ur_weight`, `ur_target`).
 
 ### Strict paper mode
 

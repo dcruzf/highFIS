@@ -112,7 +112,7 @@ lower bound on membership values is desired.
 - `BaseTSK.fit()` performs mini-batch optimization with a default AdamW
   optimizer, separate weight decay for consequent parameters, and optional
   validation-based early stopping.
-- HighFIS also supports optional uniform-rule regularization via
+- HighFIS also supports optional uniform regularization via
   `ur_weight` and `ur_target` to encourage more evenly distributed rule
   activations during training.
 
