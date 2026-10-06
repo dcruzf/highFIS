@@ -107,8 +107,11 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
             rule_base: ``"coco"`` or ``"cartesian"``.
             batch_size: Mini-batch size (default ``512``).
             shuffle: Reshuffle each epoch.
-            ur_weight: Uncertainty regularisation weight.
-            ur_target: Uncertainty regularisation target.
+            ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
+                each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
+                2020). ``0.0`` disables the penalty.
+            ur_target: Target average normalized firing strength of each rule. ``None`` uses ``1/R``,
+                where ``R`` is the number of rules.
             consequent_batch_norm: Batch normalisation on consequent inputs.
                 Default ``True``. Required for numerical stability: the
                 first-order gated consequent spans all features and is optimized
@@ -356,8 +359,11 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
             rule_base: ``"coco"`` or ``"cartesian"``.
             batch_size: Mini-batch size (default ``512``).
             shuffle: Reshuffle each epoch.
-            ur_weight: Uncertainty regularisation weight.
-            ur_target: Uncertainty regularisation target.
+            ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
+                each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
+                2020). ``0.0`` disables the penalty.
+            ur_target: Target average normalized firing strength of each rule. ``None`` uses ``1/R``,
+                where ``R`` is the number of rules.
             consequent_batch_norm: Batch normalisation on consequent inputs.
                 Default ``True``. Required for numerical stability: the
                 first-order gated consequent spans all features and is optimized

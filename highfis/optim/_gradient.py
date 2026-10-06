@@ -83,8 +83,11 @@ class GradientTrainer(BaseTrainer):
                 stopping.
             restore_best: Restore the best validation weights after training.
             weight_decay: L2 weight-decay for consequent parameters.
-            ur_weight: Uncertainty regularisation weight.
-            ur_target: Uncertainty regularisation target firing-level.
+            ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
+                each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
+                2020). ``0.0`` disables the penalty.
+            ur_target: Target average normalized firing strength of each rule. ``None`` uses ``1/R``,
+                where ``R`` is the number of rules.
             verbose: Verbosity level.
                 - ``False`` / ``0``: silent.
                 - ``True``  / ``1``: progress bar (tqdm).
