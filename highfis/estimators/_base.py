@@ -21,6 +21,7 @@ from sklearn.utils.multiclass import type_of_target
 from sklearn.utils.validation import check_is_fitted, validate_data
 from torch import Tensor
 
+from .. import plotting
 from ..clustering import FuzzyCMeans, KMeans, MiniBatchKMeans
 from ..memberships import (
     DimensionDependentGaussianMF,
@@ -935,6 +936,57 @@ class _BaseTSKEstimator(BaseEstimator):
             "mf_params": self.get_mf_params(),
             "rule_table": self.model_.get_rule_table(),
         }
+
+    def plot(self, kind: str = "memberships", **kwargs: Any) -> Any:
+        """Draw a diagnostic plot of the fitted model.
+
+        Requires matplotlib (``pip install highfis[plot]``).
+
+        Args:
+            kind: ``"memberships"`` (default), ``"history"``, ``"rule_activation"`` or
+                ``"diagnostics"``.
+            **kwargs: Arguments of the corresponding ``plot_<kind>`` method.
+
+        Returns:
+            The matplotlib ``Axes`` for single-panel plots, the ``Figure`` otherwise.
+        """
+        return plotting.plot(self, kind, **kwargs)
+
+    def plot_memberships(
+        self,
+        features: Sequence[int | str] | None = None,
+        *,
+        X: npt.ArrayLike | None = None,
+        max_features: int = 6,
+        n_points: int = 200,
+        ax: Any = None,
+    ) -> Any:
+        """Plot the learned fuzzy sets, one panel per feature.
+
+        See :func:`highfis.plotting.plot_memberships`.
+        """
+        return plotting.plot_memberships(self, features, X=X, max_features=max_features, n_points=n_points, ax=ax)
+
+    def plot_history(self, metric: str | None = None, *, ax: Any = None) -> Any:
+        """Plot the training loss, or a recorded metric, per epoch.
+
+        See :func:`highfis.plotting.plot_history`.
+        """
+        return plotting.plot_history(self, metric, ax=ax)
+
+    def plot_rule_activation(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, *, ax: Any = None) -> Any:
+        """Plot the mean normalized firing strength of each rule, by class when ``y`` is given.
+
+        See :func:`highfis.plotting.plot_rule_activation`.
+        """
+        return plotting.plot_rule_activation(self, X, y, ax=ax)
+
+    def plot_diagnostics(self, X: npt.ArrayLike, y: npt.ArrayLike, *, ax: Any = None) -> Any:
+        """Plot the confusion matrix and decision margin, or the regression fit and residuals.
+
+        See :func:`highfis.plotting.plot_diagnostics`.
+        """
+        return plotting.plot_diagnostics(self, X, y, ax=ax)
 
     def feature_importance(self) -> np.ndarray | None:
         """Compute a normalized feature importance vector from consequent weights."""
