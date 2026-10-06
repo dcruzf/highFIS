@@ -4,7 +4,8 @@ Thank you for your interest in improving highFIS.
 
 ## Ways to Contribute
 
-- Report bugs or request features through GitHub issues.
+- Report bugs or request features through GitHub issues. For bugs, include the output of
+  `highfis.show_versions()`.
 - Improve documentation, examples, and test coverage.
 - Submit focused bug fixes and incremental feature improvements.
 
@@ -30,6 +31,14 @@ Run the following before opening a pull request:
 hatch check --fix    # format, lint, and type check
 hatch run security   # security scan (bandit)
 hatch test -c        # tests with coverage (pytest + coverage)
+```
+
+The scikit-learn estimator checks are slow and deselected by default. CI runs them only on
+pull requests into `main`, so run them locally when you change an estimator's `fit`,
+`predict`, or input validation:
+
+```bash
+hatch test -m sklearn_checks
 ```
 
 To run all pre-commit hooks at once:

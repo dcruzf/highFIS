@@ -10,6 +10,8 @@ them. These tests pin each family's policy and the precedence rules, so neither 
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pytest
 
@@ -224,6 +226,45 @@ def test_fit_and_predict_in_float64(name: str, extra: dict) -> None:  # type: ig
         assert 0.0 <= clf.score(x, y) <= 1.0
     finally:
         torch.set_default_dtype(prev)
+
+
+def test_float64_model_stays_float64_after_inference() -> None:
+    """Predicting must not downcast a model fitted in float64.
+
+    Inference used to end with an unconditional ``.float()``, so the first ``predict`` ran in
+    double precision and every later one in single precision, on the same fitted model.
+    """
+    import torch
+
+    prev = torch.get_default_dtype()
+    torch.set_default_dtype(torch.float64)
+    try:
+        rng = np.random.default_rng(0)
+        x = rng.random((40, 4))
+        y = x[:, 0] + x[:, 1]
+        reg = highfis.HTSKRegressor(n_mfs=2, epochs=3, random_state=0).fit(x, y)
+
+        first = reg.predict(x)
+        assert all(p.dtype == torch.float64 for p in reg.model_.parameters())
+        np.testing.assert_array_equal(reg.predict(x), first)
+    finally:
+        torch.set_default_dtype(prev)
+
+
+def test_float64_input_does_not_change_a_float32_model() -> None:
+    """A float64 tensor promotes a float32 model for the call only."""
+    import torch
+
+    rng = np.random.default_rng(0)
+    x = rng.random((40, 4)).astype(np.float32)
+    y = (x[:, 0] > 0.5).astype(np.int64)
+    clf = highfis.HTSKClassifier(n_mfs=2, epochs=3, random_state=0).fit(x, y)
+
+    model: Any = clf.model_
+    out = model.predict_proba(torch.as_tensor(x, dtype=torch.float64))
+
+    assert out.dtype == torch.float64
+    assert all(p.dtype == torch.float32 for p in clf.model_.parameters())
 
 
 def test_default_float32_path_is_unchanged() -> None:
