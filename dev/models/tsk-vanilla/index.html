@@ -284,6 +284,8 @@
       
         
       
+        
+      
     
     
     
@@ -713,6 +715,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#selectable-building-blocks" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Selectable building blocks
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#code-paper-correspondence" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1111,6 +1124,8 @@
       
         
       
+        
+      
     
     
     
@@ -1492,6 +1507,17 @@ making the normalized weights dominated by a single rule.</p>
 \hat{y} = \sum_{r=1}^{R} \bar{f}_r \left( b_{r,0} + \sum_{d=1}^{D} b_{r,d}\, x_d \right)
 \tag{5}
 \]</div>
+<h2 id="selectable-building-blocks">Selectable building blocks</h2>
+<p>The formulation above is the default of <code>TSKClassifier</code> and <code>TSKRegressor</code>. They are also
+the generic estimators of highFIS: the membership function, the T-norm and the defuzzifier
+can be chosen with the <code>mf</code>, <code>t_norm</code> and <code>defuzzifier</code> arguments.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">TSKClassifier</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">TSKClassifier</span><span class="p">(</span><span class="n">n_mfs</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">mf</span><span class="o">=</span><span class="s2">"bell"</span><span class="p">,</span> <span class="n">t_norm</span><span class="o">=</span><span class="s2">"min"</span><span class="p">,</span> <span class="n">defuzzifier</span><span class="o">=</span><span class="s2">"softmax_log"</span><span class="p">)</span>
+</span></code></pre></div>
+<p>The available values and what each one does are described in
+<a href="../../guides/building-blocks/">Building Blocks of the Generic TSK</a>. The other families
+keep their published combination and do not take these arguments.</p>
 <h2 id="code-paper-correspondence">Code ↔ Paper Correspondence</h2>
 <table>
 <thead>

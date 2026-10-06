@@ -282,6 +282,8 @@
       
         
       
+        
+      
     
     
     
@@ -580,6 +582,8 @@
   
     
     
+      
+        
       
         
       
@@ -1083,7 +1087,9 @@
 <p>highFIS exposes several TSK families behind the same scikit-learn interface, so you
 can swap one for another by changing a single class. A few rules of thumb:</p>
 <ul>
-<li><strong><code>TSKClassifier</code></strong> — the vanilla TSK baseline (product T-norm, sum normalization).</li>
+<li><strong><code>TSKClassifier</code></strong> — the generic TSK; by default the vanilla baseline (product T-norm,
+  sum normalization). Its membership function, T-norm and defuzzifier can be chosen; see
+  <a href="../../guides/building-blocks/">Building Blocks of the Generic TSK</a>.</li>
 <li><strong><code>HTSKClassifier</code></strong> — high-dimensional TSK (geometric-mean / log-space) for more
   features.</li>
 <li><strong><code>LogTSKClassifier</code></strong> — log-domain inverse-log normalization for stable

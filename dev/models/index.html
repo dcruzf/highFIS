@@ -284,6 +284,8 @@
       
         
       
+        
+      
     
     
     
@@ -964,6 +966,8 @@
       
         
       
+        
+      
     
     
     
@@ -1305,10 +1309,120 @@
 <p><strong>highFIS</strong> implements a diverse collection of concrete Takagi-Sugeno-Kang (TSK) neuro-fuzzy model architectures. These models are categorized below by their theoretical design, numerical stability properties, and structural sparsity capabilities.</p>
 <p>Every model family exposes both a scikit-learn compatible <strong>Classifier</strong> (e.g., <code>HTSKClassifier</code>) and a <strong>Regressor</strong> (e.g., <code>HTSKRegressor</code>).</p>
 <hr />
+<h2 id="what-each-family-fixes">What each family fixes</h2>
+<p>A family is defined by its membership function, the way it aggregates the membership
+degrees of a rule, and the way it normalizes the rule firing strengths. These are fixed in
+the named estimators. Only the generic TSK lets you choose them; see
+<a href="../guides/building-blocks/">Building Blocks of the Generic TSK</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Family</th>
+<th>Membership function</th>
+<th>Aggregation</th>
+<th>Normalization</th>
+<th>Use this when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TSK</td>
+<td>Gaussian (selectable)</td>
+<td>product (selectable)</td>
+<td>sum (selectable)</td>
+<td>You have few features, want a baseline, or want to study one building block at a time.</td>
+</tr>
+<tr>
+<td>HTSK</td>
+<td>Gaussian</td>
+<td>geometric mean</td>
+<td>softmax in log space</td>
+<td>You have many features and the product saturates.</td>
+</tr>
+<tr>
+<td>LogTSK</td>
+<td>Gaussian</td>
+<td>geometric mean</td>
+<td>inverse log</td>
+<td>Same setting as HTSK, with a normalization that does not depend on the scale of the firing strengths.</td>
+</tr>
+<tr>
+<td>HDFIS</td>
+<td>dimension-dependent Gaussian (prod), Gaussian (min)</td>
+<td>product or minimum</td>
+<td>sum</td>
+<td>You have very many features and want to keep the product or the minimum T-norm.</td>
+</tr>
+<tr>
+<td>DombiTSK</td>
+<td>Gaussian with a positive lower bound</td>
+<td>Dombi, fixed parameter</td>
+<td>sum</td>
+<td>You want a parametric T-norm with a parameter you set yourself.</td>
+</tr>
+<tr>
+<td>ADMTSK</td>
+<td>Gaussian with a positive lower bound</td>
+<td>Dombi, parameter set from the dimension</td>
+<td>sum</td>
+<td>You want the Dombi T-norm adapted to the number of features.</td>
+</tr>
+<tr>
+<td>AYATSK</td>
+<td>composite exponential</td>
+<td>Yager, parameter set from the dimension</td>
+<td>sum</td>
+<td>You want the Yager T-norm adapted to the number of features.</td>
+</tr>
+<tr>
+<td>ADATSK</td>
+<td>Gaussian</td>
+<td>adaptive softmin</td>
+<td>sum</td>
+<td>You want a smooth minimum that stays stable as the number of features grows.</td>
+</tr>
+<tr>
+<td>ADPTSK</td>
+<td>Gaussian with a positive lower bound</td>
+<td>adaptive double-parameter softmin</td>
+<td>sum</td>
+<td>Same setting as ADATSK, with a second parameter for more stable normalized rule weights.</td>
+</tr>
+<tr>
+<td>FSRE-ADATSK</td>
+<td>Gaussian</td>
+<td>adaptive softmin</td>
+<td>softmax in log space</td>
+<td>You also want feature selection and rule extraction.</td>
+</tr>
+<tr>
+<td>DG-TSK</td>
+<td>Gaussian</td>
+<td>gated layer</td>
+<td>softmax in log space</td>
+<td>You want features and rules pruned by gates during training.</td>
+</tr>
+<tr>
+<td>DG-ALETSK</td>
+<td>Gaussian</td>
+<td>gated layer with adaptive Ln-Exp softmin</td>
+<td>softmax in log space</td>
+<td>Same goal as DG-TSK, with an aggregation designed for high-dimensional data.</td>
+</tr>
+<tr>
+<td>MHTSK</td>
+<td>Gaussian, on feature subsets</td>
+<td>product, per head</td>
+<td>sum</td>
+<td>You have many features and want rules that each use a small subset of them.</td>
+</tr>
+</tbody>
+</table>
+<hr />
 <h2 id="1-baselines">1. Baselines</h2>
 <p>These models implement standard, textbook fuzzy logic structures. They are ideal as simple baselines for low-dimensional problems.</p>
 <ul>
-<li><a href="tsk-vanilla/"><strong>TSK (Vanilla)</strong></a> — Standard TSK fuzzy system with product antecedent aggregation and sum-based normalization.</li>
+<li><a href="tsk-vanilla/"><strong>TSK</strong></a> — Generic TSK fuzzy system. By default the standard (vanilla) system with product antecedent aggregation and sum-based normalization; the membership function, T-norm and defuzzifier can be chosen.</li>
 </ul>
 <hr />
 <h2 id="2-high-dimensional-stable-models">2. High-Dimensional &amp; Stable Models</h2>
