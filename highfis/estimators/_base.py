@@ -895,10 +895,17 @@ class _BaseTSKEstimator(BaseEstimator):
     def _select_model_features(self, x_arr: np.ndarray) -> np.ndarray:
         """Map validated inputs to the fitted model's feature space.
 
-        Identity by default. Estimators that structurally prune features during
-        ``fit`` (e.g. DG-TSK) override this to slice inputs to the surviving
-        features, so introspection paths match the pruned model width.
+        Families that structurally prune features during ``fit`` (DG-TSK, DG-ALETSK,
+        FSRE-ADATSK) record the surviving indices in ``history_``; inputs are sliced to
+        them so introspection paths match the pruned model width. Every other family
+        keeps its inputs unchanged.
         """
+        history = getattr(self, "history_", None) or {}
+        surviving: list[int] | None = history.get("surviving_feature_indices")
+        if surviving is None and isinstance(history.get("threshold"), dict):
+            surviving = history["threshold"].get("surviving_feature_indices")
+        if surviving is not None and int(self.model_.n_inputs) < x_arr.shape[1]:
+            return x_arr[:, surviving]
         return x_arr
 
     def rule_activation(self, X: npt.ArrayLike) -> np.ndarray:
