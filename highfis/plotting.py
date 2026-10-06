@@ -168,7 +168,11 @@ def plot_memberships(
     for panel, position in zip(axes, positions, strict=True):
         name = model_names[position]
         lo, hi = _feature_range(mf_params[name], None if data is None else data[:, position])
-        grid = torch.linspace(lo, hi, n_points, dtype=estimator._model_dtype(), device=str(estimator.device))
+        # The centres are added to the grid so that the peak of a narrow set is not missed.
+        centres = [p.get("mean", p.get("center")) for p in mf_params[name]]
+        centres = [c for c in centres if c is not None and lo <= c <= hi]
+        points = np.unique(np.concatenate([np.linspace(lo, hi, n_points), centres]))
+        grid = torch.as_tensor(points, dtype=estimator._model_dtype(), device=str(estimator.device))
         sets = [(j, mf) for j, mf in enumerate(input_mfs[name]) if type(mf).__name__ != "ConstantMF"]
         with torch.no_grad():
             for j, mf in sets:

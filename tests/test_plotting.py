@@ -139,6 +139,18 @@ def test_memberships_draw_every_selectable_shape(mf: str) -> None:
     assert all(np.isfinite(line.get_ydata()).all() for ax in panels for line in ax.lines)
 
 
+def test_memberships_reach_the_peak_of_a_narrow_set(clf: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A set much narrower than the grid step must still be drawn up to its centre."""
+    import torch
+
+    narrow = clf.model_.membership_layer.input_mfs["x1"][0]
+    monkeypatch.setattr(type(narrow), "forward", lambda self, x: torch.exp(-((x - self.mean) ** 2) / 2e-10))
+
+    line = clf.plot_memberships(features=[0], n_points=20).axes[0].lines[0]
+
+    assert float(np.max(line.get_ydata())) == pytest.approx(1.0)
+
+
 def test_memberships_select_features_by_index_and_name(clf: Any) -> None:
     by_index = clf.plot_memberships(features=[4, 1])
     by_name = clf.plot_memberships(features=["x5", "x2"])
