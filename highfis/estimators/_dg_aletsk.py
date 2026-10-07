@@ -129,7 +129,9 @@ class DGALETSKClassifier(FSREADATSKClassifier):
             verbose: Print per-epoch progress.
             rule_base: ``"coco"``, ``"cartesian"``, or ``"pfrb"``.
                 Default ``"pfrb"`` follows the paper workflow.
-            batch_size: Mini-batch size (default ``512``).
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                10% of the training samples. An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -142,7 +144,10 @@ class DGALETSKClassifier(FSREADATSKClassifier):
                 paper-style automatic cap: ``100`` rules (or ``50`` when
                 ``D >= 10000``).
             patience: Early-stopping patience.  ``None`` disables.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: Restore best validation weights after fine-tuning.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             zeta_lambda: Grid of λ-pruning threshold candidates. Default
                 follows the paper: ``[0.05, 0.1, 0.15, 0.2, 0.25, 0.3]``.
@@ -393,7 +398,9 @@ class DGALETSKRegressor(FSREADATSKRegressor):
             learning_rate: Adam learning rate for both phases.
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
-            batch_size: Mini-batch size (default ``512``).
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                10% of the training samples. An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -402,7 +409,10 @@ class DGALETSKRegressor(FSREADATSKRegressor):
                 where ``R`` is the number of rules.
             consequent_batch_norm: Batch normalisation on consequent layers.
             patience: Early-stopping patience.  ``None`` disables.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: Restore best validation weights after fine-tuning.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             zeta_lambda: Grid of λ-pruning threshold candidates.
             zeta_theta: Grid of θ-pruning threshold candidates.

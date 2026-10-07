@@ -130,8 +130,8 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             rule_base: ``"coco"``, ``"cartesian"``, or ``"pfrb"``.  Defaults
                 to ``"pfrb"`` for the paper-strict DG-TSK path, which
                 initialises one rule per training sample.
-            batch_size: Mini-batch size. ``"auto"`` (default) is full batch, as in the
-                source article.
+            batch_size: Mini-batch size. ``"auto"`` (default) trains on the full batch, as in the
+                source article. An integer sets the size and ``None`` is also the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -144,8 +144,11 @@ class DGTSKClassifier(_BaseClassifierEstimator):
                 paper's experimental cap.
             patience: Early-stopping patience (default ``20``). Set to
                 ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             zeta_lambda: Grid of λ-pruning threshold candidates.  ``None``
                 uses paper default ``[0.5]``.
@@ -472,8 +475,8 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             verbose: Print per-epoch progress.
             rule_base: ``"coco"``, ``"cartesian"``, or ``"pfrb"``.  Defaults
                 to ``"pfrb"`` for the paper-strict DG-TSK regressor path.
-            batch_size: Mini-batch size. ``"auto"`` (default) is full batch, as in the
-                source article.
+            batch_size: Mini-batch size. ``"auto"`` (default) trains on the full batch, as in the
+                source article. An integer sets the size and ``None`` is also the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -485,8 +488,11 @@ class DGTSKRegressor(_BaseRegressorEstimator):
                 ``rule_base='pfrb'``. ``None`` uses all training samples.
             patience: Early-stopping patience (default ``20``). Set to
                 ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             zeta_lambda: Grid of λ-pruning threshold candidates.
             zeta_theta: Grid of θ-pruning threshold candidates.

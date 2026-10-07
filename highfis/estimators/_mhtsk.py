@@ -402,9 +402,11 @@ class MHTSKClassifier(_BaseClassifierEstimator):
             retrain_after_extraction: If ``True``, retrain the extracted rule base after extraction.
             random_state: Random seed for reproducible head construction and FCM initialization.
             epochs: Maximum number of training epochs.
-            learning_rate: Adam optimizer learning rate.
+            learning_rate: AdamW optimizer learning rate.
             verbose: Verbosity level during training.
-            batch_size: Mini-batch size for gradient descent.
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                64 (the source article does not give one). An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Whether to shuffle training samples each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -413,7 +415,10 @@ class MHTSKClassifier(_BaseClassifierEstimator):
                 where ``R`` is the number of rules.
             consequent_batch_norm: Apply batch normalization to the consequent layer inputs.
             patience: Early-stopping patience for validation.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: Whether to restore the best validation model weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: Weight decay coefficient for the optimizer.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
@@ -655,9 +660,11 @@ class MHTSKRegressor(_BaseRegressorEstimator):
             retrain_after_extraction: If ``True``, retrain the extracted rule base after extraction.
             random_state: Random seed for reproducible head construction and FCM initialization.
             epochs: Maximum number of training epochs.
-            learning_rate: Adam optimizer learning rate.
+            learning_rate: AdamW optimizer learning rate.
             verbose: Verbosity level during training.
-            batch_size: Mini-batch size for gradient descent.
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                64 (the source article does not give one). An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Whether to shuffle training samples each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -666,7 +673,10 @@ class MHTSKRegressor(_BaseRegressorEstimator):
                 where ``R`` is the number of rules.
             consequent_batch_norm: Apply batch normalization to the consequent layer inputs.
             patience: Early-stopping patience for validation.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: Whether to restore the best validation model weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: Weight decay coefficient for the optimizer.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).

@@ -102,10 +102,11 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
             fs_epochs: Maximum epochs for phase 1 (FS training). Default ``10``.
             re_epochs: Maximum epochs for phase 2 (RE training). Default ``10``.
             finetune_epochs: Maximum epochs for phase 3 (fine-tuning). Default ``100``.
-            learning_rate: Adam learning rate (default ``0.01``).
+            learning_rate: SGD learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
-            batch_size: Mini-batch size (default ``512``).
+            batch_size: Mini-batch size. ``"auto"`` (default) trains on the full batch, as in the
+                source article. An integer sets the size and ``None`` is also the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -123,8 +124,11 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
                 ``False`` only for low-dimensional data where divergence does
                 not occur.
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             zeta_lambda: Feature-selection threshold coefficient (paper eq. 28).
                 Larger values retain more features.  Default ``0.5``.
@@ -354,10 +358,11 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
             fs_epochs: Maximum epochs for phase 1 (FS training). Default ``10``.
             re_epochs: Maximum epochs for phase 2 (RE training). Default ``10``.
             finetune_epochs: Maximum epochs for phase 3 (fine-tuning). Default ``100``.
-            learning_rate: Adam learning rate (default ``0.01``).
+            learning_rate: SGD learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
-            batch_size: Mini-batch size (default ``512``).
+            batch_size: Mini-batch size. ``"auto"`` (default) trains on the full batch, as in the
+                source article. An integer sets the size and ``None`` is also the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -375,8 +380,11 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
                 ``False`` only for low-dimensional data where divergence does
                 not occur.
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             zeta_lambda: Feature-selection threshold coefficient (paper eq. 28).
                 Larger values retain more features.  Default ``0.5``.
