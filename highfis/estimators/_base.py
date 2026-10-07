@@ -14,7 +14,7 @@ from typing import Any, Final, Literal, NamedTuple, Self, cast
 import numpy as np
 import numpy.typing as npt
 import torch
-from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
+from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin, is_classifier
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.multiclass import type_of_target
@@ -259,19 +259,49 @@ def _select_pfrb_indices(
     n_samples: int,
     max_rules: int | None,
     random_state: int | None,
+    strata: np.ndarray | None = None,
 ) -> np.ndarray:
     """Select the training-sample indices used to build a point-based FRB.
 
-    Deterministic in ``(n_samples, max_rules, random_state)`` so the same
-    sample subset can be reproduced when initialising the consequents from the
-    corresponding labels (see :meth:`_BaseTSKEstimator._pfrb_aligned_labels`).
-    When ``max_rules`` is ``None`` or covers every sample, all samples are used.
+    Deterministic in its arguments so the same sample subset can be reproduced when
+    initialising the consequents from the corresponding labels (see
+    :meth:`_BaseTSKEstimator._pfrb_aligned_labels`). When ``max_rules`` is ``None`` or
+    covers every sample, all samples are used.
+
+    With *strata* (the class of each sample) the points are drawn class by class, in
+    proportion to the class sizes, as the DG-TSK and DG-ALETSK articles prescribe
+    ("stratified sampling strategy"). The quotas add up to ``max_rules`` and every class
+    gets at least one point. Without *strata* (regression) the points are drawn uniformly.
     """
     if max_rules is None or int(max_rules) >= n_samples:
         return np.arange(n_samples)
     rng = np.random.default_rng(random_state)
-    indices = rng.choice(n_samples, size=int(max_rules), replace=False)
-    return np.sort(indices)
+    if strata is None:
+        return np.sort(rng.choice(n_samples, size=int(max_rules), replace=False))
+    labels, counts = np.unique(strata, return_counts=True)
+    quotas = _proportional_quotas(counts, int(max_rules))
+    chosen = [
+        rng.choice(np.flatnonzero(strata == label), size=quota, replace=False)
+        for label, quota in zip(labels, quotas, strict=True)
+    ]
+    return np.sort(np.concatenate(chosen))
+
+
+def _proportional_quotas(counts: np.ndarray, total: int) -> list[int]:
+    """Split *total* among groups in proportion to *counts*, giving each group at least one.
+
+    Largest-remainder allocation: the shares are rounded down, and the units left over go
+    to the groups with the largest fractional parts.
+    """
+    shares = total * counts / counts.sum()
+    quotas = np.maximum(np.floor(shares).astype(int), 1)
+    for index in np.argsort(-(shares - np.floor(shares))):
+        if quotas.sum() >= total:
+            break
+        quotas[index] += 1
+    while quotas.sum() > total and quotas.max() > 1:  # more groups with a forced unit than room
+        quotas[int(np.argmax(quotas))] -= 1
+    return [int(q) for q in quotas]
 
 
 def _pfrb_spreads(x: np.ndarray, indices: np.ndarray, spread: str | float) -> np.ndarray:
@@ -303,9 +333,10 @@ def _build_pfrb_input_mfs(
     sigma_scale: float,
     random_state: int | None,
     spread: str | float = "std",
+    strata: np.ndarray | None = None,
 ) -> dict[str, list[GaussianMF]]:
     """Build point-based fuzzy rule base membership functions from training samples."""
-    indices = _select_pfrb_indices(x.shape[0], max_rules, random_state)
+    indices = _select_pfrb_indices(x.shape[0], max_rules, random_state, strata)
     spreads = _pfrb_spreads(x, indices, spread)
 
     input_mfs: dict[str, list[GaussianMF]] = {}
@@ -534,6 +565,7 @@ def _get_mf_cache_key(
     rule_base: Any = None,
     family: Any = None,
     pfrb_spread: Any = None,
+    strata: np.ndarray | None = None,
 ) -> tuple[Any, ...]:
     # Determine step for sampling to hash quickly
     step = max(1, x_arr.shape[0] // 1000)
@@ -566,6 +598,7 @@ def _get_mf_cache_key(
         rule_base,
         family,
         pfrb_spread,
+        None if strata is None else hash(np.ascontiguousarray(strata).tobytes()),
     )
 
 
@@ -587,6 +620,7 @@ def _build_input_mfs_cached(
         # one family must never be served to another.
         type(estimator).__qualname__,
         getattr(estimator, "pfrb_spread", None),
+        getattr(estimator, "_pfrb_strata", None),
     )
 
     cached = _MF_INIT_CACHE.get(cache_key)
@@ -739,6 +773,7 @@ class _BaseTSKEstimator(BaseEstimator):
                     sigma_scale=float(self.sigma_scale) if not isinstance(self.sigma_scale, str) else 1.0,
                     random_state=self.random_state,
                     spread=getattr(self, "pfrb_spread", "std"),
+                    strata=getattr(self, "_pfrb_strata", None),
                 )
                 effective_rule_base = "coco"
             else:
@@ -761,6 +796,7 @@ class _BaseTSKEstimator(BaseEstimator):
                 sigma_scale=effective_sigma_scale,
                 random_state=self.random_state,
                 spread=getattr(self, "pfrb_spread", "std"),
+                strata=getattr(self, "_pfrb_strata", None),
             )
             effective_rule_base = "coco"
         else:
@@ -854,10 +890,12 @@ class _BaseTSKEstimator(BaseEstimator):
         one-hot consequent of rule ``r`` encodes the label of the *same* sample,
         rather than the ``r``-th label of the (unsampled) training set.
         """
+        strata = y_t.detach().cpu().numpy() if is_classifier(self) else None
         indices = _select_pfrb_indices(
             int(x_t.shape[0]),
             self._effective_pfrb_max_rules(int(x_t.shape[1])),
             self.random_state,
+            strata,
         )
         return y_t[torch.as_tensor(indices, dtype=torch.long, device=y_t.device)]
 
@@ -1206,7 +1244,13 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
         le = LabelEncoder()
         y_idx = le.fit_transform(np.asarray(y_arr))
 
-        input_mfs, _, effective_rule_base = self._build_input_mfs(x_arr)
+        # The classes are only needed while the sets are built, to draw the points of a
+        # point-based rule base class by class.
+        self._pfrb_strata = y_idx
+        try:
+            input_mfs, _, effective_rule_base = self._build_input_mfs(x_arr)
+        finally:
+            del self._pfrb_strata
 
         self.n_features_in_ = x_arr.shape[1]
         self.classes_ = le.classes_

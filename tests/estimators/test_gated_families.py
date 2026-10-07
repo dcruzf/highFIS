@@ -19,7 +19,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 import highfis
 from highfis import DGALETSKClassifier, DGALETSKRegressor, DGTSKClassifier, DGTSKRegressor, FSREADATSKClassifier
-from highfis.estimators._base import _pfrb_spreads
+from highfis.estimators._base import _pfrb_spreads, _select_pfrb_indices
 
 DG_ESTIMATORS = [DGTSKClassifier, DGTSKRegressor, DGALETSKClassifier, DGALETSKRegressor]
 
@@ -123,6 +123,79 @@ def test_the_cache_does_not_serve_one_family_the_sets_of_another() -> None:
     assert first(ale_sets) == pytest.approx(1.0)
     assert first(changed) == pytest.approx(0.9)
     assert first(tsk_sets) not in (pytest.approx(1.0), pytest.approx(0.9))
+
+
+# --- which samples become rules ----------------------------------------------------------
+
+
+def test_rule_points_are_drawn_class_by_class() -> None:
+    """Both articles: with more samples than the cap, "the stratified sampling strategy"."""
+    strata = np.repeat([0, 1, 2], [300, 150, 50])
+
+    indices = _select_pfrb_indices(len(strata), 100, random_state=0, strata=strata)
+
+    assert np.bincount(strata[indices]).tolist() == [60, 30, 10]
+    assert len(np.unique(indices)) == len(indices)
+    assert np.array_equal(indices, np.sort(indices))
+
+
+def test_every_class_keeps_at_least_one_rule_point() -> None:
+    strata = np.repeat([0, 1], [997, 3])
+
+    indices = _select_pfrb_indices(len(strata), 100, random_state=0, strata=strata)
+
+    assert len(indices) == 100
+    assert (strata[indices] == 1).sum() == 1
+
+
+@pytest.mark.parametrize("counts", [[3, 3], [5, 4, 4], [50, 30, 20, 7], [100, 1, 1, 1]])
+def test_stratified_rule_points_never_exceed_the_cap(counts: list[int]) -> None:
+    strata = np.repeat(np.arange(len(counts)), counts)
+    cap = max(len(counts), len(strata) // 2)
+
+    indices = _select_pfrb_indices(len(strata), cap, random_state=0, strata=strata)
+
+    assert len(indices) == cap
+    assert set(strata[indices]) == set(range(len(counts)))
+
+
+def test_rule_points_without_classes_or_below_the_cap() -> None:
+    uniform = _select_pfrb_indices(500, 100, random_state=0)
+    everything = _select_pfrb_indices(80, 100, random_state=0, strata=np.zeros(80, dtype=int))
+
+    assert len(uniform) == 100
+    np.testing.assert_array_equal(everything, np.arange(80))
+
+
+def test_classifier_rules_and_their_labels_come_from_the_same_stratified_points() -> None:
+    """The label that initializes a rule must be the label of the sample that is its centre."""
+    rng = np.random.default_rng(0)
+    x = rng.random((200, 4))
+    y = np.repeat([0, 1], [150, 50])
+    x[y == 1] += 2.0  # class 1 lives above 2, so a centre tells the class of its sample
+    est = DGTSKClassifier(pfrb_max_rules=40, dg_epochs=0, finetune_epochs=0, random_state=0)
+
+    est._pfrb_strata = y
+    input_mfs, _, _ = est._build_input_mfs(x)
+    del est._pfrb_strata
+    centres = np.array([float(mf.mean.detach()) for mf in next(iter(input_mfs.values()))])
+    labels = est._pfrb_aligned_labels(torch.as_tensor(x), torch.as_tensor(y)).numpy()
+
+    assert len(centres) == 40
+    assert (centres > 2.0).sum() == 10
+    np.testing.assert_array_equal(labels, (centres > 2.0).astype(int))
+
+
+def test_fit_draws_stratified_rule_points_and_cleans_up() -> None:
+    rng = np.random.default_rng(0)
+    x = rng.random((120, 4))
+    y = np.repeat([0, 1, 2], [60, 40, 20])
+    rng.shuffle(y)
+
+    est = DGTSKClassifier(pfrb_max_rules=30, dg_epochs=0, finetune_epochs=0, random_state=0, structural_pruning=False)
+    est.fit(x, y)
+
+    assert not hasattr(est, "_pfrb_strata")
 
 
 # --- gate initialization -----------------------------------------------------------------

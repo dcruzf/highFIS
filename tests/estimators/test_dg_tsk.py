@@ -584,7 +584,8 @@ def test_pfrb_consequent_labels_align_with_sampled_rules() -> None:
     y = torch.tensor([0, 1, 0, 1, 0, 1])
 
     y_list = y.tolist()
-    mfs = _build_pfrb_input_mfs(x, ["x1"], max_rules=3, sigma_scale=1.0, random_state=0)
+    # The rule points of a classifier are drawn class by class, from the same labels.
+    mfs = _build_pfrb_input_mfs(x, ["x1"], max_rules=3, sigma_scale=1.0, random_state=0, strata=y.numpy())
     src_samples = [round(float(mf.mean.detach()) / 10.0) for mf in mfs["x1"]]
     expected = [y_list[s] for s in src_samples]
 
