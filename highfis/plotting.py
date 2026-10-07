@@ -31,6 +31,9 @@ from sklearn.base import is_classifier
 from sklearn.metrics import confusion_matrix, r2_score
 from sklearn.utils.validation import check_is_fitted
 
+from ._describe import feature_labels as _feature_labels
+from ._describe import model_columns as _model_columns
+
 PLOT_KINDS: tuple[str, ...] = ("memberships", "history", "rule_activation", "diagnostics")
 
 _PHASE_LABELS = {"dg": "DG", "fs": "feature selection", "re": "rule extraction", "finetune": "fine-tune"}
@@ -61,24 +64,6 @@ def _axes(ax: Any, n_panels: int, ncols: int, panel_size: tuple[float, float]) -
     for unused in axes[n_panels:]:
         unused.set_visible(False)
     return fig, axes[:n_panels]
-
-
-def _model_columns(estimator: Any) -> np.ndarray:
-    """Original column index of each model input, in model order.
-
-    Families that prune features keep a subset of the columns seen in ``fit``.
-    """
-    columns = np.arange(int(estimator.n_features_in_))[None, :]
-    return np.asarray(estimator._select_model_features(columns)[0], dtype=int)
-
-
-def _feature_labels(estimator: Any) -> list[str]:
-    """Display name of each model input: the name seen in ``fit`` when there is one."""
-    names = getattr(estimator, "feature_names_in_", None)
-    model_names = [str(name) for name in estimator.model_.input_names]
-    if names is None:
-        return model_names
-    return [str(names[column]) for column in _model_columns(estimator)]
 
 
 def _select_features(estimator: Any, features: Sequence[int | str] | None, max_features: int) -> list[int]:

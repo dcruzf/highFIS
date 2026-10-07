@@ -21,7 +21,7 @@ from sklearn.utils.multiclass import type_of_target
 from sklearn.utils.validation import check_is_fitted, validate_data
 from torch import Tensor
 
-from .. import plotting
+from .. import _describe, plotting
 from ..clustering import FuzzyCMeans, KMeans, MiniBatchKMeans
 from ..memberships import (
     DimensionDependentGaussianMF,
@@ -936,6 +936,101 @@ class _BaseTSKEstimator(BaseEstimator):
             "mf_params": self.get_mf_params(),
             "rule_table": self.model_.get_rule_table(),
         }
+
+    @property
+    def selected_features_(self) -> np.ndarray:
+        """Column indices, in the data seen in ``fit``, of the features the model uses.
+
+        Every column for most families. DG-TSK, DG-ALETSK and FSRE-ADATSK prune features
+        during ``fit`` and report the ones that survived.
+        """
+        check_is_fitted(self, "model_")
+        return _describe.model_columns(self)
+
+    def get_rule_table(self) -> list[dict[str, Any]]:
+        """Return the rule base: for each rule, the index of the fuzzy set used for each feature.
+
+        Each dictionary has a ``rule_id`` and one entry per feature the model uses, keyed
+        by the model's input name (``x1``, ``x2``, ... unless custom names were given).
+        """
+        check_is_fitted(self, "model_")
+        return self.model_.get_rule_table()
+
+    def get_consequent_weights(self) -> np.ndarray | None:
+        """Return the slopes of the rule consequents, or ``None`` when there are none.
+
+        Shape ``(rules, classes, features)`` for classifiers and ``(rules, features)`` for
+        regressors, over the features in :attr:`selected_features_`.
+        """
+        check_is_fitted(self, "model_")
+        weights = self.model_.get_consequent_weights()
+        return None if weights is None else _to_numpy(weights)
+
+    def get_consequent_bias(self) -> np.ndarray | None:
+        """Return the intercepts of the rule consequents, or ``None`` when there are none.
+
+        Shape ``(rules, classes)`` for classifiers and ``(rules,)`` for regressors.
+        """
+        check_is_fitted(self, "model_")
+        bias = self.model_.get_consequent_bias()
+        return None if bias is None else _to_numpy(bias)
+
+    def get_feature_gates(self) -> np.ndarray | None:
+        """Return the feature gate values of a gated family, or ``None`` for the others.
+
+        One value in ``[0, 1]`` per feature in :attr:`selected_features_`; a gate near zero
+        means the feature is switched off. Only DG-TSK, DG-ALETSK and FSRE-ADATSK have gates.
+        """
+        check_is_fitted(self, "model_")
+        gates = getattr(self.model_, "get_feature_gate_values", None)
+        return None if gates is None else _to_numpy(gates())
+
+    def get_rule_gates(self) -> np.ndarray | None:
+        """Return the rule gate values of a gated family, or ``None`` for the others.
+
+        One value in ``[0, 1]`` per rule of the fitted model; a gate near zero means the
+        rule is switched off. Only DG-TSK, DG-ALETSK and FSRE-ADATSK have gates.
+        """
+        check_is_fitted(self, "model_")
+        gates = getattr(self.model_, "get_rule_gate_values", None)
+        return None if gates is None else _to_numpy(gates())
+
+    def rules_as_text(
+        self,
+        top_features: int | None = 5,
+        digits: int = 2,
+        labels: Sequence[str] | None = None,
+        max_rules: int | None = None,
+    ) -> str:
+        """Describe the fitted rule base as ``IF ... THEN ...`` sentences.
+
+        The fuzzy sets of each feature are named from the order of their centres: ``low``
+        and ``high`` for two sets, ``low``, ``medium``, ``high`` for three, ``very low`` to
+        ``very high`` for five, and ``level i of n`` otherwise. The consequent of a rule is
+        its linear function of the features, per class for a classifier.
+
+        Coefficients apply to the features as they were passed to ``fit``. If the data
+        were scaled first, they are on the scaled features; with
+        ``consequent_batch_norm=True`` they are on the batch-normalized features. In the
+        gated families (DG-TSK, DG-ALETSK, FSRE-ADATSK) the coefficients are the ones
+        stored in the model, before the gates in :meth:`get_feature_gates` and
+        :meth:`get_rule_gates` are applied.
+
+        Args:
+            top_features: Number of conditions and of coefficients shown per rule. The
+                conditions kept are those on the most important features according to
+                :meth:`feature_importance`; the coefficients kept are the largest in
+                magnitude. ``None`` shows everything.
+            digits: Decimal places of the coefficients.
+            labels: Names for the fuzzy sets, from the lowest centre to the highest. Used
+                for every feature whose number of sets equals ``len(labels)``.
+            max_rules: Number of rules written. ``None`` writes every rule.
+
+        Returns:
+            The description, one block of lines per rule.
+        """
+        check_is_fitted(self, "model_")
+        return _describe.rules_as_text(self, top_features, digits, labels, max_rules)
 
     def plot(self, kind: str = "memberships", **kwargs: Any) -> Any:
         """Draw a diagnostic plot of the fitted model.
