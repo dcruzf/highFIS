@@ -104,6 +104,35 @@ The paper describes DG-TSK as a single training phase in which feature gates, ru
 | Threshold search | `search_thresholds(...)` | search over `zeta_lambda`, `zeta_theta` |
 | Pruning | `compute_thresholds()`, `apply_thresholds()` | gate-based feature/rule pruning |
 
+## Fidelity to the source article
+
+Since version 0.32.0 the estimators follow the article and the authors' reference
+implementation on the points below. Before that version `DGTSKClassifier` reached about
+66% on Iris with its defaults; it now reaches about 95%, against 96.8% in the article.
+
+| Point | Article and reference code | highFIS |
+|---|---|---|
+| Spreads of the point-based rule base | One value for every feature and rule: the mean, over the features, of the sample standard deviations of the rule points (Eq. 23) | `pfrb_spread="std_mean"` (default). A number sets the common spread; `"std"` gives the per-feature spread used before 0.32.0 |
+| Gate parameters | All equal to 0.1, a gate value of 0.0269 | Same |
+| Rule points when there are more samples than `pfrb_max_rules` | Drawn class by class (stratified) | Same, for classifiers |
+| After pruning | The gates are switched off; fine-tuning runs on a plain TSK system | Same. `get_feature_gates()` and `get_rule_gates()` still return the trained values |
+| Iterations | 300 in each phase, full batch, learning rate 0.2 | `dg_epochs=300`, `finetune_epochs=300`, `batch_size="auto"` (full batch), `learning_rate=0.2` |
+| Loss | Squared error summed over the outputs, divided by `2N` | `highfis.losses.HalfSumSquaredErrorLoss` |
+
+Remaining differences:
+
+- **Consequents in the gate phase.** The article trains the gates with first-order
+  consequents whose constant term is set to the label of the rule's sample. highFIS trains
+  the gates with zero-order consequents and converts to first order before fine-tuning.
+- **Precision.** The reference code computes in double precision; highFIS uses the PyTorch
+  default, single precision, unless `torch.set_default_dtype(torch.float64)` is set.
+- **Counts of features and rules.** With the defaults, the numbers of selected features and
+  of extracted rules are close to the article's but not equal (for example about 5 features
+  on Wine against 8.0, and about 6 rules on Iris against 3.1).
+- **Wdbc is not reproduced.** On Wdbc (569 samples, 30 features) the defaults give about 92%
+  with 2 features, against 96.2% with 5.0 features in the article: the feature gates prune
+  more than they should. The zero-order gate phase above is the main suspect.
+
 ## Implementation notes
 
 - The paper's P-FRB is not implemented verbatim in highFIS. The `en` FRB is the closest available richer candidate rule base. When using `rule_base='pfrb'` via the estimator, call `model_.init_consequents_from_labels(y_t)` before `fit_dg_phase()` to apply the paper-faithful one-hot bias initialisation (paper eq. 24).
