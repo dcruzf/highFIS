@@ -72,10 +72,11 @@ def test_fsre_adatsk_regressor_initial_mode_is_fs() -> None:
     assert model.consequent_layer.mode == "fs"
 
 
-def test_fsre_adatsk_classifier_expand_to_en_frb_resets_mode_to_fs() -> None:
+def test_fsre_adatsk_classifier_expand_to_en_frb_enters_rule_extraction_mode() -> None:
+    """The enhanced rule base is built for rule extraction, which trains the rule gates."""
     model = FSREADATSKClassifierModel(_build_input_mfs(n_inputs=2, n_mfs=2), n_classes=2)
     model.expand_to_en_frb()
-    assert model.consequent_layer.mode == "fs"
+    assert model.consequent_layer.mode == "re"
 
 
 def test_fsre_adatsk_classifier_mode_fs_uses_only_feature_gates() -> None:

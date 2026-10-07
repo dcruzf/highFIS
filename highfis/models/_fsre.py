@@ -175,6 +175,9 @@ class FSREADATSKClassifierModel(_FSREADATSKMixin, BaseTSKClassifierModel):
         )
         self.n_rules = self.rule_layer.n_rules
         self.consequent_layer = self._build_consequent_layer()
+        # Rule extraction trains the rule gates; in "fs" mode they are not in the forward
+        # pass, stay at their initial value and the rules cannot be told apart.
+        self.consequent_layer.mode = "re"
 
     def prune_to_rules(self, surviving_rules: list[int]) -> None:
         """Structurally prune the model to the given rule subset (paper step 4).
@@ -298,6 +301,9 @@ class FSREADATSKRegressorModel(_FSREADATSKMixin, BaseTSKRegressorModel):
         )
         self.n_rules = self.rule_layer.n_rules
         self.consequent_layer = self._build_consequent_layer()
+        # Rule extraction trains the rule gates; in "fs" mode they are not in the forward
+        # pass, stay at their initial value and the rules cannot be told apart.
+        self.consequent_layer.mode = "re"
 
     def prune_to_rules(self, surviving_rules: list[int]) -> None:
         """Structurally prune the model to the given rule subset (paper step 4).

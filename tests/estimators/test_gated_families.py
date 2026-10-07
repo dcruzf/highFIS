@@ -305,3 +305,40 @@ def test_dg_tsk_on_iris_end_to_end() -> None:
 
     assert clf.score(scaler.transform(x_test), y_test) >= 0.9
     assert 1 <= len(clf.selected_features_) <= 3
+
+
+# --- FSRE-ADATSK: the rule-extraction phase ----------------------------------------------
+
+
+@pytest.mark.parametrize("name", ["FSREADATSKClassifier", "FSREADATSKRegressor"])
+def test_fsre_rule_extraction_trains_the_rule_gates(name: str) -> None:
+    """The rule-extraction phase used to run in feature-selection mode.
+
+    The rule gates were then outside the forward pass and kept their initial value, so all
+    rules tied and the "extracted" rules were simply the first ones.
+    """
+    rng = np.random.default_rng(0)
+    x = rng.random((80, 4))
+    y: Any = (x[:, 0] + x[:, 1] > 1.0).astype(int) if name.endswith("Classifier") else x[:, 0] + x[:, 1]
+    est = getattr(highfis, name)(
+        mf_init="grid", rule_base="coco", n_mfs=3, use_en_frb=True, learning_rate=0.1, random_state=0,
+        fs_epochs=30, re_epochs=30, finetune_epochs=5, structural_pruning=False,
+    )  # fmt: skip
+
+    est.fit(x, y)
+
+    gates = est.get_rule_gates()
+    assert len(gates) > 3
+    assert float(gates.max() - gates.min()) > 1e-4
+
+
+def test_fsre_expansion_switches_to_rule_extraction_mode() -> None:
+    x, _, _ = _data()
+    est = FSREADATSKClassifier(random_state=0)
+    input_mfs, _, rule_base = est._build_input_mfs(x)
+    model: Any = est._build_model(input_mfs, 2, rule_base)
+    assert model.consequent_layer.mode == "fs"
+
+    model.expand_to_en_frb()
+
+    assert model.consequent_layer.mode == "re"
