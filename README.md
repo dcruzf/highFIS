@@ -111,6 +111,9 @@ model classes and sklearn-compatible estimator wrappers.
 - Building blocks: membership functions (`highfis.memberships`), defuzzifiers
   (`highfis.defuzzifiers`), T-norms (`highfis.t_norms`), and layers
   (`highfis.layers`)
+- Interpretation: `estimator.rules_as_text()` writes the rule base as
+  `IF ... THEN ...` sentences; the rule table, consequent coefficients, and
+  gate values are available as estimator methods
 - Diagnostic plots: `estimator.plot(kind=...)` for the learned membership
   functions, the training history, the rule activations, and the predictions
 - Utilities: evaluation metrics (`highfis.metrics`), estimator checkpoints
