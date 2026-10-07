@@ -88,9 +88,11 @@ if weights is not None and bias is not None:
 
 ## 2. Model Persistence
 
-highFIS features a native, versioned checkpointing mechanism built on top of PyTorch's serialization engine. Rather than relying on Python `pickle` (which is vulnerable to security exploits and sensitive to package directory shifts), highFIS serialization isolates structural parameters and weights.
+highFIS features a native, versioned checkpointing mechanism built on top of PyTorch's serialization engine. Rather than relying on Python `pickle` (which is vulnerable to security exploits and sensitive to package directory shifts), highFIS serialization isolates structural parameters and weights. It uses `weights_only=True` PyTorch loading, so loading a checkpoint does not execute code.
 
-> **Warning:** Standard python `pickle` is not recommended for production environments. highFIS checkpointing uses `weights_only=True` PyTorch loading to prevent arbitrary code execution vulnerabilities.
+A checkpoint stores the estimator alone. To keep the preprocessing together with the model, put both in a scikit-learn `Pipeline` and save the pipeline with `joblib`; see [Save a pipeline and use it on new data](../cookbook/persistence-and-cache.md#save-a-pipeline-and-use-it-on-new-data).
+
+> **Warning:** `joblib` and `pickle` can execute arbitrary code when loading. Use them only for files you created or that come from a source you trust.
 
 ### Saving a Model
 
