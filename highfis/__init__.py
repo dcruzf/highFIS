@@ -21,8 +21,9 @@ Estimator families
 ------------------
 Each family comes in a ``*Classifier`` and ``*Regressor`` variant.
 
-- **TSK / HTSK** — vanilla TSK and high-dimensional TSK with geometric mean
-  aggregation and log-space softmax normalization.
+- **TSK / HTSK** — generic TSK (classical by default, see below) and
+  high-dimensional TSK with geometric mean aggregation and log-space softmax
+  normalization.
   ``TSKClassifier``, ``TSKRegressor``, ``HTSKClassifier``, ``HTSKRegressor``.
 
 - **ADATSK** — adaptive softmin antecedent.
@@ -65,8 +66,7 @@ n_mfs : int
     Number of membership functions per input feature.  The total number
     of rules depends on ``n_mfs`` and the ``rule_base`` strategy (e.g.
     ``"coco"`` produces exactly ``n_mfs`` rules; ``"cartesian"`` produces
-    ``n_mfs ** n_features`` rules).  Ignored when ``input_mfs`` is
-    supplied.
+    ``n_mfs ** n_features`` rules).
 mf_init : {"kmeans", "minibatch_kmeans", "fcm", "grid"} or clustering instance
     Strategy for initialising input membership functions.
     ``"kmeans"`` (default) fits Gaussian MF centres from k-means cluster
@@ -76,17 +76,32 @@ input_configs : list[InputConfig] or None
     Per-feature configuration used when ``mf_init="grid"``.  Each
     ``InputConfig`` specifies the feature ``name``, number of MFs
     (``n_mfs``), spacing (``overlap``), and range padding (``margin``).
-input_mfs : dict[str, list[MembershipFunction]] or None
-    Pre-built membership functions keyed by feature name.  When supplied,
-    ``n_mfs`` is ignored and ``mf_init`` is skipped; the number of rules
-    is inferred from the MF list lengths.  Import MF classes from
-    ``highfis.memberships``.
 random_state : int or None
     Seed for reproducible k-means initialisation.
 
+Building blocks of the generic TSK
+----------------------------------
+Each named family is a fixed combination of membership function, T-norm and
+defuzzifier, as published.  ``TSKClassifier`` and ``TSKRegressor`` are the
+generic estimators in which the three can be chosen:
+
+mf : {"gaussian", "gaussian_pi", "bell", "triangular", "trapezoidal"}
+    Shape of the membership functions.
+t_norm : {"prod", "min", "gmean", "dombi", "yager", "yager_simple", "ale_softmin_yager"}
+    Aggregation of the membership degrees of a rule.
+defuzzifier : {"sum", "softmax_log", "log_sum", "inv_log"}
+    Normalization of the rule firing strengths.
+
+The defaults (``"gaussian"``, ``"prod"``, ``"sum"``) give the classical TSK system::
+
+    from highfis import TSKClassifier
+
+    clf = TSKClassifier(n_mfs=3, mf="bell", t_norm="min")
+
 Advanced usage
 --------------
-For custom membership functions import them explicitly::
+Membership functions, T-norms and defuzzifiers are available as classes for
+models assembled by hand from ``highfis.models``::
 
     from highfis.memberships import GaussianMF, GaussianPiMF, TrapezoidalMF
 

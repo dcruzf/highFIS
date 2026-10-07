@@ -30,7 +30,12 @@ pip install highfis
 ```
 
 highFIS requires Python 3.11 or newer and depends on PyTorch, NumPy,
-scikit-learn, and tqdm.
+scikit-learn, and tqdm. The diagnostic plots need matplotlib, an optional
+dependency:
+
+```bash
+pip install highfis[plot]
+```
 
 ## 🧠 Quick Start
 
@@ -68,8 +73,9 @@ highFIS integrates with `sklearn.pipeline.Pipeline`, `GridSearchCV`, and
 highFIS implements thirteen TSK model families, each following a published
 high-dimensional inference strategy.
 
-- `TSK` — vanilla TSK with product antecedent aggregation and sum-based
-  normalization.
+- `TSK` — generic TSK; by default the vanilla system with product antecedent
+  aggregation and sum-based normalization, with selectable membership
+  function, T-norm, and defuzzifier.
 - `HTSK` — geometric mean aggregation with log-space softmax normalization.
 - `LogTSK` — inverse-log normalization of log-domain rule weights.
 - `HDFIS` — high-dimensional inference with product T-norm (`HDFISProd`) and
@@ -105,6 +111,11 @@ model classes and sklearn-compatible estimator wrappers.
 - Building blocks: membership functions (`highfis.memberships`), defuzzifiers
   (`highfis.defuzzifiers`), T-norms (`highfis.t_norms`), and layers
   (`highfis.layers`)
+- Interpretation: `estimator.rules_as_text()` writes the rule base as
+  `IF ... THEN ...` sentences; the rule table, consequent coefficients, and
+  gate values are available as estimator methods
+- Diagnostic plots: `estimator.plot(kind=...)` for the learned membership
+  functions, the training history, the rule activations, and the predictions
 - Utilities: evaluation metrics (`highfis.metrics`), estimator checkpoints
   (`highfis.persistence`), and a membership-function initialization cache
 
@@ -123,6 +134,9 @@ highFIS uses gradient-based optimization and supports:
   consequent parameters
 - early stopping on a validation set passed to `fit`
 - uniform regularization (`ur_weight`) for balanced rule activation
+- a choice of membership function, T-norm, and defuzzifier in the generic
+  `TSKClassifier` and `TSKRegressor`; the other families keep their published
+  combination
 - custom T-norms, rule bases, and defuzzifiers through the PyTorch model
   classes
 
@@ -134,7 +148,9 @@ https://dcruzf.github.io/highFIS
 
 Start with the [model families](https://dcruzf.github.io/highFIS/latest/models/)
 overview, the [user guides](https://dcruzf.github.io/highFIS/latest/guides/optimisers/),
-and the [cookbook](https://dcruzf.github.io/highFIS/latest/cookbook/).
+and the [cookbook](https://dcruzf.github.io/highFIS/latest/cookbook/). The
+[diagnostic plots](https://dcruzf.github.io/highFIS/latest/guides/plotting/) guide
+shows how to inspect a fitted model.
 
 Model reference pages:
 

@@ -233,9 +233,12 @@ class ALESoftminYagerTNorm(BaseTNorm):
 
     @staticmethod
     def _adaptive_softmin(values: Tensor, dim: int = -1) -> Tensor:
+        # The exponent reaches -700, which only double precision can hold; the result is
+        # returned in the caller's dtype so the T-norm composes with single-precision models.
+        dtype = values.dtype
         values = values.double()
         q = -700.0 / values.detach().max(dim=dim).values
-        return (values * q.unsqueeze(dim=dim)).exp().sum(dim=dim).log() / q
+        return ((values * q.unsqueeze(dim=dim)).exp().sum(dim=dim).log() / q).to(dtype)
 
     def forward(self, terms: Tensor, dim: int = -1) -> Tensor:
         """Compute ALE-softmin Yager aggregation over the specified dimension."""

@@ -71,8 +71,9 @@ print(f"Test accuracy: {test_accuracy:.2%}")
 
 highFIS includes the following concrete TSK model families:
 
-- [`TSK`](models/tsk-vanilla.md) — vanilla TSK with product antecedent
-  aggregation and sum-based normalization.
+- [`TSK`](models/tsk-vanilla.md) — generic TSK; by default the vanilla system
+  with product antecedent aggregation and sum-based normalization, with
+  selectable membership function, T-norm, and defuzzifier.
 - [`HTSK`](models/htsk.md) — high-dimensional TSK with geometric mean
   aggregation and log-space softmax normalization.
 - [`LogTSK`](models/logtsk.md) — inverse-log normalization of log-domain
@@ -108,6 +109,7 @@ Each model family exposes both classifier and regressor variants.
 | [Quick Start](#quick-start) | Installation and first model run. |
 | [Model Families](models/index.md) | Guide to the 13 available neuro-fuzzy model architectures. |
 | [User Guides](guides/optimisers.md) | Guides for optimization, introspection, initialization, and tuning. |
+| [Diagnostic Plots](guides/plotting.md) | The `plot` method: membership functions, training history, rule activation, prediction diagnostics. |
 | [Cookbook](cookbook/index.md) | Short, runnable recipes for common tasks. |
 | [API Reference](api/index.md) | Complete reference documentation for all public modules. |
 | [Estimators](api/estimators.md) | sklearn-compatible estimator reference. |

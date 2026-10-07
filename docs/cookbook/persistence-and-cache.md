@@ -35,6 +35,59 @@ same dtype: True
 reloaded score: 0.733
 ```
 
+## Save a pipeline and use it on new data
+
+`save` stores the estimator alone. A model is usually fitted on preprocessed data, and
+the preprocessing has to be applied to new data in exactly the same way. Put both in a
+scikit-learn `Pipeline` and save the whole pipeline with `joblib`:
+
+```python
+import tempfile
+from pathlib import Path
+
+import joblib
+import numpy as np
+from sklearn.datasets import load_wine
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import MinMaxScaler
+
+from highfis import HTSKClassifier
+
+X, y = load_wine(return_X_y=True)
+X_train, X_new, y_train, y_new = train_test_split(X, y, test_size=0.25, random_state=0, stratify=y)
+
+pipe = Pipeline([("scale", MinMaxScaler()), ("model", HTSKClassifier(n_mfs=3, epochs=60, random_state=0))])
+pipe.fit(X_train, y_train)
+
+with tempfile.TemporaryDirectory() as tmp:
+    path = Path(tmp) / "wine-model.joblib"
+    joblib.dump(pipe, path)
+    reloaded = joblib.load(path)
+
+# The reloaded pipeline takes raw data: it scales, then predicts.
+print("same predictions:", np.array_equal(reloaded.predict(X_new), pipe.predict(X_new)))
+print("accuracy on new data:", round(reloaded.score(X_new, y_new), 3))
+```
+
+```text
+same predictions: True
+accuracy on new data: 1.0
+```
+
+Which one to use:
+
+| You want to keep | Use | Notes |
+|---|---|---|
+| The estimator alone | `estimator.save(path)` / `Estimator.load(path)` | Versioned checkpoint, loaded without executing code. You must apply the same preprocessing yourself. |
+| Preprocessing and estimator together | `joblib.dump(pipeline, path)` / `joblib.load(path)` | The usual scikit-learn way. Reload with the same versions of highFIS, scikit-learn and PyTorch. |
+
+`joblib` uses `pickle`, which can execute arbitrary code when loading. Only load files
+that you created or that come from a source you trust.
+
+The fitted model inside a pipeline is reached with `pipe["model"]`, for example
+`pipe["model"].plot()` or `pipe["model"].save(path)`.
+
 ## Managing the membership-function cache
 
 highFIS caches membership-function initialization so repeated `fit` calls with the
