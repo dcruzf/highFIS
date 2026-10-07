@@ -350,6 +350,11 @@ def _validate_custom_rules(
     return validated
 
 
+# A Cartesian rule base has one rule per combination of fuzzy sets, so it grows as
+# ``n_mfs ** n_features``. Above this size it is refused instead of exhausting the memory.
+MAX_CARTESIAN_RULES = 1_000_000
+
+
 def _generate_or_validate_rules(
     input_names: list[str],
     mf_per_input: list[int],
@@ -358,6 +363,13 @@ def _generate_or_validate_rules(
 ) -> list[tuple[int, ...]]:
     n_inputs = len(input_names)
     if rules is None and rule_base == "cartesian":
+        n_rules = math.prod(mf_per_input)
+        if n_rules > MAX_CARTESIAN_RULES:
+            raise ValueError(
+                f"a Cartesian rule base over {n_inputs} features with {max(mf_per_input)} fuzzy sets each would have "
+                f"{n_rules:,} rules; the limit is {MAX_CARTESIAN_RULES:,}. Pass rule_base='coco' for one rule per "
+                "fuzzy set, or reduce the number of features or of sets."
+            )
         return [tuple(r) for r in product(*[range(n) for n in mf_per_input])]
 
     if rules is None and rule_base == "coco":
