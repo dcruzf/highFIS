@@ -274,21 +274,44 @@ def _select_pfrb_indices(
     return np.sort(indices)
 
 
+def _pfrb_spreads(x: np.ndarray, indices: np.ndarray, spread: str | float) -> np.ndarray:
+    """Initial spread of every feature in a point-based rule base, before ``sigma_scale``.
+
+    ``"std"`` gives each feature its own spread, the standard deviation of the feature over
+    the training samples. ``"std_mean"`` gives every feature the same spread: the mean, over
+    the features, of the sample standard deviations of the rule points (DG-TSK article,
+    Eq. (23)). A number gives every feature that spread (DG-ALETSK uses 1).
+    """
+    n_features = x.shape[1]
+    if isinstance(spread, str):
+        if spread == "std":
+            return np.std(x, axis=0)
+        if spread == "std_mean":
+            points = x[indices]
+            common = float(np.std(points, axis=0, ddof=1).mean()) if len(points) > 1 else 1.0
+            return np.full(n_features, common)
+        raise ValueError(f"pfrb_spread must be 'std', 'std_mean' or a positive number; got {spread!r}")
+    if not float(spread) > 0.0:
+        raise ValueError(f"pfrb_spread must be 'std', 'std_mean' or a positive number; got {spread!r}")
+    return np.full(n_features, float(spread))
+
+
 def _build_pfrb_input_mfs(
     x: np.ndarray,
     feature_names: list[str],
     max_rules: int | None,
     sigma_scale: float,
     random_state: int | None,
+    spread: str | float = "std",
 ) -> dict[str, list[GaussianMF]]:
     """Build point-based fuzzy rule base membership functions from training samples."""
     indices = _select_pfrb_indices(x.shape[0], max_rules, random_state)
+    spreads = _pfrb_spreads(x, indices, spread)
 
     input_mfs: dict[str, list[GaussianMF]] = {}
     for d, name in enumerate(feature_names):
-        col = x[:, d]
-        sigma = max(float(np.std(col)) * sigma_scale, 1e-3)
-        centers = col[indices]
+        sigma = max(float(spreads[d]) * sigma_scale, 1e-3)
+        centers = x[indices, d]
         input_mfs[name] = [GaussianMF(mean=float(c), sigma=sigma) for c in centers]
     return input_mfs
 
@@ -509,6 +532,8 @@ def _get_mf_cache_key(
     pfrb_max_rules: Any,
     input_configs: list[InputConfig] | None,
     rule_base: Any = None,
+    family: Any = None,
+    pfrb_spread: Any = None,
 ) -> tuple[Any, ...]:
     # Determine step for sampling to hash quickly
     step = max(1, x_arr.shape[0] // 1000)
@@ -539,6 +564,8 @@ def _get_mf_cache_key(
         pfrb_max_rules,
         input_configs_key,
         rule_base,
+        family,
+        pfrb_spread,
     )
 
 
@@ -556,6 +583,10 @@ def _build_input_mfs_cached(
         estimator.pfrb_max_rules,
         estimator.input_configs,
         getattr(estimator, "rule_base", None),
+        # Families build their sets differently from the same arguments, so the sets of
+        # one family must never be served to another.
+        type(estimator).__qualname__,
+        getattr(estimator, "pfrb_spread", None),
     )
 
     cached = _MF_INIT_CACHE.get(cache_key)
@@ -707,6 +738,7 @@ class _BaseTSKEstimator(BaseEstimator):
                     max_rules=self.pfrb_max_rules,
                     sigma_scale=float(self.sigma_scale) if not isinstance(self.sigma_scale, str) else 1.0,
                     random_state=self.random_state,
+                    spread=getattr(self, "pfrb_spread", "std"),
                 )
                 effective_rule_base = "coco"
             else:
@@ -728,6 +760,7 @@ class _BaseTSKEstimator(BaseEstimator):
                 max_rules=self.pfrb_max_rules,
                 sigma_scale=effective_sigma_scale,
                 random_state=self.random_state,
+                spread=getattr(self, "pfrb_spread", "std"),
             )
             effective_rule_base = "coco"
         else:

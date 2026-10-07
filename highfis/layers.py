@@ -582,7 +582,30 @@ class ADPSoftminRuleLayer(RuleLayer):
 _ALE_SOFTMIN_XI: float = 700.0
 
 
-class DGALETSKRuleLayer(RuleLayer):
+class _FeatureGateSwitch(nn.Module):
+    """Switch that lets a gated rule layer run without its feature gates.
+
+    The gated families train their gates, prune with them and then fine-tune a plain TSK
+    system: once the features are selected the gates are removed from the model. The switch
+    is a persistent buffer, so a saved model reloads in the state it was saved in.
+    """
+
+    gates_enabled: Tensor
+
+    def _init_gate_switch(self) -> None:
+        self.register_buffer("gates_enabled", torch.tensor(True))
+
+    def disable_gates(self) -> None:
+        """Remove the feature gates from the forward pass."""
+        self.gates_enabled.fill_(False)
+
+    def _load_from_state_dict(self, state_dict: dict[str, Any], prefix: str, *args: Any, **kwargs: Any) -> None:
+        # Checkpoints written before the switch existed always had their gates on.
+        state_dict.setdefault(f"{prefix}gates_enabled", torch.tensor(True))
+        super()._load_from_state_dict(state_dict, prefix, *args, **kwargs)
+
+
+class DGALETSKRuleLayer(_FeatureGateSwitch, RuleLayer):
     """Compute adaptive Ln-Exp softmin firing strengths with antecedent feature gates."""
 
     def __init__(
@@ -600,16 +623,18 @@ class DGALETSKRuleLayer(RuleLayer):
         super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod")
         self.gate_fn = resolve_gate_fn(_gate_fea)
         self.lambda_gates = nn.Parameter(torch.zeros(self.n_inputs))
+        self._init_gate_switch()
         if isinstance(self.gate_fn, BaseGate):
             self.gate_fn.init_params_(self.lambda_gates)
         else:
-            nn.init.uniform_(self.lambda_gates, 0.001, 0.01)
+            nn.init.constant_(self.lambda_gates, 0.01)
 
     def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
         """Compute adaptive Ln-Exp rule strengths from membership outputs."""
         mu = self._gather_terms(membership_outputs).clamp(min=self.eps, max=1.0 - self.eps)
-        feature_gates = self.gate_fn(self.lambda_gates).clamp(0.0, 1.0)  # (n_inputs,)
-        mu = mu.pow(feature_gates)  # µ^{M(λ)} — exponential antecedent gating
+        if bool(self.gates_enabled):
+            feature_gates = self.gate_fn(self.lambda_gates).clamp(0.0, 1.0)  # (n_inputs,)
+            mu = mu.pow(feature_gates)  # µ^{M(λ)} — exponential antecedent gating
 
         # Eq. 22: q̂ = -ξ / max_d{μ̃_{r,d}}, computed per sample and rule
         max_mu = mu.amax(dim=-1, keepdim=True).clamp(min=self.eps)  # (B, R, 1)
@@ -620,7 +645,7 @@ class DGALETSKRuleLayer(RuleLayer):
         return (log_sum / q_hat).squeeze(-1)  # f_r = (1/q̂) · log(Σ exp(q̂·μ̃))
 
 
-class DGTSKRuleLayer(RuleLayer):
+class DGTSKRuleLayer(_FeatureGateSwitch, RuleLayer):
     """Compute DG-TSK antecedent strengths with learned feature gates."""
 
     def __init__(
@@ -638,16 +663,18 @@ class DGTSKRuleLayer(RuleLayer):
         super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod")
         self.gate_fn = resolve_gate_fn(_gate_fea)
         self.lambda_gates = nn.Parameter(torch.zeros(self.n_inputs))
+        self._init_gate_switch()
         if isinstance(self.gate_fn, BaseGate):
             self.gate_fn.init_params_(self.lambda_gates)
         else:
-            nn.init.uniform_(self.lambda_gates, 0.01, 0.1)
+            nn.init.constant_(self.lambda_gates, 0.1)
 
     def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
         """Compute DGTSK rule strengths from membership outputs."""
         mu = self._gather_terms(membership_outputs).clamp(min=self.eps, max=1.0 - self.eps)
-        feature_gates = self.gate_fn(self.lambda_gates).clamp(0.0, 1.0).unsqueeze(0)
-        mu = mu.pow(feature_gates)  # µ^{M(λ)} — exponential antecedent gating
+        if bool(self.gates_enabled):
+            feature_gates = self.gate_fn(self.lambda_gates).clamp(0.0, 1.0).unsqueeze(0)
+            mu = mu.pow(feature_gates)  # µ^{M(λ)} — exponential antecedent gating
 
         return self._apply_t_norm(mu)
 
@@ -833,8 +860,8 @@ class GatedClassificationConsequentLayer(nn.Module):
             self.gate_fn.init_params_(self.lambda_gates)
             self.gate_fn.init_params_(self.theta_gates)
         else:
-            nn.init.uniform_(self.lambda_gates, 0.01, 0.1)
-            nn.init.uniform_(self.theta_gates, 0.01, 0.1)
+            nn.init.constant_(self.lambda_gates, 0.1)
+            nn.init.constant_(self.theta_gates, 0.1)
 
     def forward(self, x: Tensor, norm_w: Tensor) -> Tensor:
         """Compute gated class logits from inputs and normalized rule strengths."""
@@ -898,7 +925,7 @@ class GatedClassificationZeroOrderConsequentLayer(nn.Module):
         if isinstance(self.gate_fn, BaseGate):
             self.gate_fn.init_params_(self.theta_gates)
         else:
-            nn.init.uniform_(self.theta_gates, 0.01, 0.1)
+            nn.init.constant_(self.theta_gates, 0.1)
 
     def forward(self, x: Tensor, norm_w: Tensor) -> Tensor:
         """Compute gated class logits from normalized rule strengths."""
@@ -930,7 +957,7 @@ class GatedRegressionZeroOrderConsequentLayer(nn.Module):
         if isinstance(self.gate_fn, BaseGate):
             self.gate_fn.init_params_(self.theta_gates)
         else:
-            nn.init.uniform_(self.theta_gates, 0.01, 0.1)
+            nn.init.constant_(self.theta_gates, 0.1)
 
     def forward(self, x: Tensor, norm_w: Tensor) -> Tensor:
         """Compute gated regression output from normalized rule strengths."""
@@ -1009,8 +1036,8 @@ class GatedRegressionConsequentLayer(nn.Module):
             self.gate_fn.init_params_(self.lambda_gates)
             self.gate_fn.init_params_(self.theta_gates)
         else:
-            nn.init.uniform_(self.lambda_gates, 0.01, 0.1)
-            nn.init.uniform_(self.theta_gates, 0.01, 0.1)
+            nn.init.constant_(self.lambda_gates, 0.1)
+            nn.init.constant_(self.theta_gates, 0.1)
 
     def forward(self, x: Tensor, norm_w: Tensor) -> Tensor:
         """Compute gated regression output from inputs and normalized rule strengths."""

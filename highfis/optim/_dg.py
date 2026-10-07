@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from typing import Any
+from typing import Any, cast
 
 from torch import Tensor
 
@@ -12,6 +12,21 @@ from ._base import BaseTrainer
 from ._protocols import DGModelProtocol, FirstOrderModelProtocol
 
 _DEFAULT_ZETA: list[float] = [0.0, 0.25, 0.5, 0.75, 1.0]
+
+
+def _remove_gates(model: BaseTSK) -> None:
+    """Take the feature and rule gates out of the forward pass of a pruned model.
+
+    The gates did their job in the threshold search: fine-tuning and prediction run on a
+    plain TSK system (DG-ALETSK article, Section III-C: "the gates are removed from the
+    system"). Left in place, a surviving rule whose gate is near zero would scale its own
+    output, and its gradient, by that gate.
+    """
+    disable_gates = getattr(model.rule_layer, "disable_gates", None)
+    if callable(disable_gates):
+        disable_gates()
+    if hasattr(model.consequent_layer, "mode"):
+        cast(Any, model.consequent_layer).mode = "finetune"
 
 
 class DGTrainer(BaseTrainer):
@@ -209,6 +224,8 @@ class DGTrainer(BaseTrainer):
             cons = model.consequent_layer
             if isinstance(cons, (GatedClassificationZeroOrderConsequentLayer, GatedRegressionZeroOrderConsequentLayer)):
                 model.convert_to_first_order()
+
+        _remove_gates(model)
 
         # Reset consequent parameters to zero (paper: "all consequent parameters
         # set to zero"). DG-ALETSK keeps the label-initialised ``bias`` (Eq. 25)

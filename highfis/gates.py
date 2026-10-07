@@ -74,12 +74,14 @@ class BaseGate(nn.Module):
         raise NotImplementedError
 
     def init_params_(self, param: nn.Parameter) -> None:
-        """Initialise *param* in-place using the paper-recommended strategy.
+        """Initialise *param* in-place to the constant recommended for the gate.
+
+        Every gate starts equally closed, so that only the data decide which ones open.
 
         Args:
             param (nn.Parameter): Gate parameter tensor to initialise.
         """
-        nn.init.uniform_(param, 0.01, 0.1)
+        nn.init.constant_(param, 0.1)
 
 
 class SigmoidGate(BaseGate):
@@ -119,9 +121,8 @@ class ExpGate(BaseGate):
     r"""Squared-exponential gate activation.
 
     DG-TSK eq (17) / DG-ALETSK eq (16). The *enhanced gate* used in
-    DG-ALETSK is ``ExpGate(k=10)``. Initialised near zero
-    (Uniform(0.001, 0.01)), giving M ≈ 0 (nearly closed)
-    at the start of training.
+    DG-ALETSK is ``ExpGate(k=10)``. Every parameter is initialised to
+    0.01, giving M ≈ 0.001 (nearly closed) at the start of training.
 
     Mathematical definition:
         $$M(\lambda) = 1 - e^{-k \lambda^2}$$
@@ -153,12 +154,12 @@ class ExpGate(BaseGate):
         return 1.0 - torch.exp(-self.k * u.pow(2))
 
     def init_params_(self, param: nn.Parameter) -> None:
-        """Initialise *param* near zero so gates start nearly closed.
+        """Initialise every entry of *param* to 0.01, as in the DG-ALETSK article (Section IV).
 
         Args:
             param (nn.Parameter): Gate parameter tensor to initialise.
         """
-        nn.init.uniform_(param, 0.001, 0.01)
+        nn.init.constant_(param, 0.01)
 
 
 class InvExpGate(BaseGate):
@@ -202,8 +203,8 @@ class InvExpGate(BaseGate):
 class SignedExpGate(BaseGate):
     r"""Signed exponential gate activation.
 
-    DG-TSK eq (19) / DG-ALETSK eq (18). Initialised to small positive
-    values (Uniform(0.005, 0.015)) to avoid negating rule outputs at
+    DG-TSK eq (19) / DG-ALETSK eq (18). Every parameter is initialised
+    to 0.01, a small positive value that does not negate rule outputs at
     the start of training.
 
     Mathematical definition:
@@ -231,12 +232,12 @@ class SignedExpGate(BaseGate):
         return u * torch.sqrt(torch.exp(1.0 - u.pow(2)))
 
     def init_params_(self, param: nn.Parameter) -> None:
-        """Initialise *param* to small positive values (gates nearly closed).
+        """Initialise every entry of *param* to 0.01 (gate value 0.0165), as in the FSRE-ADATSK article.
 
         Args:
             param (nn.Parameter): Gate parameter tensor to initialise.
         """
-        nn.init.uniform_(param, 0.005, 0.015)
+        nn.init.constant_(param, 0.01)
 
 
 class MGate(BaseGate):
@@ -246,9 +247,9 @@ class MGate(BaseGate):
     It is an even function with range [0, 1] and two maxima at λ = ±1,
     forming an M-shape. Its derivative near zero is larger than those of
     `SigmoidGate`, `ExpGate`, and `InvExpGate`,
-    which speeds up early learning. Initialised to small values
-    (Uniform(0.01, 0.1)), giving M ∈ [0.0003, 0.027] (nearly closed;
-    even function so sign does not matter).
+    which speeds up early learning. Every parameter is initialised to
+    0.1, giving M = 0.0269 (nearly closed; even function so sign does
+    not matter).
 
     Mathematical definition:
         $$M(\lambda) = \lambda^2 e^{1 - \lambda^2}$$
@@ -268,12 +269,12 @@ class MGate(BaseGate):
         return u.pow(2) * torch.exp(1.0 - u.pow(2))
 
     def init_params_(self, param: nn.Parameter) -> None:
-        """Initialise *param* to small values so gates start nearly closed.
+        """Initialise every entry of *param* to 0.1 (gate value 0.0269), as in the DG-TSK article.
 
         Args:
             param (nn.Parameter): Gate parameter tensor to initialise.
         """
-        nn.init.uniform_(param, 0.01, 0.1)
+        nn.init.constant_(param, 0.1)
 
 
 # ---------------------------------------------------------------------------

@@ -75,6 +75,7 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         n_mfs: int = 5,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
+        pfrb_spread: str | float = 1.0,
         random_state: int | None = None,
         dg_epochs: int = 10,
         finetune_epochs: int = 50,
@@ -113,6 +114,12 @@ class DGALETSKClassifier(FSREADATSKClassifier):
             mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``,
                 or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
+            pfrb_spread: Initial spread of the fuzzy sets of the point-based rule base.
+                ``1.0`` (default) is the value of the source article (Section IV), for
+                inputs scaled to ``[0, 1]``. ``"std_mean"`` uses the mean, over the
+                features, of the sample standard deviations of the rule points, and
+                ``"std"`` gives each feature its own standard deviation, the behaviour
+                before 0.32.0. Multiplied by ``sigma_scale``.
             random_state: Seed for reproducibility.
             dg_epochs: Maximum epochs for phase 1 (DG training). Default
                 ``10`` follows the paper.
@@ -194,6 +201,7 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         )
         self.dg_epochs = dg_epochs
         self.use_lse = use_lse
+        self.pfrb_spread = pfrb_spread
         self.optimizer_type = optimizer_type
         self.freeze_antecedents_finetune = freeze_antecedents_finetune
         self.finetune_epochs = finetune_epochs
@@ -334,6 +342,7 @@ class DGALETSKRegressor(FSREADATSKRegressor):
         n_mfs: int = 5,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
+        pfrb_spread: str | float = 1.0,
         random_state: int | None = None,
         dg_epochs: int = 10,
         finetune_epochs: int = 200,
@@ -371,6 +380,12 @@ class DGALETSKRegressor(FSREADATSKRegressor):
             mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``,
                 or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
+            pfrb_spread: Initial spread of the fuzzy sets of the point-based rule base.
+                ``1.0`` (default) is the value of the source article (Section IV), for
+                inputs scaled to ``[0, 1]``. ``"std_mean"`` uses the mean, over the
+                features, of the sample standard deviations of the rule points, and
+                ``"std"`` gives each feature its own standard deviation, the behaviour
+                before 0.32.0. Multiplied by ``sigma_scale``.
             random_state: Seed for reproducibility.
             dg_epochs: Maximum epochs for phase 1 (DG training). Default
                 ``10`` follows the paper.
@@ -444,6 +459,7 @@ class DGALETSKRegressor(FSREADATSKRegressor):
         )
         self.dg_epochs = dg_epochs
         self.use_lse = use_lse
+        self.pfrb_spread = pfrb_spread
         self.optimizer_type = optimizer_type
         self.freeze_antecedents_finetune = freeze_antecedents_finetune
         self.finetune_epochs = finetune_epochs
