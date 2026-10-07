@@ -276,10 +276,6 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         if self.rule_base == "pfrb" and hasattr(model, "init_consequents_from_labels"):
             cast(PFRBModelProtocol, model).init_consequents_from_labels(self._pfrb_aligned_labels(x_t, y_t))
 
-    def _select_model_features(self, x_arr: np.ndarray) -> np.ndarray:
-        """Slice inputs to the surviving features when structural pruning shrank the model."""
-        return _select_dgtsking_surviving_features(self, x_arr)
-
     def save(self, path: str) -> None:
         """Persist estimator including first-order architecture flag."""
         from sklearn.utils.validation import check_is_fitted

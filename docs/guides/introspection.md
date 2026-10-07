@@ -56,6 +56,30 @@ for rule in summary["rule_table"]:
     print(f"Rule {rule_id}: IF {' AND '.join(antecedents)} THEN [consequent]")
 ```
 
+The same table is returned directly by `clf.get_rule_table()`.
+
+### Rules as Text
+
+`rules_as_text()` writes the rule base as `IF ... THEN ...` sentences. The fuzzy sets of
+each feature are named from the order of their centres (`low`, `medium`, `high` for three
+sets), and the consequent of each rule is its linear function of the features, per class
+for a classifier.
+
+```python
+print(clf.rules_as_text(top_features=2, max_rules=1))
+```
+
+- `top_features` limits each rule to the conditions on the most important features and
+  to the coefficients with the largest magnitude; `None` shows everything.
+- `labels=["cold", "mild", "hot"]` replaces the default names for the features that have
+  that many sets.
+- `max_rules` limits the number of rules written.
+- Feature names are used when the model was fitted on a pandas `DataFrame`; class names
+  come from `classes_`.
+
+The coefficients apply to the features as they were passed to `fit`, so they are on the
+scaled features when the data were scaled first.
+
 ### Feature Importance
 
 `feature_importance()` returns a normalized vector (summing to 1) that ranks the input
@@ -72,25 +96,53 @@ if importance is not None:
 ### Consequent Parameters
 
 A first-order rule computes `score_r^c(x) = b_{r,c} + sum_d w_{r,c,d} x_d`. Both halves are
-available on the model: `get_consequent_weights()` returns `w` and `get_consequent_bias()`
-returns the intercept `b`, so a complete rule can be reconstructed without reaching into
-the layer internals.
+available on the estimator as NumPy arrays: `get_consequent_weights()` returns `w` and
+`get_consequent_bias()` returns the intercept `b`.
 
 ```python
-weights = clf.model_.get_consequent_weights()  # (rules, classes, features)
-bias = clf.model_.get_consequent_bias()        # (rules, classes)
+weights = clf.get_consequent_weights()  # (rules, classes, features)
+bias = clf.get_consequent_bias()        # (rules, classes)
 if weights is not None and bias is not None:
     print("rule 0, class 0 intercept:", float(bias[0, 0]))
     print("rule 0, class 0 slopes:", weights[0, 0].tolist())
+```
+
+### Selected Features and Gates
+
+DG-TSK, DG-ALETSK and FSRE-ADATSK switch features and rules off with gates and then
+remove them from the model. Three accessors describe the result:
+
+- `selected_features_`: the column indices, in the data seen in `fit`, of the features
+  the model uses. For the other families it lists every column.
+- `get_feature_gates()`: one gate value in `[0, 1]` per selected feature.
+- `get_rule_gates()`: one gate value in `[0, 1]` per rule.
+
+The two gate accessors return `None` for families without gates.
+
+```python
+import numpy as np
+
+from highfis import DGTSKClassifier
+
+rng = np.random.default_rng(0)
+X_many = rng.random((120, 12))
+y_many = (X_many[:, 0] + X_many[:, 3] > 1.0).astype(int)
+
+gated = DGTSKClassifier(n_mfs=3, dg_epochs=10, finetune_epochs=10, random_state=0).fit(X_many, y_many)
+
+print("features kept:", gated.selected_features_.tolist())
+print("rules kept:", len(gated.get_rule_gates()))
 ```
 
 ---
 
 ## 2. Model Persistence
 
-highFIS features a native, versioned checkpointing mechanism built on top of PyTorch's serialization engine. Rather than relying on Python `pickle` (which is vulnerable to security exploits and sensitive to package directory shifts), highFIS serialization isolates structural parameters and weights.
+highFIS features a native, versioned checkpointing mechanism built on top of PyTorch's serialization engine. Rather than relying on Python `pickle` (which is vulnerable to security exploits and sensitive to package directory shifts), highFIS serialization isolates structural parameters and weights. It uses `weights_only=True` PyTorch loading, so loading a checkpoint does not execute code.
 
-> **Warning:** Standard python `pickle` is not recommended for production environments. highFIS checkpointing uses `weights_only=True` PyTorch loading to prevent arbitrary code execution vulnerabilities.
+A checkpoint stores the estimator alone. To keep the preprocessing together with the model, put both in a scikit-learn `Pipeline` and save the pipeline with `joblib`; see [Save a pipeline and use it on new data](../cookbook/persistence-and-cache.md#save-a-pipeline-and-use-it-on-new-data).
+
+> **Warning:** `joblib` and `pickle` can execute arbitrary code when loading. Use them only for files you created or that come from a source you trust.
 
 ### Saving a Model
 

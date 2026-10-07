@@ -46,6 +46,39 @@ activations shape: (5, 3)
 mf params for first feature: x1
 ```
 
+## Read the rules
+
+`rules_as_text()` turns the rule base into sentences. Each fuzzy set is named from the
+position of its centre, and each rule shows its consequent per class:
+
+```python
+from sklearn.datasets import load_iris
+from sklearn.preprocessing import MinMaxScaler
+
+from highfis import HTSKClassifier
+
+X, y = load_iris(return_X_y=True)
+X = MinMaxScaler().fit_transform(X)
+
+clf = HTSKClassifier(n_mfs=3, mf_init="kmeans", epochs=20, random_state=0)
+clf.fit(X, y)
+
+print(clf.rules_as_text(top_features=2, max_rules=1))
+```
+
+```text
+Rule 0: IF x1 is low AND x2 is high AND ... (2 more)
+        THEN 0: 0.56 - 0.47 * x4 - 0.38 * x3 + ...
+             1: -0.55 - 0.70 * x4 - 0.34 * x2 + ...
+             2: -0.54 - 0.91 * x2 + 0.47 * x4 + ...
+... (2 more rules)
+```
+
+`top_features` keeps the conditions on the most important features and the largest
+coefficients; `None` shows them all. Fitting on a pandas `DataFrame` with string labels
+gives the real feature and class names instead of `x1` and `0`. The exact numbers depend
+on the platform.
+
 Use `inspect()` for a quick overview (its `"rule_table"` and `"mf_params"` entries give
 the exact antecedents), `get_mf_params()` for the raw membership parameters, and
 `rule_activation()` to see which rules fire for given inputs.
