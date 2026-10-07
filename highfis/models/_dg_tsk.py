@@ -17,6 +17,7 @@ from ..layers import (
     GatedRegressionZeroOrderConsequentLayer,
     MembershipLayer,
 )
+from ..losses import HalfSumSquaredErrorLoss
 from ..memberships import MembershipFunction
 from ._common import (
     BaseTSKClassifierModel,
@@ -136,7 +137,7 @@ class DGTSKClassifierModel(BaseTSKClassifierModel):
         layer.mode = "re"
         return layer
 
-    default_criterion = nn.MSELoss
+    default_criterion = HalfSumSquaredErrorLoss
 
     def convert_to_first_order(self) -> None:
         """Convert the DG-TSK model from zero-order to first-order consequent.
@@ -483,7 +484,7 @@ class DGTSKRegressorModel(BaseTSKRegressorModel):
         layer.mode = "re"
         return layer
 
-    default_criterion = nn.MSELoss
+    default_criterion = HalfSumSquaredErrorLoss
 
     def convert_to_first_order(self) -> None:
         """Convert the DG-TSK regressor from zero-order to first-order consequent.
