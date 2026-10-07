@@ -37,6 +37,9 @@
         <loc>https://dcruzf.github.io/highFIS/dev/api/persistence/</loc>
       </url>
       <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/api/plotting/</loc>
+      </url>
+      <url>
         <loc>https://dcruzf.github.io/highFIS/dev/api/protocols/</loc>
       </url>
       <url>
@@ -77,6 +80,9 @@
       </url>
       <url>
         <loc>https://dcruzf.github.io/highFIS/dev/guides/optimisers/</loc>
+      </url>
+      <url>
+        <loc>https://dcruzf.github.io/highFIS/dev/guides/plotting/</loc>
       </url>
       <url>
         <loc>https://dcruzf.github.io/highFIS/dev/guides/tuning/</loc>

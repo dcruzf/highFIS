@@ -286,6 +286,8 @@
       
         
       
+        
+      
     
     
     
@@ -350,6 +352,8 @@
       
         
           
+        
+      
         
       
         
@@ -597,6 +601,8 @@
       
         
       
+        
+      
     
     
     
@@ -784,6 +790,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#rules-as-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Rules as Text
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#feature-importance" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -799,6 +816,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         Consequent Parameters
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#selected-features-and-gates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Selected Features and Gates
       </span>
     </span>
   </a>
@@ -977,6 +1005,33 @@
 
                 
               
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../plotting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Diagnostic Plots
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
             </ul>
           </nav>
         
@@ -1065,6 +1120,8 @@
       
         
           
+        
+      
         
       
         
@@ -1219,6 +1276,8 @@
       
         
       
+        
+      
     
     
     
@@ -1300,52 +1359,94 @@ feature to the index of the membership function it uses in that rule.</p>
 </span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">antecedents</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">feat</span><span class="si">}</span><span class="s2"> is MF_</span><span class="si">{</span><span class="n">rule</span><span class="p">[</span><span class="n">feat</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">feat</span> <span class="ow">in</span> <span class="n">summary</span><span class="p">[</span><span class="s2">"feature_names"</span><span class="p">]]</span>
 </span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Rule </span><span class="si">{</span><span class="n">rule_id</span><span class="si">}</span><span class="s2">: IF </span><span class="si">{</span><span class="s1">' AND '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">antecedents</span><span class="p">)</span><span class="si">}</span><span class="s2"> THEN [consequent]"</span><span class="p">)</span>
 </span></code></pre></div>
+<p>The same table is returned directly by <code>clf.get_rule_table()</code>.</p>
+<h3 id="rules-as-text">Rules as Text</h3>
+<p><code>rules_as_text()</code> writes the rule base as <code>IF ... THEN ...</code> sentences. The fuzzy sets of
+each feature are named from the order of their centres (<code>low</code>, <code>medium</code>, <code>high</code> for three
+sets), and the consequent of each rule is its linear function of the features, per class
+for a classifier.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">print</span><span class="p">(</span><span class="n">clf</span><span class="o">.</span><span class="n">rules_as_text</span><span class="p">(</span><span class="n">top_features</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">max_rules</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+</span></code></pre></div>
+<ul>
+<li><code>top_features</code> limits each rule to the conditions on the most important features and
+  to the coefficients with the largest magnitude; <code>None</code> shows everything.</li>
+<li><code>labels=["cold", "mild", "hot"]</code> replaces the default names for the features that have
+  that many sets.</li>
+<li><code>max_rules</code> limits the number of rules written.</li>
+<li>Feature names are used when the model was fitted on a pandas <code>DataFrame</code>; class names
+  come from <code>classes_</code>.</li>
+</ul>
+<p>The coefficients apply to the features as they were passed to <code>fit</code>, so they are on the
+scaled features when the data were scaled first.</p>
 <h3 id="feature-importance">Feature Importance</h3>
 <p><code>feature_importance()</code> returns a normalized vector (summing to 1) that ranks the input
 features by their contribution to the consequent, or <code>None</code> when the model has no
 first-order consequent to read it from.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">importance</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">feature_importance</span><span class="p">()</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="k">if</span> <span class="n">importance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="k">for</span> <span class="n">feat</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">clf</span><span class="o">.</span><span class="n">inspect</span><span class="p">()[</span><span class="s2">"feature_names"</span><span class="p">],</span> <span class="n">importance</span><span class="p">):</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">feat</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">score</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">importance</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">feature_importance</span><span class="p">()</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">if</span> <span class="n">importance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="k">for</span> <span class="n">feat</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">clf</span><span class="o">.</span><span class="n">inspect</span><span class="p">()[</span><span class="s2">"feature_names"</span><span class="p">],</span> <span class="n">importance</span><span class="p">):</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">feat</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">score</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="consequent-parameters">Consequent Parameters</h3>
 <p>A first-order rule computes <code>score_r^c(x) = b_{r,c} + sum_d w_{r,c,d} x_d</code>. Both halves are
-available on the model: <code>get_consequent_weights()</code> returns <code>w</code> and <code>get_consequent_bias()</code>
-returns the intercept <code>b</code>, so a complete rule can be reconstructed without reaching into
-the layer internals.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">weights</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">model_</span><span class="o">.</span><span class="n">get_consequent_weights</span><span class="p">()</span>  <span class="c1"># (rules, classes, features)</span>
-</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">bias</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">model_</span><span class="o">.</span><span class="n">get_consequent_bias</span><span class="p">()</span>        <span class="c1"># (rules, classes)</span>
-</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">if</span> <span class="n">weights</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">bias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">"rule 0, class 0 intercept:"</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">bias</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]))</span>
-</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">"rule 0, class 0 slopes:"</span><span class="p">,</span> <span class="n">weights</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+available on the estimator as NumPy arrays: <code>get_consequent_weights()</code> returns <code>w</code> and
+<code>get_consequent_bias()</code> returns the intercept <code>b</code>.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">weights</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">get_consequent_weights</span><span class="p">()</span>  <span class="c1"># (rules, classes, features)</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">bias</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">get_consequent_bias</span><span class="p">()</span>        <span class="c1"># (rules, classes)</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">if</span> <span class="n">weights</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">bias</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">"rule 0, class 0 intercept:"</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">bias</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]))</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">"rule 0, class 0 slopes:"</span><span class="p">,</span> <span class="n">weights</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+</span></code></pre></div>
+<h3 id="selected-features-and-gates">Selected Features and Gates</h3>
+<p>DG-TSK, DG-ALETSK and FSRE-ADATSK switch features and rules off with gates and then
+remove them from the model. Three accessors describe the result:</p>
+<ul>
+<li><code>selected_features_</code>: the column indices, in the data seen in <code>fit</code>, of the features
+  the model uses. For the other families it lists every column.</li>
+<li><code>get_feature_gates()</code>: one gate value in <code>[0, 1]</code> per selected feature.</li>
+<li><code>get_rule_gates()</code>: one gate value in <code>[0, 1]</code> per rule.</li>
+</ul>
+<p>The two gate accessors return <code>None</code> for families without gates.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">DGTSKClassifier</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="n">X_many</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">random</span><span class="p">((</span><span class="mi">120</span><span class="p">,</span> <span class="mi">12</span><span class="p">))</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="n">y_many</span> <span class="o">=</span> <span class="p">(</span><span class="n">X_many</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">X_many</span><span class="p">[:,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">1.0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="n">gated</span> <span class="o">=</span> <span class="n">DGTSKClassifier</span><span class="p">(</span><span class="n">n_mfs</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">dg_epochs</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">finetune_epochs</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_many</span><span class="p">,</span> <span class="n">y_many</span><span class="p">)</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>
+</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"features kept:"</span><span class="p">,</span> <span class="n">gated</span><span class="o">.</span><span class="n">selected_features_</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"rules kept:"</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">gated</span><span class="o">.</span><span class="n">get_rule_gates</span><span class="p">()))</span>
 </span></code></pre></div>
 <hr />
 <h2 id="2-model-persistence">2. Model Persistence</h2>
-<p>highFIS features a native, versioned checkpointing mechanism built on top of PyTorch's serialization engine. Rather than relying on Python <code>pickle</code> (which is vulnerable to security exploits and sensitive to package directory shifts), highFIS serialization isolates structural parameters and weights.</p>
+<p>highFIS features a native, versioned checkpointing mechanism built on top of PyTorch's serialization engine. Rather than relying on Python <code>pickle</code> (which is vulnerable to security exploits and sensitive to package directory shifts), highFIS serialization isolates structural parameters and weights. It uses <code>weights_only=True</code> PyTorch loading, so loading a checkpoint does not execute code.</p>
+<p>A checkpoint stores the estimator alone. To keep the preprocessing together with the model, put both in a scikit-learn <code>Pipeline</code> and save the pipeline with <code>joblib</code>; see <a href="../../cookbook/persistence-and-cache/#save-a-pipeline-and-use-it-on-new-data">Save a pipeline and use it on new data</a>.</p>
 <blockquote>
-<p><strong>Warning:</strong> Standard python <code>pickle</code> is not recommended for production environments. highFIS checkpointing uses <code>weights_only=True</code> PyTorch loading to prevent arbitrary code execution vulnerabilities.</p>
+<p><strong>Warning:</strong> <code>joblib</code> and <code>pickle</code> can execute arbitrary code when loading. Use them only for files you created or that come from a source you trust.</p>
 </blockquote>
 <h3 id="saving-a-model">Saving a Model</h3>
 <p>Fitted estimators (both classifiers and regressors) expose a <code>.save(path)</code> method:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKClassifier</span>
-</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
-</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="c1"># Fit the classifier</span>
-</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">HTSKClassifier</span><span class="p">(</span><span class="n">n_mfs</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
-</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
-</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
-</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="c1"># Save checkpoint to a file</span>
-</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="n">clf</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">"models/htsk_iris.pt"</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKClassifier</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="c1"># Fit the classifier</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">HTSKClassifier</span><span class="p">(</span><span class="n">n_mfs</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">)</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="c1"># Save checkpoint to a file</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="n">clf</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">"models/htsk_iris.pt"</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="loading-a-model">Loading a Model</h3>
 <p>To restore a saved estimator, call the <code>.load(path)</code> classmethod on the corresponding estimator class:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKClassifier</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="c1"># Load and restore the estimator state</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">loaded_clf</span> <span class="o">=</span> <span class="n">HTSKClassifier</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">"models/htsk_iris.pt"</span><span class="p">)</span>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="c1"># Predict using the restored estimator</span>
-</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="n">predictions</span> <span class="o">=</span> <span class="n">loaded_clf</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKClassifier</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="c1"># Load and restore the estimator state</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">loaded_clf</span> <span class="o">=</span> <span class="n">HTSKClassifier</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s2">"models/htsk_iris.pt"</span><span class="p">)</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="c1"># Predict using the restored estimator</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="n">predictions</span> <span class="o">=</span> <span class="n">loaded_clf</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_test</span><span class="p">)</span>
 </span></code></pre></div>
 <h3 id="checkpoint-validation-and-versioning">Checkpoint Validation and Versioning</h3>
 <p>Behind the scenes, highFIS validates every checkpoint payload. The loader verifies:
