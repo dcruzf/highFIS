@@ -380,6 +380,8 @@
       
         
       
+        
+      
     
     
     
@@ -936,6 +938,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#fidelity-to-the-source-article" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Fidelity to the source article
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#implementation-notes" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1352,6 +1365,8 @@
       
         
       
+        
+      
     
     
     
@@ -1654,6 +1669,105 @@ w_r(\mathbf{x}) = \prod_{d=1}^{D} \tilde{\mu}_{r,d}(x_d)
 </tr>
 </tbody>
 </table>
+<h2 id="fidelity-to-the-source-article">Fidelity to the source article</h2>
+<p>Since version 0.32.0 the estimators follow the article and the authors' reference
+implementation on the points below. Before that version <code>DGTSKClassifier</code> reached about
+66% on Iris with its defaults; it now reaches about 95%, against 96.8% in the article.</p>
+<table>
+<thead>
+<tr>
+<th>Point</th>
+<th>Article and reference code</th>
+<th>highFIS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Spreads of the point-based rule base</td>
+<td>One value for every feature and rule: the mean, over the features, of the sample standard deviations of the rule points (Eq. 23)</td>
+<td><code>pfrb_spread="std_mean"</code> (default). A number sets the common spread; <code>"std"</code> gives the per-feature spread used before 0.32.0</td>
+</tr>
+<tr>
+<td>Gate parameters</td>
+<td>All equal to 0.1, a gate value of 0.0269</td>
+<td>Same</td>
+</tr>
+<tr>
+<td>Rule points when there are more samples than <code>pfrb_max_rules</code></td>
+<td>Drawn class by class (stratified)</td>
+<td>Same, for classifiers</td>
+</tr>
+<tr>
+<td>After pruning</td>
+<td>The gates are switched off; fine-tuning runs on a plain TSK system</td>
+<td>Same. <code>get_feature_gates()</code> and <code>get_rule_gates()</code> still return the trained values</td>
+</tr>
+<tr>
+<td>Iterations</td>
+<td>300 in each phase, full batch, learning rate 0.2</td>
+<td><code>dg_epochs=300</code>, <code>finetune_epochs=300</code>, <code>batch_size="auto"</code> (full batch), <code>learning_rate=0.2</code></td>
+</tr>
+<tr>
+<td>Loss</td>
+<td>Squared error summed over the outputs, divided by <code>2N</code></td>
+<td><code>highfis.losses.HalfSumSquaredErrorLoss</code></td>
+</tr>
+</tbody>
+</table>
+<p>Remaining differences:</p>
+<ul>
+<li><strong>Consequents in the gate phase.</strong> The article trains the gates with first-order
+  consequents whose constant term is set to the label of the rule's sample. highFIS trains
+  the gates with zero-order consequents and converts to first order before fine-tuning.</li>
+<li><strong>Precision.</strong> The reference code computes in double precision; highFIS uses the PyTorch
+  default, single precision, unless <code>torch.set_default_dtype(torch.float64)</code> is set.</li>
+<li>
+<p><strong>The tables of the article against the authors' code.</strong> On the same folds, highFIS and
+  the reference implementation agree, and both differ from the article in the same way:</p>
+<table>
+<thead>
+<tr>
+<th>Dataset</th>
+<th>Article</th>
+<th>Reference code</th>
+<th>highFIS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Iris</td>
+<td>96.8 / 2.3 / 3.1</td>
+<td>94.3 / 2.0 / 5.8</td>
+<td>95.0 / 2.0 / 5.8</td>
+</tr>
+<tr>
+<td>Wine</td>
+<td>98.3 / 8.0 / 3.0</td>
+<td>95.5 / 5.0 / 3.0</td>
+<td>97.2 / 5.0 / 3.0</td>
+</tr>
+<tr>
+<td>Wdbc</td>
+<td>96.2 / 5.0 / 2.2</td>
+<td>91.6 / 2.1 / 2.1</td>
+<td>91.2 / 2.0 / 2.5</td>
+</tr>
+</tbody>
+</table>
+<p>Accuracy in percent / selected features / extracted rules, ten stratified folds
+repeated twice, inputs scaled to <code>[0, 1]</code>. On Wine the two implementations select the
+same features in all 20 folds. The article used its own copies of the data and its own
+splits, which is the likely source of the difference.
+- <strong>The regressor is an extension.</strong> The article only treats classification.
+  <code>DGTSKRegressor</code> uses the same rule base, starts each rule from the target of its sample
+  and keeps the rules that pass the threshold, which is usually one or two. On the
+  Friedman-1 problem it matches ridge regression (R² about 0.63) while using only
+  informative features; it has no published result to be checked against. The default
+  300 epochs per phase are the ones of the classifier and are short for regression: on a
+  linear target the defaults give an R² of 0.55 and <code>dg_epochs=3000, finetune_epochs=3000</code>
+  give 0.98.</p>
+</li>
+</ul>
 <h2 id="implementation-notes">Implementation notes</h2>
 <ul>
 <li>The paper's P-FRB is not implemented verbatim in highFIS. The <code>en</code> FRB is the closest available richer candidate rule base. When using <code>rule_base='pfrb'</code> via the estimator, call <code>model_.init_consequents_from_labels(y_t)</code> before <code>fit_dg_phase()</code> to apply the paper-faithful one-hot bias initialisation (paper eq. 24).</li>

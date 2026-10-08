@@ -380,6 +380,8 @@
       
         
       
+        
+      
     
     
     
@@ -963,6 +965,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#fidelity-to-the-source-article" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Fidelity to the source article
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#implementation-notes" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1352,6 +1365,8 @@
       
         
       
+        
+      
     
     
     
@@ -1666,6 +1681,62 @@ coefficients <span class="arithmatex">\(\zeta_{\lambda}\)</span> and <span class
 </tr>
 </tbody>
 </table>
+<h2 id="fidelity-to-the-source-article">Fidelity to the source article</h2>
+<p>Since version 0.32.0 the classifier follows the article on the points below. On the SRBCT
+data (83 samples, 2308 genes) the defaults give an accuracy of 0.975 with about 16 genes
+and 8 rules, against 0.950, 15.6 and 10.1 in the article; before that version they gave
+0.770 with no gene selected in every fold.</p>
+<table>
+<thead>
+<tr>
+<th>Point</th>
+<th>Article</th>
+<th>highFIS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Spreads of the point-based rule base</td>
+<td>Initialized to 1, for inputs scaled to <code>[0, 1]</code></td>
+<td><code>pfrb_spread=1.0</code> (default). <code>"std"</code> gives the per-feature spread used before 0.32.0</td>
+</tr>
+<tr>
+<td>Gate parameters</td>
+<td>All equal to 0.01</td>
+<td>Same</td>
+</tr>
+<tr>
+<td>Rule points when there are more samples than the cap</td>
+<td>Drawn class by class (stratified)</td>
+<td>Same, for classifiers</td>
+</tr>
+<tr>
+<td>After pruning</td>
+<td>The gates are removed and the rules become first-order rules</td>
+<td>Same. <code>get_feature_gates()</code> and <code>get_rule_gates()</code> still return the trained values</td>
+</tr>
+</tbody>
+</table>
+<p>Remaining differences:</p>
+<ul>
+<li><strong>Threshold search.</strong> The article scores the candidate thresholds on a validation set of
+  10% of the training samples and refits the consequents by least squares for each
+  candidate. highFIS scores them on the validation set passed to <code>fit</code>, or on the training
+  data when there is none, keeps the first of the candidates that tie, and does not refit
+  by default (<code>use_lse=False</code>). On samples as small as Colon and SRBCT, a 10% validation
+  set and the least-squares refit both gave worse results when tried.</li>
+<li><strong>Start of fine-tuning.</strong> The article resets the constant terms to the labels of the
+  extracted rules; highFIS carries over the constant terms trained in the gate phase.</li>
+<li><strong>Loss scale.</strong> The article divides the summed squared error by <code>2N</code>; highFIS uses
+  <code>MSELoss</code>, which also divides by the number of classes. With the Adam optimizer this
+  family uses, the scale has little effect.</li>
+<li><strong>The regressor is an extension.</strong> The article only treats classification. Since 0.32.0
+  <code>DGALETSKRegressor</code> shares the point-based rule base, the spreads and the rule cap of the
+  classifier, starts each rule from the target of its sample, and no longer refits by
+  least squares by default, because that refit diverged on a point-based rule base. On
+  the Friedman-1 problem it selects informative features but stays below ridge regression
+  (R² about 0.50 against 0.62); treat it as experimental.</li>
+</ul>
 <h2 id="implementation-notes">Implementation notes</h2>
 <ul>
 <li><code>DGALETSKClassifier</code> now defaults to the paper profile for classification:
