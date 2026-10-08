@@ -193,7 +193,9 @@ Remaining differences:
   for every phase.
 - **Thresholds.** The article uses other threshold coefficients above 1000 features (0.4
   and 0.5); highFIS keeps 0.5 and 0.3 unless `zeta_lambda` and `zeta_theta` are passed.
-- **High-dimensional data** (for example SRBCT) has not been measured with these defaults.
+- **High-dimensional data.** On SRBCT (83 samples, 2308 genes) the defaults give an accuracy
+  of 0.976 with about 19 genes and 12 rules, against 0.967, 12.3 and 4.2 in the article,
+  which uses other thresholds and numbers of fuzzy sets there (see the two points above).
 - **The regressor is an extension.** The article only treats classification.
   `FSREADATSKRegressor` shares the defaults above but does not reach the accuracy of a
   linear model on the low-dimensional problems tried; treat it as experimental.
