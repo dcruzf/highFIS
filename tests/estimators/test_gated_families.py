@@ -220,6 +220,7 @@ def test_every_gate_starts_at_the_constant_of_its_article(cls: Any, value: float
 
 
 def test_fsre_adatsk_gates_start_at_the_constant_of_its_article() -> None:
+    """Article, Section IV-C: parameters at 0.01, "every gate value is initialized to 0.0165"."""
     x, _, _ = _data()
     est = FSREADATSKClassifier(random_state=0)
     input_mfs, _, rule_base = est._build_input_mfs(x)
@@ -228,6 +229,45 @@ def test_fsre_adatsk_gates_start_at_the_constant_of_its_article() -> None:
 
     assert torch.equal(model.consequent_layer.lambda_gates, torch.full_like(model.consequent_layer.lambda_gates, 0.01))
     assert torch.equal(model.consequent_layer.theta_gates, torch.full_like(model.consequent_layer.theta_gates, 0.01))
+    assert model.get_feature_gate_values()[0].item() == pytest.approx(0.0165, abs=5e-5)
+    assert model.get_rule_gate_values()[0].item() == pytest.approx(0.0165, abs=5e-5)
+
+
+def test_fsre_adatsk_can_still_use_the_earlier_gate() -> None:
+    x, _, _ = _data()
+    est = FSREADATSKClassifier(gate_fn=None, random_state=0)
+    input_mfs, _, rule_base = est._build_input_mfs(x)
+
+    model: Any = est._build_model(input_mfs, 2, rule_base)
+
+    # ExpGate(k=10): 1 - exp(-10 * 0.01 ** 2)
+    assert model.get_feature_gate_values()[0].item() == pytest.approx(0.001, abs=5e-5)
+
+
+def test_fsre_adatsk_defaults_follow_the_article_protocol() -> None:
+    for cls in (FSREADATSKClassifier, highfis.FSREADATSKRegressor):
+        est = cls()
+        assert (est.mf_init, est.rule_base, est.n_mfs, est.gate_fn) == ("grid", "coco", 3, "gate4")
+        assert (est.fs_epochs, est.re_epochs, est.finetune_epochs) == (1000, 1000, 1000)
+        assert est.use_en_frb is False
+
+
+def test_fsre_adatsk_on_wine_end_to_end() -> None:
+    """FSRE-ADATSK article, Table IV: 97.3% on Wine with about six features and six rules.
+
+    Before the fixes the defaults reached 40% here, at chance. Loose bounds, as for DG-TSK.
+    """
+    from sklearn.datasets import load_wine
+
+    x, y = load_wine(return_X_y=True)
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=0, stratify=y)
+    scaler = MinMaxScaler().fit(x_train)
+
+    clf = FSREADATSKClassifier(random_state=0).fit(scaler.transform(x_train), y_train)
+
+    assert clf.score(scaler.transform(x_test), y_test) >= 0.9
+    assert 3 <= len(clf.selected_features_) <= 10
+    assert clf.model_.n_rules >= 3
 
 
 # --- the gates leave the model after pruning ---------------------------------------------

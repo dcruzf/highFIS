@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Literal, cast
 
 from torch import Tensor, nn
@@ -14,6 +14,7 @@ from ..layers import (
     GatedRegressionConsequentLayer,
     MembershipLayer,
 )
+from ..losses import SumSquaredErrorLoss
 from ..memberships import MembershipFunction
 from ._common import (
     BaseTSKClassifierModel,
@@ -91,9 +92,10 @@ class FSREADATSKClassifierModel(_FSREADATSKMixin, BaseTSKClassifierModel):
         July 2023, doi: 10.1109/TFUZZ.2022.3220950.
     """
 
-    #: MSE on one-hot targets, matching the ADATSK paper (Xue et al. 2023, eq. 8) that
-    #: FSRE-ADATSK extends -- the same objective as ADATSKClassifier from that article.
-    default_criterion = nn.MSELoss
+    #: Squared error on one-hot targets, summed over the classes and averaged over the
+    #: samples: the error function behind the gradients of the source article (Xue et al.
+    #: 2023, after eq. 8). It sets the step of the plain gradient descent this family uses.
+    default_criterion = SumSquaredErrorLoss
 
     consequent_layer: GatedClassificationConsequentLayer
 
@@ -107,6 +109,7 @@ class FSREADATSKClassifierModel(_FSREADATSKMixin, BaseTSKClassifierModel):
         consequent_batch_norm: bool = False,
         eps: float | None = None,
         use_en_frb: bool = False,
+        gate_fn: str | Callable[[Tensor], Tensor] | None = "gate4",
     ) -> None:
         """Initialise the FSRE-ADATSK classifier.
 
@@ -126,6 +129,10 @@ class FSREADATSKClassifierModel(_FSREADATSKMixin, BaseTSKClassifierModel):
             eps: Numerical stability epsilon for the Ada-softmin operator.
             use_en_frb: Start directly from the Enhanced FRB (En-FRB)
                 instead of CoCo-FRB.
+            gate_fn: Gate function of the feature and rule gates, as a key of
+                ``highfis.gates.GATE_FNS`` or a callable. ``"gate4"`` (default) is the
+                gate of the source article, ``λ sqrt(exp(1 - λ²))``. ``None`` gives
+                ``ExpGate(k=10)``, the gate used before 0.32.0.
 
         Raises:
             ValueError: If ``n_classes < 2``.
@@ -136,6 +143,7 @@ class FSREADATSKClassifierModel(_FSREADATSKMixin, BaseTSKClassifierModel):
         self.n_classes = int(n_classes)
         self.eps = eps
         self.use_en_frb = bool(use_en_frb)
+        self.gate_fn = gate_fn
 
         super().__init__(
             input_mfs,
@@ -157,7 +165,9 @@ class FSREADATSKClassifierModel(_FSREADATSKMixin, BaseTSKClassifierModel):
         self.consequent_layer = self._build_consequent_layer()
 
     def _build_consequent_layer(self) -> GatedClassificationConsequentLayer:
-        layer = GatedClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes, shared_lambda=True)
+        layer = GatedClassificationConsequentLayer(
+            self.n_rules, self.n_inputs, self.n_classes, gate_fn=self.gate_fn, shared_lambda=True
+        )
         layer.mode = "fs"
         return layer
 
@@ -209,7 +219,9 @@ class FSREADATSKClassifierModel(_FSREADATSKMixin, BaseTSKClassifierModel):
         self.n_rules = new_n_rules
 
         old_cons = self.consequent_layer
-        new_cons = GatedClassificationConsequentLayer(new_n_rules, self.n_inputs, self.n_classes, shared_lambda=True)
+        new_cons = GatedClassificationConsequentLayer(
+            new_n_rules, self.n_inputs, self.n_classes, gate_fn=self.gate_fn, shared_lambda=True
+        )
         new_cons.mode = "finetune"
         cast(Tensor, new_cons.theta_gates.data).copy_(old_cons.theta_gates.data[surviving_rules])
         cast(Tensor, new_cons.lambda_gates.data).copy_(old_cons.lambda_gates.data)
@@ -242,6 +254,7 @@ class FSREADATSKRegressorModel(_FSREADATSKMixin, BaseTSKRegressorModel):
         consequent_batch_norm: bool = False,
         eps: float | None = None,
         use_en_frb: bool = False,
+        gate_fn: str | Callable[[Tensor], Tensor] | None = "gate4",
     ) -> None:
         """Initialise the FSRE-ADATSK regressor.
 
@@ -259,9 +272,14 @@ class FSREADATSKRegressorModel(_FSREADATSKMixin, BaseTSKRegressorModel):
             consequent_batch_norm: Batch normalisation on consequent inputs.
             eps: Numerical stability epsilon for the Ada-softmin operator.
             use_en_frb: Start directly from the Enhanced FRB (En-FRB).
+            gate_fn: Gate function of the feature and rule gates, as a key of
+                ``highfis.gates.GATE_FNS`` or a callable. ``"gate4"`` (default) is the
+                gate of the source article, ``λ sqrt(exp(1 - λ²))``. ``None`` gives
+                ``ExpGate(k=10)``, the gate used before 0.32.0.
         """
         self.eps = eps
         self.use_en_frb = bool(use_en_frb)
+        self.gate_fn = gate_fn
 
         super().__init__(
             input_mfs,
@@ -283,7 +301,7 @@ class FSREADATSKRegressorModel(_FSREADATSKMixin, BaseTSKRegressorModel):
         self.consequent_layer = self._build_consequent_layer()
 
     def _build_consequent_layer(self) -> GatedRegressionConsequentLayer:
-        layer = GatedRegressionConsequentLayer(self.n_rules, self.n_inputs, shared_lambda=True)
+        layer = GatedRegressionConsequentLayer(self.n_rules, self.n_inputs, gate_fn=self.gate_fn, shared_lambda=True)
         layer.mode = "fs"
         return layer
 
@@ -335,7 +353,7 @@ class FSREADATSKRegressorModel(_FSREADATSKMixin, BaseTSKRegressorModel):
         self.n_rules = new_n_rules
 
         old_cons = self.consequent_layer
-        new_cons = GatedRegressionConsequentLayer(new_n_rules, self.n_inputs, shared_lambda=True)
+        new_cons = GatedRegressionConsequentLayer(new_n_rules, self.n_inputs, gate_fn=self.gate_fn, shared_lambda=True)
         new_cons.mode = "finetune"
         cast(Tensor, new_cons.theta_gates.data).copy_(old_cons.theta_gates.data[surviving_rules])
         cast(Tensor, new_cons.lambda_gates.data).copy_(old_cons.lambda_gates.data)

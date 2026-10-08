@@ -17,7 +17,7 @@ import pytest
 from torch import nn
 
 import highfis.models as models
-from highfis.losses import HalfSumSquaredErrorLoss
+from highfis.losses import HalfSumSquaredErrorLoss, SumSquaredErrorLoss
 
 # Classifiers whose source paper does NOT specify a classification loss; cross-entropy is a
 # deliberate highFIS choice for these (softmax defuzzification lineage / PyTSK toolbox).
@@ -36,6 +36,10 @@ _HALF_SUM_SQUARED_ERROR = {
 }
 
 
+# FSRE-ADATSK: the same, without the one half (the gradients after Eq. (8) of its article).
+_SUM_SQUARED_ERROR = {"FSREADATSKClassifierModel"}
+
+
 def _model_classes(suffix: str) -> list[type]:
     out = []
     for name in dir(models):
@@ -51,6 +55,8 @@ def test_classifier_default_loss_matches_paper(model_cls: type) -> None:
         expected: type = nn.CrossEntropyLoss
     elif model_cls.__name__ in _HALF_SUM_SQUARED_ERROR:
         expected = HalfSumSquaredErrorLoss
+    elif model_cls.__name__ in _SUM_SQUARED_ERROR:
+        expected = SumSquaredErrorLoss
     else:
         expected = nn.MSELoss
     assert model_cls.default_criterion is expected, (
@@ -84,3 +90,18 @@ def test_guard_covers_every_family() -> None:
     """Fail loudly if the model enumeration silently returns nothing."""
     assert len(_model_classes("ClassifierModel")) >= 14
     assert len(_model_classes("RegressorModel")) >= 14
+
+
+def test_sum_squared_error_is_the_sum_over_outputs() -> None:
+    """sum((y - z) ** 2) / N: MSELoss times C for C outputs, and equal to it for one output."""
+    import torch
+
+    target = torch.tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+    output = torch.tensor([[0.5, 0.2, 0.1], [0.1, 0.7, 0.0]])
+
+    loss = SumSquaredErrorLoss()(output, target)
+
+    assert loss.item() == pytest.approx(((target - output) ** 2).sum().item() / 2.0)
+    assert loss.item() == pytest.approx(nn.MSELoss()(output, target).item() * 3.0)
+    one_output = SumSquaredErrorLoss()(output[:, 0], target[:, 0]).item()
+    assert one_output == pytest.approx(nn.MSELoss()(output[:, 0], target[:, 0]).item())
