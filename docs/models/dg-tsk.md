@@ -143,7 +143,10 @@ Remaining differences:
   `DGTSKRegressor` uses the same rule base, starts each rule from the target of its sample
   and keeps the rules that pass the threshold, which is usually one or two. On the
   Friedman-1 problem it matches ridge regression (R² about 0.63) while using only
-  informative features; it has no published result to be checked against.
+  informative features; it has no published result to be checked against. The default
+  300 epochs per phase are the ones of the classifier and are short for regression: on a
+  linear target the defaults give an R² of 0.55 and `dg_epochs=3000, finetune_epochs=3000`
+  give 0.98.
 
 ## Implementation notes
 

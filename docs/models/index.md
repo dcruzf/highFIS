@@ -52,6 +52,15 @@ saved earlier keep loading and keep predicting as they did.
 | Rule gates trained in the rule-extraction phase; selection on the gate magnitude | FSRE-ADATSK | not available (the earlier behaviour was a defect) |
 | Regressors start each rule from the target of its sample | DG-TSK, DG-ALETSK | not available |
 | Regressor defaults `rule_base="pfrb"`, `use_lse=False` | DG-ALETSK | `rule_base=None, use_lse=True` |
+| Consequents start at zero, as in the article | FSRE-ADATSK, ADATSK regressor | not available |
+| A regressor whose consequents start at zero starts from the mean of the target | ADATSK, FSRE-ADATSK | not available |
+
+Two changes in 0.32.0 concern every family. Training that ends with a loss that is not
+finite now raises a `RuntimeWarning` instead of returning a model that predicts `NaN`
+without notice; the usual remedy is to scale the inputs and, for a regressor, the target.
+The Dombi and Yager T-norms no longer produce `NaN` gradients when a sample lies on the
+centre of a fuzzy set, which could turn AYATSK and the generic TSK with `t_norm="dombi"`
+or `t_norm="yager"` into `NaN` during training.
 
 Each family page has a section "Fidelity to the source article" with what now follows the
 article and what still differs.

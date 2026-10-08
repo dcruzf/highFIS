@@ -168,7 +168,7 @@ feature selection, rule extraction, and En-FRB support.
 
 Since version 0.32.0 the defaults of `FSREADATSKClassifier` follow the procedure of the
 article. Before that version the defaults reached 47% on Iris and 40% on Wine, at chance
-level; they now reach about 96% on Iris and 99% on Wine, with 7.6 features and 6.7 rules
+level; they now reach about 97% on Iris and 98% on Wine, with 8.8 features and 7.1 rules
 on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there).
 
 | Point | Article | highFIS |
@@ -180,6 +180,7 @@ on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there).
 | Selection | Features and rules whose gate passes the threshold | Same, on the magnitude of the gate: the gate is an odd function and can open towards −1 as well as +1 |
 | Loss | Squared error summed over the classes, averaged over the samples | `highfis.losses.SumSquaredErrorLoss` |
 | Optimizer | Full-batch gradient descent | Same |
+| Consequents | Start at zero, as in ADATSK | Same since 0.32.0; before, they started from a random draw |
 
 Remaining differences:
 
@@ -197,8 +198,12 @@ Remaining differences:
   of 0.976 with about 19 genes and 12 rules, against 0.967, 12.3 and 4.2 in the article,
   which uses other thresholds and numbers of fuzzy sets there (see the two points above).
 - **The regressor is an extension.** The article only treats classification.
-  `FSREADATSKRegressor` shares the defaults above but does not reach the accuracy of a
-  linear model on the low-dimensional problems tried; treat it as experimental.
+  `FSREADATSKRegressor` shares the defaults above and starts every rule from the mean of
+  the target. On the Friedman-1 problem it reaches an R² of about 0.71 with four
+  informative features and two or three rules, against 0.62 for ridge regression; it has
+  no published result to be checked against. It is trained with plain gradient descent,
+  so scale the target as well as the inputs: with an unscaled target the training can
+  diverge, which is reported by a `RuntimeWarning`.
 
 ## Code Correspondence
 
