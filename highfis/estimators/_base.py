@@ -14,7 +14,7 @@ from typing import Any, Final, Literal, NamedTuple, Self, cast
 import numpy as np
 import numpy.typing as npt
 import torch
-from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
+from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin, is_classifier
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.multiclass import type_of_target
@@ -259,19 +259,71 @@ def _select_pfrb_indices(
     n_samples: int,
     max_rules: int | None,
     random_state: int | None,
+    strata: np.ndarray | None = None,
 ) -> np.ndarray:
     """Select the training-sample indices used to build a point-based FRB.
 
-    Deterministic in ``(n_samples, max_rules, random_state)`` so the same
-    sample subset can be reproduced when initialising the consequents from the
-    corresponding labels (see :meth:`_BaseTSKEstimator._pfrb_aligned_labels`).
-    When ``max_rules`` is ``None`` or covers every sample, all samples are used.
+    Deterministic in its arguments so the same sample subset can be reproduced when
+    initialising the consequents from the corresponding labels (see
+    :meth:`_BaseTSKEstimator._pfrb_aligned_labels`). When ``max_rules`` is ``None`` or
+    covers every sample, all samples are used.
+
+    With *strata* (the class of each sample) the points are drawn class by class, in
+    proportion to the class sizes, as the DG-TSK and DG-ALETSK articles prescribe
+    ("stratified sampling strategy"). The quotas add up to ``max_rules`` and every class
+    gets at least one point. Without *strata* (regression) the points are drawn uniformly.
     """
     if max_rules is None or int(max_rules) >= n_samples:
         return np.arange(n_samples)
     rng = np.random.default_rng(random_state)
-    indices = rng.choice(n_samples, size=int(max_rules), replace=False)
-    return np.sort(indices)
+    if strata is None:
+        return np.sort(rng.choice(n_samples, size=int(max_rules), replace=False))
+    labels, counts = np.unique(strata, return_counts=True)
+    quotas = _proportional_quotas(counts, int(max_rules))
+    chosen = [
+        rng.choice(np.flatnonzero(strata == label), size=quota, replace=False)
+        for label, quota in zip(labels, quotas, strict=True)
+    ]
+    return np.sort(np.concatenate(chosen))
+
+
+def _proportional_quotas(counts: np.ndarray, total: int) -> list[int]:
+    """Split *total* among groups in proportion to *counts*, giving each group at least one.
+
+    Largest-remainder allocation: the shares are rounded down, and the units left over go
+    to the groups with the largest fractional parts.
+    """
+    shares = total * counts / counts.sum()
+    quotas = np.maximum(np.floor(shares).astype(int), 1)
+    for index in np.argsort(-(shares - np.floor(shares))):
+        if quotas.sum() >= total:
+            break
+        quotas[index] += 1
+    while quotas.sum() > total and quotas.max() > 1:  # more groups with a forced unit than room
+        quotas[int(np.argmax(quotas))] -= 1
+    return [int(q) for q in quotas]
+
+
+def _pfrb_spreads(x: np.ndarray, indices: np.ndarray, spread: str | float) -> np.ndarray:
+    """Initial spread of every feature in a point-based rule base, before ``sigma_scale``.
+
+    ``"std"`` gives each feature its own spread, the standard deviation of the feature over
+    the training samples. ``"std_mean"`` gives every feature the same spread: the mean, over
+    the features, of the sample standard deviations of the rule points (DG-TSK article,
+    Eq. (23)). A number gives every feature that spread (DG-ALETSK uses 1).
+    """
+    n_features = x.shape[1]
+    if isinstance(spread, str):
+        if spread == "std":
+            return np.std(x, axis=0)
+        if spread == "std_mean":
+            points = x[indices]
+            common = float(np.std(points, axis=0, ddof=1).mean()) if len(points) > 1 else 1.0
+            return np.full(n_features, common)
+        raise ValueError(f"pfrb_spread must be 'std', 'std_mean' or a positive number; got {spread!r}")
+    if not float(spread) > 0.0:
+        raise ValueError(f"pfrb_spread must be 'std', 'std_mean' or a positive number; got {spread!r}")
+    return np.full(n_features, float(spread))
 
 
 def _build_pfrb_input_mfs(
@@ -280,15 +332,17 @@ def _build_pfrb_input_mfs(
     max_rules: int | None,
     sigma_scale: float,
     random_state: int | None,
+    spread: str | float = "std",
+    strata: np.ndarray | None = None,
 ) -> dict[str, list[GaussianMF]]:
     """Build point-based fuzzy rule base membership functions from training samples."""
-    indices = _select_pfrb_indices(x.shape[0], max_rules, random_state)
+    indices = _select_pfrb_indices(x.shape[0], max_rules, random_state, strata)
+    spreads = _pfrb_spreads(x, indices, spread)
 
     input_mfs: dict[str, list[GaussianMF]] = {}
     for d, name in enumerate(feature_names):
-        col = x[:, d]
-        sigma = max(float(np.std(col)) * sigma_scale, 1e-3)
-        centers = col[indices]
+        sigma = max(float(spreads[d]) * sigma_scale, 1e-3)
+        centers = x[indices, d]
         input_mfs[name] = [GaussianMF(mean=float(c), sigma=sigma) for c in centers]
     return input_mfs
 
@@ -509,6 +563,9 @@ def _get_mf_cache_key(
     pfrb_max_rules: Any,
     input_configs: list[InputConfig] | None,
     rule_base: Any = None,
+    family: Any = None,
+    pfrb_spread: Any = None,
+    strata: np.ndarray | None = None,
 ) -> tuple[Any, ...]:
     # Determine step for sampling to hash quickly
     step = max(1, x_arr.shape[0] // 1000)
@@ -539,6 +596,9 @@ def _get_mf_cache_key(
         pfrb_max_rules,
         input_configs_key,
         rule_base,
+        family,
+        pfrb_spread,
+        None if strata is None else hash(np.ascontiguousarray(strata).tobytes()),
     )
 
 
@@ -556,6 +616,11 @@ def _build_input_mfs_cached(
         estimator.pfrb_max_rules,
         estimator.input_configs,
         getattr(estimator, "rule_base", None),
+        # Families build their sets differently from the same arguments, so the sets of
+        # one family must never be served to another.
+        type(estimator).__qualname__,
+        getattr(estimator, "pfrb_spread", None),
+        getattr(estimator, "_pfrb_strata", None),
     )
 
     cached = _MF_INIT_CACHE.get(cache_key)
@@ -707,6 +772,8 @@ class _BaseTSKEstimator(BaseEstimator):
                     max_rules=self.pfrb_max_rules,
                     sigma_scale=float(self.sigma_scale) if not isinstance(self.sigma_scale, str) else 1.0,
                     random_state=self.random_state,
+                    spread=getattr(self, "pfrb_spread", "std"),
+                    strata=getattr(self, "_pfrb_strata", None),
                 )
                 effective_rule_base = "coco"
             else:
@@ -728,6 +795,8 @@ class _BaseTSKEstimator(BaseEstimator):
                 max_rules=self.pfrb_max_rules,
                 sigma_scale=effective_sigma_scale,
                 random_state=self.random_state,
+                spread=getattr(self, "pfrb_spread", "std"),
+                strata=getattr(self, "_pfrb_strata", None),
             )
             effective_rule_base = "coco"
         else:
@@ -821,10 +890,12 @@ class _BaseTSKEstimator(BaseEstimator):
         one-hot consequent of rule ``r`` encodes the label of the *same* sample,
         rather than the ``r``-th label of the (unsampled) training set.
         """
+        strata = y_t.detach().cpu().numpy() if is_classifier(self) else None
         indices = _select_pfrb_indices(
             int(x_t.shape[0]),
             self._effective_pfrb_max_rules(int(x_t.shape[1])),
             self.random_state,
+            strata,
         )
         return y_t[torch.as_tensor(indices, dtype=torch.long, device=y_t.device)]
 
@@ -978,8 +1049,10 @@ class _BaseTSKEstimator(BaseEstimator):
     def get_feature_gates(self) -> np.ndarray | None:
         """Return the feature gate values of a gated family, or ``None`` for the others.
 
-        One value in ``[0, 1]`` per feature in :attr:`selected_features_`; a gate near zero
-        means the feature is switched off. Only DG-TSK, DG-ALETSK and FSRE-ADATSK have gates.
+        One value per feature in :attr:`selected_features_`; a gate near zero means the
+        feature is switched off. The values are in ``[0, 1]`` for DG-TSK and DG-ALETSK and
+        in ``[-1, 1]`` for FSRE-ADATSK, whose gate is an odd function: there the magnitude
+        says how open the gate is. Only these three families have gates.
         """
         check_is_fitted(self, "model_")
         gates = getattr(self.model_, "get_feature_gate_values", None)
@@ -988,8 +1061,10 @@ class _BaseTSKEstimator(BaseEstimator):
     def get_rule_gates(self) -> np.ndarray | None:
         """Return the rule gate values of a gated family, or ``None`` for the others.
 
-        One value in ``[0, 1]`` per rule of the fitted model; a gate near zero means the
-        rule is switched off. Only DG-TSK, DG-ALETSK and FSRE-ADATSK have gates.
+        One value per rule of the fitted model; a gate near zero means the rule is switched
+        off. The values are in ``[0, 1]`` for DG-TSK and DG-ALETSK and in ``[-1, 1]`` for
+        FSRE-ADATSK, where the magnitude says how open the gate is. Only these three
+        families have gates.
         """
         check_is_fitted(self, "model_")
         gates = getattr(self.model_, "get_rule_gate_values", None)
@@ -1106,6 +1181,27 @@ class _BaseTSKEstimator(BaseEstimator):
         return _normalize_importance(importance)
 
 
+def _start_from_target_mean(model: BaseTSK, y: Tensor) -> None:
+    """Start a regressor whose consequents are all zero from the mean of the targets.
+
+    Several families initialize their consequents to zero, as their (classification)
+    articles prescribe. A regressor then has to learn the level of the target before
+    anything else, and with a small learning rate it may not get there in the default
+    number of epochs. Setting the constant term of every rule to the target mean makes the
+    untrained model predict that mean. Families that initialize their consequents otherwise
+    are left alone.
+    """
+    layer = model.consequent_layer
+    bias = getattr(layer, "bias", None)
+    weight = getattr(layer, "weight", None)
+    if not isinstance(bias, Tensor) or bool(torch.any(bias != 0)):
+        return
+    if isinstance(weight, Tensor) and bool(torch.any(weight != 0)):
+        return
+    with torch.no_grad():
+        bias.fill_(float(y.mean()))
+
+
 class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ignore[misc]
     """Abstract base class for all highFIS TSK classifier estimators.
 
@@ -1173,7 +1269,13 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
         le = LabelEncoder()
         y_idx = le.fit_transform(np.asarray(y_arr))
 
-        input_mfs, _, effective_rule_base = self._build_input_mfs(x_arr)
+        # The classes are only needed while the sets are built, to draw the points of a
+        # point-based rule base class by class.
+        self._pfrb_strata = y_idx
+        try:
+            input_mfs, _, effective_rule_base = self._build_input_mfs(x_arr)
+        finally:
+            del self._pfrb_strata
 
         self.n_features_in_ = x_arr.shape[1]
         self.classes_ = le.classes_
@@ -1406,6 +1508,7 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
 
         x_t = self._as_tensor_x(x_arr, _device)
         self.rule_base_ = effective_rule_base
+        _start_from_target_mean(self.model_, y_t)
         self._pre_train_hook(self.model_, x_t, y_t)
         # Resolve the effective batch size once, from the training-set size, and expose it
         # as a fitted attribute; the trainer is built from it below.

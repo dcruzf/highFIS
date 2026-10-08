@@ -128,6 +128,7 @@ class ADATSKRegressorModel(BaseTSKRegressorModel):
         defuzzifier: nn.Module | None = None,
         consequent_batch_norm: bool = False,
         eps: float | None = None,
+        zero_consequent_init: bool = True,
     ) -> None:
         """Initialise the ADATSK regressor.
 
@@ -143,8 +144,11 @@ class ADATSKRegressorModel(BaseTSKRegressorModel):
                 :class:`~highfis.defuzzifiers.SumBasedDefuzzifier`.
             consequent_batch_norm: Batch normalisation on consequent inputs.
             eps: Numerical stability epsilon for the Ada-softmin operator.
+            zero_consequent_init: If ``True`` (default), initialize consequent weights
+                and biases to zeros, as the classifier does.
         """
         self.eps = eps
+        self.zero_consequent_init = bool(zero_consequent_init)
 
         super().__init__(
             input_mfs,
@@ -162,6 +166,9 @@ class ADATSKRegressorModel(BaseTSKRegressorModel):
             rule_base=rule_base,
             eps=self.eps,
         )
+        if self.zero_consequent_init:
+            nn.init.zeros_(self.consequent_layer.weight)
+            nn.init.zeros_(self.consequent_layer.bias)
 
     def _build_consequent_layer(self) -> nn.Module:
         return RegressionConsequentLayer(self.n_rules, self.n_inputs)

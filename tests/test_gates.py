@@ -34,9 +34,7 @@ def test_base_gate_default_init_params() -> None:
     gate = MinimalGate()
     param = nn.Parameter(torch.zeros(8))
     gate.init_params_(param)
-    data = param.detach()
-    assert data.min() >= 0.01
-    assert data.max() <= 0.1
+    assert torch.equal(param.detach(), torch.full((8,), 0.1))
 
 
 def test_sigmoid_gate() -> None:
@@ -59,9 +57,8 @@ def test_exp_gate() -> None:
     assert torch.allclose(gate(x), 1.0 - torch.exp(-2.0 * x.pow(2)))
     param = nn.Parameter(torch.zeros(10))
     gate.init_params_(param)
-    data = param.detach()
-    assert data.min() >= 0.001
-    assert data.max() <= 0.01
+    # DG-ALETSK article, Section IV: every gate parameter starts at 0.01.
+    assert torch.equal(param.detach(), torch.full((10,), 0.01))
 
 
 def test_inv_exp_gate() -> None:
@@ -82,9 +79,9 @@ def test_signed_exp_gate() -> None:
     assert torch.allclose(gate(x), x * torch.sqrt(torch.exp(1.0 - x.pow(2))))
     param = nn.Parameter(torch.zeros(10))
     gate.init_params_(param)
-    data = param.detach()
-    assert data.min() >= 0.005
-    assert data.max() <= 0.015
+    # FSRE-ADATSK article, Section IV-C: 0.01, which is a gate value of 0.0165.
+    assert torch.equal(param.detach(), torch.full((10,), 0.01))
+    assert gate(param.detach())[0].item() == pytest.approx(0.0165, abs=5e-5)
 
 
 def test_m_gate() -> None:
@@ -94,9 +91,9 @@ def test_m_gate() -> None:
     assert torch.allclose(gate(x), x.pow(2) * torch.exp(1.0 - x.pow(2)))
     param = nn.Parameter(torch.zeros(10))
     gate.init_params_(param)
-    data = param.detach()
-    assert data.min() >= 0.01
-    assert data.max() <= 0.1
+    # DG-TSK article, Section 4.3: 0.1, which is a gate value of 0.0269.
+    assert torch.equal(param.detach(), torch.full((10,), 0.1))
+    assert gate(param.detach())[0].item() == pytest.approx(0.0269, abs=5e-5)
 
 
 def test_gate_singletons() -> None:

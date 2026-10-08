@@ -52,17 +52,18 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         *,
         lambda_init: float = 1.0,
         use_en_frb: bool = False,
+        gate_fn: str | None = "gate4",
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 5,
-        mf_init: str = "kmeans",
+        n_mfs: int = 3,
+        mf_init: str = "grid",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        fs_epochs: int = 100,
-        re_epochs: int = 100,
-        finetune_epochs: int = 100,
-        learning_rate: float = 1e-2,
+        fs_epochs: int = 1000,
+        re_epochs: int = 1000,
+        finetune_epochs: int = 1000,
+        learning_rate: float = 0.05,
         verbose: bool | int = False,
-        rule_base: str | None = None,
+        rule_base: str | None = "coco",
         batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
@@ -88,24 +89,33 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
                 adaptive softmin index directly from membership values;
                 DG-ALETSK uses the fixed exponent ``ξ = 700`` per
                 paper eq. 22.  Default ``1.0``.
-            use_en_frb: If ``True``, use the Enhanced FRB (En-FRB) whose
-                size grows linearly with the number of features, allowing
-                more candidate rules for the RE phase. Xue et al. (2023)
-                activate En-FRB after the FS phase; set ``False`` (default)
-                to keep the compact CoCo-FRB.
+            use_en_frb: Whether the feature-selection phase also runs on the enhanced rule
+                base (En-FRB). The rule-extraction phase always does, as in the source
+                article, where feature selection uses the compact rule base (CoCo-FRB):
+                that is the default, ``False``.
+            gate_fn: Gate function of the feature and rule gates, as a key of
+                ``highfis.gates.GATE_FNS``. ``"gate4"`` (default) is the gate of the source
+                article, ``λ sqrt(exp(1 - λ²))``. ``None`` gives ``ExpGate(k=10)``, the gate
+                used before 0.32.0.
             input_configs: Per-feature InputConfig list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
-            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
-            mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
+            n_mfs: Number of fuzzy sets per feature (default ``3``).
+            mf_init: ``"grid"`` (default) places the centres evenly between the minimum and the
+                maximum of each feature, as in the source article. Also ``"kmeans"``,
+                ``"minibatch_kmeans"`` and ``"fcm"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for k-means and weight initialisation.
-            fs_epochs: Maximum epochs for phase 1 (FS training). Default ``10``.
-            re_epochs: Maximum epochs for phase 2 (RE training). Default ``10``.
-            finetune_epochs: Maximum epochs for phase 3 (fine-tuning). Default ``100``.
-            learning_rate: Adam learning rate (default ``0.01``).
+            fs_epochs: Epochs of phase 1, feature selection. Default ``1000``.
+            re_epochs: Epochs of phase 2, rule extraction. Default ``1000``.
+            finetune_epochs: Epochs of phase 3, fine-tuning. Default ``1000``.
+            learning_rate: SGD learning rate (default ``0.05``). The family trains by plain
+                full-batch gradient descent, so the rate and the number of epochs decide
+                whether the gates open; the defaults were chosen by measurement, since the
+                source article does not state the values of its main experiments.
             verbose: Print per-epoch progress.
-            rule_base: ``"coco"`` or ``"cartesian"``.
-            batch_size: Mini-batch size (default ``512``).
+            rule_base: ``"coco"`` (default, one rule per fuzzy set) or ``"cartesian"``.
+            batch_size: Mini-batch size. ``"auto"`` (default) trains on the full batch, as in the
+                source article. An integer sets the size and ``None`` is also the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -123,8 +133,11 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
                 ``False`` only for low-dimensional data where divergence does
                 not occur.
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             zeta_lambda: Feature-selection threshold coefficient (paper eq. 28).
                 Larger values retain more features.  Default ``0.5``.
@@ -151,6 +164,7 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
         """
         self.lambda_init = lambda_init
         self.use_en_frb = use_en_frb
+        self.gate_fn = gate_fn
         self.fs_epochs = fs_epochs
         self.re_epochs = re_epochs
         self.finetune_epochs = finetune_epochs
@@ -212,6 +226,7 @@ class FSREADATSKClassifier(_BaseClassifierEstimator):
             rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             use_en_frb=self.use_en_frb,
+            gate_fn=self.gate_fn,
         )
 
     def predict_proba(self, x: Any) -> np.ndarray:
@@ -307,17 +322,18 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
         *,
         lambda_init: float = 1.0,
         use_en_frb: bool = False,
+        gate_fn: str | None = "gate4",
         input_configs: list[InputConfig] | None = None,
-        n_mfs: int = 5,
-        mf_init: str = "kmeans",
+        n_mfs: int = 3,
+        mf_init: str = "grid",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        fs_epochs: int = 100,
-        re_epochs: int = 100,
-        finetune_epochs: int = 100,
-        learning_rate: float = 1e-2,
+        fs_epochs: int = 1000,
+        re_epochs: int = 1000,
+        finetune_epochs: int = 1000,
+        learning_rate: float = 0.05,
         verbose: bool | int = False,
-        rule_base: str | None = None,
+        rule_base: str | None = "coco",
         batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
@@ -343,21 +359,33 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
                 adaptive softmin index directly from membership values;
                 DG-ALETSK uses the fixed exponent ``ξ = 700`` per
                 paper eq. 22.  Default ``1.0``.
-            use_en_frb: If ``True``, use the Enhanced FRB (En-FRB) for rule
-                extraction. Default ``False`` keeps CoCo-FRB.
+            use_en_frb: Whether the feature-selection phase also runs on the enhanced rule
+                base (En-FRB). The rule-extraction phase always does, as in the source
+                article, where feature selection uses the compact rule base (CoCo-FRB):
+                that is the default, ``False``.
+            gate_fn: Gate function of the feature and rule gates, as a key of
+                ``highfis.gates.GATE_FNS``. ``"gate4"`` (default) is the gate of the source
+                article, ``λ sqrt(exp(1 - λ²))``. ``None`` gives ``ExpGate(k=10)``, the gate
+                used before 0.32.0.
             input_configs: Per-feature InputConfig list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
-            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
-            mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
+            n_mfs: Number of fuzzy sets per feature (default ``3``).
+            mf_init: ``"grid"`` (default) places the centres evenly between the minimum and the
+                maximum of each feature, as in the source article. Also ``"kmeans"``,
+                ``"minibatch_kmeans"`` and ``"fcm"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for k-means and weight initialisation.
-            fs_epochs: Maximum epochs for phase 1 (FS training). Default ``10``.
-            re_epochs: Maximum epochs for phase 2 (RE training). Default ``10``.
-            finetune_epochs: Maximum epochs for phase 3 (fine-tuning). Default ``100``.
-            learning_rate: Adam learning rate (default ``0.01``).
+            fs_epochs: Epochs of phase 1, feature selection. Default ``1000``.
+            re_epochs: Epochs of phase 2, rule extraction. Default ``1000``.
+            finetune_epochs: Epochs of phase 3, fine-tuning. Default ``1000``.
+            learning_rate: SGD learning rate (default ``0.05``). The family trains by plain
+                full-batch gradient descent, so the rate and the number of epochs decide
+                whether the gates open; the defaults were chosen by measurement, since the
+                source article does not state the values of its main experiments.
             verbose: Print per-epoch progress.
-            rule_base: ``"coco"`` or ``"cartesian"``.
-            batch_size: Mini-batch size (default ``512``).
+            rule_base: ``"coco"`` (default, one rule per fuzzy set) or ``"cartesian"``.
+            batch_size: Mini-batch size. ``"auto"`` (default) trains on the full batch, as in the
+                source article. An integer sets the size and ``None`` is also the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -375,8 +403,11 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
                 ``False`` only for low-dimensional data where divergence does
                 not occur.
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             zeta_lambda: Feature-selection threshold coefficient (paper eq. 28).
                 Larger values retain more features.  Default ``0.5``.
@@ -403,6 +434,7 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
         """
         self.lambda_init = lambda_init
         self.use_en_frb = use_en_frb
+        self.gate_fn = gate_fn
         self.fs_epochs = fs_epochs
         self.re_epochs = re_epochs
         self.finetune_epochs = finetune_epochs
@@ -448,7 +480,18 @@ class FSREADATSKRegressor(_BaseRegressorEstimator):
             rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
             use_en_frb=self.use_en_frb,
+            gate_fn=self.gate_fn,
         )
+
+    def __sklearn_tags__(self) -> Any:
+        """Mark as poor_score: the regressor is an extension without a published reference.
+
+        The source article only treats classification. On low-dimensional regression
+        problems the regressor does not reach the accuracy of a linear model.
+        """
+        tags = super().__sklearn_tags__()
+        tags.regressor_tags.poor_score = True
+        return tags
 
     def predict(self, x: Any) -> np.ndarray:
         """Predict continuous targets, applying structural feature selection.

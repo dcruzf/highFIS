@@ -11,9 +11,11 @@ with the same data and hyperparameters skip the recompute.
 - **Enabled by default**, with an **LRU** eviction policy and a maximum of **128
   entries**. A cache hit renews the entry, so frequently reused initializations
   are kept.
-- **Keyed by** the input data, `mf_init`, `n_mfs`, `sigma_scale`, `random_state`,
-  `pfrb_max_rules`, `input_configs` and `rule_base`. Changing any of these
-  produces a distinct entry.
+- **Keyed by** the estimator class, the input data, `mf_init`, `n_mfs`,
+  `sigma_scale`, `random_state`, `pfrb_max_rules`, `pfrb_spread`, `input_configs`
+  and `rule_base`, and by the class labels when a point-based rule base draws its
+  points class by class. Changing any of these produces a distinct entry, and two
+  families never share one.
 
 The cache only stores the *initialization* of the MFs; it never affects the
 trained model, its numerical results, or reproducibility.

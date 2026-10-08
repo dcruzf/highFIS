@@ -41,6 +41,7 @@ highFIS builds neuro-fuzzy systems by combining custom PyTorch layer modules:
 *   [`highfis.clustering`](clustering.md) — Clustering & Initialization: Algorithms for initializing fuzzy membership centers (e.g. k-means, grid, P-FRB).
 *   [`highfis.persistence`](persistence.md) — Checkpoint Serialization: Versioned, secure checkpoint saving and loading utilities.
 *   [`highfis.metrics`](metrics.md) — Evaluation Metrics: Custom statistical metrics for regression and classification validation.
+*   [`highfis.losses`](losses.md) — Loss Functions: The squared-error losses of the families trained by plain gradient descent, with the scale their articles use.
 *   [`highfis.plotting`](plotting.md) — Diagnostic Plots: Membership functions, training history, rule activation and prediction diagnostics for fitted estimators.
 *   [`highfis.protocols`](protocols.md) — Type Protocols: Structural typing interfaces ensuring API compatibility.
 *   `highfis.show_versions()` — Environment Report: Prints the versions of highFIS, PyTorch, NumPy and scikit-learn, the default floating-point type, the thread count and the CPU.

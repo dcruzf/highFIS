@@ -72,9 +72,10 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         n_mfs: int = 5,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
+        pfrb_spread: str | float = "std_mean",
         random_state: int | None = None,
-        dg_epochs: int = 100,
-        finetune_epochs: int = 200,
+        dg_epochs: int = 300,
+        finetune_epochs: int = 300,
         learning_rate: float = 0.2,
         verbose: bool | int = False,
         rule_base: str | None = "pfrb",
@@ -108,11 +109,18 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
+            pfrb_spread: Initial spread of the fuzzy sets of the point-based rule base.
+                ``"std_mean"`` (default) gives every feature and rule the same spread: the
+                mean, over the features, of the sample standard deviations of the rule
+                points, as in the source article (Eq. (23)). A positive number sets that
+                common spread directly. ``"std"`` gives each feature its own standard
+                deviation, the behaviour before 0.32.0. Multiplied by ``sigma_scale``.
             random_state: Seed for reproducibility.
-            dg_epochs: Maximum epochs for phase 1 (DG training).  Default
-                ``10`` matches the paper's experimental setting.
-            finetune_epochs: Maximum epochs for phase 3 (fine-tune).
-                Default ``200``.
+            dg_epochs: Epochs of the gate phase, in which the gates are trained and
+                the antecedents are frozen. Default ``300``, the number of full-batch
+                iterations of the source article.
+            finetune_epochs: Epochs of the fine-tuning phase, run on the pruned system
+                without gates. Default ``300``, as in the source article.
             learning_rate: Learning rate for the full-batch SGD (gradient descent)
                 used in both phases. Default ``0.2`` matches the paper (Section IV).
                 DG-TSK uses SGD, so it needs a larger rate than the Adam-based
@@ -122,7 +130,8 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             rule_base: ``"coco"``, ``"cartesian"``, or ``"pfrb"``.  Defaults
                 to ``"pfrb"`` for the paper-strict DG-TSK path, which
                 initialises one rule per training sample.
-            batch_size: Mini-batch size (default ``512``).
+            batch_size: Mini-batch size. ``"auto"`` (default) trains on the full batch, as in the
+                source article. An integer sets the size and ``None`` is also the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -135,8 +144,11 @@ class DGTSKClassifier(_BaseClassifierEstimator):
                 paper's experimental cap.
             patience: Early-stopping patience (default ``20``). Set to
                 ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             zeta_lambda: Grid of λ-pruning threshold candidates.  ``None``
                 uses paper default ``[0.5]``.
@@ -174,6 +186,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         self.zeta_lambda = zeta_lambda
         self.zeta_theta = zeta_theta
         self.use_lse = use_lse
+        self.pfrb_spread = pfrb_spread
         self.optimizer_type = optimizer_type
         self.structural_pruning = structural_pruning
         self.freeze_antecedents_finetune = freeze_antecedents_finetune
@@ -405,9 +418,10 @@ class DGTSKRegressor(_BaseRegressorEstimator):
         n_mfs: int = 5,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
+        pfrb_spread: str | float = "std_mean",
         random_state: int | None = None,
-        dg_epochs: int = 100,
-        finetune_epochs: int = 200,
+        dg_epochs: int = 300,
+        finetune_epochs: int = 300,
         learning_rate: float = 0.2,
         verbose: bool | int = False,
         rule_base: str | None = "pfrb",
@@ -441,11 +455,18 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
+            pfrb_spread: Initial spread of the fuzzy sets of the point-based rule base.
+                ``"std_mean"`` (default) gives every feature and rule the same spread: the
+                mean, over the features, of the sample standard deviations of the rule
+                points, as in the source article (Eq. (23)). A positive number sets that
+                common spread directly. ``"std"`` gives each feature its own standard
+                deviation, the behaviour before 0.32.0. Multiplied by ``sigma_scale``.
             random_state: Seed for reproducibility.
-            dg_epochs: Maximum epochs for phase 1 (DG training).  Default
-                ``10`` matches the paper's experimental setting.
-            finetune_epochs: Maximum epochs for phase 3 (fine-tune).
-                Default ``200``.
+            dg_epochs: Epochs of the gate phase, in which the gates are trained and
+                the antecedents are frozen. Default ``300``, the number of full-batch
+                iterations of the source article.
+            finetune_epochs: Epochs of the fine-tuning phase, run on the pruned system
+                without gates. Default ``300``, as in the source article.
             learning_rate: Learning rate for the full-batch SGD (gradient descent)
                 used in both phases. Default ``0.2`` matches the paper (Section IV).
                 DG-TSK uses SGD, so it needs a larger rate than the Adam-based
@@ -454,7 +475,8 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             verbose: Print per-epoch progress.
             rule_base: ``"coco"``, ``"cartesian"``, or ``"pfrb"``.  Defaults
                 to ``"pfrb"`` for the paper-strict DG-TSK regressor path.
-            batch_size: Mini-batch size (default ``512``).
+            batch_size: Mini-batch size. ``"auto"`` (default) trains on the full batch, as in the
+                source article. An integer sets the size and ``None`` is also the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -466,8 +488,11 @@ class DGTSKRegressor(_BaseRegressorEstimator):
                 ``rule_base='pfrb'``. ``None`` uses all training samples.
             patience: Early-stopping patience (default ``20``). Set to
                 ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             zeta_lambda: Grid of λ-pruning threshold candidates.
             zeta_theta: Grid of θ-pruning threshold candidates.
@@ -499,6 +524,7 @@ class DGTSKRegressor(_BaseRegressorEstimator):
         self.zeta_lambda = zeta_lambda
         self.zeta_theta = zeta_theta
         self.use_lse = use_lse
+        self.pfrb_spread = pfrb_spread
         self.optimizer_type = optimizer_type
         self.structural_pruning = structural_pruning
         self.freeze_antecedents_finetune = freeze_antecedents_finetune

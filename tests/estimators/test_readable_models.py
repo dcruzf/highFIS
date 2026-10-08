@@ -192,8 +192,10 @@ def test_gates_exist_only_in_the_gated_families(name: str) -> None:
         return
     assert feature_gates.shape == (est.model_.n_inputs,)
     assert rule_gates.shape == (est.model_.n_rules,)
-    assert ((feature_gates >= 0.0) & (feature_gates <= 1.0)).all()
-    assert ((rule_gates >= 0.0) & (rule_gates <= 1.0)).all()
+    # The gate of FSRE-ADATSK is an odd function with values in [-1, 1]; the others are in [0, 1].
+    lowest = -1.0 if name.startswith("FSREADATSK") else 0.0
+    assert ((feature_gates >= lowest) & (feature_gates <= 1.0)).all()
+    assert ((rule_gates >= lowest) & (rule_gates <= 1.0)).all()
 
 
 def test_selected_features_are_every_column_without_pruning(clf: Any) -> None:

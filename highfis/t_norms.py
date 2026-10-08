@@ -91,6 +91,19 @@ class GMeanTNorm(BaseTNorm):
         return ln_terms.mean(dim=dim).exp()
 
 
+def _p_norm(values: Tensor, p: float, dim: int) -> Tensor:
+    r"""Return :math:`(\sum_i v_i^p)^{1/p}` for positive *values*, without underflow or overflow.
+
+    Computed as :math:`v_{max} (\sum_i (v_i / v_{max})^p)^{1/p}`. The plain form raises
+    small values to a large power, which underflows to zero; the root of that zero has an
+    infinite derivative and the gradient becomes NaN. That happens when the membership
+    degrees of a rule are all close to one, for example for a sample that sits on the centre
+    of a rule. Large values overflow in the same way.
+    """
+    peak = values.amax(dim=dim, keepdim=True)
+    return peak.squeeze(dim) * (values / peak).pow(p).sum(dim=dim).pow(1.0 / p)
+
+
 class DombiTNorm(BaseTNorm):
     """Dombi T-norm strategy."""
 
@@ -119,9 +132,7 @@ class DombiTNorm(BaseTNorm):
         eps = torch.finfo(terms.dtype).eps if self.eps is None else self.eps
         clamped = terms.clamp(min=eps, max=1.0)
         inv = ((1.0 / clamped) - 1.0).clamp(min=eps)
-        powered = torch.pow(inv, self.lambda_)
-        summed = powered.sum(dim=dim)
-        return 1.0 / (1.0 + torch.pow(summed, 1.0 / self.lambda_))
+        return 1.0 / (1.0 + _p_norm(inv, self.lambda_, dim))
 
 
 class AdaptiveDombiTNorm(BaseTNorm):
@@ -196,8 +207,7 @@ class YagerTNorm(BaseTNorm):
         """Compute the Yager aggregation over the specified dimension."""
         eps = torch.finfo(terms.dtype).eps if self.eps is None else self.eps
         clamped = terms.clamp(min=eps, max=1.0)
-        power_sum = (1.0 - clamped).pow(self.lambda_).sum(dim=dim)
-        result = 1.0 - power_sum.pow(1.0 / self.lambda_)
+        result = 1.0 - _p_norm((1.0 - clamped).clamp(min=eps), self.lambda_, dim)
         return torch.maximum(result, torch.tensor(0.0, dtype=terms.dtype, device=terms.device))
 
 
@@ -216,8 +226,7 @@ class YagerSimpleTNorm(BaseTNorm):
         """Compute the simplified Yager aggregation over the specified dimension."""
         eps = torch.finfo(terms.dtype).eps if self.eps is None else self.eps
         clamped = terms.clamp(min=eps, max=1.0)
-        power_sum = (1.0 - clamped).pow(self.lambda_).sum(dim=dim)
-        return 1.0 - power_sum.pow(1.0 / self.lambda_)
+        return 1.0 - _p_norm((1.0 - clamped).clamp(min=eps), self.lambda_, dim)
 
 
 class ALESoftminYagerTNorm(BaseTNorm):
@@ -244,7 +253,7 @@ class ALESoftminYagerTNorm(BaseTNorm):
         """Compute ALE-softmin Yager aggregation over the specified dimension."""
         eps = torch.finfo(terms.dtype).eps if self.eps is None else self.eps
         clamped = terms.clamp(min=eps, max=1.0)
-        y = (1.0 - clamped).pow(self.lambda_).sum(dim=dim).pow(1.0 / self.lambda_)
+        y = _p_norm((1.0 - clamped).clamp(min=eps), self.lambda_, dim)
         softmin = self._adaptive_softmin(torch.stack([torch.ones_like(y), y], dim=0), dim=0)
         return 1.0 - softmin
 

@@ -110,7 +110,9 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
-            batch_size: Mini-batch size (default ``512``).
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                10% of the training samples. An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -121,8 +123,11 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
             pfrb_max_rules: Maximum point-based FRB rules (unused by
                 DombiTSK).
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             lambda_: Dombi parameter ``λ > 0``.
             lower_bound: Lower bound for Composite GMF.
@@ -274,11 +279,13 @@ class DombiTSKRegressor(_BaseRegressorEstimator):
             mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``10``).
+            epochs: Maximum training epochs (default ``100``).
             learning_rate: Adam learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
-            batch_size: Mini-batch size (default ``512``).
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                10% of the training samples. An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -287,8 +294,11 @@ class DombiTSKRegressor(_BaseRegressorEstimator):
                 where ``R`` is the number of rules.
             consequent_batch_norm: Batch normalisation on consequent layers.
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
@@ -414,7 +424,9 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
             verbose: Verbosity level for training output.
             rule_base: Rule base strategy override, typically ``"coco"`` or
                 ``"cartesian"``.
-            batch_size: Mini-batch size for training.
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                10% of the training samples. An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Whether to shuffle training data each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -425,7 +437,10 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
                 consequent inputs.
             pfrb_max_rules: Maximum number of rules for point-based FRB.
             patience: Early stopping patience. Use ``None`` to disable.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: If True, restore the best validation weights.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: Weight decay applied during training.
             adaptive: If True, use adaptive lambda selection for Dombi T-norm.
             lambda_: Fixed Dombi parameter when adaptive is False.
@@ -600,7 +615,9 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
             verbose: Verbosity level for training output.
             rule_base: Rule base strategy override, typically ``"coco"`` or
                 ``"cartesian"``.
-            batch_size: Mini-batch size for training.
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                10% of the training samples. An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Whether to shuffle training data each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -610,7 +627,10 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
             consequent_batch_norm: If True, apply batch normalization to
                 consequent inputs.
             patience: Early stopping patience. Use ``None`` to disable.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: If True, restore the best validation weights.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: Weight decay applied during training.
             adaptive: If True, use adaptive lambda selection for Dombi T-norm.
             lambda_: Fixed Dombi parameter when adaptive is False.

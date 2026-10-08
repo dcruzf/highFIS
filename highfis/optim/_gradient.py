@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import copy
+import math
+import warnings
 from collections.abc import Callable, Mapping
 from typing import Any, cast
 
@@ -21,6 +23,23 @@ from ._utils import (
     _resolve_verbose,
     _uniform_regularization_loss,
 )
+
+
+def _warn_if_diverged(history: Mapping[str, Any]) -> None:
+    """Warn when training ended with a loss that is not finite.
+
+    Plain gradient descent diverges when the learning rate is too large for the scale of
+    the data, and the model then predicts NaN without any other sign.
+    """
+    losses = history.get("train_loss") or []
+    if losses and not math.isfinite(float(losses[-1])):
+        warnings.warn(
+            "Training diverged: the loss is not finite. Scale the inputs and, for a regressor, "
+            "the target (for example to [0, 1]), or use a smaller learning_rate.",
+            RuntimeWarning,
+            stacklevel=3,
+        )
+
 
 _MAXIMIZE_METRICS: frozenset[str] = frozenset(
     {
@@ -384,6 +403,7 @@ class GradientTrainer(BaseTrainer):
                 break
 
         self._finalize_training(model, best_state, pbar)
+        _warn_if_diverged(history)
 
         return history
 

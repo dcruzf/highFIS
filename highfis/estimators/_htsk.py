@@ -144,12 +144,14 @@ class HTSKClassifier(_BaseClassifierEstimator):
             mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
             sigma_scale: Sigma scale factor. ``1.0`` is recommended for HTSK.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs. (default ``10``).
-            learning_rate: Adam learning rate (default ``0.01``).
+            epochs: Maximum training epochs. (default ``100``).
+            learning_rate: AdamW learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``. Defaults to
                 ``"coco"`` for kmeans and ``"cartesian"`` for grid.
-            batch_size: Mini-batch size. (default ``512``).
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                512, or ``min(N, 60)`` when the training set is smaller than that. An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -159,8 +161,11 @@ class HTSKClassifier(_BaseClassifierEstimator):
             consequent_batch_norm: Batch normalisation on consequent layers.
             pfrb_max_rules: Maximum point-based FRB rules (unused by HTSK).
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
@@ -276,12 +281,14 @@ class HTSKRegressor(_BaseRegressorEstimator):
             sigma_scale: Scale factor for sigma initialisation when
                 ``mf_init="kmeans"``. ``1.0`` is recommended for HTSK.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs. (default ``10``).
-            learning_rate: Adam learning rate (default ``0.01``).
+            epochs: Maximum training epochs. (default ``100``).
+            learning_rate: AdamW learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``. Defaults to
                 ``"coco"`` for kmeans and ``"cartesian"`` for grid.
-            batch_size: Mini-batch size. (default ``512``).
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                512, or ``min(N, 60)`` when the training set is smaller than that. An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -291,8 +298,11 @@ class HTSKRegressor(_BaseRegressorEstimator):
             consequent_batch_norm: Batch normalisation on consequent layers.
             pfrb_max_rules: Maximum point-based FRB rules (unused by HTSK).
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
@@ -420,7 +430,7 @@ class TSKClassifier(_BaseClassifierEstimator):
         Args:
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
-            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
+            n_mfs: Number of k-means clusters / grid MFs (default ``3``).
             mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
             sigma_scale: Sigma scale factor. Use ``"auto"`` (= ``sqrt(D)``)
                 for high-dimensional data to mitigate softmax saturation
@@ -438,12 +448,14 @@ class TSKClassifier(_BaseClassifierEstimator):
             defuzzifier: Normalization of the rule firing strengths: ``"sum"`` (default),
                 ``"softmax_log"``, ``"log_sum"`` or ``"inv_log"``.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``10``).
-            learning_rate: Adam learning rate (default ``0.01``).
+            epochs: Maximum training epochs (default ``100``).
+            learning_rate: AdamW learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``. Defaults to
                 ``"coco"`` for kmeans and ``"cartesian"`` for grid.
-            batch_size: Mini-batch size (default ``512``).
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                512, or ``min(N, 60)`` when the training set is smaller than that. An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -453,8 +465,11 @@ class TSKClassifier(_BaseClassifierEstimator):
             consequent_batch_norm: Batch normalisation on consequent layers.
             pfrb_max_rules: Maximum point-based FRB rules (unused by TSK).
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
@@ -576,7 +591,7 @@ class TSKRegressor(_BaseRegressorEstimator):
         Args:
             input_configs: Per-feature :class:`InputConfig` list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
-            n_mfs: Number of k-means clusters / grid MFs (default ``5``).
+            n_mfs: Number of k-means clusters / grid MFs (default ``3``).
             mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
             sigma_scale: Sigma scale factor. Use ``"auto"`` (= ``sqrt(D)``)
                 to mitigate softmax saturation on high-dimensional data.
@@ -593,12 +608,14 @@ class TSKRegressor(_BaseRegressorEstimator):
             defuzzifier: Normalization of the rule firing strengths: ``"sum"`` (default),
                 ``"softmax_log"``, ``"log_sum"`` or ``"inv_log"``.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``10``).
-            learning_rate: Adam learning rate (default ``0.01``).
+            epochs: Maximum training epochs (default ``100``).
+            learning_rate: AdamW learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``. Defaults to
                 ``"coco"`` for kmeans and ``"cartesian"`` for grid.
-            batch_size: Mini-batch size (default ``512``).
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                512, or ``min(N, 60)`` when the training set is smaller than that. An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -607,8 +624,11 @@ class TSKRegressor(_BaseRegressorEstimator):
                 where ``R`` is the number of rules.
             consequent_batch_norm: Batch normalisation on consequent layers.
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).

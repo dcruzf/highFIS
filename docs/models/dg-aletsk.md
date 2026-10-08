@@ -121,6 +121,40 @@ Features and rules with gate values below these thresholds are pruned.
 | Threshold pruning | `apply_thresholds(tau_lambda, tau_theta)` | Sets low gate values to zero |
 | Threshold search | `search_thresholds(...)` | Grid-searches `\zeta_\lambda` / `\zeta_\theta` and optionally refits consequents |
 
+## Fidelity to the source article
+
+Since version 0.32.0 the classifier follows the article on the points below. On the SRBCT
+data (83 samples, 2308 genes) the defaults give an accuracy of 0.975 with about 16 genes
+and 8 rules, against 0.950, 15.6 and 10.1 in the article; before that version they gave
+0.770 with no gene selected in every fold.
+
+| Point | Article | highFIS |
+|---|---|---|
+| Spreads of the point-based rule base | Initialized to 1, for inputs scaled to `[0, 1]` | `pfrb_spread=1.0` (default). `"std"` gives the per-feature spread used before 0.32.0 |
+| Gate parameters | All equal to 0.01 | Same |
+| Rule points when there are more samples than the cap | Drawn class by class (stratified) | Same, for classifiers |
+| After pruning | The gates are removed and the rules become first-order rules | Same. `get_feature_gates()` and `get_rule_gates()` still return the trained values |
+
+Remaining differences:
+
+- **Threshold search.** The article scores the candidate thresholds on a validation set of
+  10% of the training samples and refits the consequents by least squares for each
+  candidate. highFIS scores them on the validation set passed to `fit`, or on the training
+  data when there is none, keeps the first of the candidates that tie, and does not refit
+  by default (`use_lse=False`). On samples as small as Colon and SRBCT, a 10% validation
+  set and the least-squares refit both gave worse results when tried.
+- **Start of fine-tuning.** The article resets the constant terms to the labels of the
+  extracted rules; highFIS carries over the constant terms trained in the gate phase.
+- **Loss scale.** The article divides the summed squared error by `2N`; highFIS uses
+  `MSELoss`, which also divides by the number of classes. With the Adam optimizer this
+  family uses, the scale has little effect.
+- **The regressor is an extension.** The article only treats classification. Since 0.32.0
+  `DGALETSKRegressor` shares the point-based rule base, the spreads and the rule cap of the
+  classifier, starts each rule from the target of its sample, and no longer refits by
+  least squares by default, because that refit diverged on a point-based rule base. On
+  the Friedman-1 problem it selects informative features but stays below ridge regression
+  (R² about 0.50 against 0.62); treat it as experimental.
+
 ## Implementation notes
 
 - `DGALETSKClassifier` now defaults to the paper profile for classification:
