@@ -25,7 +25,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="zensical-0.0.68">
+      <meta name="generator" content="zensical-0.0.69">
     
     
       
@@ -36,7 +36,7 @@
       
         
       
-      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.595f2bf5.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.e15858d4.min.css">
       
         
           
@@ -352,6 +352,8 @@
       
         
           
+        
+      
         
       
         
@@ -1084,10 +1086,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#strict-paper-mode" class="md-nav__link">
+  <a href="#fidelity-to-the-source-article" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        Strict paper mode
+        Fidelity to the source article
       </span>
     </span>
   </a>
@@ -1412,6 +1414,8 @@
       
         
           
+        
+      
         
       
         
@@ -1823,19 +1827,81 @@ standard Gaussian MFs and then freezes the antecedent parameters.</p>
 </tbody>
 </table>
 <h2 id="implementation-notes">Implementation notes</h2>
-<h3 id="strict-paper-mode">Strict paper mode</h3>
-<p>highFIS provides an opt-in strict mode on HDFIS estimators:</p>
+<h3 id="fidelity-to-the-source-article">Fidelity to the source article</h3>
+<p>Since version 0.33.0 the defaults of the four HDFIS estimators are the settings of the
+article, and on the same random splits they give the accuracies of the authors' code
+(see the <a href="../../reproductions/hdfis/">reproduction</a>).</p>
+<table>
+<thead>
+<tr>
+<th>Point</th>
+<th>Article</th>
+<th>highFIS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fuzzy sets</td>
+<td>Partition, not clustering: centres at <span class="arithmatex">\((r-1)/(R-1)\)</span> on inputs in <span class="arithmatex">\([0, 1]\)</span>, spreads of 1</td>
+<td><code>mf_init="grid"</code> (default): centres evenly spaced over the range of each feature, spreads of 1</td>
+</tr>
+<tr>
+<td>Rules</td>
+<td>Three, one per fuzzy set</td>
+<td><code>n_mfs=3</code>, compactly combined rule base (defaults)</td>
+</tr>
+<tr>
+<td>Membership of HDFIS-prod</td>
+<td><span class="arithmatex">\(\exp\big(-(x-m)^2 / (D^{\tilde\rho} + \sigma^2)\big)\)</span>, <span class="arithmatex">\(\xi = 745\)</span></td>
+<td><code>DimensionDependentGaussianMF</code>, <code>xi=745.0</code></td>
+</tr>
+<tr>
+<td>Firing strength of HDFIS-prod</td>
+<td>Product, in double precision</td>
+<td>Product computed in the logarithmic domain, exact in single and double precision</td>
+</tr>
+<tr>
+<td>HDFIS-min</td>
+<td>Minimum T-norm, antecedents fixed, consequents trained</td>
+<td>Same</td>
+</tr>
+<tr>
+<td>Consequents</td>
+<td>Start at zero</td>
+<td>Same</td>
+</tr>
+<tr>
+<td>Loss</td>
+<td>Squared error on one-hot targets, summed over the classes and halved (Eq. 14)</td>
+<td><code>highfis.losses.HalfSumSquaredErrorLoss</code></td>
+</tr>
+<tr>
+<td>Optimizer</td>
+<td>Adam, batches of 64, 100 epochs</td>
+<td>AdamW with a weight decay of <code>1e-8</code>, <code>batch_size="auto"</code> (64), <code>epochs=100</code></td>
+</tr>
+</tbody>
+</table>
+<p>Remaining differences:</p>
 <ul>
-<li>In this mode, the estimator enforces the paper protocol defaults used in
-  HDFIS_2023 experiments:</li>
-<li><code>mf_init="grid"</code></li>
-<li><code>rule_base="coco"</code></li>
-<li><code>n_mfs=3</code> (three rules)</li>
-<li><code>batch_size=64</code> (the default via <code>batch_size="auto"</code>, matching the paper)</li>
-<li>For HDFIS-prod, strict mode also enables the paper-form DMF equation
-  denominator (<code>D^rho + sigma^2</code>) and zero consequent initialization.</li>
-<li>For HDFIS-min, strict mode enables zero consequent initialization while
-  keeping antecedent freezing.</li>
+<li><strong>Learning rate.</strong> The article does not state it. The authors' code uses 0.001;
+  the default here is 0.01, which gives the same or a better accuracy on the datasets
+  tried and is needed on small low-dimensional data (with 0.001, 100 epochs are too few
+  on Iris).</li>
+<li><strong>Precision.</strong> The bound <span class="arithmatex">\(\xi = 745\)</span> of the article is the limit of double precision.
+  highFIS trains in single precision by default and obtains the normalized product from
+  the geometric mean of the membership degrees, <span class="arithmatex">\(\operatorname{softmax}(D \log \bar\mu)\)</span>,
+  which is the same quantity without underflow. Before 0.33.0 the product underflowed
+  in single precision and every rule received the same weight, so that HDFIS-prod was a
+  linear model on high-dimensional data.</li>
+<li><strong>Membership of HDFIS-min.</strong> The article reports HDFIS-min with the conventional and
+  with the dimension-dependent membership function; highFIS implements the conventional
+  one.</li>
+<li><strong>Consequents by least squares.</strong> The article also reports both models with the
+  consequents estimated by least squares; highFIS trains them by gradient.</li>
+<li><strong>Low-dimensional data.</strong> The article designs HDFIS for more than 1000 features.
+  The estimators work on fewer, but a family for low-dimensional data is a better
+  choice there. <code>mf_init="kmeans"</code> remains available.</li>
 </ul>
 <h3 id="model-classes">Model classes</h3>
 <ul>
@@ -1844,8 +1910,9 @@ standard Gaussian MFs and then freezes the antecedent parameters.</p>
   functions for high-dimensional inference.</li>
 <li><code>HDFISMinClassifierModel</code> and <code>HDFISMinRegressorModel</code> are concrete model classes
   that use minimum aggregation and freeze antecedent membership parameters.</li>
-<li>All HDFIS classes use first-order TSK consequents and
-  <code>highfis.defuzzifiers.SumBasedDefuzzifier</code>.</li>
+<li>All HDFIS classes use first-order TSK consequents. HDFIS-min normalizes with
+  <code>highfis.defuzzifiers.SumBasedDefuzzifier</code>; HDFIS-prod uses the geometric mean and
+  <code>SoftmaxLogDefuzzifier(scale=D)</code>, which is the normalized product.</li>
 </ul>
 <h3 id="estimator-wrappers">Estimator wrappers</h3>
 <ul>
@@ -1884,13 +1951,11 @@ standard Gaussian MFs and then freezes the antecedent parameters.</p>
 </ul>
 <h2 id="alignment-with-the-paper">Alignment with the paper</h2>
 <ul>
-<li>Core architecture alignment (always):</li>
-<li>HDFIS-prod uses product aggregation + dimension-dependent Gaussian MFs.</li>
-<li>HDFIS-min uses minimum aggregation + frozen antecedents.</li>
-<li>Both use first-order TSK consequents and sum-based normalization.</li>
-<li>Experimental-protocol alignment (strict):</li>
-<li>Non-strict defaults are practical library defaults and are not intended to
-  be an exact replication of the paper protocol.</li>
+<li>HDFIS-prod uses product aggregation with dimension-dependent Gaussian MFs.</li>
+<li>HDFIS-min uses minimum aggregation with frozen antecedents.</li>
+<li>Both use first-order TSK consequents and normalized firing strengths.</li>
+<li>The defaults are the experimental settings of the article; see "Fidelity to the
+  source article" above.</li>
 </ul>
 <h2 id="notes">Notes</h2>
 <ul>
@@ -1898,8 +1963,8 @@ standard Gaussian MFs and then freezes the antecedent parameters.</p>
   <strong>HDFIS-min</strong>.</li>
 <li>HDFIS-min in highFIS uses frozen antecedents to avoid nondifferentiability
   and keep training focused on consequent parameters.</li>
-<li><strong>Loss function</strong>: both classifiers default to <code>MSELoss</code> on one-hot targets,
-  matching the paper (eq. 14); regression uses <code>MSELoss</code> on scalar targets.</li>
+<li><strong>Loss function</strong>: both classifiers default to <code>HalfSumSquaredErrorLoss</code> on one-hot
+  targets, Eq. (14) of the article; regression uses <code>MSELoss</code> on scalar targets.</li>
 </ul>
 
 
@@ -2031,7 +2096,7 @@ standard Gaussian MFs and then freezes the antecedent parameters.</p>
       <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["announce.dismiss","content.action.view","content.code.annotate","content.code.copy","content.code.select","content.footnote.tooltips","content.tabs.link","content.tooltips","navigation.expand","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.path","navigation.prune","navigation.sections","navigation.tabs","navigation.tabs.sticky","navigation.top","navigation.tracking","search.highlight","toc.follow","toc.integrate"],"redirect":null,"search":"../../assets/javascripts/workers/search.7d14d953.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"provider":"mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.3c842f4c.min.js"></script>
+      <script src="../../assets/javascripts/bundle.8b1c90bd.min.js"></script>
       
         <script src="../../javascripts/mathjax.js"></script>
       
