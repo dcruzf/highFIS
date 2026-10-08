@@ -31,6 +31,33 @@ the named estimators. Only the generic TSK lets you choose them; see
 
 ---
 
+## Changes in 0.32.0 for the families with gates
+
+Version 0.32.0 makes DG-TSK, DG-ALETSK and FSRE-ADATSK follow their source articles. With
+the defaults of earlier versions these classifiers did not reproduce the published results
+(for example 66% for DG-TSK on Iris and 47% for FSRE-ADATSK, against about 96%). A model
+trained with the defaults will therefore give different results after upgrading; models
+saved earlier keep loading and keep predicting as they did.
+
+| What changed | Families | To get the earlier behaviour |
+|---|---|---|
+| Spreads of the point-based rule base | DG-TSK (`"std_mean"`), DG-ALETSK (`1.0`) | `pfrb_spread="std"` |
+| Gate parameters start at the constant of the article instead of a random draw | all three | not available |
+| Rule points drawn class by class when there are more samples than the cap | DG-TSK, DG-ALETSK classifiers | not available |
+| The gates leave the model after pruning | DG-TSK, DG-ALETSK | not available |
+| Loss scale of the article | DG-TSK, FSRE-ADATSK classifier | pass a trainer with `loss=torch.nn.MSELoss()` |
+| Default epochs 300 and 300 | DG-TSK | `dg_epochs=100, finetune_epochs=200` |
+| Defaults: evenly spaced sets, three per feature, 1000 epochs per phase, learning rate 0.05 | FSRE-ADATSK | `mf_init="kmeans", rule_base=None, n_mfs=5, fs_epochs=100, re_epochs=100, finetune_epochs=100, learning_rate=0.01` |
+| Gate function of the article | FSRE-ADATSK | `gate_fn=None` |
+| Rule gates trained in the rule-extraction phase; selection on the gate magnitude | FSRE-ADATSK | not available (the earlier behaviour was a defect) |
+| Regressors start each rule from the target of its sample | DG-TSK, DG-ALETSK | not available |
+| Regressor defaults `rule_base="pfrb"`, `use_lse=False` | DG-ALETSK | `rule_base=None, use_lse=True` |
+
+Each family page has a section "Fidelity to the source article" with what now follows the
+article and what still differs.
+
+---
+
 ## 1. Baselines
 
 These models implement standard, textbook fuzzy logic structures. They are ideal as simple baselines for low-dimensional problems.
