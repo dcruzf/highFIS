@@ -54,6 +54,7 @@ class LogTSKClassifier(_BaseClassifierEstimator):
         n_mfs: int = 5,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
+        sigma_init: str = "cluster",
         random_state: int | None = None,
         epochs: int = 100,
         learning_rate: float = 1e-2,
@@ -78,6 +79,11 @@ class LogTSKClassifier(_BaseClassifierEstimator):
             input_configs: Per-feature :class:`InputConfig` list.
             n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
+            sigma_init: How the initial spread of each fuzzy set is centred when the sets
+                come from clustering. ``"cluster"`` (default) uses the standard deviation
+                of the feature inside the cluster, times ``sigma_scale``.
+                ``"constant"`` draws every spread from ``N(sigma_scale, 0.2)``, the
+                initialization of Cui et al. (IJCNN 2021), meant for standardized inputs.
             sigma_scale: Sigma scale factor. ``1.0`` is recommended (the
                 log-space defuzzifier is scale-invariant).
             random_state: Seed for reproducibility.
@@ -136,6 +142,7 @@ class LogTSKClassifier(_BaseClassifierEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.sigma_init = sigma_init
 
     def _paper_batch_size(self, n_samples: int) -> int | None:
         """Shares the HTSK_2021 batching protocol (512, clamped to ``min(N, 60)``)."""
@@ -190,6 +197,7 @@ class LogTSKRegressor(_BaseRegressorEstimator):
         n_mfs: int = 5,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
+        sigma_init: str = "cluster",
         random_state: int | None = None,
         epochs: int = 100,
         learning_rate: float = 1e-2,
@@ -214,6 +222,11 @@ class LogTSKRegressor(_BaseRegressorEstimator):
             input_configs: Per-feature :class:`InputConfig` list.
             n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
+            sigma_init: How the initial spread of each fuzzy set is centred when the sets
+                come from clustering. ``"cluster"`` (default) uses the standard deviation
+                of the feature inside the cluster, times ``sigma_scale``.
+                ``"constant"`` draws every spread from ``N(sigma_scale, 0.2)``, the
+                initialization of Cui et al. (IJCNN 2021), meant for standardized inputs.
             sigma_scale: Sigma scale factor. ``1.0`` is recommended (the
                 log-space defuzzifier is scale-invariant).
             random_state: Seed for reproducibility.
@@ -272,6 +285,7 @@ class LogTSKRegressor(_BaseRegressorEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.sigma_init = sigma_init
 
     def _paper_batch_size(self, n_samples: int) -> int | None:
         """Shares the HTSK_2021 batching protocol (512, clamped to ``min(N, 60)``)."""

@@ -116,6 +116,7 @@ class HTSKClassifier(_BaseClassifierEstimator):
         n_mfs: int = 3,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
+        sigma_init: str = "cluster",
         random_state: int | None = None,
         epochs: int = 100,
         learning_rate: float = 1e-2,
@@ -142,6 +143,11 @@ class HTSKClassifier(_BaseClassifierEstimator):
                 ``name`` is used when ``mf_init="kmeans"``.
             n_mfs: Number of k-means clusters / grid MFs. (default ``3``)
             mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
+            sigma_init: How the initial spread of each fuzzy set is centred when the sets
+                come from clustering. ``"cluster"`` (default) uses the standard deviation
+                of the feature inside the cluster, times ``sigma_scale``.
+                ``"constant"`` draws every spread from ``N(sigma_scale, 0.2)``, the
+                initialization of Cui et al. (IJCNN 2021), meant for standardized inputs.
             sigma_scale: Sigma scale factor. ``1.0`` is recommended for HTSK.
             random_state: Seed for k-means and weight initialisation.
             epochs: Maximum training epochs. (default ``100``).
@@ -202,6 +208,7 @@ class HTSKClassifier(_BaseClassifierEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.sigma_init = sigma_init
 
     def _paper_batch_size(self, n_samples: int) -> int | None:
         """HTSK_2021: 512, clamped to ``min(N, 60)`` on smaller training sets."""
@@ -252,6 +259,7 @@ class HTSKRegressor(_BaseRegressorEstimator):
         n_mfs: int = 3,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
+        sigma_init: str = "cluster",
         random_state: int | None = None,
         epochs: int = 100,
         learning_rate: float = 1e-2,
@@ -278,6 +286,11 @@ class HTSKRegressor(_BaseRegressorEstimator):
                 ``name`` is used when ``mf_init="kmeans"``.
             n_mfs: Number of k-means clusters / grid MFs. (default ``3``).
             mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
+            sigma_init: How the initial spread of each fuzzy set is centred when the sets
+                come from clustering. ``"cluster"`` (default) uses the standard deviation
+                of the feature inside the cluster, times ``sigma_scale``.
+                ``"constant"`` draws every spread from ``N(sigma_scale, 0.2)``, the
+                initialization of Cui et al. (IJCNN 2021), meant for standardized inputs.
             sigma_scale: Scale factor for sigma initialisation when
                 ``mf_init="kmeans"``. ``1.0`` is recommended for HTSK.
             random_state: Seed for k-means and weight initialisation.
@@ -345,6 +358,7 @@ class HTSKRegressor(_BaseRegressorEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.sigma_init = sigma_init
 
     def _paper_batch_size(self, n_samples: int) -> int | None:
         """HTSK_2021: 512, clamped to ``min(N, 60)`` on smaller training sets."""
@@ -403,6 +417,7 @@ class TSKClassifier(_BaseClassifierEstimator):
         n_mfs: int = 3,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
+        sigma_init: str = "cluster",
         mf: str = "gaussian",
         t_norm: str = "prod",
         defuzzifier: str = "sum",
@@ -432,6 +447,11 @@ class TSKClassifier(_BaseClassifierEstimator):
                 ``name`` is used when ``mf_init="kmeans"``.
             n_mfs: Number of k-means clusters / grid MFs (default ``3``).
             mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
+            sigma_init: How the initial spread of each fuzzy set is centred when the sets
+                come from clustering. ``"cluster"`` (default) uses the standard deviation
+                of the feature inside the cluster, times ``sigma_scale``.
+                ``"constant"`` draws every spread from ``N(sigma_scale, 0.2)``, the
+                initialization of Cui et al. (IJCNN 2021), meant for standardized inputs.
             sigma_scale: Sigma scale factor. Use ``"auto"`` (= ``sqrt(D)``)
                 for high-dimensional data to mitigate softmax saturation
                 (Cui et al., IJCNN 2021). ``1.0`` is appropriate for low-
@@ -506,6 +526,7 @@ class TSKClassifier(_BaseClassifierEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.sigma_init = sigma_init
         self.mf = mf
         self.t_norm = t_norm
         self.defuzzifier = defuzzifier
@@ -565,6 +586,7 @@ class TSKRegressor(_BaseRegressorEstimator):
         n_mfs: int = 3,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
+        sigma_init: str = "cluster",
         mf: str = "gaussian",
         t_norm: str = "prod",
         defuzzifier: str = "sum",
@@ -593,6 +615,11 @@ class TSKRegressor(_BaseRegressorEstimator):
                 ``name`` is used when ``mf_init="kmeans"``.
             n_mfs: Number of k-means clusters / grid MFs (default ``3``).
             mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
+            sigma_init: How the initial spread of each fuzzy set is centred when the sets
+                come from clustering. ``"cluster"`` (default) uses the standard deviation
+                of the feature inside the cluster, times ``sigma_scale``.
+                ``"constant"`` draws every spread from ``N(sigma_scale, 0.2)``, the
+                initialization of Cui et al. (IJCNN 2021), meant for standardized inputs.
             sigma_scale: Sigma scale factor. Use ``"auto"`` (= ``sqrt(D)``)
                 to mitigate softmax saturation on high-dimensional data.
                 ``1.0`` is appropriate for low-to-medium-dimensional problems.
@@ -664,6 +691,7 @@ class TSKRegressor(_BaseRegressorEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.sigma_init = sigma_init
         self.mf = mf
         self.t_norm = t_norm
         self.defuzzifier = defuzzifier
