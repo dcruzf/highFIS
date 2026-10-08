@@ -168,7 +168,7 @@ feature selection, rule extraction, and En-FRB support.
 
 Since version 0.32.0 the defaults of `FSREADATSKClassifier` follow the procedure of the
 article. Before that version the defaults reached 47% on Iris and 40% on Wine, at chance
-level; they now reach about 89% on Iris and 98% on Wine, with 6.4 features and 6.1 rules
+level; they now reach about 96% on Iris and 99% on Wine, with 7.6 features and 6.7 rules
 on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there).
 
 | Point | Article | highFIS |
@@ -177,6 +177,7 @@ on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there).
 | Phases | Feature selection on the compact rule base, rule extraction on the enhanced one, then fine-tuning without gates | Same. `use_en_frb=True` also runs feature selection on the enhanced rule base |
 | Gate function | $M(\lambda) = \lambda\sqrt{e^{1-\lambda^2}}$, parameters initialized to 0.01 | `gate_fn="gate4"` (default); `gate_fn=None` gives the gate used before 0.32.0 |
 | Rule gates | Trained in the rule-extraction phase | Same. Before 0.32.0 they were left out of that phase, so three arbitrary rules were kept |
+| Selection | Features and rules whose gate passes the threshold | Same, on the magnitude of the gate: the gate is an odd function and can open towards −1 as well as +1 |
 | Loss | Squared error summed over the classes, averaged over the samples | `highfis.losses.SumSquaredErrorLoss` |
 | Optimizer | Full-batch gradient descent | Same |
 
@@ -192,7 +193,6 @@ Remaining differences:
   for every phase.
 - **Thresholds.** The article uses other threshold coefficients above 1000 features (0.4
   and 0.5); highFIS keeps 0.5 and 0.3 unless `zeta_lambda` and `zeta_theta` are passed.
-- **Iris** is below the article (about 89% against 96.5%).
 - **High-dimensional data** (for example SRBCT) has not been measured with these defaults.
 - **The regressor is an extension.** The article only treats classification.
   `FSREADATSKRegressor` shares the defaults above but does not reach the accuracy of a

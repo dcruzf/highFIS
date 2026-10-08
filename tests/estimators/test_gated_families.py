@@ -429,3 +429,23 @@ def test_dg_tsk_regressor_on_friedman_end_to_end() -> None:
     assert score >= 0.5
     assert len(selected) >= 2
     assert all(feature < 5 for feature in selected)
+
+
+def test_fsre_selects_features_by_the_magnitude_of_the_signed_gate(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The gate of the article is an odd function: a gate near -1 is as open as one near +1.
+
+    Selecting on the signed value dropped the features whose gate had opened downwards,
+    which on Iris were the informative ones in several folds.
+    """
+    from highfis.models import FSREADATSKClassifierModel
+
+    rng = np.random.default_rng(0)
+    x = rng.random((60, 4))
+    y = (x[:, 0] > 0.5).astype(int)
+    gates = torch.tensor([-0.9, 0.1, 0.05, 0.8])
+    monkeypatch.setattr(FSREADATSKClassifierModel, "get_feature_gate_values", lambda self: gates)
+
+    est = FSREADATSKClassifier(fs_epochs=1, re_epochs=1, finetune_epochs=1, random_state=0).fit(x, y)
+
+    assert est.history_["surviving_feature_indices"] == [0, 3]
+    assert est.selected_features_.tolist() == [0, 3]

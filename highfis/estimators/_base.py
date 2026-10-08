@@ -1049,8 +1049,10 @@ class _BaseTSKEstimator(BaseEstimator):
     def get_feature_gates(self) -> np.ndarray | None:
         """Return the feature gate values of a gated family, or ``None`` for the others.
 
-        One value in ``[0, 1]`` per feature in :attr:`selected_features_`; a gate near zero
-        means the feature is switched off. Only DG-TSK, DG-ALETSK and FSRE-ADATSK have gates.
+        One value per feature in :attr:`selected_features_`; a gate near zero means the
+        feature is switched off. The values are in ``[0, 1]`` for DG-TSK and DG-ALETSK and
+        in ``[-1, 1]`` for FSRE-ADATSK, whose gate is an odd function: there the magnitude
+        says how open the gate is. Only these three families have gates.
         """
         check_is_fitted(self, "model_")
         gates = getattr(self.model_, "get_feature_gate_values", None)
@@ -1059,8 +1061,10 @@ class _BaseTSKEstimator(BaseEstimator):
     def get_rule_gates(self) -> np.ndarray | None:
         """Return the rule gate values of a gated family, or ``None`` for the others.
 
-        One value in ``[0, 1]`` per rule of the fitted model; a gate near zero means the
-        rule is switched off. Only DG-TSK, DG-ALETSK and FSRE-ADATSK have gates.
+        One value per rule of the fitted model; a gate near zero means the rule is switched
+        off. The values are in ``[0, 1]`` for DG-TSK and DG-ALETSK and in ``[-1, 1]`` for
+        FSRE-ADATSK, where the magnitude says how open the gate is. Only these three
+        families have gates.
         """
         check_is_fitted(self, "model_")
         gates = getattr(self.model_, "get_rule_gate_values", None)
