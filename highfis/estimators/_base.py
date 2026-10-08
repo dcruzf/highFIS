@@ -21,7 +21,7 @@ from sklearn.utils.multiclass import type_of_target
 from sklearn.utils.validation import check_is_fitted, validate_data
 from torch import Tensor
 
-from .. import _describe, plotting
+from .. import _describe, _diagnostics, plotting
 from ..clustering import FuzzyCMeans, KMeans, MiniBatchKMeans
 from ..memberships import (
     DimensionDependentGaussianMF,
@@ -995,6 +995,56 @@ class _BaseTSKEstimator(BaseEstimator):
 
         return _to_numpy(norm_w)
 
+    def firing_diagnostics(
+        self,
+        X: npt.ArrayLike,
+        *,
+        dominance: float = 0.99,
+        never: float = 1e-6,
+    ) -> dict[str, Any]:
+        """Report how the rules of the fitted model fire on ``X``.
+
+        The normalized rule weights say, for each sample, how the prediction is shared
+        among the rules. When they stop depending on the sample the rules no longer
+        partition the input space, and the model is a single linear model.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Data to evaluate, prepared as the data passed to ``fit``.
+        dominance : float, default=0.99
+            A sample is dominated when one rule has at least this weight.
+        never : float, default=1e-6
+            A rule never fires when its weight stays below this value on every sample.
+
+        Returns:
+        -------
+        dict
+            ``n_samples`` and ``n_rules``;
+            ``uniform_fraction``, the fraction of samples on which every rule has the
+            same weight, which is what the underflow of a product of many membership
+            degrees produces;
+            ``dominated_fraction``, the fraction of samples on which one rule takes
+            almost all the weight;
+            ``non_finite_fraction``, the fraction of samples with a weight that is not
+            finite;
+            ``effective_rules`` and ``effective_rules_min``, the mean and the minimum
+            over the samples of the exponential of the entropy of the weights, between
+            1 (one rule) and ``n_rules`` (all rules equally);
+            ``mean_firing``, the mean weight of each rule;
+            ``never_firing_rules``, the indices of the rules that never fire.
+        """
+        return _diagnostics.firing_diagnostics(self.rule_activation(X), dominance=dominance, never=never)
+
+    def _check_firing(self, x_arr: np.ndarray) -> None:
+        """Warn at the end of ``fit`` when the rule weights are degenerate on the training data."""
+        try:
+            weights = self.rule_activation(x_arr[: _diagnostics._FIT_CHECK_ROWS])
+        except Exception:
+            return
+        if weights.ndim == 2 and weights.size:
+            _diagnostics.warn_if_degenerate(_diagnostics.firing_diagnostics(weights))
+
     def inspect(self) -> dict[str, Any]:
         """Return a structured summary of fitted model state and rule metadata."""
         check_is_fitted(self, "model_")
@@ -1305,6 +1355,7 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
         self.batch_size_ = self._resolve_batch_size(int(x_t.shape[0]))
         _trainer = self.trainer if self.trainer is not None else self._get_trainer()
         self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
+        self._check_firing(x_arr)
         return self
 
     def save(self, path: str) -> None:
@@ -1515,6 +1566,7 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
         self.batch_size_ = self._resolve_batch_size(int(x_t.shape[0]))
         _trainer = self.trainer if self.trainer is not None else self._get_trainer()
         self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
+        self._check_firing(x_arr)
         return self
 
     def save(self, path: str) -> None:
