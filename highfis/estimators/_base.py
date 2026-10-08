@@ -123,6 +123,17 @@ def _build_gaussian_input_mfs(
     return input_mfs
 
 
+def _draw_spread(rng: np.random.Generator, h: float) -> float:
+    """Draw the initial spread of a fuzzy set around ``h``.
+
+    Cui et al. (IJCNN 2021) draw the spread from ``N(h, 0.2)`` with ``h = 1`` on standardized
+    inputs, a noise of one fifth of the spread. Here ``h`` follows the spread of the cluster,
+    so the noise is kept at one fifth of ``h``: an absolute noise of 0.2 would be larger than
+    the spreads of inputs scaled to ``[0, 1]`` and would leave many sets with no width.
+    """
+    return max(h * float(rng.normal(loc=1.0, scale=0.2)), 0.2 * h, 1e-3)
+
+
 def _build_kmeans_input_mfs(
     x: np.ndarray,
     clusterer: KMeans | MiniBatchKMeans,
@@ -134,9 +145,9 @@ def _build_kmeans_input_mfs(
 
     Follows Cui et al. (IJCNN 2021): the center of MF (r, d) is set to the
     d-th coordinate of the r-th k-means centroid.  The initial sigma is
-    sampled from :math:`\\mathcal{N}(h, 0.2)` where *h* equals
+    *h* times a draw from :math:`\\mathcal{N}(1, 0.2)`, where *h* equals
     *sigma_scale* multiplied by the within-cluster standard deviation of
-    feature *d* in cluster *r*.  When a cluster has near-zero spread, the
+    feature *d* in cluster *r* (see :func:`_draw_spread`).  When a cluster has near-zero spread, the
     base sigma falls back to half the gap to the nearest neighbouring
     centroid in that feature dimension.
     """
@@ -167,7 +178,7 @@ def _build_kmeans_input_mfs(
                 other = np.delete(center_col, r)
                 raw_sigma = float(np.min(np.abs(other - c))) / 2.0 if len(other) > 0 else 1.0
             h = raw_sigma * sigma_scale
-            sigma = max(float(rng.normal(loc=h, scale=0.2)), 1e-3)
+            sigma = _draw_spread(rng, h)
             mfs.append(GaussianMF(mean=c, sigma=sigma))
         input_mfs[name] = mfs
 
@@ -183,8 +194,8 @@ def _build_fuzzy_c_means_input_mfs(
 ) -> dict[str, list[GaussianMF]]:
     r"""Build Gaussian MFs via fuzzy C-means cluster initialization.
 
-    The MF means are placed at the FCM centroids. Each sigma is sampled
-    from ``N(h, 0.2)`` where ``h`` is the cluster-specific, feature-wise
+    The MF means are placed at the FCM centroids. Each sigma is ``h`` times a
+    draw from ``N(1, 0.2)``, where ``h`` is the cluster-specific, feature-wise
     spread scaled by ``sigma_scale``.
     """
     clusterer.fit(x)
@@ -215,7 +226,7 @@ def _build_fuzzy_c_means_input_mfs(
                 other = np.delete(center_col, r)
                 raw_sigma = float(np.min(np.abs(other - c))) / 2.0 if len(other) > 0 else 1.0
             h = raw_sigma * sigma_scale
-            sigma = max(float(rng.normal(loc=h, scale=0.2)), 1e-3)
+            sigma = _draw_spread(rng, h)
             mfs.append(GaussianMF(mean=c, sigma=sigma))
 
         input_mfs[name] = mfs

@@ -89,3 +89,18 @@ def test_regressors_have_the_method() -> None:
     assert report["n_samples"] == 40
     assert report["mean_firing"].shape == (2,)
     assert report["mean_firing"].sum() == pytest.approx(1.0, abs=1e-5)
+
+
+@pytest.mark.parametrize("mf_init", ["kmeans", "fcm"])
+def test_clustered_spreads_keep_a_width_on_unit_scaled_data(mf_init: str) -> None:
+    """An absolute noise of 0.2 used to put a third of the spreads on the floor of 0.001."""
+    rng = np.random.default_rng(0)
+    centres = rng.random((3, 6))
+    x = np.clip(centres[rng.integers(0, 3, 150)] + 0.05 * rng.standard_normal((150, 6)), 0.0, 1.0).astype(np.float32)
+    y = (x[:, 0] > x[:, 1]).astype(int)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DegenerateFiringWarning)
+        model = TSKClassifier(n_mfs=3, mf_init=mf_init, epochs=1, random_state=0).fit(x, y)
+    sigmas = np.array([mf["sigma"] for sets in model.get_mf_params().values() for mf in sets])
+    assert sigmas.min() > 0.005
+    assert model.firing_diagnostics(x)["uniform_fraction"] < 0.05
