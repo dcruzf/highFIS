@@ -150,18 +150,18 @@ trained by the same optimizer shows the same behaviour.
 
 On the Tecator data (100 near-infrared channels, fat content as the target, inputs and
 target scaled to `[0, 1]`), ridge regression has a test error of about 2.4 to 2.8 percent
-fat and predicting the mean 13.0. With default settings the regressors lie between 5.5 and
+fat and predicting the mean 13.0. With default settings the regressors lie between 7 and
 12 (the HDFIS regressors above that), and a linear model trained by Adam for 200 epochs
 gives 8.5.
 
 Three remedies, in order of effect:
 
 - **Decorrelate the inputs.** With ten whitened principal components in front of the
-  estimator, the defaults give 3.5 for `HTSKRegressor`, 3.4 for `FSREADATSKRegressor` and
-  3.9 for `TSKRegressor`.
+  estimator, the defaults give 2.7 for `HTSKRegressor`, 3.4 for `FSREADATSKRegressor` and
+  3.3 for `TSKRegressor`.
 - **Give the optimizer more updates**, with more epochs or with mini-batches.
-  `HTSKRegressor(batch_size=32, epochs=300)` gives 5.6 on the raw channels and
-  `TSKRegressor(epochs=2000)` gives 3.6.
+  `HTSKRegressor(batch_size=32, epochs=300)` gives 5.7 on the raw channels and
+  `TSKRegressor(epochs=2000)` gives 3.5.
 - **Prefer a family trained by Adam** (see [Optimisers](optimisers.md)). DG-TSK, ADATSK
   and FSRE-ADATSK use plain gradient descent, as their articles do, and need many more
   epochs on such data: `FSREADATSKRegressor` reaches 4.4 with 5000 epochs per phase, and
