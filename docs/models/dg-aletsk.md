@@ -148,8 +148,12 @@ Remaining differences:
 - **Loss scale.** The article divides the summed squared error by `2N`; highFIS uses
   `MSELoss`, which also divides by the number of classes. With the Adam optimizer this
   family uses, the scale has little effect.
-- **Regressor.** `DGALETSKRegressor` defaults to a clustered rule base
-  (`rule_base=None`); pass `rule_base="pfrb"` for the point-based one.
+- **The regressor is an extension.** The article only treats classification. Since 0.32.0
+  `DGALETSKRegressor` shares the point-based rule base, the spreads and the rule cap of the
+  classifier, starts each rule from the target of its sample, and no longer refits by
+  least squares by default, because that refit diverged on a point-based rule base. On
+  the Friedman-1 problem it selects informative features but stays below ridge regression
+  (R² about 0.50 against 0.62); treat it as experimental.
 
 ## Implementation notes
 

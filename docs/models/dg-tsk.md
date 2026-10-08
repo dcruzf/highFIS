@@ -126,12 +126,24 @@ Remaining differences:
   the gates with zero-order consequents and converts to first order before fine-tuning.
 - **Precision.** The reference code computes in double precision; highFIS uses the PyTorch
   default, single precision, unless `torch.set_default_dtype(torch.float64)` is set.
-- **Counts of features and rules.** With the defaults, the numbers of selected features and
-  of extracted rules are close to the article's but not equal (for example about 5 features
-  on Wine against 8.0, and about 6 rules on Iris against 3.1).
-- **Wdbc is not reproduced.** On Wdbc (569 samples, 30 features) the defaults give about 92%
-  with 2 features, against 96.2% with 5.0 features in the article: the feature gates prune
-  more than they should. The zero-order gate phase above is the main suspect.
+- **The tables of the article against the authors' code.** On the same folds, highFIS and
+  the reference implementation agree, and both differ from the article in the same way:
+
+    | Dataset | Article | Reference code | highFIS |
+    |---|---|---|---|
+    | Iris | 96.8 / 2.3 / 3.1 | 94.3 / 2.0 / 5.8 | 95.0 / 2.0 / 5.8 |
+    | Wine | 98.3 / 8.0 / 3.0 | 95.5 / 5.0 / 3.0 | 97.2 / 5.0 / 3.0 |
+    | Wdbc | 96.2 / 5.0 / 2.2 | 91.6 / 2.1 / 2.1 | 91.2 / 2.0 / 2.5 |
+
+    Accuracy in percent / selected features / extracted rules, ten stratified folds
+    repeated twice, inputs scaled to `[0, 1]`. On Wine the two implementations select the
+    same features in all 20 folds. The article used its own copies of the data and its own
+    splits, which is the likely source of the difference.
+- **The regressor is an extension.** The article only treats classification.
+  `DGTSKRegressor` uses the same rule base, starts each rule from the target of its sample
+  and keeps the rules that pass the threshold, which is usually one or two. On the
+  Friedman-1 problem it matches ridge regression (R² about 0.63) while using only
+  informative features; it has no published result to be checked against.
 
 ## Implementation notes
 
