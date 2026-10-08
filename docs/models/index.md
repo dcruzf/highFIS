@@ -76,6 +76,29 @@ article and what still differs.
 
 ---
 
+## Changes in 0.33.0 for HDFIS
+
+Version 0.33.0 makes HDFIS-prod and HDFIS-min follow their source article. On the same
+random splits they now give the accuracies of the authors' code.
+
+| What changed | To get the earlier behaviour |
+|---|---|
+| Defaults `mf_init="grid"`, `n_mfs=3` | `mf_init="kmeans", n_mfs=5` |
+| With the grid, centres over the range of each feature without padding, spreads of 1, one rule per fuzzy set | pass `input_configs` |
+| Consequents start at zero | not available |
+| Classifier loss of the article | pass a trainer with `loss=torch.nn.MSELoss()` |
+| The product of HDFIS-prod is computed in the logarithmic domain | not available (the earlier computation underflowed in single precision) |
+
+One change concerns every family that normalizes the firing strengths by their sum (TSK,
+DombiTSK, ADMTSK, AYATSK, ADATSK, ADPTSK, HDFIS-min, MHTSK). The firing strengths were
+bounded below by the machine epsilon (about `1.2e-7` in single precision) before the
+division, so a sample on which every rule fired less than that received the same weight
+for every rule. The bound is now the smallest positive number of the floating-point
+format (about `1.2e-38`), and the ratios between small firing strengths are kept.
+Results change only for samples far from every rule.
+
+---
+
 ## 1. Baselines
 
 These models implement standard, textbook fuzzy logic structures. They are ideal as simple baselines for low-dimensional problems.

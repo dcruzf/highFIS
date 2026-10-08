@@ -36,16 +36,21 @@ class SoftmaxLogDefuzzifier(nn.Module):
     :func:`torch.softmax`.
     """
 
-    def __init__(self, eps: float | None = None) -> None:
+    def __init__(self, eps: float | None = None, scale: float = 1.0) -> None:
         """Initialize with optional numeric stability floor.
 
         Args:
             eps: Small positive constant used to clamp weights before
                 taking the logarithm.  ``None`` infers it from
                 :func:`torch.finfo` for the input dtype at call time.
+            scale: Factor applied to the logarithm before the softmax, so the
+                result is ``w**scale / sum(w**scale)``. With the geometric mean of
+                ``D`` membership degrees as ``w`` and ``scale=D`` this is the
+                normalized product of the degrees, computed without underflow.
         """
         super().__init__()
         self.eps = eps
+        self.scale = float(scale)
 
     def forward(self, w: Tensor) -> Tensor:
         """Normalize firing strengths via softmax(log(w)).
@@ -65,7 +70,7 @@ class SoftmaxLogDefuzzifier(nn.Module):
             raise ValueError(f"expected w with 2 dims, got shape {tuple(w.shape)}")
         eps = self.eps if self.eps is not None else torch.finfo(w.dtype).eps
         log_w = w.clamp(min=eps).log()
-        return torch.softmax(log_w, dim=1)
+        return torch.softmax(self.scale * log_w, dim=1)
 
 
 class SumBasedDefuzzifier(nn.Module):
@@ -76,8 +81,10 @@ class SumBasedDefuzzifier(nn.Module):
 
         Args:
             eps: Small positive constant used to clamp weights before
-                division.  ``None`` infers it from :func:`torch.finfo`
-                for the input dtype at call time.
+                division.  ``None`` uses the smallest positive number of the
+                input dtype, so that firing strengths keep their ratios down
+                to the limit of the floating-point format; only a sample on
+                which every rule is exactly zero gets uniform weights.
         """
         super().__init__()
         self.eps = eps
@@ -98,7 +105,7 @@ class SumBasedDefuzzifier(nn.Module):
         """
         if w.ndim != 2:
             raise ValueError(f"expected w with 2 dims, got shape {tuple(w.shape)}")
-        eps = self.eps if self.eps is not None else torch.finfo(w.dtype).eps
+        eps = self.eps if self.eps is not None else torch.finfo(w.dtype).tiny
         w = w.clamp(min=eps)
         return w / w.sum(dim=1, keepdim=True)
 

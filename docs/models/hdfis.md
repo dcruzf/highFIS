@@ -123,20 +123,43 @@ $$
 
 ## Implementation notes
 
-### Strict paper mode
+### Fidelity to the source article
 
-highFIS provides an opt-in strict mode on HDFIS estimators:
+Since version 0.33.0 the defaults of the four HDFIS estimators are the settings of the
+article, and on the same random splits they give the accuracies of the authors' code
+(see the [reproduction](../reproductions/hdfis.md)).
 
-- In this mode, the estimator enforces the paper protocol defaults used in
-  HDFIS_2023 experiments:
-  - `mf_init="grid"`
-  - `rule_base="coco"`
-  - `n_mfs=3` (three rules)
-  - `batch_size=64` (the default via `batch_size="auto"`, matching the paper)
-- For HDFIS-prod, strict mode also enables the paper-form DMF equation
-  denominator (`D^rho + sigma^2`) and zero consequent initialization.
-- For HDFIS-min, strict mode enables zero consequent initialization while
-  keeping antecedent freezing.
+| Point | Article | highFIS |
+|---|---|---|
+| Fuzzy sets | Partition, not clustering: centres at $(r-1)/(R-1)$ on inputs in $[0, 1]$, spreads of 1 | `mf_init="grid"` (default): centres evenly spaced over the range of each feature, spreads of 1 |
+| Rules | Three, one per fuzzy set | `n_mfs=3`, compactly combined rule base (defaults) |
+| Membership of HDFIS-prod | $\exp\big(-(x-m)^2 / (D^{\tilde\rho} + \sigma^2)\big)$, $\xi = 745$ | `DimensionDependentGaussianMF`, `xi=745.0` |
+| Firing strength of HDFIS-prod | Product, in double precision | Product computed in the logarithmic domain, exact in single and double precision |
+| HDFIS-min | Minimum T-norm, antecedents fixed, consequents trained | Same |
+| Consequents | Start at zero | Same |
+| Loss | Squared error on one-hot targets, summed over the classes and halved (Eq. 14) | `highfis.losses.HalfSumSquaredErrorLoss` |
+| Optimizer | Adam, batches of 64, 100 epochs | AdamW with a weight decay of `1e-8`, `batch_size="auto"` (64), `epochs=100` |
+
+Remaining differences:
+
+- **Learning rate.** The article does not state it. The authors' code uses 0.001;
+  the default here is 0.01, which gives the same or a better accuracy on the datasets
+  tried and is needed on small low-dimensional data (with 0.001, 100 epochs are too few
+  on Iris).
+- **Precision.** The bound $\xi = 745$ of the article is the limit of double precision.
+  highFIS trains in single precision by default and obtains the normalized product from
+  the geometric mean of the membership degrees, $\operatorname{softmax}(D \log \bar\mu)$,
+  which is the same quantity without underflow. Before 0.33.0 the product underflowed
+  in single precision and every rule received the same weight, so that HDFIS-prod was a
+  linear model on high-dimensional data.
+- **Membership of HDFIS-min.** The article reports HDFIS-min with the conventional and
+  with the dimension-dependent membership function; highFIS implements the conventional
+  one.
+- **Consequents by least squares.** The article also reports both models with the
+  consequents estimated by least squares; highFIS trains them by gradient.
+- **Low-dimensional data.** The article designs HDFIS for more than 1000 features.
+  The estimators work on fewer, but a family for low-dimensional data is a better
+  choice there. `mf_init="kmeans"` remains available.
 
 ### Model classes
 
@@ -145,8 +168,9 @@ highFIS provides an opt-in strict mode on HDFIS estimators:
   functions for high-dimensional inference.
 - `HDFISMinClassifierModel` and `HDFISMinRegressorModel` are concrete model classes
   that use minimum aggregation and freeze antecedent membership parameters.
-- All HDFIS classes use first-order TSK consequents and
-  `highfis.defuzzifiers.SumBasedDefuzzifier`.
+- All HDFIS classes use first-order TSK consequents. HDFIS-min normalizes with
+  `highfis.defuzzifiers.SumBasedDefuzzifier`; HDFIS-prod uses the geometric mean and
+  `SoftmaxLogDefuzzifier(scale=D)`, which is the normalized product.
 
 ### Estimator wrappers
 
@@ -185,13 +209,11 @@ highFIS provides an opt-in strict mode on HDFIS estimators:
 
 ## Alignment with the paper
 
-- Core architecture alignment (always):
-  - HDFIS-prod uses product aggregation + dimension-dependent Gaussian MFs.
-  - HDFIS-min uses minimum aggregation + frozen antecedents.
-  - Both use first-order TSK consequents and sum-based normalization.
-- Experimental-protocol alignment (strict):
-- Non-strict defaults are practical library defaults and are not intended to
-  be an exact replication of the paper protocol.
+- HDFIS-prod uses product aggregation with dimension-dependent Gaussian MFs.
+- HDFIS-min uses minimum aggregation with frozen antecedents.
+- Both use first-order TSK consequents and normalized firing strengths.
+- The defaults are the experimental settings of the article; see "Fidelity to the
+  source article" above.
 
 ## Notes
 
@@ -199,5 +221,5 @@ highFIS provides an opt-in strict mode on HDFIS estimators:
   **HDFIS-min**.
 - HDFIS-min in highFIS uses frozen antecedents to avoid nondifferentiability
   and keep training focused on consequent parameters.
-- **Loss function**: both classifiers default to `MSELoss` on one-hot targets,
-  matching the paper (eq. 14); regression uses `MSELoss` on scalar targets.
+- **Loss function**: both classifiers default to `HalfSumSquaredErrorLoss` on one-hot
+  targets, Eq. (14) of the article; regression uses `MSELoss` on scalar targets.

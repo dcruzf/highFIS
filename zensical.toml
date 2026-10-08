@@ -83,6 +83,7 @@ nav = [
     { "Reproductions" = [
         "reproductions/index.md",
         "reproductions/htsk.md",
+        "reproductions/hdfis.md",
      ] },
     { "API Reference" = [
         "api/index.md",
