@@ -1008,19 +1008,15 @@ class _BaseTSKEstimator(BaseEstimator):
         among the rules. When they stop depending on the sample the rules no longer
         partition the input space, and the model is a single linear model.
 
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Data to evaluate, prepared as the data passed to ``fit``.
-        dominance : float, default=0.99
-            A sample is dominated when one rule has at least this weight.
-        never : float, default=1e-6
-            A rule never fires when its weight stays below this value on every sample.
+        Args:
+            X: Data to evaluate, of shape ``(n_samples, n_features)``, prepared as the
+                data passed to ``fit``.
+            dominance: A sample is dominated when one rule has at least this weight.
+            never: A rule never fires when its weight stays below this value on every
+                sample.
 
         Returns:
-        -------
-        dict
-            ``n_samples`` and ``n_rules``;
+            A dictionary with ``n_samples`` and ``n_rules``;
             ``uniform_fraction``, the fraction of samples on which every rule has the
             same weight, which is what the underflow of a product of many membership
             degrees produces;
@@ -1041,6 +1037,7 @@ class _BaseTSKEstimator(BaseEstimator):
         try:
             weights = self.rule_activation(x_arr[: _diagnostics._FIT_CHECK_ROWS])
         except Exception:
+            # A diagnostic must never make ``fit`` fail.
             return
         if weights.ndim == 2 and weights.size:
             _diagnostics.warn_if_degenerate(_diagnostics.firing_diagnostics(weights))
