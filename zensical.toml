@@ -80,6 +80,10 @@ nav = [
         "cookbook/persistence-and-cache.md",
         "cookbook/interpretability.md",
      ] },
+    { "Reproductions" = [
+        "reproductions/index.md",
+        "reproductions/htsk.md",
+     ] },
     { "API Reference" = [
         "api/index.md",
         "api/estimators.md",
