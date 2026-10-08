@@ -60,6 +60,7 @@ from .gates import (
 )
 from .memberships import (
     ADATSKGaussianMF,
+    CompositeExponentialMF,
     ConstantMF,
     DimensionDependentGaussianMF,
     GaussianMF,
@@ -98,6 +99,12 @@ def _kernel_gaussian_pi(x: Tensor, mean: Tensor, raw_sigma: Tensor, consts: Mapp
     return torch.exp(-consts["k"] * inner)
 
 
+def _kernel_composite_exponential(x: Tensor, mean: Tensor, raw_sigma: Tensor, consts: Mapping[str, Tensor]) -> Tensor:
+    sigma = F.softplus(raw_sigma) + consts["eps"]
+    exponent = -0.5 * ((x - mean) / sigma).square()
+    return torch.pow(consts["k"], -1.0 + torch.exp(exponent))
+
+
 def _kernel_constant(x: Tensor, mean: Tensor | None, raw_sigma: Tensor | None, consts: Mapping[str, Tensor]) -> Tensor:
     return consts["value"].expand_as(x).clone()
 
@@ -118,6 +125,7 @@ _VECTORIZED_MF_KERNELS: dict[type, _MFKernel] = cast(
         ADATSKGaussianMF: _kernel_adatsk_gaussian,
         DimensionDependentGaussianMF: _kernel_dimension_dependent_gaussian,
         GaussianPiMF: _kernel_gaussian_pi,
+        CompositeExponentialMF: _kernel_composite_exponential,
         ConstantMF: _kernel_constant,
     },
 )
@@ -151,6 +159,10 @@ def _generate_en_frb(s: int, d: int) -> list[tuple[int, ...]]:
                 rules.append(plus_t)
 
     return rules
+
+
+#: Name of the trainable location parameter of the vectorized classes that do not call it ``mean``.
+_LOCATION_PARAMETER: dict[type, str] = {CompositeExponentialMF: "center"}
 
 
 class MembershipLayer(nn.Module):
@@ -226,7 +238,7 @@ class MembershipLayer(nn.Module):
         consts: dict[str, Tensor] = {"eps": torch.tensor([mf.eps for mf in flat_mfs])}
         if mf_type is DimensionDependentGaussianMF:
             consts["scale"] = torch.tensor([cast(Any, mf).scale for mf in flat_mfs])
-        elif mf_type is GaussianPiMF:
+        elif mf_type in (GaussianPiMF, CompositeExponentialMF):
             consts["k"] = torch.tensor([cast(Any, mf).k for mf in flat_mfs])
         elif mf_type is ConstantMF:
             consts["value"] = torch.tensor([cast(Any, mf).value for mf in flat_mfs])
@@ -240,19 +252,20 @@ class MembershipLayer(nn.Module):
             return
 
         with torch.no_grad():
-            mean = torch.stack([cast(Tensor, mf.mean).detach() for mf in flat_mfs]).clone()
+            location = _LOCATION_PARAMETER.get(mf_type, "mean")
+            mean = torch.stack([cast(Tensor, getattr(mf, location)).detach() for mf in flat_mfs]).clone()
             raw_sigma = torch.stack([cast(Tensor, mf.raw_sigma).detach() for mf in flat_mfs]).clone()
         self._flat_mean = nn.Parameter(mean)
         self._flat_raw_sigma = nn.Parameter(raw_sigma)
         for i, mf in enumerate(flat_mfs):
-            mf._parameters.pop("mean", None)
+            mf._parameters.pop(location, None)
             mf._parameters.pop("raw_sigma", None)
-            mf.__dict__.pop("mean", None)
+            mf.__dict__.pop(location, None)
             mf.__dict__.pop("raw_sigma", None)
             # Resolved lazily by MembershipFunction.__getattr__ so the
             # values stay current across optimizer steps and .to() moves.
             mf.__dict__["_vectorized_binding"] = {
-                "mean": (self, "_flat_mean", i),
+                location: (self, "_flat_mean", i),
                 "raw_sigma": (self, "_flat_raw_sigma", i),
             }
 
@@ -272,11 +285,12 @@ class MembershipLayer(nn.Module):
         """
         if self._flat_mean is None or f"{prefix}_flat_mean" in state_dict:
             return
+        location = _LOCATION_PARAMETER.get(type(cast("list[MembershipFunction]", self._flat_mfs)[0]), "mean")
         means: list[Tensor] = []
         raws: list[Tensor] = []
         for name in self.input_names:
             for i in range(len(cast(nn.ModuleList, self.input_mfs[name]))):
-                mean_key = f"{prefix}input_mfs.{name}.{i}.mean"
+                mean_key = f"{prefix}input_mfs.{name}.{i}.{location}"
                 raw_key = f"{prefix}input_mfs.{name}.{i}.raw_sigma"
                 if mean_key not in state_dict or raw_key not in state_dict:
                     return
@@ -284,7 +298,7 @@ class MembershipLayer(nn.Module):
                 raws.append(state_dict[raw_key].reshape(()))
         for name in self.input_names:
             for i in range(len(cast(nn.ModuleList, self.input_mfs[name]))):
-                state_dict.pop(f"{prefix}input_mfs.{name}.{i}.mean")
+                state_dict.pop(f"{prefix}input_mfs.{name}.{i}.{location}")
                 state_dict.pop(f"{prefix}input_mfs.{name}.{i}.raw_sigma")
         state_dict[f"{prefix}_flat_mean"] = torch.stack(means)
         state_dict[f"{prefix}_flat_raw_sigma"] = torch.stack(raws)
