@@ -157,12 +157,46 @@ claims are:
 In highFIS, this is implemented by `AdaSoftminRuleLayer` for the adaptive
 antecedent aggregation and by gated consequent layers for both classification
 and regression. The gate function used in the paper,
-$M(u) = u\\sqrt{e^{1 - u^2}}$, is the same gate activation function used in
-`GatedClassificationConsequentLayer` and `GatedRegressionConsequentLayer`.
+$M(u) = u\sqrt{e^{1 - u^2}}$, is the default gate of the FSRE-ADATSK models
+(`gate_fn="gate4"`).
 
 The highFIS implementation therefore matches the paper's distinction between
 ADATSK as the base model and FSRE-ADATSK as the three-phase extension with
 feature selection, rule extraction, and En-FRB support.
+
+## Fidelity to the source article
+
+Since version 0.32.0 the defaults of `FSREADATSKClassifier` follow the procedure of the
+article. Before that version the defaults reached 47% on Iris and 40% on Wine, at chance
+level; they now reach about 89% on Iris and 98% on Wine, with 6.4 features and 6.1 rules
+on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there).
+
+| Point | Article | highFIS |
+|---|---|---|
+| Fuzzy sets | Centres evenly spaced between the minimum and the maximum of each feature | `mf_init="grid"`, `rule_base="coco"`, `n_mfs=3` (defaults) |
+| Phases | Feature selection on the compact rule base, rule extraction on the enhanced one, then fine-tuning without gates | Same. `use_en_frb=True` also runs feature selection on the enhanced rule base |
+| Gate function | $M(\lambda) = \lambda\sqrt{e^{1-\lambda^2}}$, parameters initialized to 0.01 | `gate_fn="gate4"` (default); `gate_fn=None` gives the gate used before 0.32.0 |
+| Rule gates | Trained in the rule-extraction phase | Same. Before 0.32.0 they were left out of that phase, so three arbitrary rules were kept |
+| Loss | Squared error summed over the classes, averaged over the samples | `highfis.losses.SumSquaredErrorLoss` |
+| Optimizer | Full-batch gradient descent | Same |
+
+Remaining differences:
+
+- **Learning rate and epochs.** The article does not state the values of its main
+  experiments. The defaults (`learning_rate=0.05`, 1000 epochs per phase) were chosen by
+  measurement on Iris and Wine.
+- **Batch normalization.** The article has none; highFIS normalizes the consequent inputs
+  by default (`consequent_batch_norm=True`), which gave better results on both datasets.
+- **Number of fuzzy sets.** The article uses different numbers in the feature-selection
+  and rule-extraction phases for high-dimensional data (10 and 5); highFIS has one `n_mfs`
+  for every phase.
+- **Thresholds.** The article uses other threshold coefficients above 1000 features (0.4
+  and 0.5); highFIS keeps 0.5 and 0.3 unless `zeta_lambda` and `zeta_theta` are passed.
+- **Iris** is below the article (about 89% against 96.5%).
+- **High-dimensional data** (for example SRBCT) has not been measured with these defaults.
+- **The regressor is an extension.** The article only treats classification.
+  `FSREADATSKRegressor` shares the defaults above but does not reach the accuracy of a
+  linear model on the low-dimensional problems tried; treat it as experimental.
 
 ## Code Correspondence
 
@@ -206,17 +240,9 @@ feature selection, rule extraction, and En-FRB support.
 ```python
 from highfis import FSREADATSKClassifier
 
-clf = FSREADATSKClassifier(
-    n_mfs=4,
-    mf_init="kmeans",
-    lambda_init=1.0,
-    fs_epochs=100,
-    re_epochs=100,
-    finetune_epochs=50,
-    learning_rate=1e-3,
-    random_state=0,
-    use_en_frb=True,
-)
+# The defaults follow the article: evenly spaced sets, three per feature, and three
+# phases of 1000 full-batch epochs each. Inputs should be scaled to [0, 1].
+clf = FSREADATSKClassifier(random_state=0)
 clf.fit(X_train, y_train)
 print(f"Accuracy: {clf.score(X_test, y_test):.4f}")
 ```
