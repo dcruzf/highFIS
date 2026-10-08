@@ -85,6 +85,7 @@ nav = [
         "reproductions/htsk.md",
         "reproductions/hdfis.md",
         "reproductions/admtsk.md",
+        "reproductions/ayatsk.md",
      ] },
     { "API Reference" = [
         "api/index.md",
