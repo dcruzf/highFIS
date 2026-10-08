@@ -356,6 +356,36 @@
       
         
       
+    
+    
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../reproductions/" class="md-tabs__link">
+          
+  
+  Reproductions
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+      
+      
+        
+          
+        
+      
+        
+      
         
       
         
@@ -1088,6 +1118,67 @@
       
         
       
+    
+    
+    
+      
+      
+        
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+  
+  
+    <a href="../../reproductions/" class="md-nav__link">
+      
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  Reproductions
+
+    
+  </span>
+  
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
         
       
         
@@ -1337,6 +1428,7 @@
 </li>
 <li>
 <p><strong>Spreads</strong>: The spread of each fuzzy set is the standard deviation of its feature inside the cluster, multiplied by <code>sigma_scale</code> and by a random factor drawn from <span class="arithmatex">\(\mathcal{N}(1, 0.2)\)</span>. The factor follows Cui et al. (2021), who draw the spread from <span class="arithmatex">\(\mathcal{N}(h, 0.2)\)</span> with <span class="arithmatex">\(h = 1\)</span> on standardized inputs. Before version 0.32.0 the noise had a fixed standard deviation of 0.2 whatever the spread; on inputs scaled to <span class="arithmatex">\([0, 1]\)</span> this left between a sixth and a third of the sets with almost no width.</p>
+<p><code>TSK</code>, <code>HTSK</code> and <code>LogTSK</code> also accept <code>sigma_init="constant"</code>, which draws every spread from <span class="arithmatex">\(\mathcal{N}(h, 0.2)\)</span> with <span class="arithmatex">\(h\)</span> given by <code>sigma_scale</code> (1 by default), exactly as in the article. Use it with standardized inputs; it is the setting of the <a href="../../reproductions/htsk/">HTSK reproduction</a>.</p>
 </li>
 </ul>
 <h3 id="built-in-clustering-algorithms">Built-in Clustering Algorithms</h3>
