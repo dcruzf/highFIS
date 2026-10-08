@@ -15,6 +15,7 @@ print their table next to the values of the article.
 | Cui, Wu and Xu (2021) | TSK, LogTSK, HTSK | Vowel, Biodeg | [HTSK](htsk.md) |
 | Xue, Wang, Zhang and Pal (2024) | HDFIS-prod, HDFIS-min | Colon, Leukemia | [HDFIS](hdfis.md) |
 | Xue, Hu, Wang and Ablameyko (2025) | ADMTSK, DombiTSK | Colon, Leukemia | [ADMTSK](admtsk.md) |
+| Xue, Yang and Wang (2025) | AYATSK | Wine, Wdbc | [AYATSK](ayatsk.md) |
 
 How to read the comparisons:
 

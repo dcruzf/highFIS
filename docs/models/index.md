@@ -97,6 +97,11 @@ for every rule. The bound is now the smallest positive number of the floating-po
 format (about `1.2e-38`), and the ratios between small firing strengths are kept.
 Results change only for samples far from every rule.
 
+Two changes in 0.33.0 concern AYATSK. The default number of epochs is 300, the value of
+the article for full-batch training (`epochs=200` gives the earlier behaviour), and its
+membership degrees are computed in one batched operation, which makes fitting about ten
+times faster on high-dimensional data without changing the result.
+
 ---
 
 ## 1. Baselines

@@ -78,7 +78,7 @@ class AYATSKClassifier(_BaseClassifierEstimator):
         mf_init: str = "grid",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 200,
+        epochs: int = 300,
         learning_rate: float = 1e-3,
         verbose: bool | int = False,
         rule_base: str | None = "coco",
@@ -107,7 +107,8 @@ class AYATSKClassifier(_BaseClassifierEstimator):
                 to ``"grid"`` for the paper-style CEMF initialization.
             sigma_scale: Sigma scale factor for non-default initialisation.
             random_state: Seed for clustering and weight initialisation.
-            epochs: Maximum training epochs (default ``200``).
+            epochs: Maximum training epochs (default ``300``, the value of the article for
+                full-batch training).
             learning_rate: Adam learning rate (default ``0.001``).
             verbose: Print per-epoch progress.
             rule_base: Rule-base strategy. Defaults to ``"coco"``.
@@ -250,7 +251,7 @@ class AYATSKRegressor(_BaseRegressorEstimator):
         mf_init: str = "grid",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 200,
+        epochs: int = 300,
         learning_rate: float = 1e-3,
         verbose: bool | int = False,
         rule_base: str | None = "coco",
@@ -278,7 +279,8 @@ class AYATSKRegressor(_BaseRegressorEstimator):
                 to ``"grid"`` for the paper-style CEMF initialization.
             sigma_scale: Sigma scale factor for non-default initialisation.
             random_state: Seed for clustering and weight initialisation.
-            epochs: Maximum training epochs (default ``200``).
+            epochs: Maximum training epochs (default ``300``, the value of the article for
+                full-batch training).
             learning_rate: Adam learning rate (default ``0.001``).
             verbose: Print per-epoch progress.
             rule_base: Rule-base strategy. Defaults to ``"coco"``.

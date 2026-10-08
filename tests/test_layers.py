@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 
 import pytest
 import torch
-from torch import nn
+from torch import Tensor, nn
 
 from highfis.layers import (
     AdaptiveDombiRuleLayer,
@@ -724,3 +724,45 @@ def test_cartesian_rule_base_at_the_limit_is_still_built() -> None:
     layer = RuleLayer(["x1", "x2", "x3"], [4, 5, 6], rule_base="cartesian")
 
     assert layer.n_rules == 120
+
+
+def test_composite_exponential_sets_are_vectorized() -> None:
+    """The membership function of AYATSK goes through the batched kernel, with the same values."""
+    from highfis.memberships import CompositeExponentialMF
+
+    torch.manual_seed(0)
+    spec = {f"x{i}": [(0.0, 1.0), (0.5, 0.7), (1.0, 1.3)] for i in range(4)}
+    layer = MembershipLayer(
+        {name: [CompositeExponentialMF(center=c, sigma=s, k=5.0) for c, s in sets] for name, sets in spec.items()}
+    )
+    assert layer._fast_kernel is not None
+    assert sorted(name for name, _ in layer.named_parameters()) == ["_flat_mean", "_flat_raw_sigma"]
+
+    x = torch.rand(6, 4)
+    out = layer(x)
+    for i, (name, sets) in enumerate(spec.items()):
+        one_by_one = torch.stack([CompositeExponentialMF(center=c, sigma=s, k=5.0)(x[:, i]) for c, s in sets], dim=-1)
+        assert torch.allclose(out[name], one_by_one, atol=1e-6)
+    # Introspection still reads the parameters under the names of the class.
+    params = cast(Any, layer.input_mfs["x0"])[1].inspect_params()
+    assert params["center"] == pytest.approx(0.5)
+    assert params["sigma"] == pytest.approx(0.7, abs=1e-5)
+    assert params["k"] == 5.0
+
+
+def test_composite_exponential_layer_loads_a_checkpoint_with_one_entry_per_set() -> None:
+    """Checkpoints written before the sets were vectorized keep loading."""
+    from highfis.memberships import CompositeExponentialMF
+
+    def build(centre: float) -> MembershipLayer:
+        return MembershipLayer({"x0": [CompositeExponentialMF(center=centre, sigma=1.0, k=10.0) for _ in range(2)]})
+
+    source = build(0.25)
+    legacy = {}
+    for i in range(2):
+        legacy[f"input_mfs.x0.{i}.center"] = source._flat_mean.detach()[i].clone()  # type: ignore[index]
+        legacy[f"input_mfs.x0.{i}.raw_sigma"] = source._flat_raw_sigma.detach()[i].clone()  # type: ignore[index]
+
+    target = build(0.9)
+    target.load_state_dict(legacy)
+    assert torch.allclose(cast(Tensor, target._flat_mean), torch.tensor([0.25, 0.25]))
