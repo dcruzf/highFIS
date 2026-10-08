@@ -382,3 +382,50 @@ def test_fsre_expansion_switches_to_rule_extraction_mode() -> None:
     model.expand_to_en_frb()
 
     assert model.consequent_layer.mode == "re"
+
+
+# --- regressors of the gated families ----------------------------------------------------
+
+
+@pytest.mark.parametrize("cls", [DGTSKRegressor, DGALETSKRegressor])
+def test_regressor_rules_start_from_the_targets_of_their_points(cls: Any) -> None:
+    """The classifiers start each rule from the label of its sample; the regressors did not."""
+    x, _, y_reg = _data(n=30)
+    est = cls(dg_epochs=0, finetune_epochs=0, random_state=0)
+    input_mfs, _, rule_base = est._build_input_mfs(x)
+    model: Any = est._build_regressor_model(input_mfs, rule_base)
+
+    est._pre_train_hook(model, torch.as_tensor(x), torch.as_tensor(y_reg))
+
+    np.testing.assert_allclose(model.consequent_layer.bias.detach().numpy(), y_reg, rtol=1e-6)
+
+
+def test_dg_aletsk_regressor_shares_the_rule_base_of_its_classifier() -> None:
+    reg, clf = DGALETSKRegressor(), DGALETSKClassifier()
+
+    assert (reg.rule_base, reg.use_lse, reg.pfrb_spread) == (clf.rule_base, clf.use_lse, clf.pfrb_spread)
+    assert reg._effective_pfrb_max_rules(2000) == clf._effective_pfrb_max_rules(2000) == 100
+    assert reg._effective_pfrb_max_rules(20_000) == 50
+    assert DGALETSKRegressor(pfrb_max_rules=30)._effective_pfrb_max_rules(2000) == 30
+
+
+def test_dg_tsk_regressor_on_friedman_end_to_end() -> None:
+    """Friedman-1: ten features, of which the first five carry the signal.
+
+    The source articles only treat classification, so there is no published value. The
+    bounds say what the regressor must at least do: stay near a linear model (ridge
+    regression reaches about 0.62 here) and select informative features.
+    """
+    from sklearn.datasets import make_friedman1
+
+    x, y = make_friedman1(n_samples=300, n_features=10, noise=1.0, random_state=0)
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=0)
+    xs, ys = MinMaxScaler().fit(x_train), MinMaxScaler().fit(y_train.reshape(-1, 1))
+
+    reg = DGTSKRegressor(random_state=0).fit(xs.transform(x_train), ys.transform(y_train.reshape(-1, 1)).ravel())
+
+    score = reg.score(xs.transform(x_test), ys.transform(y_test.reshape(-1, 1)).ravel())
+    selected = reg.selected_features_
+    assert score >= 0.5
+    assert len(selected) >= 2
+    assert all(feature < 5 for feature in selected)

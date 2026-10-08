@@ -499,6 +499,30 @@ class DGTSKRegressorModel(BaseTSKRegressorModel):
         new_consequent.theta_gates.data.copy_(previous.theta_gates.data)
         self.consequent_layer = new_consequent
 
+    def init_consequents_from_labels(self, y: Tensor) -> None:
+        """Initialise the constant term of each rule with the target of its sample.
+
+        The regression counterpart of the label initialisation of the classifiers: in a
+        point-based rule base, rule *r* is centred on a training sample and starts by
+        predicting the target of that sample.
+
+        Args:
+            y: Targets of shape ``(N,)`` of the samples used to build the rule base, in rule
+                order. Only the first ``n_rules`` are used.
+
+        Raises:
+            ValueError: If the model is not in zero-order consequent mode.
+        """
+        if not isinstance(self.consequent_layer, GatedRegressionZeroOrderConsequentLayer):
+            raise ValueError(
+                "init_consequents_from_labels() requires a zero-order consequent layer; "
+                "call before convert_to_first_order()"
+            )
+        n = min(len(y), self.n_rules)
+        bias = self.consequent_layer.bias
+        with torch.no_grad():
+            bias[:n] = y[:n].to(device=bias.device, dtype=bias.dtype)
+
     def get_feature_gate_values(self) -> Tensor:
         """Return normalized DG-TSK feature gate activations from lambda values."""
         return self.rule_layer.gate_fn(self.rule_layer.lambda_gates)

@@ -31,7 +31,37 @@ def _dg_aletsk_paper_batch_size(n_samples: int) -> int:
     return max(1, round(0.1 * float(n_samples)))
 
 
-class DGALETSKClassifier(FSREADATSKClassifier):
+class _PointRuleCap:
+    """Default cap on the rules of a point-based rule base, from the DG-ALETSK article.
+
+    Section IV: 100 rules, and 50 for data with ten thousand features or more.
+    """
+
+    rule_base: str | None
+    pfrb_max_rules: int | None
+
+    @staticmethod
+    def _resolve_default_pfrb_max_rules(n_features: int) -> int:
+        return 50 if int(n_features) >= 10_000 else 100
+
+    def _build_input_mfs(self, x_arr: np.ndarray):
+        # Delegate to base behavior, but enforce paper-style P-FRB cap when unset.
+        if self.rule_base == "pfrb" and self.pfrb_max_rules is None:
+            original = self.pfrb_max_rules
+            self.pfrb_max_rules = self._resolve_default_pfrb_max_rules(int(x_arr.shape[1]))
+            try:
+                return super()._build_input_mfs(x_arr)
+            finally:
+                self.pfrb_max_rules = original
+        return super()._build_input_mfs(x_arr)
+
+    def _effective_pfrb_max_rules(self, n_features: int) -> int | None:
+        if self.pfrb_max_rules is None:
+            return self._resolve_default_pfrb_max_rules(n_features)
+        return self.pfrb_max_rules
+
+
+class DGALETSKClassifier(_PointRuleCap, FSREADATSKClassifier):
     """DG-ALETSK classifier with ALE-softmin antecedent and double-group gates.
 
     DG-ALETSK extends FSRE-ADATSK by replacing the adaptive softmin with the
@@ -219,26 +249,6 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         """DG-ALETSK_2023: 10% of the training samples."""
         return _dg_aletsk_paper_batch_size(n_samples)
 
-    @staticmethod
-    def _resolve_default_pfrb_max_rules(n_features: int) -> int:
-        return 50 if int(n_features) >= 10_000 else 100
-
-    def _build_input_mfs(self, x_arr: np.ndarray):
-        # Delegate to base behavior, but enforce paper-style P-FRB cap when unset.
-        if self.rule_base == "pfrb" and self.pfrb_max_rules is None:
-            original = self.pfrb_max_rules
-            self.pfrb_max_rules = self._resolve_default_pfrb_max_rules(int(x_arr.shape[1]))
-            try:
-                return super()._build_input_mfs(x_arr)
-            finally:
-                self.pfrb_max_rules = original
-        return super()._build_input_mfs(x_arr)
-
-    def _effective_pfrb_max_rules(self, n_features: int) -> int | None:
-        if self.pfrb_max_rules is None:
-            return self._resolve_default_pfrb_max_rules(n_features)
-        return self.pfrb_max_rules
-
     def _pre_train_hook(self, model: BaseTSK, x_t: Tensor, y_t: Tensor) -> None:
         if self.rule_base == "pfrb" and hasattr(model, "init_consequents_from_labels"):
             cast(PFRBModelProtocol, model).init_consequents_from_labels(self._pfrb_aligned_labels(x_t, y_t))
@@ -314,7 +324,7 @@ class DGALETSKClassifier(FSREADATSKClassifier):
         return cast(DGALETSKClassifier, super().fit(x, y, x_val=x_val, y_val=y_val, metrics=metrics))
 
 
-class DGALETSKRegressor(FSREADATSKRegressor):
+class DGALETSKRegressor(_PointRuleCap, FSREADATSKRegressor):
     """DG-ALETSK regressor with ALE-softmin antecedent and double-group gates.
 
     DG-ALETSK extends FSRE-ADATSK by replacing the adaptive softmin with the
@@ -353,18 +363,19 @@ class DGALETSKRegressor(FSREADATSKRegressor):
         finetune_epochs: int = 200,
         learning_rate: float = 1e-2,
         verbose: bool | int = False,
-        rule_base: str | None = None,
+        rule_base: str | None = "pfrb",
         batch_size: BatchSizeSpec = "auto",
         shuffle: bool = True,
         ur_weight: float = 0.0,
         ur_target: float | None = None,
         consequent_batch_norm: bool = False,
+        pfrb_max_rules: int | None = None,
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 1e-8,
         zeta_lambda: list[float] | None = None,
         zeta_theta: list[float] | None = None,
-        use_lse: bool = True,
+        use_lse: bool = False,
         trainer: BaseTrainer | None = None,
         optimizer_type: str = "adam",
         structural_pruning: bool = True,
@@ -397,7 +408,11 @@ class DGALETSKRegressor(FSREADATSKRegressor):
             finetune_epochs: Maximum epochs for phase 3 (fine-tune).
             learning_rate: Adam learning rate for both phases.
             verbose: Print per-epoch progress.
-            rule_base: ``"coco"`` or ``"cartesian"``.
+            rule_base: ``"pfrb"`` (default, the point-based rule base of the classifier),
+                ``"coco"`` or ``"cartesian"``.
+            pfrb_max_rules: Maximum number of rules of the point-based rule base. ``None``
+                (default) uses the cap of the source article: 100, or 50 with ten thousand
+                features or more.
             batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
                 10% of the training samples. An integer sets the size and
                 ``None`` trains on the full batch.
@@ -416,8 +431,9 @@ class DGALETSKRegressor(FSREADATSKRegressor):
             weight_decay: L2 weight decay for consequent parameters.
             zeta_lambda: Grid of λ-pruning threshold candidates.
             zeta_theta: Grid of θ-pruning threshold candidates.
-            use_lse: Refit first-order consequents via LSE during threshold
-                search (default ``True``).
+            use_lse: Refit first-order consequents by least squares during the threshold
+                search (default ``False``). With a point-based rule base the system is
+                ill-conditioned and the refit can diverge.
             trainer: Optional custom :class:`~highfis.optim.BaseTrainer`.
                 When ``None`` (default) a :class:`~highfis.optim.DGTrainer`
                 is built from this estimator's hyperparameters.
@@ -469,6 +485,7 @@ class DGALETSKRegressor(FSREADATSKRegressor):
         )
         self.dg_epochs = dg_epochs
         self.use_lse = use_lse
+        self.pfrb_max_rules = pfrb_max_rules
         self.pfrb_spread = pfrb_spread
         self.optimizer_type = optimizer_type
         self.freeze_antecedents_finetune = freeze_antecedents_finetune
@@ -476,6 +493,11 @@ class DGALETSKRegressor(FSREADATSKRegressor):
         self.structural_pruning = structural_pruning
         self.zeta_lambda: list[float] | None = zeta_lambda
         self.zeta_theta: list[float] | None = zeta_theta
+
+    def _pre_train_hook(self, model: BaseTSK, x_t: Tensor, y_t: Tensor) -> None:
+        """Start each rule of a point-based rule base from the target of its sample."""
+        if self.rule_base == "pfrb" and hasattr(model, "init_consequents_from_labels"):
+            cast(PFRBModelProtocol, model).init_consequents_from_labels(self._pfrb_aligned_labels(x_t, y_t))
 
     def _paper_batch_size(self, n_samples: int) -> int | None:
         """DG-ALETSK_2023: 10% of the training samples."""
