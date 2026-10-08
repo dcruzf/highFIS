@@ -92,10 +92,12 @@ class HDFISProdClassifier(_BaseClassifierEstimator):
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for reproducibility.
             epochs: Maximum training epochs (default ``100``).
-            learning_rate: Adam learning rate (default ``0.01``).
+            learning_rate: AdamW learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
-            batch_size: Mini-batch size. Defaults to ``512``.
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                a fixed batch of 64. An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -107,7 +109,10 @@ class HDFISProdClassifier(_BaseClassifierEstimator):
                 ``rule_base='pfrb'``. ``None`` uses all training samples.
             patience: Early-stopping patience (default ``20``).
                 Set to ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: Restore best validation weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             xi: Precision constant used to compute the DMF scale exponent
                 $\rho$ when *rho* is ``None``. Must be greater than 1.
@@ -247,10 +252,12 @@ class HDFISProdRegressor(_BaseRegressorEstimator):
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for reproducibility.
             epochs: Maximum training epochs (default ``100``).
-            learning_rate: Adam learning rate (default ``0.01``).
+            learning_rate: AdamW learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
-            batch_size: Mini-batch size. Defaults to ``512``.
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                a fixed batch of 64. An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -260,7 +267,10 @@ class HDFISProdRegressor(_BaseRegressorEstimator):
             consequent_batch_norm: Batch normalisation on consequent layers.
             patience: Early-stopping patience (default ``20``).
                 Set to ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: Restore best validation weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             xi: Precision constant used to compute the DMF scale exponent
                 $\rho$ when *rho* is ``None``. Must be greater than 1.
@@ -399,10 +409,12 @@ class HDFISMinClassifier(_BaseClassifierEstimator):
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for reproducibility.
             epochs: Maximum training epochs (default ``100``).
-            learning_rate: Adam learning rate (default ``0.01``).
+            learning_rate: AdamW learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
-            batch_size: Mini-batch size. Defaults to ``512``.
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                a fixed batch of 64. An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -414,7 +426,10 @@ class HDFISMinClassifier(_BaseClassifierEstimator):
                 ``rule_base='pfrb'``. ``None`` uses all training samples.
             patience: Early-stopping patience (default ``20``).
                 Set to ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: Restore best validation weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
@@ -532,10 +547,12 @@ class HDFISMinRegressor(_BaseRegressorEstimator):
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for reproducibility.
             epochs: Maximum training epochs (default ``100``).
-            learning_rate: Adam learning rate (default ``0.01``).
+            learning_rate: AdamW learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
-            batch_size: Mini-batch size. Defaults to ``512``.
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                a fixed batch of 64. An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -545,7 +562,10 @@ class HDFISMinRegressor(_BaseRegressorEstimator):
             consequent_batch_norm: Batch normalisation on consequent layers.
             patience: Early-stopping patience (default ``20``).
                 Set to ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: Restore best validation weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).

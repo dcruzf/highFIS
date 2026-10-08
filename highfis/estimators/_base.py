@@ -14,14 +14,14 @@ from typing import Any, Final, Literal, NamedTuple, Self, cast
 import numpy as np
 import numpy.typing as npt
 import torch
-from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
+from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin, is_classifier
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.multiclass import type_of_target
 from sklearn.utils.validation import check_is_fitted, validate_data
 from torch import Tensor
 
-from .. import _describe, plotting
+from .. import _describe, _diagnostics, plotting
 from ..clustering import FuzzyCMeans, KMeans, MiniBatchKMeans
 from ..memberships import (
     DimensionDependentGaussianMF,
@@ -123,20 +123,41 @@ def _build_gaussian_input_mfs(
     return input_mfs
 
 
+def _draw_spread(rng: np.random.Generator, h: float) -> float:
+    """Draw the initial spread of a fuzzy set around ``h``.
+
+    Cui et al. (IJCNN 2021) draw the spread from ``N(h, 0.2)`` with ``h = 1`` on standardized
+    inputs, a noise of one fifth of the spread. Here ``h`` follows the spread of the cluster,
+    so the noise is kept at one fifth of ``h``: an absolute noise of 0.2 would be larger than
+    the spreads of inputs scaled to ``[0, 1]`` and would leave many sets with no width.
+    """
+    return max(h * float(rng.normal(loc=1.0, scale=0.2)), 0.2 * h, 1e-3)
+
+
+def _draw_constant_spread(rng: np.random.Generator, h: float) -> float:
+    """Draw the initial spread from ``N(h, 0.2)``, as Cui et al. (IJCNN 2021) do.
+
+    The same distribution for every fuzzy set, whatever the spread of its cluster. It
+    assumes inputs on a common scale, standardized in the article, where ``h = 1``.
+    """
+    return max(float(rng.normal(loc=h, scale=0.2)), 1e-3)
+
+
 def _build_kmeans_input_mfs(
     x: np.ndarray,
     clusterer: KMeans | MiniBatchKMeans,
     sigma_scale: float,
     feature_names: list[str],
     random_state: int | None,
+    constant_spread: bool = False,
 ) -> dict[str, list[GaussianMF]]:
     r"""Build Gaussian MFs via k-means cluster-center initialization.
 
     Follows Cui et al. (IJCNN 2021): the center of MF (r, d) is set to the
     d-th coordinate of the r-th k-means centroid.  The initial sigma is
-    sampled from :math:`\\mathcal{N}(h, 0.2)` where *h* equals
+    *h* times a draw from :math:`\\mathcal{N}(1, 0.2)`, where *h* equals
     *sigma_scale* multiplied by the within-cluster standard deviation of
-    feature *d* in cluster *r*.  When a cluster has near-zero spread, the
+    feature *d* in cluster *r* (see :func:`_draw_spread`).  When a cluster has near-zero spread, the
     base sigma falls back to half the gap to the nearest neighbouring
     centroid in that feature dimension.
     """
@@ -167,7 +188,7 @@ def _build_kmeans_input_mfs(
                 other = np.delete(center_col, r)
                 raw_sigma = float(np.min(np.abs(other - c))) / 2.0 if len(other) > 0 else 1.0
             h = raw_sigma * sigma_scale
-            sigma = max(float(rng.normal(loc=h, scale=0.2)), 1e-3)
+            sigma = _draw_constant_spread(rng, sigma_scale) if constant_spread else _draw_spread(rng, h)
             mfs.append(GaussianMF(mean=c, sigma=sigma))
         input_mfs[name] = mfs
 
@@ -180,11 +201,12 @@ def _build_fuzzy_c_means_input_mfs(
     sigma_scale: float,
     feature_names: list[str],
     random_state: int | None,
+    constant_spread: bool = False,
 ) -> dict[str, list[GaussianMF]]:
     r"""Build Gaussian MFs via fuzzy C-means cluster initialization.
 
-    The MF means are placed at the FCM centroids. Each sigma is sampled
-    from ``N(h, 0.2)`` where ``h`` is the cluster-specific, feature-wise
+    The MF means are placed at the FCM centroids. Each sigma is ``h`` times a
+    draw from ``N(1, 0.2)``, where ``h`` is the cluster-specific, feature-wise
     spread scaled by ``sigma_scale``.
     """
     clusterer.fit(x)
@@ -215,7 +237,7 @@ def _build_fuzzy_c_means_input_mfs(
                 other = np.delete(center_col, r)
                 raw_sigma = float(np.min(np.abs(other - c))) / 2.0 if len(other) > 0 else 1.0
             h = raw_sigma * sigma_scale
-            sigma = max(float(rng.normal(loc=h, scale=0.2)), 1e-3)
+            sigma = _draw_constant_spread(rng, sigma_scale) if constant_spread else _draw_spread(rng, h)
             mfs.append(GaussianMF(mean=c, sigma=sigma))
 
         input_mfs[name] = mfs
@@ -259,19 +281,71 @@ def _select_pfrb_indices(
     n_samples: int,
     max_rules: int | None,
     random_state: int | None,
+    strata: np.ndarray | None = None,
 ) -> np.ndarray:
     """Select the training-sample indices used to build a point-based FRB.
 
-    Deterministic in ``(n_samples, max_rules, random_state)`` so the same
-    sample subset can be reproduced when initialising the consequents from the
-    corresponding labels (see :meth:`_BaseTSKEstimator._pfrb_aligned_labels`).
-    When ``max_rules`` is ``None`` or covers every sample, all samples are used.
+    Deterministic in its arguments so the same sample subset can be reproduced when
+    initialising the consequents from the corresponding labels (see
+    :meth:`_BaseTSKEstimator._pfrb_aligned_labels`). When ``max_rules`` is ``None`` or
+    covers every sample, all samples are used.
+
+    With *strata* (the class of each sample) the points are drawn class by class, in
+    proportion to the class sizes, as the DG-TSK and DG-ALETSK articles prescribe
+    ("stratified sampling strategy"). The quotas add up to ``max_rules`` and every class
+    gets at least one point. Without *strata* (regression) the points are drawn uniformly.
     """
     if max_rules is None or int(max_rules) >= n_samples:
         return np.arange(n_samples)
     rng = np.random.default_rng(random_state)
-    indices = rng.choice(n_samples, size=int(max_rules), replace=False)
-    return np.sort(indices)
+    if strata is None:
+        return np.sort(rng.choice(n_samples, size=int(max_rules), replace=False))
+    labels, counts = np.unique(strata, return_counts=True)
+    quotas = _proportional_quotas(counts, int(max_rules))
+    chosen = [
+        rng.choice(np.flatnonzero(strata == label), size=quota, replace=False)
+        for label, quota in zip(labels, quotas, strict=True)
+    ]
+    return np.sort(np.concatenate(chosen))
+
+
+def _proportional_quotas(counts: np.ndarray, total: int) -> list[int]:
+    """Split *total* among groups in proportion to *counts*, giving each group at least one.
+
+    Largest-remainder allocation: the shares are rounded down, and the units left over go
+    to the groups with the largest fractional parts.
+    """
+    shares = total * counts / counts.sum()
+    quotas = np.maximum(np.floor(shares).astype(int), 1)
+    for index in np.argsort(-(shares - np.floor(shares))):
+        if quotas.sum() >= total:
+            break
+        quotas[index] += 1
+    while quotas.sum() > total and quotas.max() > 1:  # more groups with a forced unit than room
+        quotas[int(np.argmax(quotas))] -= 1
+    return [int(q) for q in quotas]
+
+
+def _pfrb_spreads(x: np.ndarray, indices: np.ndarray, spread: str | float) -> np.ndarray:
+    """Initial spread of every feature in a point-based rule base, before ``sigma_scale``.
+
+    ``"std"`` gives each feature its own spread, the standard deviation of the feature over
+    the training samples. ``"std_mean"`` gives every feature the same spread: the mean, over
+    the features, of the sample standard deviations of the rule points (DG-TSK article,
+    Eq. (23)). A number gives every feature that spread (DG-ALETSK uses 1).
+    """
+    n_features = x.shape[1]
+    if isinstance(spread, str):
+        if spread == "std":
+            return np.std(x, axis=0)
+        if spread == "std_mean":
+            points = x[indices]
+            common = float(np.std(points, axis=0, ddof=1).mean()) if len(points) > 1 else 1.0
+            return np.full(n_features, common)
+        raise ValueError(f"pfrb_spread must be 'std', 'std_mean' or a positive number; got {spread!r}")
+    if not float(spread) > 0.0:
+        raise ValueError(f"pfrb_spread must be 'std', 'std_mean' or a positive number; got {spread!r}")
+    return np.full(n_features, float(spread))
 
 
 def _build_pfrb_input_mfs(
@@ -280,15 +354,17 @@ def _build_pfrb_input_mfs(
     max_rules: int | None,
     sigma_scale: float,
     random_state: int | None,
+    spread: str | float = "std",
+    strata: np.ndarray | None = None,
 ) -> dict[str, list[GaussianMF]]:
     """Build point-based fuzzy rule base membership functions from training samples."""
-    indices = _select_pfrb_indices(x.shape[0], max_rules, random_state)
+    indices = _select_pfrb_indices(x.shape[0], max_rules, random_state, strata)
+    spreads = _pfrb_spreads(x, indices, spread)
 
     input_mfs: dict[str, list[GaussianMF]] = {}
     for d, name in enumerate(feature_names):
-        col = x[:, d]
-        sigma = max(float(np.std(col)) * sigma_scale, 1e-3)
-        centers = col[indices]
+        sigma = max(float(spreads[d]) * sigma_scale, 1e-3)
+        centers = x[indices, d]
         input_mfs[name] = [GaussianMF(mean=float(c), sigma=sigma) for c in centers]
     return input_mfs
 
@@ -373,6 +449,9 @@ def _wrap_gaussian_pimf_input_mfs(
 
 
 _DEFAULT_MF_CACHE_SIZE = 128
+
+#: How the initial spread of a clustered fuzzy set is centred (argument ``sigma_init``).
+_SIGMA_INITS: Final = frozenset({"cluster", "constant"})
 _MFCacheValue = tuple[dict[str, Any], list[str], str]
 
 
@@ -509,6 +588,10 @@ def _get_mf_cache_key(
     pfrb_max_rules: Any,
     input_configs: list[InputConfig] | None,
     rule_base: Any = None,
+    family: Any = None,
+    pfrb_spread: Any = None,
+    strata: np.ndarray | None = None,
+    sigma_init: Any = None,
 ) -> tuple[Any, ...]:
     # Determine step for sampling to hash quickly
     step = max(1, x_arr.shape[0] // 1000)
@@ -539,6 +622,10 @@ def _get_mf_cache_key(
         pfrb_max_rules,
         input_configs_key,
         rule_base,
+        family,
+        pfrb_spread,
+        None if strata is None else hash(np.ascontiguousarray(strata).tobytes()),
+        sigma_init,
     )
 
 
@@ -556,6 +643,12 @@ def _build_input_mfs_cached(
         estimator.pfrb_max_rules,
         estimator.input_configs,
         getattr(estimator, "rule_base", None),
+        # Families build their sets differently from the same arguments, so the sets of
+        # one family must never be served to another.
+        type(estimator).__qualname__,
+        getattr(estimator, "pfrb_spread", None),
+        getattr(estimator, "_pfrb_strata", None),
+        getattr(estimator, "sigma_init", None),
     )
 
     cached = _MF_INIT_CACHE.get(cache_key)
@@ -707,6 +800,8 @@ class _BaseTSKEstimator(BaseEstimator):
                     max_rules=self.pfrb_max_rules,
                     sigma_scale=float(self.sigma_scale) if not isinstance(self.sigma_scale, str) else 1.0,
                     random_state=self.random_state,
+                    spread=getattr(self, "pfrb_spread", "std"),
+                    strata=getattr(self, "_pfrb_strata", None),
                 )
                 effective_rule_base = "coco"
             else:
@@ -728,18 +823,24 @@ class _BaseTSKEstimator(BaseEstimator):
                 max_rules=self.pfrb_max_rules,
                 sigma_scale=effective_sigma_scale,
                 random_state=self.random_state,
+                spread=getattr(self, "pfrb_spread", "std"),
+                strata=getattr(self, "_pfrb_strata", None),
             )
             effective_rule_base = "coco"
         else:
             clusterer = _resolve_clusterer(self.mf_init, int(self.n_mfs), self.random_state)
-            if isinstance(clusterer, FuzzyCMeans):
-                input_mfs = _build_fuzzy_c_means_input_mfs(
-                    x_arr, clusterer, effective_sigma_scale, feature_names, self.random_state
-                )
-            else:
-                input_mfs = _build_kmeans_input_mfs(
-                    x_arr, clusterer, effective_sigma_scale, feature_names, self.random_state
-                )
+            sigma_init = getattr(self, "sigma_init", "cluster")
+            if sigma_init not in _SIGMA_INITS:
+                raise ValueError(f"sigma_init must be one of {sorted(_SIGMA_INITS)}, got {sigma_init!r}")
+            build = _build_fuzzy_c_means_input_mfs if isinstance(clusterer, FuzzyCMeans) else _build_kmeans_input_mfs
+            input_mfs = build(
+                x_arr,
+                cast(Any, clusterer),
+                effective_sigma_scale,
+                feature_names,
+                self.random_state,
+                constant_spread=sigma_init == "constant",
+            )
             effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
 
         return input_mfs, feature_names, effective_rule_base
@@ -821,10 +922,12 @@ class _BaseTSKEstimator(BaseEstimator):
         one-hot consequent of rule ``r`` encodes the label of the *same* sample,
         rather than the ``r``-th label of the (unsampled) training set.
         """
+        strata = y_t.detach().cpu().numpy() if is_classifier(self) else None
         indices = _select_pfrb_indices(
             int(x_t.shape[0]),
             self._effective_pfrb_max_rules(int(x_t.shape[1])),
             self.random_state,
+            strata,
         )
         return y_t[torch.as_tensor(indices, dtype=torch.long, device=y_t.device)]
 
@@ -924,6 +1027,53 @@ class _BaseTSKEstimator(BaseEstimator):
 
         return _to_numpy(norm_w)
 
+    def firing_diagnostics(
+        self,
+        X: npt.ArrayLike,
+        *,
+        dominance: float = 0.99,
+        never: float = 1e-6,
+    ) -> dict[str, Any]:
+        """Report how the rules of the fitted model fire on ``X``.
+
+        The normalized rule weights say, for each sample, how the prediction is shared
+        among the rules. When they stop depending on the sample the rules no longer
+        partition the input space, and the model is a single linear model.
+
+        Args:
+            X: Data to evaluate, of shape ``(n_samples, n_features)``, prepared as the
+                data passed to ``fit``.
+            dominance: A sample is dominated when one rule has at least this weight.
+            never: A rule never fires when its weight stays below this value on every
+                sample.
+
+        Returns:
+            A dictionary with ``n_samples`` and ``n_rules``;
+            ``uniform_fraction``, the fraction of samples on which every rule has the
+            same weight, which is what the underflow of a product of many membership
+            degrees produces;
+            ``dominated_fraction``, the fraction of samples on which one rule takes
+            almost all the weight;
+            ``non_finite_fraction``, the fraction of samples with a weight that is not
+            finite;
+            ``effective_rules`` and ``effective_rules_min``, the mean and the minimum
+            over the samples of the exponential of the entropy of the weights, between
+            1 (one rule) and ``n_rules`` (all rules equally);
+            ``mean_firing``, the mean weight of each rule;
+            ``never_firing_rules``, the indices of the rules that never fire.
+        """
+        return _diagnostics.firing_diagnostics(self.rule_activation(X), dominance=dominance, never=never)
+
+    def _check_firing(self, x_arr: np.ndarray) -> None:
+        """Warn at the end of ``fit`` when the rule weights are degenerate on the training data."""
+        try:
+            weights = self.rule_activation(x_arr[: _diagnostics._FIT_CHECK_ROWS])
+        except Exception:
+            # A diagnostic must never make ``fit`` fail.
+            return
+        if weights.ndim == 2 and weights.size:
+            _diagnostics.warn_if_degenerate(_diagnostics.firing_diagnostics(weights))
+
     def inspect(self) -> dict[str, Any]:
         """Return a structured summary of fitted model state and rule metadata."""
         check_is_fitted(self, "model_")
@@ -978,8 +1128,10 @@ class _BaseTSKEstimator(BaseEstimator):
     def get_feature_gates(self) -> np.ndarray | None:
         """Return the feature gate values of a gated family, or ``None`` for the others.
 
-        One value in ``[0, 1]`` per feature in :attr:`selected_features_`; a gate near zero
-        means the feature is switched off. Only DG-TSK, DG-ALETSK and FSRE-ADATSK have gates.
+        One value per feature in :attr:`selected_features_`; a gate near zero means the
+        feature is switched off. The values are in ``[0, 1]`` for DG-TSK and DG-ALETSK and
+        in ``[-1, 1]`` for FSRE-ADATSK, whose gate is an odd function: there the magnitude
+        says how open the gate is. Only these three families have gates.
         """
         check_is_fitted(self, "model_")
         gates = getattr(self.model_, "get_feature_gate_values", None)
@@ -988,8 +1140,10 @@ class _BaseTSKEstimator(BaseEstimator):
     def get_rule_gates(self) -> np.ndarray | None:
         """Return the rule gate values of a gated family, or ``None`` for the others.
 
-        One value in ``[0, 1]`` per rule of the fitted model; a gate near zero means the
-        rule is switched off. Only DG-TSK, DG-ALETSK and FSRE-ADATSK have gates.
+        One value per rule of the fitted model; a gate near zero means the rule is switched
+        off. The values are in ``[0, 1]`` for DG-TSK and DG-ALETSK and in ``[-1, 1]`` for
+        FSRE-ADATSK, where the magnitude says how open the gate is. Only these three
+        families have gates.
         """
         check_is_fitted(self, "model_")
         gates = getattr(self.model_, "get_rule_gate_values", None)
@@ -1106,6 +1260,27 @@ class _BaseTSKEstimator(BaseEstimator):
         return _normalize_importance(importance)
 
 
+def _start_from_target_mean(model: BaseTSK, y: Tensor) -> None:
+    """Start a regressor whose consequents are all zero from the mean of the targets.
+
+    Several families initialize their consequents to zero, as their (classification)
+    articles prescribe. A regressor then has to learn the level of the target before
+    anything else, and with a small learning rate it may not get there in the default
+    number of epochs. Setting the constant term of every rule to the target mean makes the
+    untrained model predict that mean. Families that initialize their consequents otherwise
+    are left alone.
+    """
+    layer = model.consequent_layer
+    bias = getattr(layer, "bias", None)
+    weight = getattr(layer, "weight", None)
+    if not isinstance(bias, Tensor) or bool(torch.any(bias != 0)):
+        return
+    if isinstance(weight, Tensor) and bool(torch.any(weight != 0)):
+        return
+    with torch.no_grad():
+        bias.fill_(float(y.mean()))
+
+
 class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ignore[misc]
     """Abstract base class for all highFIS TSK classifier estimators.
 
@@ -1173,7 +1348,13 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
         le = LabelEncoder()
         y_idx = le.fit_transform(np.asarray(y_arr))
 
-        input_mfs, _, effective_rule_base = self._build_input_mfs(x_arr)
+        # The classes are only needed while the sets are built, to draw the points of a
+        # point-based rule base class by class.
+        self._pfrb_strata = y_idx
+        try:
+            input_mfs, _, effective_rule_base = self._build_input_mfs(x_arr)
+        finally:
+            del self._pfrb_strata
 
         self.n_features_in_ = x_arr.shape[1]
         self.classes_ = le.classes_
@@ -1203,6 +1384,7 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
         self.batch_size_ = self._resolve_batch_size(int(x_t.shape[0]))
         _trainer = self.trainer if self.trainer is not None else self._get_trainer()
         self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
+        self._check_firing(x_arr)
         return self
 
     def save(self, path: str) -> None:
@@ -1406,12 +1588,14 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
 
         x_t = self._as_tensor_x(x_arr, _device)
         self.rule_base_ = effective_rule_base
+        _start_from_target_mean(self.model_, y_t)
         self._pre_train_hook(self.model_, x_t, y_t)
         # Resolve the effective batch size once, from the training-set size, and expose it
         # as a fitted attribute; the trainer is built from it below.
         self.batch_size_ = self._resolve_batch_size(int(x_t.shape[0]))
         _trainer = self.trainer if self.trainer is not None else self._get_trainer()
         self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
+        self._check_firing(x_arr)
         return self
 
     def save(self, path: str) -> None:

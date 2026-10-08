@@ -246,7 +246,10 @@ class FSRETrainer(BaseTrainer):
         fs_history: dict[str, Any] = fs_trainer.fit(model, x, y, x_val=x_val, y_val=y_val, metrics=metrics)
 
         # ── Feature threshold & selection (paper eq. 28) ──────────────────
-        feat_gates: Tensor = model.get_feature_gate_values()
+        # The gate of the article is an odd function, so a gate can open towards -1 as well
+        # as towards +1 (the sign is absorbed by the consequent coefficients). What marks a
+        # feature or a rule as used is the magnitude of its gate.
+        feat_gates: Tensor = model.get_feature_gate_values().abs()
         tau_lambda: float = _threshold_from_zeta(feat_gates, float(self.zeta_lambda))
         sf: list[int] = [i for i, v in enumerate(feat_gates.tolist()) if v > tau_lambda]
         if not sf:
@@ -281,7 +284,7 @@ class FSRETrainer(BaseTrainer):
         re_history: dict[str, Any] = re_trainer.fit(model, x_fs, y, x_val=x_val_fs, y_val=y_val, metrics=metrics)
 
         # ── Rule threshold & selection (paper eq. 29) ─────────────────────
-        rule_gates: Tensor = model.get_rule_gate_values()
+        rule_gates: Tensor = model.get_rule_gate_values().abs()
         tau_theta: float = _threshold_from_zeta(rule_gates, float(self.zeta_theta))
         sr: list[int] = [r for r, v in enumerate(rule_gates.tolist()) if v > tau_theta]
 

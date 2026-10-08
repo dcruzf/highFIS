@@ -40,7 +40,6 @@ TRAINING_QUALITY_EPOCHS = 20
 # default schedule.
 TRAINING_QUALITY_OVERRIDES: dict[str, int | None] = {
     "ADATSKRegressor": None,
-    "FSREADATSKRegressor": None,
     "MHTSKRegressor": 40,
 }
 

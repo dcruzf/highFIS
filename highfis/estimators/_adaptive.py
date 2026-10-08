@@ -166,9 +166,9 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
                 (default ``0.001``).
             verbose: Verbosity level for training output.
             rule_base: Rule-base strategy (default ``"coco"``).
-            batch_size: Mini-batch size. ``None`` uses paper-style dynamic
-                defaults: full-batch for ``N < 500`` and ``20%`` of samples
-                for ``N >= 500``.
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                full batch below 500 training samples, otherwise 20% of them. An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Whether to shuffle training samples each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -180,9 +180,12 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
             pfrb_max_rules: Maximum rules for point-based FRB when
                 ``rule_base="pfrb"``.
             patience: Early-stopping patience. ``None`` disables early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: Restore the best validation model weights after
                 training.
                 stopping.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay coefficient for consequent parameters.
             kappa: ADPTSK ``κ`` parameter controlling the double-softmin
                 geometry.
@@ -374,9 +377,9 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
                 (default ``0.001``).
             verbose: Verbosity level for training output.
             rule_base: Rule-base strategy (default ``"coco"``).
-            batch_size: Mini-batch size. ``None`` uses paper-style dynamic
-                defaults: full-batch for ``N < 500`` and ``20%`` of samples
-                for ``N >= 500``.
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                full batch below 500 training samples, otherwise 20% of them. An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Whether to shuffle training samples each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -388,9 +391,12 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
             pfrb_max_rules: Maximum rules for point-based FRB when
                 ``rule_base="pfrb"``.
             patience: Early-stopping patience. ``None`` disables early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: Restore the best validation model weights after
                 training.
                 stopping.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay coefficient for consequent parameters.
             kappa: ADPTSK ``κ`` parameter controlling the double-softmin
                 geometry.
@@ -573,7 +579,8 @@ class ADATSKClassifier(_BaseClassifierEstimator):
                 rule (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: Rule-base strategy. Default ``"coco"`` to match the paper.
-            batch_size: Mini-batch size. Default ``None`` (full-batch GD).
+            batch_size: Mini-batch size. ``"auto"`` (default) trains on the full batch, as in the
+                source article. An integer sets the size and ``None`` is also the full batch.
             shuffle: Whether to reshuffle each epoch. Default ``False``.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -589,7 +596,10 @@ class ADATSKClassifier(_BaseClassifierEstimator):
                 lineage the paper builds on (Cui et al., 2020). Set to ``False``
                 only for low-dimensional data where divergence does not occur.
             patience: Early-stopping patience. Default ``None`` (disabled).
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: Restore best validation weights. Default ``False``.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters. Default ``0.0``.
             freeze_antecedent_in_high_dim: If ``True`` (default), freeze
                 antecedent parameters when ``n_features >= high_dim_threshold``.
@@ -754,7 +764,8 @@ class ADATSKRegressor(_BaseRegressorEstimator):
                 rule (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: Rule-base strategy. Default ``"coco"``.
-            batch_size: Mini-batch size. Default ``None`` (full-batch GD).
+            batch_size: Mini-batch size. ``"auto"`` (default) trains on the full batch, as in the
+                source article. An integer sets the size and ``None`` is also the full batch.
             shuffle: Whether to reshuffle each epoch. Default ``False``.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -770,7 +781,10 @@ class ADATSKRegressor(_BaseRegressorEstimator):
                 lineage the paper builds on (Cui et al., 2020). Set to ``False``
                 only for low-dimensional data where divergence does not occur.
             patience: Early-stopping patience. Default ``None`` (disabled).
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: Restore best validation weights. Default ``False``.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters. Default ``0.0``.
             freeze_antecedent_in_high_dim: If ``True`` (default), freeze
                 antecedent parameters when ``n_features >= high_dim_threshold``.
@@ -821,6 +835,7 @@ class ADATSKRegressor(_BaseRegressorEstimator):
         rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         """Create ADATSKRegressorModel."""
+        input_mfs = _wrap_adatsk_gaussian_input_mfs(input_mfs)
         return ADATSKRegressorModel(
             input_mfs,
             rule_base=rule_base,

@@ -10,6 +10,7 @@ them. These tests pin each family's policy and the precedence rules, so neither 
 
 from __future__ import annotations
 
+import inspect
 from typing import Any
 
 import numpy as np
@@ -145,7 +146,10 @@ def _model_of(name: str):  # type: ignore[no-untyped-def]
         extra["k"] = 1.5
     if "DombiTSK" in n:
         extra["lambda_"] = 1.5
-    est = getattr(highfis, name)(n_mfs=2, random_state=0, **extra)
+    cls = getattr(highfis, name)
+    # Only the fitted structure is inspected, so a few epochs are enough for every family.
+    extra.update({p: 3 for p in inspect.signature(cls.__init__).parameters if p.endswith("epochs")})
+    est = cls(n_mfs=2, random_state=0, **extra)
     return est.fit(x, y).model_
 
 

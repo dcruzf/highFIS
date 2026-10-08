@@ -72,7 +72,15 @@ def test_fsre_adatsk_regressor_predict_wrong_n_features() -> None:
 def test_fsre_adatsk_classifier_estimator_fit_predict_proba_predict_score() -> None:
     x, y = _make_dataset(80)
     est = FSREADATSKClassifier(
-        n_mfs=2, mf_init="kmeans", lambda_init=1.5, fs_epochs=5, learning_rate=0.01, random_state=7, batch_size=16
+        n_mfs=2,
+        mf_init="kmeans",
+        lambda_init=1.5,
+        fs_epochs=5,
+        re_epochs=5,
+        finetune_epochs=5,
+        learning_rate=0.01,
+        random_state=7,
+        batch_size=16,
     )
     est.fit(x, y)
     proba = est.predict_proba(x)
@@ -101,7 +109,15 @@ def test_fsre_adatsk_regressor_estimator_rejects_nonpositive_lambda() -> None:
 def test_fsre_adatsk_regressor_estimator_fit_predict() -> None:
     x, y = _make_regression_dataset(80)
     est = FSREADATSKRegressor(
-        n_mfs=2, mf_init="kmeans", lambda_init=2.0, fs_epochs=5, learning_rate=0.01, random_state=7, batch_size=16
+        n_mfs=2,
+        mf_init="kmeans",
+        lambda_init=2.0,
+        fs_epochs=5,
+        re_epochs=5,
+        finetune_epochs=5,
+        learning_rate=0.01,
+        random_state=7,
+        batch_size=16,
     )
     est.fit(x, y)
     pred = est.predict(x)

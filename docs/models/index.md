@@ -31,6 +31,51 @@ the named estimators. Only the generic TSK lets you choose them; see
 
 ---
 
+## Changes in 0.32.0 for the families with gates
+
+Version 0.32.0 makes DG-TSK, DG-ALETSK and FSRE-ADATSK follow their source articles. With
+the defaults of earlier versions these classifiers did not reproduce the published results
+(for example 66% for DG-TSK on Iris and 47% for FSRE-ADATSK, against about 96%). A model
+trained with the defaults will therefore give different results after upgrading; models
+saved earlier keep loading and keep predicting as they did.
+
+| What changed | Families | To get the earlier behaviour |
+|---|---|---|
+| Spreads of the point-based rule base | DG-TSK (`"std_mean"`), DG-ALETSK (`1.0`) | `pfrb_spread="std"` |
+| Gate parameters start at the constant of the article instead of a random draw | all three | not available |
+| Rule points drawn class by class when there are more samples than the cap | DG-TSK, DG-ALETSK classifiers | not available |
+| The gates leave the model after pruning | DG-TSK, DG-ALETSK | not available |
+| Loss scale of the article | DG-TSK, FSRE-ADATSK classifier | pass a trainer with `loss=torch.nn.MSELoss()` |
+| Default epochs 300 and 300 | DG-TSK | `dg_epochs=100, finetune_epochs=200` |
+| Defaults: evenly spaced sets, three per feature, 1000 epochs per phase, learning rate 0.05 | FSRE-ADATSK | `mf_init="kmeans", rule_base=None, n_mfs=5, fs_epochs=100, re_epochs=100, finetune_epochs=100, learning_rate=0.01` |
+| Gate function of the article | FSRE-ADATSK | `gate_fn=None` |
+| Rule gates trained in the rule-extraction phase; selection on the gate magnitude | FSRE-ADATSK | not available (the earlier behaviour was a defect) |
+| Regressors start each rule from the target of its sample | DG-TSK, DG-ALETSK | not available |
+| Regressor defaults `rule_base="pfrb"`, `use_lse=False` | DG-ALETSK | `rule_base=None, use_lse=True` |
+| Consequents start at zero, as in the article | FSRE-ADATSK, ADATSK regressor | not available |
+| A regressor whose consequents start at zero starts from the mean of the target | ADATSK, FSRE-ADATSK | not available |
+
+Two changes in 0.32.0 concern every family. Training that ends with a loss that is not
+finite now raises a `RuntimeWarning` instead of returning a model that predicts `NaN`
+without notice; the usual remedy is to scale the inputs and, for a regressor, the target.
+The Dombi and Yager T-norms no longer produce `NaN` gradients when a sample lies on the
+centre of a fuzzy set, which could turn AYATSK and the generic TSK with `t_norm="dombi"`
+or `t_norm="yager"` into `NaN` during training.
+
+A third change concerns every family initialized by clustering (`mf_init="kmeans"`, the
+default of TSK, HTSK, LogTSK, DombiTSK, HDFIS and MHTSK, and `mf_init="fcm"`). The random
+factor of the initial spreads is now relative to the spread instead of an absolute noise
+of 0.2. On inputs scaled to `[0, 1]` the earlier draw left many fuzzy sets with almost no
+width, and the families that multiply membership degrees then gave every rule the same
+weight: the generic TSK classifier went from 86% to 95% on Iris and the TSK, DombiTSK and
+HDFIS-prod regressors from about 0.6 to 0.8 in R² on the Friedman-1 problem. HTSK, LogTSK
+and MHTSK change little. The earlier draw is not available.
+
+Each family page has a section "Fidelity to the source article" with what now follows the
+article and what still differs.
+
+---
+
 ## 1. Baselines
 
 These models implement standard, textbook fuzzy logic structures. They are ideal as simple baselines for low-dimensional problems.

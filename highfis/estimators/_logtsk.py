@@ -54,6 +54,7 @@ class LogTSKClassifier(_BaseClassifierEstimator):
         n_mfs: int = 5,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
+        sigma_init: str = "cluster",
         random_state: int | None = None,
         epochs: int = 100,
         learning_rate: float = 1e-2,
@@ -78,14 +79,21 @@ class LogTSKClassifier(_BaseClassifierEstimator):
             input_configs: Per-feature :class:`InputConfig` list.
             n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
+            sigma_init: How the initial spread of each fuzzy set is centred when the sets
+                come from clustering. ``"cluster"`` (default) uses the standard deviation
+                of the feature inside the cluster, times ``sigma_scale``.
+                ``"constant"`` draws every spread from ``N(sigma_scale, 0.2)``, the
+                initialization of Cui et al. (IJCNN 2021), meant for standardized inputs.
             sigma_scale: Sigma scale factor. ``1.0`` is recommended (the
                 log-space defuzzifier is scale-invariant).
             random_state: Seed for reproducibility.
             epochs: Maximum training epochs (default ``100``).
-            learning_rate: Adam learning rate (default ``0.01``).
+            learning_rate: AdamW learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
-            batch_size: Mini-batch size (default ``512``).
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                512, or ``min(N, 60)`` when the training set is smaller than that. An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -94,8 +102,11 @@ class LogTSKClassifier(_BaseClassifierEstimator):
                 where ``R`` is the number of rules.
             consequent_batch_norm: Batch normalisation on consequent layers.
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
@@ -131,6 +142,7 @@ class LogTSKClassifier(_BaseClassifierEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.sigma_init = sigma_init
 
     def _paper_batch_size(self, n_samples: int) -> int | None:
         """Shares the HTSK_2021 batching protocol (512, clamped to ``min(N, 60)``)."""
@@ -185,6 +197,7 @@ class LogTSKRegressor(_BaseRegressorEstimator):
         n_mfs: int = 5,
         mf_init: str = "kmeans",
         sigma_scale: float | str = 1.0,
+        sigma_init: str = "cluster",
         random_state: int | None = None,
         epochs: int = 100,
         learning_rate: float = 1e-2,
@@ -209,14 +222,21 @@ class LogTSKRegressor(_BaseRegressorEstimator):
             input_configs: Per-feature :class:`InputConfig` list.
             n_mfs: Number of k-means clusters / grid MFs (default ``5``).
             mf_init: ``"kmeans"`` (default), ``"minibatch_kmeans"``, ``"fcm"``, or ``"grid"``.
+            sigma_init: How the initial spread of each fuzzy set is centred when the sets
+                come from clustering. ``"cluster"`` (default) uses the standard deviation
+                of the feature inside the cluster, times ``sigma_scale``.
+                ``"constant"`` draws every spread from ``N(sigma_scale, 0.2)``, the
+                initialization of Cui et al. (IJCNN 2021), meant for standardized inputs.
             sigma_scale: Sigma scale factor. ``1.0`` is recommended (the
                 log-space defuzzifier is scale-invariant).
             random_state: Seed for reproducibility.
             epochs: Maximum training epochs (default ``100``).
-            learning_rate: Adam learning rate (default ``0.01``).
+            learning_rate: AdamW learning rate (default ``0.01``).
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
-            batch_size: Mini-batch size (default ``512``).
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                512, or ``min(N, 60)`` when the training set is smaller than that. An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -225,8 +245,11 @@ class LogTSKRegressor(_BaseRegressorEstimator):
                 where ``R`` is the number of rules.
             consequent_batch_norm: Batch normalisation on consequent layers.
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
@@ -262,6 +285,7 @@ class LogTSKRegressor(_BaseRegressorEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.sigma_init = sigma_init
 
     def _paper_batch_size(self, n_samples: int) -> int | None:
         """Shares the HTSK_2021 batching protocol (512, clamped to ``min(N, 60)``)."""

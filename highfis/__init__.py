@@ -120,6 +120,7 @@ To report the versions and runtime settings in use::
     highfis.show_versions()
 """
 
+from ._diagnostics import DegenerateFiringWarning
 from ._show_versions import show_versions
 from .estimators import (
     ADATSKClassifier,
@@ -175,6 +176,7 @@ __all__: list[str] = [
     "DGTSKClassifier",
     "DGTSKRegressor",
     "DGTrainer",
+    "DegenerateFiringWarning",
     "DombiTSKClassifier",
     "DombiTSKRegressor",
     "FSREADATSKClassifier",

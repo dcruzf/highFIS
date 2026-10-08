@@ -110,3 +110,16 @@ class TestTSKRegressorEstimator:
         est = TSKRegressor(n_mfs=2, epochs=1, batch_size=16)
         with pytest.raises(NotFittedError):
             est.predict(x)
+
+
+def test_grid_initialization_refuses_an_oversized_cartesian_rule_base() -> None:
+    """``mf_init="grid"`` defaults to a Cartesian rule base; with many features it must fail fast."""
+    rng = np.random.default_rng(0)
+    x = rng.random((40, 13))
+    y = (x[:, 0] > 0.5).astype(int)
+
+    with pytest.raises(ValueError, match="Cartesian rule base over 13 features"):
+        TSKClassifier(mf_init="grid", n_mfs=5, epochs=1).fit(x, y)
+
+    est = TSKClassifier(mf_init="grid", n_mfs=5, rule_base="coco", epochs=1).fit(x, y)
+    assert est.model_.n_rules == 5

@@ -164,4 +164,8 @@ operator.
   consequent batch normalization for the numerical stability needed to
   reproduce the paper's high-dimensional accuracies (e.g., Colon in Table III).
 - Regression and alternative MF variants are treated as explicit framework
-  extensions, not part of the strict ADATSK paper baseline.
+  extensions, not part of the strict ADATSK paper baseline. Since 0.32.0
+  `ADATSKRegressor` is built like the classifier: the same Gaussian antecedents and
+  zero-initialized consequents, with the bias of every rule set to the mean of the
+  target before training. Before that version it started from a random draw and did
+  not learn a linear target with the default settings.

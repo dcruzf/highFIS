@@ -707,3 +707,20 @@ def test_membership_layer_legacy_hook_ignores_incomplete_state_dict() -> None:
     incomplete: dict[str, torch.Tensor] = {}
     layer._load_legacy_state_dict_hook(layer, incomplete, "")
     assert incomplete == {}  # early return: nothing added, nothing raised
+
+
+def test_cartesian_rule_base_is_refused_above_the_limit() -> None:
+    """``n_mfs ** n_features`` rules used to be enumerated until the memory ran out."""
+    from highfis.layers import MAX_CARTESIAN_RULES
+
+    names = [f"x{i}" for i in range(13)]
+
+    with pytest.raises(ValueError, match=r"1,220,703,125 rules.*rule_base='coco'"):
+        RuleLayer(names, [5] * 13, rule_base="cartesian")
+    assert MAX_CARTESIAN_RULES < 5**13
+
+
+def test_cartesian_rule_base_at_the_limit_is_still_built() -> None:
+    layer = RuleLayer(["x1", "x2", "x3"], [4, 5, 6], rule_base="cartesian")
+
+    assert layer.n_rules == 120

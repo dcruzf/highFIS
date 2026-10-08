@@ -111,8 +111,9 @@ class AYATSKClassifier(_BaseClassifierEstimator):
             learning_rate: Adam learning rate (default ``0.001``).
             verbose: Print per-epoch progress.
             rule_base: Rule-base strategy. Defaults to ``"coco"``.
-            batch_size: Mini-batch size. ``None`` applies the paper policy:
-                full-batch when ``N < 500`` and ``0.1 * N`` otherwise.
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                full batch below 500 training samples, otherwise 10% of them. An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -123,8 +124,11 @@ class AYATSKClassifier(_BaseClassifierEstimator):
             pfrb_max_rules: Maximum point-based FRB rules (unused by
                 AYATSK).
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             k: CEMF lower-bound control parameter. Must be ``> 1``.
             device: Target device for training and inference (e.g., ``"cpu"``,
@@ -278,8 +282,9 @@ class AYATSKRegressor(_BaseRegressorEstimator):
             learning_rate: Adam learning rate (default ``0.001``).
             verbose: Print per-epoch progress.
             rule_base: Rule-base strategy. Defaults to ``"coco"``.
-            batch_size: Mini-batch size. ``None`` applies the paper policy:
-                full-batch when ``N < 500`` and ``0.1 * N`` otherwise.
+            batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
+                full batch below 500 training samples, otherwise 10% of them. An integer sets the size and
+                ``None`` trains on the full batch.
             shuffle: Reshuffle each epoch.
             ur_weight: Weight of the uniform regularization (UR) term, a penalty on the deviation of
                 each rule's average normalized firing strength from ``ur_target`` (Cui, Wu and Huang,
@@ -288,8 +293,11 @@ class AYATSKRegressor(_BaseRegressorEstimator):
                 where ``R`` is the number of rules.
             consequent_batch_norm: Batch normalisation on consequent layers.
             patience: Early-stopping patience (default ``20``). Set to ``None`` to disable early stopping.
+                Early stopping needs a validation set passed to ``fit``; without one this has
+                no effect.
             restore_best: If ``True`` (default), restore the best validation
                 model weights after training.
+                Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
             k: CEMF lower-bound control parameter. Must be ``> 1``.
             device: Target device for training and inference (e.g., ``"cpu"``,
