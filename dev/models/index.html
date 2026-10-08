@@ -360,6 +360,8 @@
       
         
       
+        
+      
     
     
     
@@ -1144,6 +1146,8 @@
       
         
       
+        
+      
     
     
     
@@ -1669,6 +1673,10 @@ division, so a sample on which every rule fired less than that received the same
 for every rule. The bound is now the smallest positive number of the floating-point
 format (about <code>1.2e-38</code>), and the ratios between small firing strengths are kept.
 Results change only for samples far from every rule.</p>
+<p>Two changes in 0.33.0 concern AYATSK. The default number of epochs is 300, the value of
+the article for full-batch training (<code>epochs=200</code> gives the earlier behaviour), and its
+membership degrees are computed in one batched operation, which makes fitting about ten
+times faster on high-dimensional data without changing the result.</p>
 <hr />
 <h2 id="1-baselines">1. Baselines</h2>
 <p>These models implement standard, textbook fuzzy logic structures. They are ideal as simple baselines for low-dimensional problems.</p>
