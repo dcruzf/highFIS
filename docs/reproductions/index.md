@@ -13,6 +13,7 @@ print their table next to the values of the article.
 | Article | Families | Datasets | Page |
 |---|---|---|---|
 | Cui, Wu and Xu (2021) | TSK, LogTSK, HTSK | Vowel, Biodeg | [HTSK](htsk.md) |
+| Xue, Wang, Zhang and Pal (2024) | HDFIS-prod, HDFIS-min | Colon, Leukemia | [HDFIS](hdfis.md) |
 
 How to read the comparisons:
 
