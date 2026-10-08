@@ -1280,10 +1280,17 @@ between repetitions.</p>
   stops adding to the exponent. Raising the bound to the smallest representable number
   did not change any of the accuracies above.</li>
 <li><strong>Datasets.</strong> The article uses fourteen datasets. Vowel and Biodeg are the two that
-  OpenML provides with the samples and features of the article. On Colon (62 samples,
-  2000 genes) the article reports 94.74 for HTSK. This protocol gives 80 ± 12 with
-  highFIS, with 19 test samples per split and a validation set of 4 samples; a logistic
-  regression gives 82 on the same splits. The value of the article was not reproduced.</li>
+  OpenML provides with the samples and features of the article.</li>
+<li><strong>Colon is not reproduced, and the partition explains it.</strong> On Colon (62 samples, 2000
+  genes) the article reports 94.74 for HTSK, which is 18 of the 19 test samples in every
+  one of its ten runs. With highFIS the same protocol gives 79% on average over 30
+  random partitions with four trainings each. The partition decides most of the result:
+  the mean of a partition goes from 66% to 95%, with a standard deviation of 8 points
+  between partitions against 5 points between trainings on one partition, and one
+  partition in 30 reaches the value of the article. A mean of ten runs on ten
+  independent partitions lies between 74% and 85%. A logistic regression has the same
+  spread (83% on average, 7 points between partitions). The published value is what a
+  single favourable partition gives when the training is repeated on it.</li>
 </ul>
 <h2 id="run-it">Run It</h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>examples/reproductions/htsk_2021.py
