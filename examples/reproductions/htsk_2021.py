@@ -12,7 +12,7 @@ available from OpenML with the same samples and features, Vowel and Biodeg:
   epochs, at most 200 epochs, and the best model on the validation set kept;
 - Adam with a learning rate of 0.01, batches of 512 samples or, when the training set is
   smaller, of min(N, 60);
-- 30 rules, centres from k-means;
+- 30 rules, centres from k-means, spreads drawn from N(1, 0.2) on standardized inputs;
 - ten repetitions, mean test accuracy.
 
 Run it with::
@@ -62,6 +62,7 @@ def test_accuracy(family: str, features: np.ndarray, labels: np.ndarray, seed: i
     n_train = len(x_train)
     model = FAMILIES[family](
         n_mfs=30,
+        sigma_init="constant",
         epochs=200,
         patience=20,
         learning_rate=0.01,

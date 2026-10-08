@@ -64,6 +64,8 @@ Clustering-based initialization places membership functions on the centroids of 
 
 *   **Spreads**: The spread of each fuzzy set is the standard deviation of its feature inside the cluster, multiplied by `sigma_scale` and by a random factor drawn from $\mathcal{N}(1, 0.2)$. The factor follows Cui et al. (2021), who draw the spread from $\mathcal{N}(h, 0.2)$ with $h = 1$ on standardized inputs. Before version 0.32.0 the noise had a fixed standard deviation of 0.2 whatever the spread; on inputs scaled to $[0, 1]$ this left between a sixth and a third of the sets with almost no width.
 
+    `TSK`, `HTSK` and `LogTSK` also accept `sigma_init="constant"`, which draws every spread from $\mathcal{N}(h, 0.2)$ with $h$ given by `sigma_scale` (1 by default), exactly as in the article. Use it with standardized inputs; it is the setting of the [HTSK reproduction](../reproductions/htsk.md).
+
 ### Built-in Clustering Algorithms
 *   `"kmeans"`: Standard K-Means clustering (full-batch).
 *   `"minibatch_kmeans"`: Mini-Batch K-Means. Significantly faster on large datasets while yielding comparable cluster quality.
