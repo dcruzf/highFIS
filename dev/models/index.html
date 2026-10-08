@@ -1519,6 +1519,14 @@ without notice; the usual remedy is to scale the inputs and, for a regressor, th
 The Dombi and Yager T-norms no longer produce <code>NaN</code> gradients when a sample lies on the
 centre of a fuzzy set, which could turn AYATSK and the generic TSK with <code>t_norm="dombi"</code>
 or <code>t_norm="yager"</code> into <code>NaN</code> during training.</p>
+<p>A third change concerns every family initialized by clustering (<code>mf_init="kmeans"</code>, the
+default of TSK, HTSK, LogTSK, DombiTSK, HDFIS and MHTSK, and <code>mf_init="fcm"</code>). The random
+factor of the initial spreads is now relative to the spread instead of an absolute noise
+of 0.2. On inputs scaled to <code>[0, 1]</code> the earlier draw left many fuzzy sets with almost no
+width, and the families that multiply membership degrees then gave every rule the same
+weight: the generic TSK classifier went from 86% to 95% on Iris and the TSK, DombiTSK and
+HDFIS-prod regressors from about 0.6 to 0.8 in R² on the Friedman-1 problem. HTSK, LogTSK
+and MHTSK change little. The earlier draw is not available.</p>
 <p>Each family page has a section "Fidelity to the source article" with what now follows the
 article and what still differs.</p>
 <hr />

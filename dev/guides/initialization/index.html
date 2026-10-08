@@ -1332,7 +1332,12 @@
 <ul>
 <li><strong>Behavior</strong>: A clustering algorithm is run on the training matrix <span class="arithmatex">\(X\)</span> to find <span class="arithmatex">\(K\)</span> centroids. Each centroid represents a prototypical sample.</li>
 <li><strong>Rule Base</strong>: This mode defaults to the <code>coco</code> (Co-occurrence) rule base. Each cluster is translated directly into a single fuzzy rule.</li>
-<li><strong>Rule Count</strong>: Regardless of the number of input dimensions <span class="arithmatex">\(D\)</span>, the system only instantiates <span class="arithmatex">\(K\)</span> rules (where <span class="arithmatex">\(K\)</span> is set via <code>n_mfs</code>). This is the standard initialization strategy for high-dimensional datasets.</li>
+<li>
+<p><strong>Rule Count</strong>: Regardless of the number of input dimensions <span class="arithmatex">\(D\)</span>, the system only instantiates <span class="arithmatex">\(K\)</span> rules (where <span class="arithmatex">\(K\)</span> is set via <code>n_mfs</code>). This is the standard initialization strategy for high-dimensional datasets.</p>
+</li>
+<li>
+<p><strong>Spreads</strong>: The spread of each fuzzy set is the standard deviation of its feature inside the cluster, multiplied by <code>sigma_scale</code> and by a random factor drawn from <span class="arithmatex">\(\mathcal{N}(1, 0.2)\)</span>. The factor follows Cui et al. (2021), who draw the spread from <span class="arithmatex">\(\mathcal{N}(h, 0.2)\)</span> with <span class="arithmatex">\(h = 1\)</span> on standardized inputs. Before version 0.32.0 the noise had a fixed standard deviation of 0.2 whatever the spread; on inputs scaled to <span class="arithmatex">\([0, 1]\)</span> this left between a sixth and a third of the sets with almost no width.</p>
+</li>
 </ul>
 <h3 id="built-in-clustering-algorithms">Built-in Clustering Algorithms</h3>
 <ul>
