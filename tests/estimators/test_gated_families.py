@@ -449,3 +449,25 @@ def test_fsre_selects_features_by_the_magnitude_of_the_signed_gate(monkeypatch: 
 
     assert est.history_["surviving_feature_indices"] == [0, 3]
     assert est.selected_features_.tolist() == [0, 3]
+
+
+def test_dg_aletsk_finds_the_informative_features_in_high_dimension() -> None:
+    """Three classes separated by 4 of 200 features: the model must keep those and little else.
+
+    A stand-in for the gene-expression data of the source article (SRBCT, Colon), where
+    the package used to select different genes in every fold.
+    """
+    rng = np.random.default_rng(0)
+    n, d, k = 90, 200, 4
+    y = rng.integers(0, 3, size=n)
+    x = rng.normal(size=(n, d))
+    x[:, :k] = rng.normal(scale=3.0, size=(3, k))[y] + rng.normal(scale=0.7, size=(n, k))
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=0, stratify=y)
+    scaler = MinMaxScaler().fit(x_train)
+
+    clf = DGALETSKClassifier(random_state=0).fit(scaler.transform(x_train), y_train)
+
+    selected = clf.selected_features_
+    assert clf.score(scaler.transform(x_test), y_test) >= 0.9
+    assert 2 <= len(selected) <= 8
+    assert sum(feature < k for feature in selected) >= len(selected) - 1
