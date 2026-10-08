@@ -844,6 +844,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#5-regression-on-strongly-correlated-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        5. Regression on Strongly Correlated Inputs
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-training-budget-of-the-regressors" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        6. Training Budget of the Regressors
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1337,6 +1359,104 @@
 </span><span id="__span-3-24"><a id="__codelineno-3-24" name="__codelineno-3-24" href="#__codelineno-3-24"></a>
 </span><span id="__span-3-25"><a id="__codelineno-3-25" name="__codelineno-3-25" href="#__codelineno-3-25"></a><span class="nb">print</span><span class="p">(</span><span class="s2">"Best Parameters:"</span><span class="p">,</span> <span class="n">random_search</span><span class="o">.</span><span class="n">best_params_</span><span class="p">)</span>
 </span></code></pre></div>
+<hr />
+<h2 id="5-regression-on-strongly-correlated-inputs">5. Regression on Strongly Correlated Inputs</h2>
+<p>Every regressor in highFIS has first-order consequents trained by gradient-based
+optimization. When the inputs are strongly correlated, as the channels of a spectrum are,
+the consequents form an ill-conditioned problem and the default number of epochs is far
+too small. This is a property of gradient training, not of a family: a plain linear model
+trained by the same optimizer shows the same behaviour.</p>
+<p>On the Tecator data (100 near-infrared channels, fat content as the target, inputs and
+target scaled to <code>[0, 1]</code>), ridge regression has a test error of about 2.4 to 2.8 percent
+fat and predicting the mean 13.0. With default settings the regressors lie between 5.5 and
+12 (the HDFIS regressors above that), and a linear model trained by Adam for 200 epochs
+gives 8.5.</p>
+<p>Three remedies, in order of effect:</p>
+<ul>
+<li><strong>Decorrelate the inputs.</strong> With ten whitened principal components in front of the
+  estimator, the defaults give 3.5 for <code>HTSKRegressor</code>, 3.4 for <code>FSREADATSKRegressor</code> and
+  3.9 for <code>TSKRegressor</code>.</li>
+<li><strong>Give the optimizer more updates</strong>, with more epochs or with mini-batches.
+  <code>HTSKRegressor(batch_size=32, epochs=300)</code> gives 5.6 on the raw channels and
+  <code>TSKRegressor(epochs=2000)</code> gives 3.6.</li>
+<li><strong>Prefer a family trained by Adam</strong> (see <a href="../optimisers/">Optimisers</a>). DG-TSK, ADATSK
+  and FSRE-ADATSK use plain gradient descent, as their articles do, and need many more
+  epochs on such data: <code>FSREADATSKRegressor</code> reaches 4.4 with 5000 epochs per phase, and
+  <code>DGTSKRegressor</code> does not get below 11 with 3000.</li>
+</ul>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.decomposition</span><span class="w"> </span><span class="kn">import</span> <span class="n">PCA</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_pipeline</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.preprocessing</span><span class="w"> </span><span class="kn">import</span> <span class="n">MinMaxScaler</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKRegressor</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="n">model</span> <span class="o">=</span> <span class="n">make_pipeline</span><span class="p">(</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="n">MinMaxScaler</span><span class="p">(),</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    <span class="n">PCA</span><span class="p">(</span><span class="n">n_components</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">whiten</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    <span class="n">MinMaxScaler</span><span class="p">(),</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>    <span class="n">HTSKRegressor</span><span class="p">(</span><span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="p">)</span>
+</span></code></pre></div>
+<hr />
+<h2 id="6-training-budget-of-the-regressors">6. Training Budget of the Regressors</h2>
+<p>The default number of epochs is kept small on purpose, so that a first fit takes seconds.
+For most regressors the defaults are enough on a well-conditioned problem. Three of them
+share the defaults of their classifier, which are short for regression, and need more
+epochs to reach the accuracy of a linear model.</p>
+<p>R² on a test split, inputs and target scaled to <code>[0, 1]</code>. "Linear" is a target that is a
+linear function of 8 features (ridge regression: 0.998); Friedman-1 has 10 features, 5 of
+them informative (ridge regression: 0.625).</p>
+<table>
+<thead>
+<tr>
+<th>Regressor</th>
+<th>Setting</th>
+<th>Linear</th>
+<th>Friedman-1</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ADATSKRegressor</code></td>
+<td>default (<code>epochs=100</code>)</td>
+<td>0.791</td>
+<td>0.458</td>
+</tr>
+<tr>
+<td></td>
+<td><code>epochs=500</code></td>
+<td>0.997</td>
+<td>0.624</td>
+</tr>
+<tr>
+<td><code>ADPTSKRegressor</code></td>
+<td>default (<code>epochs=200</code>)</td>
+<td>0.863</td>
+<td>0.543</td>
+</tr>
+<tr>
+<td></td>
+<td><code>epochs=1000</code></td>
+<td>0.996</td>
+<td>0.811</td>
+</tr>
+<tr>
+<td><code>DGTSKRegressor</code></td>
+<td>default (<code>dg_epochs=300, finetune_epochs=300</code>)</td>
+<td>0.553</td>
+<td>0.635</td>
+</tr>
+<tr>
+<td></td>
+<td><code>dg_epochs=3000, finetune_epochs=3000</code></td>
+<td>0.98</td>
+<td>0.71</td>
+</tr>
+</tbody>
+</table>
+<p>When a regressor scores below a linear model, raise the epochs before changing anything
+else. The training history (<code>history_</code>) shows whether the loss was still falling at the
+last epoch.</p>
 
 
 
