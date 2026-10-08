@@ -12,6 +12,7 @@ Fitted estimators can be introspected to analyze and explain their decision rule
 - `get_mf_params()` — the membership-function parameters per input feature;
 - `feature_importance()` — a normalized importance vector derived from the consequent weights;
 - `rule_activation(X)` — the normalized rule firing strengths for given inputs.
+- `firing_diagnostics(X)` — a numerical summary of how the rules fire on given inputs.
 
 ### High-level summary
 
@@ -105,6 +106,55 @@ bias = clf.get_consequent_bias()        # (rules, classes)
 if weights is not None and bias is not None:
     print("rule 0, class 0 intercept:", float(bias[0, 0]))
     print("rule 0, class 0 slopes:", weights[0, 0].tolist())
+```
+
+### Rule-Firing Diagnostics
+
+The normalized rule weights say how each prediction is shared among the rules. When they
+stop depending on the sample, the rules no longer partition the input space and the model
+is a single linear model, whatever its number of rules. `firing_diagnostics(X)` measures
+this:
+
+| Entry | Meaning |
+|---|---|
+| `uniform_fraction` | Fraction of samples on which every rule has the same weight. This is what the underflow of a product of many membership degrees produces. |
+| `dominated_fraction` | Fraction of samples on which one rule has at least 99% of the weight (`dominance` argument). |
+| `effective_rules`, `effective_rules_min` | Mean and minimum over the samples of the exponential of the entropy of the weights: 1 when one rule decides, `n_rules` when all weigh the same. |
+| `mean_firing` | Mean weight of each rule. |
+| `never_firing_rules` | Indices of the rules whose weight stays below `never` (default `1e-6`) on every sample. |
+| `non_finite_fraction` | Fraction of samples with a weight that is not finite. |
+| `n_samples`, `n_rules` | Size of the weights that were summarized. |
+
+A high `dominated_fraction` is not a defect in itself: it means the rules split the input
+space sharply. A high `uniform_fraction` is one.
+
+```python
+import numpy as np
+
+from highfis import HTSKClassifier, TSKClassifier
+
+rng = np.random.default_rng(0)
+X_wide = rng.random((60, 2000)).astype(np.float32)
+y_wide = (X_wide[:, 0] > 0.5).astype(int)
+
+product = TSKClassifier(n_mfs=3, epochs=5, random_state=0).fit(X_wide, y_wide)  # warns
+print(product.firing_diagnostics(X_wide)["uniform_fraction"])  # 1.0
+
+stable = HTSKClassifier(n_mfs=3, epochs=5, random_state=0).fit(X_wide, y_wide)
+print(stable.firing_diagnostics(X_wide)["uniform_fraction"])  # 0.0
+```
+
+At the end of `fit`, the same check runs on the training data (at most 2000 rows) and a
+`highfis.DegenerateFiringWarning` is raised when every rule has the same weight on more
+than half of the samples, or when one rule takes more than 99% of the weight on average.
+Models with a single rule are not checked. To silence it:
+
+```python
+import warnings
+
+from highfis import DegenerateFiringWarning
+
+warnings.simplefilter("ignore", DegenerateFiringWarning)
 ```
 
 ### Selected Features and Gates
