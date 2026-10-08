@@ -151,3 +151,61 @@ def test_adaptive_dombi_tnorm_rejects_invalid_arguments() -> None:
 def test_resolve_adaptive_dombi_t_norm_rejects_name() -> None:
     with pytest.raises(ValueError, match="adaptive_dombi requires a dimension"):
         resolve_t_norm("adaptive_dombi")
+
+
+@pytest.mark.parametrize("t_norm", [DombiTNorm, YagerTNorm, YagerSimpleTNorm, ALESoftminYagerTNorm])
+@pytest.mark.parametrize("lambda_", [1.0, 6.58, 20.0, 100.0])
+@pytest.mark.parametrize(
+    "terms",
+    [
+        [[1.0 - 1e-6, 1.0 - 1e-6, 1.0 - 1e-6]],  # a sample on the centre of a rule
+        [[1.0, 1.0 - 1e-6, 1.0 - 1e-5]],
+        [[1.0, 1.0, 1.0]],
+        [[1e-6, 1e-6, 1e-6]],
+        [[0.0, 0.5, 1.0]],
+    ],
+)
+def test_parametric_t_norms_have_finite_gradients_at_the_extremes(
+    t_norm: type, lambda_: float, terms: list[list[float]]
+) -> None:
+    """Small powers used to underflow to zero, whose root has an infinite derivative.
+
+    The gradient was then NaN for a sample whose memberships were all close to one, and a
+    whole model turned into NaN during training (seen with AYATSK on data lying on the
+    centres of its evenly spaced sets).
+    """
+    x = torch.tensor(terms, dtype=torch.float32, requires_grad=True)
+
+    out = t_norm(lambda_=lambda_)(x, dim=1)
+    out.sum().backward()
+
+    assert torch.isfinite(out).all()
+    assert x.grad is not None
+    assert torch.isfinite(x.grad).all()
+
+
+def test_parametric_t_norms_keep_their_values_on_ordinary_inputs() -> None:
+    x = torch.tensor([[0.25, 0.5], [0.4, 0.9], [0.99, 0.2]])
+
+    dombi = 1.0 / (1.0 + (((1.0 / x) - 1.0) ** 2).sum(1) ** 0.5)
+    yager = torch.clamp(1.0 - ((1.0 - x) ** 2).sum(1) ** 0.5, min=0.0)
+
+    assert torch.allclose(DombiTNorm(lambda_=2.0)(x, dim=1), dombi, atol=1e-6)
+    assert torch.allclose(YagerTNorm(lambda_=2.0)(x, dim=1), yager, atol=1e-6)
+
+
+def test_ayatsk_does_not_turn_into_nan_on_data_lying_on_its_set_centres() -> None:
+    """The data of a scikit-learn estimator check, on which the model became NaN after four epochs."""
+    import numpy as np
+
+    import highfis
+
+    x = np.array(
+        [[3, 0], [0, 1], [0, 2], [1, 1], [1, 2], [2, 1], [0, 3], [1, 0], [2, 0], [4, 4], [2, 3], [3, 2]], dtype=float
+    )
+    y = np.array([1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2])
+
+    clf = highfis.AYATSKClassifier(epochs=30, random_state=0).fit(x, y)
+
+    assert np.isfinite(clf.history_["train_loss"]).all()
+    assert np.isfinite(clf.predict_proba(x)).all()
