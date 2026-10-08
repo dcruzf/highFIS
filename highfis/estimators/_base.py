@@ -134,12 +134,22 @@ def _draw_spread(rng: np.random.Generator, h: float) -> float:
     return max(h * float(rng.normal(loc=1.0, scale=0.2)), 0.2 * h, 1e-3)
 
 
+def _draw_constant_spread(rng: np.random.Generator, h: float) -> float:
+    """Draw the initial spread from ``N(h, 0.2)``, as Cui et al. (IJCNN 2021) do.
+
+    The same distribution for every fuzzy set, whatever the spread of its cluster. It
+    assumes inputs on a common scale, standardized in the article, where ``h = 1``.
+    """
+    return max(float(rng.normal(loc=h, scale=0.2)), 1e-3)
+
+
 def _build_kmeans_input_mfs(
     x: np.ndarray,
     clusterer: KMeans | MiniBatchKMeans,
     sigma_scale: float,
     feature_names: list[str],
     random_state: int | None,
+    constant_spread: bool = False,
 ) -> dict[str, list[GaussianMF]]:
     r"""Build Gaussian MFs via k-means cluster-center initialization.
 
@@ -178,7 +188,7 @@ def _build_kmeans_input_mfs(
                 other = np.delete(center_col, r)
                 raw_sigma = float(np.min(np.abs(other - c))) / 2.0 if len(other) > 0 else 1.0
             h = raw_sigma * sigma_scale
-            sigma = _draw_spread(rng, h)
+            sigma = _draw_constant_spread(rng, sigma_scale) if constant_spread else _draw_spread(rng, h)
             mfs.append(GaussianMF(mean=c, sigma=sigma))
         input_mfs[name] = mfs
 
@@ -191,6 +201,7 @@ def _build_fuzzy_c_means_input_mfs(
     sigma_scale: float,
     feature_names: list[str],
     random_state: int | None,
+    constant_spread: bool = False,
 ) -> dict[str, list[GaussianMF]]:
     r"""Build Gaussian MFs via fuzzy C-means cluster initialization.
 
@@ -226,7 +237,7 @@ def _build_fuzzy_c_means_input_mfs(
                 other = np.delete(center_col, r)
                 raw_sigma = float(np.min(np.abs(other - c))) / 2.0 if len(other) > 0 else 1.0
             h = raw_sigma * sigma_scale
-            sigma = _draw_spread(rng, h)
+            sigma = _draw_constant_spread(rng, sigma_scale) if constant_spread else _draw_spread(rng, h)
             mfs.append(GaussianMF(mean=c, sigma=sigma))
 
         input_mfs[name] = mfs
@@ -438,6 +449,9 @@ def _wrap_gaussian_pimf_input_mfs(
 
 
 _DEFAULT_MF_CACHE_SIZE = 128
+
+#: How the initial spread of a clustered fuzzy set is centred (argument ``sigma_init``).
+_SIGMA_INITS: Final = frozenset({"cluster", "constant"})
 _MFCacheValue = tuple[dict[str, Any], list[str], str]
 
 
@@ -577,6 +591,7 @@ def _get_mf_cache_key(
     family: Any = None,
     pfrb_spread: Any = None,
     strata: np.ndarray | None = None,
+    sigma_init: Any = None,
 ) -> tuple[Any, ...]:
     # Determine step for sampling to hash quickly
     step = max(1, x_arr.shape[0] // 1000)
@@ -610,6 +625,7 @@ def _get_mf_cache_key(
         family,
         pfrb_spread,
         None if strata is None else hash(np.ascontiguousarray(strata).tobytes()),
+        sigma_init,
     )
 
 
@@ -632,6 +648,7 @@ def _build_input_mfs_cached(
         type(estimator).__qualname__,
         getattr(estimator, "pfrb_spread", None),
         getattr(estimator, "_pfrb_strata", None),
+        getattr(estimator, "sigma_init", None),
     )
 
     cached = _MF_INIT_CACHE.get(cache_key)
@@ -812,14 +829,18 @@ class _BaseTSKEstimator(BaseEstimator):
             effective_rule_base = "coco"
         else:
             clusterer = _resolve_clusterer(self.mf_init, int(self.n_mfs), self.random_state)
-            if isinstance(clusterer, FuzzyCMeans):
-                input_mfs = _build_fuzzy_c_means_input_mfs(
-                    x_arr, clusterer, effective_sigma_scale, feature_names, self.random_state
-                )
-            else:
-                input_mfs = _build_kmeans_input_mfs(
-                    x_arr, clusterer, effective_sigma_scale, feature_names, self.random_state
-                )
+            sigma_init = getattr(self, "sigma_init", "cluster")
+            if sigma_init not in _SIGMA_INITS:
+                raise ValueError(f"sigma_init must be one of {sorted(_SIGMA_INITS)}, got {sigma_init!r}")
+            build = _build_fuzzy_c_means_input_mfs if isinstance(clusterer, FuzzyCMeans) else _build_kmeans_input_mfs
+            input_mfs = build(
+                x_arr,
+                cast(Any, clusterer),
+                effective_sigma_scale,
+                feature_names,
+                self.random_state,
+                constant_spread=sigma_init == "constant",
+            )
             effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
 
         return input_mfs, feature_names, effective_rule_base
