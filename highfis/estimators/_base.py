@@ -1181,6 +1181,27 @@ class _BaseTSKEstimator(BaseEstimator):
         return _normalize_importance(importance)
 
 
+def _start_from_target_mean(model: BaseTSK, y: Tensor) -> None:
+    """Start a regressor whose consequents are all zero from the mean of the targets.
+
+    Several families initialize their consequents to zero, as their (classification)
+    articles prescribe. A regressor then has to learn the level of the target before
+    anything else, and with a small learning rate it may not get there in the default
+    number of epochs. Setting the constant term of every rule to the target mean makes the
+    untrained model predict that mean. Families that initialize their consequents otherwise
+    are left alone.
+    """
+    layer = model.consequent_layer
+    bias = getattr(layer, "bias", None)
+    weight = getattr(layer, "weight", None)
+    if not isinstance(bias, Tensor) or bool(torch.any(bias != 0)):
+        return
+    if isinstance(weight, Tensor) and bool(torch.any(weight != 0)):
+        return
+    with torch.no_grad():
+        bias.fill_(float(y.mean()))
+
+
 class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ignore[misc]
     """Abstract base class for all highFIS TSK classifier estimators.
 
@@ -1487,6 +1508,7 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
 
         x_t = self._as_tensor_x(x_arr, _device)
         self.rule_base_ = effective_rule_base
+        _start_from_target_mean(self.model_, y_t)
         self._pre_train_hook(self.model_, x_t, y_t)
         # Resolve the effective batch size once, from the training-set size, and expose it
         # as a fitted attribute; the trainer is built from it below.

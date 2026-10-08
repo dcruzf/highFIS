@@ -169,6 +169,9 @@ class FSREADATSKClassifierModel(_FSREADATSKMixin, BaseTSKClassifierModel):
             self.n_rules, self.n_inputs, self.n_classes, gate_fn=self.gate_fn, shared_lambda=True
         )
         layer.mode = "fs"
+        # Article, Section IV: "All the consequent parameters are initialized to zero."
+        nn.init.zeros_(layer.weight)
+        nn.init.zeros_(layer.bias)
         return layer
 
     def set_consequent_mode(self, mode: Literal["fs", "re", "finetune", "both"]) -> None:
@@ -303,6 +306,9 @@ class FSREADATSKRegressorModel(_FSREADATSKMixin, BaseTSKRegressorModel):
     def _build_consequent_layer(self) -> GatedRegressionConsequentLayer:
         layer = GatedRegressionConsequentLayer(self.n_rules, self.n_inputs, gate_fn=self.gate_fn, shared_lambda=True)
         layer.mode = "fs"
+        # Article, Section IV: "All the consequent parameters are initialized to zero."
+        nn.init.zeros_(layer.weight)
+        nn.init.zeros_(layer.bias)
         return layer
 
     def set_consequent_mode(self, mode: Literal["fs", "re", "finetune", "both"]) -> None:

@@ -835,6 +835,7 @@ class ADATSKRegressor(_BaseRegressorEstimator):
         rules: Sequence[Sequence[int]] | None = None,
     ) -> BaseTSK:
         """Create ADATSKRegressorModel."""
+        input_mfs = _wrap_adatsk_gaussian_input_mfs(input_mfs)
         return ADATSKRegressorModel(
             input_mfs,
             rule_base=rule_base,
