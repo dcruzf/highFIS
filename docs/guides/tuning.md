@@ -181,3 +181,29 @@ model = make_pipeline(
     HTSKRegressor(random_state=0),
 )
 ```
+
+---
+
+## 6. Training Budget of the Regressors
+
+The default number of epochs is kept small on purpose, so that a first fit takes seconds.
+For most regressors the defaults are enough on a well-conditioned problem. Three of them
+share the defaults of their classifier, which are short for regression, and need more
+epochs to reach the accuracy of a linear model.
+
+R² on a test split, inputs and target scaled to `[0, 1]`. "Linear" is a target that is a
+linear function of 8 features (ridge regression: 0.998); Friedman-1 has 10 features, 5 of
+them informative (ridge regression: 0.625).
+
+| Regressor | Setting | Linear | Friedman-1 |
+|---|---|---|---|
+| `ADATSKRegressor` | default (`epochs=100`) | 0.791 | 0.458 |
+| | `epochs=500` | 0.997 | 0.624 |
+| `ADPTSKRegressor` | default (`epochs=200`) | 0.863 | 0.543 |
+| | `epochs=1000` | 0.996 | 0.811 |
+| `DGTSKRegressor` | default (`dg_epochs=300, finetune_epochs=300`) | 0.553 | 0.635 |
+| | `dg_epochs=3000, finetune_epochs=3000` | 0.98 | 0.71 |
+
+When a regressor scores below a linear model, raise the epochs before changing anything
+else. The training history (`history_`) shows whether the loss was still falling at the
+last epoch.
