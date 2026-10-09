@@ -107,6 +107,13 @@ lacked a factor of its formula and was not the approximation of the minimum that
 article defines; it was exactly one whenever the membership degrees of a rule were all
 equal. It now follows the article. The earlier behaviour is not available.
 
+Two changes in 0.33.0 concern ADATSK, and they change its results. The spreads of the
+fuzzy sets are now fixed at one during training, as in the article, whose membership
+function has no spread; the freezing that existed had no effect. The classifier uses the
+loss of the article, the squared error summed over the classes and halved, which with
+plain gradient descent makes the steps 1.5 times larger for three classes and leaves
+two classes unchanged. The earlier behaviour is not available.
+
 ---
 
 ## 1. Baselines

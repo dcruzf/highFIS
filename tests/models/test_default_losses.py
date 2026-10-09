@@ -36,6 +36,8 @@ _HALF_SUM_SQUARED_ERROR = {
     # Eq. (14) of the HDFIS article, and the loss of the authors' code.
     "HDFISProdClassifierModel",
     "HDFISMinClassifierModel",
+    # Eq. (8) of the AdaTSK article.
+    "ADATSKClassifierModel",
 }
 
 

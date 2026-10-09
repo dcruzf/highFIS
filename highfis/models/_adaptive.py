@@ -14,6 +14,7 @@ from ..layers import (
     ClassificationConsequentLayer,
     RegressionConsequentLayer,
 )
+from ..losses import HalfSumSquaredErrorLoss
 from ..memberships import MembershipFunction
 from ._common import (
     BaseTSKClassifierModel,
@@ -104,7 +105,9 @@ class ADATSKClassifierModel(BaseTSKClassifierModel):
     def _build_consequent_layer(self) -> nn.Module:
         return ClassificationConsequentLayer(self.n_rules, self.n_inputs, self.n_classes)
 
-    default_criterion = nn.MSELoss
+    #: Squared error on one-hot targets summed over the classes and halved, Eq. (8) of the
+    #: article. The model is trained by plain gradient descent, so the scale sets the step.
+    default_criterion = HalfSumSquaredErrorLoss
 
 
 class ADATSKRegressorModel(BaseTSKRegressorModel):

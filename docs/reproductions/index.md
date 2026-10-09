@@ -17,6 +17,7 @@ print their table next to the values of the article.
 | Xue, Hu, Wang and Ablameyko (2025) | ADMTSK, DombiTSK | Colon, Leukemia | [ADMTSK](admtsk.md) |
 | Xue, Yang and Wang (2025) | AYATSK | Wine, Wdbc | [AYATSK](ayatsk.md) |
 | Fuzzy Sets and Systems, 2025 | ADPTSK | Colon, Leukemia | [ADPTSK](adptsk.md) |
+| Xue, Chang, Wang, Zhang and Pal (2023) | ADATSK | Iris, Wine, Wdbc | [AdaTSK](adatsk.md) |
 
 How to read the comparisons:
 
