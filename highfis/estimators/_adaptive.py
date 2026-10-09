@@ -71,6 +71,12 @@ def _apply_adatsk_paper_defaults(
             mf = cast(MembershipFunction, module)
             _set_sigma_to_one_and_freeze(mf)
 
+    # In a vectorized membership layer the spreads live in one parameter of the layer, and
+    # the attribute of each set is a read-only view: freezing has to be done on the layer.
+    flat_raw_sigma = getattr(model.membership_layer, "_flat_raw_sigma", None)
+    if isinstance(flat_raw_sigma, nn.Parameter):
+        flat_raw_sigma.requires_grad_(False)
+
     if freeze_antecedent_in_high_dim and int(x_t.shape[1]) >= int(high_dim_threshold):
         for param in model.membership_layer.parameters():
             param.requires_grad_(False)
