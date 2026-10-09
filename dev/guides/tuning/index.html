@@ -898,13 +898,63 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-training-budget-of-the-regressors" class="md-nav__link">
+  <a href="#6-the-defaults-are-a-starting-point" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        6. Training Budget of the Regressors
+        6. The Defaults Are a Starting Point
       </span>
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="6. The Defaults Are a Starting Point">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-the-defaults-do" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What the defaults do
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-to-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        What to search
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#signs-that-the-budget-is-too-small" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Signs that the budget is too small
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#regressors-that-need-more-epochs" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Regressors that need more epochs
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1513,11 +1563,140 @@ gives 8.5.</p>
 </span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="p">)</span>
 </span></code></pre></div>
 <hr />
-<h2 id="6-training-budget-of-the-regressors">6. Training Budget of the Regressors</h2>
-<p>The default number of epochs is kept small on purpose, so that a first fit takes seconds.
-For most regressors the defaults are enough on a well-conditioned problem. Three of them
-share the defaults of their classifier, which are short for regression, and need more
-epochs to reach the accuracy of a linear model.</p>
+<h2 id="6-the-defaults-are-a-starting-point">6. The Defaults Are a Starting Point</h2>
+<p>No default can be right for every dataset. The learning rate, the number of epochs, the
+number of rules and the constants of each family interact with the number of features,
+the number of samples and the correlation between the features. The defaults of highFIS
+are chosen so that a first fit takes seconds and does not fail; they are not the best
+values for your data, and the articles behind the families do not agree on them either.
+<strong>Search the hyperparameters before drawing a conclusion from a model</strong>, with
+<code>GridSearchCV</code> or <code>RandomizedSearchCV</code> as in sections 3 and 4.</p>
+<h3 id="what-the-defaults-do">What the defaults do</h3>
+<ul>
+<li><strong>Epochs</strong> are kept small on purpose.</li>
+<li><strong>Learning rate.</strong> Most families default to <code>0.01</code> with Adam. Six families default to
+  <code>learning_rate="auto"</code>, a rule on the number of features, because one fixed value does
+  not serve both a handful of features and thousands of them; the value chosen is stored
+  in <code>learning_rate_</code> after <code>fit</code>. A number always replaces the rule.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Family</th>
+<th>Optimizer</th>
+<th><code>"auto"</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ADATSK</td>
+<td>gradient descent</td>
+<td><code>min(0.1, 1 / (n_features + 1))</code>, stable whatever the data</td>
+</tr>
+<tr>
+<td>DG-TSK</td>
+<td>gradient descent</td>
+<td><code>min(0.2, 10 / n_features)</code>; 0.2 is the value of the article</td>
+</tr>
+<tr>
+<td>AYATSK, ADPTSK, DombiTSK, ADMTSK</td>
+<td>Adam</td>
+<td><code>0.01</code> up to 1000 features, <code>0.001</code> above</td>
+</tr>
+</tbody>
+</table>
+<p>For AYATSK the two values are those of its article. For the others the rule was
+  measured: with a fixed value these families either did not train on few features or
+  diverged on many.
+- <strong>The rule is a safe choice, not the best one.</strong> The step of ADATSK never diverges,
+  and on weakly correlated features a larger one trains faster.</p>
+<h3 id="what-to-search">What to search</h3>
+<table>
+<thead>
+<tr>
+<th>Hyperparameter</th>
+<th>Estimators</th>
+<th>Typical grid</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>learning_rate</code></td>
+<td>all</td>
+<td>three values a factor of 3 to 10 apart around the default</td>
+</tr>
+<tr>
+<td><code>epochs</code> (<code>dg_epochs</code>, <code>finetune_epochs</code>, <code>fs_epochs</code>, ...)</td>
+<td>all</td>
+<td>the default, 3 times and 10 times the default</td>
+</tr>
+<tr>
+<td><code>n_mfs</code></td>
+<td>all</td>
+<td>2 to 10 with clustering; 3 or 5 with a grid</td>
+</tr>
+<tr>
+<td><code>batch_size</code></td>
+<td>families trained by Adam</td>
+<td>16, 64, full batch</td>
+</tr>
+<tr>
+<td><code>sigma_scale</code></td>
+<td>families initialized by clustering</td>
+<td>0.5, 1, 2, <code>"auto"</code></td>
+</tr>
+<tr>
+<td><code>k</code></td>
+<td>AYATSK, ADPTSK</td>
+<td>AYATSK: 2, 2.5, 3.3, 5, 10; ADPTSK: 0.2 to 2</td>
+</tr>
+<tr>
+<td><code>zeta_lambda</code>, <code>zeta_theta</code></td>
+<td>DG-TSK, DG-ALETSK, FSRE-ADATSK</td>
+<td>around the defaults</td>
+</tr>
+<tr>
+<td><code>dg_epochs</code></td>
+<td>DG-ALETSK</td>
+<td>10 (default), 30, 100: with few features the default is short (Wine: 93.9% with 10, 98.9% with 100)</td>
+</tr>
+<tr>
+<td><code>n_heads</code>, <code>head_size</code></td>
+<td>MHTSK</td>
+<td>see the model page</td>
+</tr>
+</tbody>
+</table>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.model_selection</span><span class="w"> </span><span class="kn">import</span> <span class="n">GridSearchCV</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.pipeline</span><span class="w"> </span><span class="kn">import</span> <span class="n">Pipeline</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.preprocessing</span><span class="w"> </span><span class="kn">import</span> <span class="n">MinMaxScaler</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">ADPTSKClassifier</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="n">search</span> <span class="o">=</span> <span class="n">GridSearchCV</span><span class="p">(</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="n">Pipeline</span><span class="p">([(</span><span class="s2">"scale"</span><span class="p">,</span> <span class="n">MinMaxScaler</span><span class="p">()),</span> <span class="p">(</span><span class="s2">"model"</span><span class="p">,</span> <span class="n">ADPTSKClassifier</span><span class="p">(</span><span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">))]),</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    <span class="n">param_grid</span><span class="o">=</span><span class="p">{</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>        <span class="s2">"model__learning_rate"</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.001</span><span class="p">,</span> <span class="mf">0.003</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">],</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>        <span class="s2">"model__epochs"</span><span class="p">:</span> <span class="p">[</span><span class="mi">200</span><span class="p">,</span> <span class="mi">600</span><span class="p">],</span>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>        <span class="s2">"model__k"</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    <span class="p">},</span>
+</span><span id="__span-5-14"><a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>    <span class="n">cv</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+</span><span id="__span-5-15"><a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="p">)</span>
+</span></code></pre></div>
+<p>Keep the scaler inside the pipeline, so that it is fitted on the training part of each
+fold, and report the score of a held-out set or of an outer cross-validation, not the
+best score of the search. On small datasets the partition alone moves the accuracy by
+several points; see <a href="../../reproductions/">Reproductions</a>.</p>
+<h3 id="signs-that-the-budget-is-too-small">Signs that the budget is too small</h3>
+<ul>
+<li>The training history (<code>history_["train_loss"]</code>) is still falling at the last epoch.</li>
+<li>A regressor scores below a linear model, or a classifier predicts fewer classes than
+  there are.</li>
+<li><code>fit</code> raises a <code>RuntimeWarning</code> that training diverged: lower the learning rate.</li>
+<li><code>fit</code> raises a <code>DegenerateFiringWarning</code>: see
+  <a href="../introspection/">Rule-Firing Diagnostics</a>.</li>
+</ul>
+<h3 id="regressors-that-need-more-epochs">Regressors that need more epochs</h3>
 <p>R² on a test split, inputs and target scaled to <code>[0, 1]</code>. "Linear" is a target that is a
 linear function of 8 features (ridge regression: 0.998); Friedman-1 has 10 features, 5 of
 them informative (ridge regression: 0.625).</p>
@@ -1532,30 +1711,6 @@ them informative (ridge regression: 0.625).</p>
 </thead>
 <tbody>
 <tr>
-<td><code>ADATSKRegressor</code></td>
-<td>default (<code>epochs=100</code>)</td>
-<td>0.791</td>
-<td>0.458</td>
-</tr>
-<tr>
-<td></td>
-<td><code>epochs=500</code></td>
-<td>0.997</td>
-<td>0.624</td>
-</tr>
-<tr>
-<td><code>ADPTSKRegressor</code></td>
-<td>default (<code>epochs=200</code>)</td>
-<td>0.863</td>
-<td>0.543</td>
-</tr>
-<tr>
-<td></td>
-<td><code>epochs=1000</code></td>
-<td>0.996</td>
-<td>0.811</td>
-</tr>
-<tr>
 <td><code>DGTSKRegressor</code></td>
 <td>default (<code>dg_epochs=300, finetune_epochs=300</code>)</td>
 <td>0.553</td>
@@ -1569,9 +1724,7 @@ them informative (ridge regression: 0.625).</p>
 </tr>
 </tbody>
 </table>
-<p>When a regressor scores below a linear model, raise the epochs before changing anything
-else. The training history (<code>history_</code>) shows whether the loss was still falling at the
-last epoch.</p>
+<p>With the defaults the other regressors reach the linear model on the first problem.</p>
 
 
 

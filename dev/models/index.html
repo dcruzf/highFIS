@@ -1546,6 +1546,102 @@ the named estimators. Only the generic TSK lets you choose them; see
 </tbody>
 </table>
 <hr />
+<h2 id="numerical-stability-and-the-published-models">Numerical Stability and the Published Models</h2>
+<p>highFIS computes several quantities in another way than the articles write them, and
+departs from the articles in a few deliberate places. The two are different things.</p>
+<p><strong>Same model, other arithmetic.</strong> These changes compute the quantity that the article
+defines; the result is the same wherever the article's own formula can be evaluated,
+and remains defined where that formula would overflow or underflow.</p>
+<table>
+<thead>
+<tr>
+<th>Quantity</th>
+<th>In the article</th>
+<th>In highFIS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Normalized product of HDFIS-prod</td>
+<td>product of the membership degrees, in double precision</td>
+<td><code>softmax(D log(geometric mean))</code>, exact in single precision too</td>
+</tr>
+<tr>
+<td>Ada-softmin, ADP-softmin</td>
+<td>powers of the membership degrees, bounded for double precision</td>
+<td>sums in the logarithmic domain</td>
+</tr>
+<tr>
+<td>Dombi and Yager T-norms</td>
+<td>power means</td>
+<td>power means relative to the largest term</td>
+</tr>
+<tr>
+<td>Normalization by the sum</td>
+<td>division by the sum</td>
+<td>the same, with strengths bounded below by the smallest positive number</td>
+</tr>
+<tr>
+<td>Membership degrees</td>
+<td>one function per fuzzy set</td>
+<td>one batched operation</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Positive spreads.</strong> A spread is kept positive through a softplus transformation of
+the trained parameter. The membership function is the one of the article; the path of
+the optimizer differs from training the spread directly.</p>
+<p><strong>Deliberate differences from the articles.</strong> These do change the model or its
+training, and each is stated on the page of the family:</p>
+<table>
+<thead>
+<tr>
+<th>Difference</th>
+<th>Families</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Normalization of the consequent inputs (batch normalization) by default</td>
+<td>ADATSK, FSRE-ADATSK</td>
+</tr>
+<tr>
+<td>Regressors whose consequents start at zero start from the mean of the target</td>
+<td>ADATSK, FSRE-ADATSK, HDFIS, MHTSK</td>
+</tr>
+<tr>
+<td>Mean squared error where the article sums over the classes and halves (a constant factor under Adam)</td>
+<td>ADMTSK, DombiTSK, AYATSK, ADPTSK, MHTSK</td>
+</tr>
+<tr>
+<td>AdamW with a weight decay of <code>1e-8</code> where the article has Adam</td>
+<td>TSK, HTSK, LogTSK, HDFIS, MHTSK</td>
+</tr>
+<tr>
+<td>Initial spreads centred on the spread of the cluster (<code>sigma_init="constant"</code> gives the article's)</td>
+<td>TSK, HTSK, LogTSK</td>
+</tr>
+<tr>
+<td>Antecedents trained and number of heads from the feature coverage below 1000 features</td>
+<td>MHTSK</td>
+</tr>
+<tr>
+<td>Clustering with five rules by default instead of the partition of the article</td>
+<td>DombiTSK</td>
+</tr>
+<tr>
+<td>Regressors of families whose article only treats classification</td>
+<td>all but HDFIS</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Hyperparameters are not part of the model.</strong> The learning rate, the number of
+epochs and the batch size are often not stated in the articles, and where they are
+they were chosen for the datasets of the article. The defaults of highFIS are a
+starting point; see <a href="../guides/tuning/">The Defaults Are a Starting Point</a>. The pages
+under <a href="../reproductions/">Reproductions</a> give, for each article, the settings
+that reproduce its results.</p>
+<hr />
 <h2 id="changes-in-0320-for-the-families-with-gates">Changes in 0.32.0 for the families with gates</h2>
 <p>Version 0.32.0 makes DG-TSK, DG-ALETSK and FSRE-ADATSK follow their source articles. With
 the defaults of earlier versions these classifiers did not reproduce the published results
@@ -1705,6 +1801,59 @@ consequents are trained and the number of heads is the one of the article, 200 u
 5000 features and 300 beyond (<code>fcr_target=0.85</code> gives the earlier number); below 1000
 features the antecedents are trained as before. The membership degrees are computed in
 one batched operation, which makes fitting about six times faster.</p>
+<p>Several defaults change in 0.33.0, and with them the results of the estimators left
+at their defaults:</p>
+<table>
+<thead>
+<tr>
+<th>Estimator</th>
+<th>New default</th>
+<th>Earlier value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ADATSK</td>
+<td><code>learning_rate="auto"</code> (<code>min(0.1, 1 / (n_features + 1))</code>), <code>epochs=300</code></td>
+<td><code>learning_rate=0.01, epochs=100</code></td>
+</tr>
+<tr>
+<td>DG-TSK</td>
+<td><code>learning_rate="auto"</code> (<code>min(0.2, 10 / n_features)</code>)</td>
+<td><code>learning_rate=0.2</code></td>
+</tr>
+<tr>
+<td>AYATSK, ADPTSK</td>
+<td><code>learning_rate="auto"</code> (0.01 up to 1000 features, 0.001 above)</td>
+<td><code>learning_rate=0.001</code></td>
+</tr>
+<tr>
+<td>DombiTSK, ADMTSK</td>
+<td><code>learning_rate="auto"</code> (0.01 up to 1000 features, 0.001 above)</td>
+<td><code>learning_rate=0.01</code></td>
+</tr>
+<tr>
+<td>AYATSK</td>
+<td><code>k=2</code></td>
+<td><code>k=10</code></td>
+</tr>
+</tbody>
+</table>
+<p>With the earlier values ADPTSK predicted two of the three classes of Iris, ADATSK and
+DG-TSK diverged on data with thousands of features and predicted the majority class,
+and DombiTSK collapsed on some folds of such data. The defaults remain a starting
+point: see <a href="../guides/tuning/">The Defaults Are a Starting Point</a>.</p>
+<p>Three defects of saving and loading are fixed in 0.33.0: a saved ADATSK model could not
+be loaded; a loaded <code>DombiTSKClassifier</code> predicted differently, because the lower bound
+of its membership function was passed as a numerical constant that shifted its spreads
+and was not saved; and a loaded <code>DGTSKClassifier</code> returned its labels with another
+type. A <code>DombiTSKClassifier</code> trained with 0.33.0 no longer applies that shift.</p>
+<p>One more change in 0.33.0 concerns FSRE-ADATSK: its membership function is the one of
+the article, <span class="arithmatex">\(e^{-(x-m)^2}\)</span> without a spread, with the centres between the minimum and
+the maximum of each feature. Before, it was a Gaussian with a trained spread. The
+accuracy is the same or higher (Iris 96.7 and 96.7, Wine 97.8 and 98.9, SRBCT 95.3 and
+97.7 before and after); the numbers of selected features and rules change. Pass
+<code>input_configs</code> for other fuzzy sets.</p>
 <hr />
 <h2 id="1-baselines">1. Baselines</h2>
 <p>These models implement standard, textbook fuzzy logic structures. They are ideal as simple baselines for low-dimensional problems.</p>

@@ -1787,8 +1787,8 @@ feature selection, rule extraction, and En-FRB support.</p>
 <h2 id="fidelity-to-the-source-article">Fidelity to the source article</h2>
 <p>Since version 0.32.0 the defaults of <code>FSREADATSKClassifier</code> follow the procedure of the
 article. Before that version the defaults reached 47% on Iris and 40% on Wine, at chance
-level; they now reach about 97% on Iris and 98% on Wine, with 8.8 features and 7.1 rules
-on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there).</p>
+level; they now reach about 97% on Iris and 99% on Wine, with 9.0 features and 11.6
+rules on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there).</p>
 <table>
 <thead>
 <tr>
@@ -1807,6 +1807,11 @@ on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there).</p>
 <td>Phases</td>
 <td>Feature selection on the compact rule base, rule extraction on the enhanced one, then fine-tuning without gates</td>
 <td>Same. <code>use_en_frb=True</code> also runs feature selection on the enhanced rule base</td>
+</tr>
+<tr>
+<td>Membership</td>
+<td><span class="arithmatex">\(e^{-(x-m)^2}\)</span>, which has no spread (Eq. 3)</td>
+<td>Same since 0.33.0 (<code>ADATSKGaussianMF</code>, spread fixed at one). Before, a Gaussian with a trained spread and padded centres</td>
 </tr>
 <tr>
 <td>Gate function</td>
@@ -1853,7 +1858,7 @@ on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there).</p>
 <li><strong>Thresholds.</strong> The article uses other threshold coefficients above 1000 features (0.4
   and 0.5); highFIS keeps 0.5 and 0.3 unless <code>zeta_lambda</code> and <code>zeta_theta</code> are passed.</li>
 <li><strong>High-dimensional data.</strong> On SRBCT (83 samples, 2308 genes) the defaults give an accuracy
-  of 0.988 with about 22 genes and 21 rules, against 0.967, 12.3 and 4.2 in the article,
+  of 0.977 with about 19 genes and 20 rules, against 0.967, 12.3 and 4.2 in the article,
   which uses other thresholds and numbers of fuzzy sets there (see the two points above).</li>
 <li><strong>The regressor is an extension.</strong> The article only treats classification.
   <code>FSREADATSKRegressor</code> shares the defaults above and starts every rule from the mean of

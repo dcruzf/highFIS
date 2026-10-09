@@ -1376,8 +1376,8 @@
 fuzzy systems", <em>IEEE Transactions on Systems, Man, and Cybernetics: Systems</em>, 2025.</p>
 <p><strong>Script</strong>: <a href="https://github.com/dcruzf/highFIS/blob/main/examples/reproductions/ayatsk_2025.py"><code>examples/reproductions/ayatsk_2025.py</code></a></p>
 <h2 id="protocol-of-the-article">Protocol of the Article</h2>
-<p>Sections IV-A and IV-B of the article. Except for the learning rate, these settings are
-the defaults of <code>AYATSKClassifier</code>.</p>
+<p>Sections IV-A and IV-B of the article. Except for <span class="arithmatex">\(K\)</span>, which the script sets, these
+settings are the defaults of <code>AYATSKClassifier</code>.</p>
 <table>
 <thead>
 <tr>
@@ -1420,7 +1420,7 @@ the defaults of <code>AYATSKClassifier</code>.</p>
 <tr>
 <td>Learning rate</td>
 <td>0.01 for low-dimensional data, 0.001 above 1000 features</td>
-<td><code>learning_rate=0.01</code> (the default is 0.001)</td>
+<td><code>learning_rate=0.01</code> (also the default for these datasets)</td>
 </tr>
 <tr>
 <td>Evaluation</td>

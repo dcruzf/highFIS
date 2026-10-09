@@ -1785,7 +1785,7 @@ a regression consequent head and MSE loss.</p>
 <li>three antecedent MFs per feature with centers <code>[0.0, 0.5, 1.0]</code>
     and <code>sigma=1.0</code>,</li>
 <li><code>rule_base="coco"</code> yielding a compact 3-rule structure,</li>
-<li><code>epochs=200</code>, <code>learning_rate=0.001</code>,</li>
+<li><code>epochs=200</code>, <code>learning_rate="auto"</code> (0.001 above 1000 features, the value of the article; 0.01 below),</li>
 <li>dynamic batch policy: full-batch when <code>N &lt; 500</code>, else <code>0.2 * N</code>,</li>
 <li>Adam optimizer,</li>
 <li>zero initialization of consequent weights and biases,</li>
