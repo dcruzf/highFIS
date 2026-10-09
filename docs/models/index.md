@@ -60,7 +60,7 @@ training, and each is stated on the page of the family:
 | Normalization of the consequent inputs (batch normalization) by default | ADATSK, FSRE-ADATSK |
 | Regressors whose consequents start at zero start from the mean of the target | ADATSK, FSRE-ADATSK, HDFIS, MHTSK |
 | Mean squared error where the article sums over the classes and halves (a constant factor under Adam) | ADMTSK, DombiTSK, AYATSK, ADPTSK, MHTSK |
-| AdamW with a weight decay of `1e-8` where the article has Adam | families trained by Adam |
+| AdamW with a weight decay of `1e-8` where the article has Adam | TSK, HTSK, LogTSK, HDFIS, MHTSK |
 | Initial spreads centred on the spread of the cluster (`sigma_init="constant"` gives the article's) | TSK, HTSK, LogTSK |
 | Antecedents trained and number of heads from the feature coverage below 1000 features | MHTSK |
 | Clustering with five rules by default instead of the partition of the article | DombiTSK |
