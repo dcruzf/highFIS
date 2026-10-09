@@ -31,7 +31,7 @@ repetitions.
 | Vowel (990 samples, 10 features, 11 classes) | TSK | 87.91 | 87.81 ± 4.67 |
 | | LogTSK | 85.42 | 84.28 ± 3.53 |
 | | HTSK | 88.32 | 89.97 ± 4.68 |
-| Biodeg (1055 samples, 41 features, 2 classes) | TSK | 85.71 | 85.49 ± 2.07 |
+| Biodeg (1055 samples, 41 features, 2 classes) | TSK | 85.71 | 85.46 ± 1.52 |
 | | LogTSK | 85.87 | 84.73 ± 2.82 |
 | | HTSK | 85.99 | 84.38 ± 2.93 |
 

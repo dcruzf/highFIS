@@ -551,7 +551,11 @@ def _clamp_log_denom(x: Tensor, eps: float) -> Tensor:
 
 
 class ADPSoftminRuleLayer(RuleLayer):
-    """Compute adaptive ADP-softmin firing strengths for each rule."""
+    """Compute adaptive double-parameter softmin (ADP-softmin) firing strengths for each rule.
+
+    The firing strength approximates the minimum of the membership degrees of the rule
+    (Eqs. (33) and (34) of the ADPTSK article).
+    """
 
     def __init__(
         self,
@@ -574,31 +578,40 @@ class ADPSoftminRuleLayer(RuleLayer):
         super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod")
 
     def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
-        """Compute ADP-softmin rule strengths from membership outputs."""
+        r"""Compute ADP-softmin rule strengths from membership outputs.
+
+        For the membership degrees :math:`v_d` of one rule, with minimum
+        :math:`\underline{v}` and maximum :math:`\bar{v}`,
+
+        .. math::
+
+            f = \frac{1}{\hat\eta}\Big[\frac{1}{D}\sum_d (\hat\eta v_d)^{\hat q}\Big]^{1/\hat q},
+            \qquad
+            \ln\hat\eta = -\frac{\xi\ln\underline{v} + (\kappa - \ln D)\ln\bar{v}}{\kappa - \ln D + \xi},
+            \qquad
+            \hat q = \frac{-\xi}{\ln(\hat\eta\bar{v})}.
+
+        :math:`\hat\eta` and :math:`\hat q` are computed from the current degrees and
+        treated as constants in the backward pass, as the index of Ada-softmin is. The sum
+        is evaluated in the logarithmic domain, so the bounds :math:`\kappa` and
+        :math:`\xi` of double precision do not have to hold in single precision.
+        """
         mu = self._gather_terms(membership_outputs).clamp(min=self.eps, max=1.0 - self.eps)
-        min_mu = mu.min(dim=-1).values
-        max_mu = mu.max(dim=-1).values
-
-        ln_D = math.log(float(self.n_inputs))
-        neg_ln_under = -torch.log(min_mu)
-        neg_ln_bar = -torch.log(max_mu)
-
-        denom = (self.kappa - ln_D) + self.xi
-        log_eta = (self.xi * neg_ln_under + (self.kappa - ln_D) * neg_ln_bar) / denom
-        eta = torch.exp(log_eta)
-
-        q1 = (self.kappa - ln_D) / _clamp_log_denom(torch.log(eta * min_mu), self.eps)
-        q2 = (-self.xi) / _clamp_log_denom(torch.log(eta * max_mu), self.eps)
-        q = torch.maximum(q1, q2)
-        q = torch.ceil(q).clamp(min=-1000.0, max=-1.0)
-
         log_mu = torch.log(mu)
-        log_terms = q.unsqueeze(-1) * (torch.log(eta).unsqueeze(-1) + log_mu)
-        max_log_terms = log_terms.amax(dim=-1, keepdim=True)
-        log_sum = max_log_terms + torch.log(torch.exp(log_terms - max_log_terms).sum(dim=-1, keepdim=True))
-        log_avg = log_sum - math.log(self.n_inputs)
-        log_w = log_avg.squeeze(-1) / q
-        return torch.exp(log_w)
+        with torch.no_grad():
+            log_min = log_mu.amin(dim=-1)
+            log_max = log_mu.amax(dim=-1)
+            headroom = self.kappa - math.log(float(self.n_inputs))
+            log_eta = -(self.xi * log_min + headroom * log_max) / (headroom + self.xi)
+            q1 = headroom / _clamp_log_denom(log_eta + log_min, self.eps)
+            q2 = (-self.xi) / _clamp_log_denom(log_eta + log_max, self.eps)
+            # Both are negative and equal at the optimum; when every degree of the rule is
+            # the same, the two logarithms vanish and any negative index gives that degree.
+            q = torch.maximum(q1, q2).clamp(max=-1.0)
+
+        log_terms = q.unsqueeze(-1) * (log_eta.unsqueeze(-1) + log_mu)
+        log_avg = torch.logsumexp(log_terms, dim=-1) - math.log(self.n_inputs)
+        return torch.exp(log_avg / q - log_eta)
 
 
 # Threshold ξ for the adaptive q̂ computation in the ALE-softmin (paper eq. 22).

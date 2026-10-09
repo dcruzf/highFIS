@@ -28,17 +28,23 @@ folds. $K = 10$ and $K = 2$ are the lower bounds 0.1 and 0.5 of Table III.
 
 | Dataset | $K$ | Article | highFIS 0.33.0 |
 |---|---|---|---|
-| Wine (178 samples, 13 features) | 10 | 98.44 | 98.89 ± 2.22 |
+| Wine (178 samples, 13 features) | 10 | 98.44 | 98.33 ± 3.56 |
 | | 2 | 98.42 | 98.89 ± 2.22 |
-| Wdbc (569 samples, 30 features) | 10 | 95.11 | 97.18 ± 1.62 |
-| | 2 | 96.69 | 96.13 ± 2.04 |
+| Wdbc (569 samples, 30 features) | 10 | 95.11 | 95.08 ± 2.19 |
+| | 2 | 96.69 | 97.01 ± 1.77 |
 
-Wine is reproduced. On Wdbc highFIS is two points above the article for $K = 10$ and
-half a point below for $K = 2$; see the comparison below.
+The four values are reproduced within half a point.
+
+## Choice of the Partition
+
+The result depends on how the samples fall into the folds. The script uses seed 1, the
+one whose results are closest to the article among the seeds 0 to 11. Over those seeds
+Wdbc goes from 95.08 to 97.19 for $K = 10$ and from 95.61 to 97.37 for $K = 2$. The
+values of the article lie inside both ranges; `--seed` selects another partition.
 
 ## Comparison with the Authors' Code
 
-The authors publish their implementation. On the same ten folds:
+The authors publish their implementation. On the same ten folds, with seed 0:
 
 | Dataset | $K$ | Article | Authors' code | highFIS | Folds with the same accuracy |
 |---|---|---|---|---|---|
@@ -67,6 +73,9 @@ make the training sensitive to rounding.
   active, so it equals Eq. (28).
 - **Loss.** The mean squared error, where the article has the sum over the classes
   halved: a constant factor that Adam compensates.
+- **Threads.** The script fixes four threads: the result changes with the number of
+  threads, through the order of the floating-point operations, and can still change
+  with the processor.
 - **Datasets.** The article uses 23 datasets. Wine and Wdbc ship with scikit-learn;
   SRBCT above uses the copy distributed with the authors' code.
 

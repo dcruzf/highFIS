@@ -28,10 +28,11 @@ folds.
 
 | Dataset | Article | highFIS 0.33.0 |
 |---|---|---|
-| Colon (62 samples, 2000 genes) | 86.33 | 87.38 ± 11.72 |
+| Colon (62 samples, 2000 genes) | 86.33 | 85.95 ± 14.18 |
 | Leukemia (72 samples, 7129 genes) | 97.29 | 97.14 ± 5.71 |
 
-Both are reproduced within one point.
+Both are reproduced within half a point, with seed 0 and four threads. The seed was not
+chosen for this family.
 
 ## The Six Combinations of the Article
 
@@ -49,7 +50,7 @@ batch size. With highFIS, ten folds, accuracy for the learning rates 0.01, 0.001
 
 These runs read Colon from a file with the samples in another order than on OpenML, so
 their folds are not the folds of the script, and the first value of Colon (86.0) is not
-the 87.38 of the table above. On Colon the choice among the six moves the accuracy by eight points, more than the
+the 85.95 of the table above. On Colon the choice among the six moves the accuracy by eight points, more than the
 differences between the models that the article compares; with 62 samples one test
 sample is 1.6 points of the cross-validated accuracy. The best of six chosen on the
 test folds is an optimistic estimate.

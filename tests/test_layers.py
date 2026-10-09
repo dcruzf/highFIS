@@ -766,3 +766,37 @@ def test_composite_exponential_layer_loads_a_checkpoint_with_one_entry_per_set()
     target = build(0.9)
     target.load_state_dict(legacy)
     assert torch.allclose(cast(Tensor, target._flat_mean), torch.tensor([0.25, 0.25]))
+
+
+def _adp_softmin(degrees: Tensor) -> Tensor:
+    from highfis.layers import ADPSoftminRuleLayer
+
+    n_inputs = degrees.shape[1]
+    layer = ADPSoftminRuleLayer([f"x{i}" for i in range(n_inputs)], [1] * n_inputs, rule_base="coco")
+    return layer({f"x{i}": degrees[:, i : i + 1] for i in range(n_inputs)}).squeeze(1)
+
+
+@pytest.mark.parametrize("n_inputs", [3, 50, 2000])
+def test_adp_softmin_approximates_the_minimum(n_inputs: int) -> None:
+    """The firing strength is the minimum of the degrees, not a multiple of it."""
+    torch.manual_seed(0)
+    degrees = torch.rand(8, n_inputs) * 0.6 + 0.37  # the range of the Gaussian set bounded below by 1/e
+    firing = _adp_softmin(degrees)
+    assert torch.allclose(firing, degrees.min(dim=1).values, atol=5e-3)
+
+
+def test_adp_softmin_of_equal_degrees_is_that_degree() -> None:
+    """A sample with the same value on every feature used to get a firing strength of one."""
+    for value in (0.4, 0.75, 0.999):
+        firing = _adp_softmin(torch.full((2, 20), value))
+        assert firing.tolist() == pytest.approx([value, value], abs=1e-5)
+
+
+def test_adp_softmin_gradient_goes_to_the_smallest_degree() -> None:
+    torch.manual_seed(0)
+    degrees = (torch.rand(4, 30) * 0.6 + 0.37).requires_grad_(True)
+    _adp_softmin(degrees).sum().backward()
+    grad = cast(Tensor, degrees.grad)
+    assert bool(torch.isfinite(grad).all())
+    on_minimum = grad.gather(1, degrees.argmin(dim=1, keepdim=True)).squeeze(1)
+    assert bool((on_minimum / grad.sum(dim=1) > 0.9).all())

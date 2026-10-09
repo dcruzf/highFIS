@@ -23,23 +23,29 @@ $$
 The infimum of this membership is $\exp(-K) > 0$, which prevents the
 antecedent from producing zero values in high-dimensional settings.
 
-For each rule $r$, ADP-softmin computes a firing coefficient using
-adaptive parameters $\eta$ and $q$:
+For each rule $r$, ADP-softmin approximates the minimum of the membership degrees with
+two adaptive parameters $\hat\eta_r$ and $\hat q_r$:
 
 $$
-f_r = \left(\frac{1}{D} \sum_{d=1}^{D} (\eta\,\mu_{r,d})^{q}\right)^{1/q}
+f_r = \frac{1}{\hat\eta_r}\left(\frac{1}{D} \sum_{d=1}^{D} (\hat\eta_r\,\mu_{r,d})^{\hat q_r}\right)^{1/\hat q_r}
 $$
 
-The parameters are chosen to avoid numeric underflow and fake-minimum
-behaviour:
+With $\underline\mu_r$ and $\bar\mu_r$ the smallest and the largest degree of the rule,
 
-- $\eta$ adapts to the current rule's minimum and maximum membership values,
-- $q$ is selected as the tightest negative exponent that still remains
-  numerically representable.
+$$
+\ln\hat\eta_r = -\frac{\xi\ln\underline\mu_r + (\kappa - \ln D)\ln\bar\mu_r}{\kappa - \ln D + \xi},
+\qquad
+\hat q_r = \frac{-\xi}{\ln(\hat\eta_r\,\bar\mu_r)}
+$$
 
-In practice, highFIS implements the ADP-softmin computation in a numerically
-stable log-space fashion, with recommended default values
-$\kappa = 690.0$ and $\xi = 730.0$.
+The scaling by $\hat\eta_r$ centres the degrees around one, so that the powers neither
+overflow nor underflow, and lets $\hat q_r$ be far more negative than the index of
+Ada-softmin, which brings the result closer to the minimum. The division by
+$\hat\eta_r$ undoes the scaling.
+
+highFIS evaluates the sum in the logarithmic domain, with the default values
+$\kappa = 690.0$ and $\xi = 730.0$ of the article, and treats $\hat\eta_r$ and
+$\hat q_r$ as constants in the backward pass.
 
 ### Consequent and defuzzification
 
@@ -147,3 +153,23 @@ This estimator is analogous to the classifier wrapper but builds
   default estimator behavior.
 - Recommended default values `kappa=690.0`, `xi=730.0`, and `K=1.0` are
   derived directly from the paper's suggested settings.
+
+## Fidelity to the source article
+
+The defaults of `ADPTSKClassifier` are the experimental settings of the article: the
+Gaussian membership function bounded below with $K = 1$, the partition with three rules
+and spreads of 1, consequents at zero, and Adam on the whole training set for 200
+iterations with a learning rate of 0.001. The published accuracies are reproduced; see
+the [reproduction](../reproductions/adptsk.md).
+
+Before version 0.33.0 the firing strength lacked the division by $\hat\eta_r$: it was
+$\hat\eta_r$ times the softmin, up to 0.2 away from the minimum of the degrees, and
+exactly one whenever the degrees of a rule were all equal. The index was also rounded
+up and bounded at $-1000$, which the article does not do. The firing strength now is
+within 0.002 of the minimum and gives the value of the numerical example of the
+article ($1.1026 \times 10^{-26}$ for a minimum of $1.1 \times 10^{-26}$).
+
+Two points are not fixed by the article and were chosen here. The gradient treats
+$\hat\eta_r$ and $\hat q_r$ as constants, as the code of the same group does for
+Ada-softmin. The loss is the mean squared error instead of the sum over the classes
+halved, a constant factor that Adam compensates.
