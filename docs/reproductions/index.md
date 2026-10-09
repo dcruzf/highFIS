@@ -16,6 +16,7 @@ print their table next to the values of the article.
 | Xue, Wang, Zhang and Pal (2024) | HDFIS-prod, HDFIS-min | Colon, Leukemia | [HDFIS](hdfis.md) |
 | Xue, Hu, Wang and Ablameyko (2025) | ADMTSK, DombiTSK | Colon, Leukemia | [ADMTSK](admtsk.md) |
 | Xue, Yang and Wang (2025) | AYATSK | Wine, Wdbc | [AYATSK](ayatsk.md) |
+| Fuzzy Sets and Systems, 2025 | ADPTSK | Colon, Leukemia | [ADPTSK](adptsk.md) |
 
 How to read the comparisons:
 

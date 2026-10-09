@@ -102,6 +102,11 @@ the article for full-batch training (`epochs=200` gives the earlier behaviour), 
 membership degrees are computed in one batched operation, which makes fitting about ten
 times faster on high-dimensional data without changing the result.
 
+One change in 0.33.0 concerns ADPTSK, and it changes its results. The firing strength
+lacked a factor of its formula and was not the approximation of the minimum that the
+article defines; it was exactly one whenever the membership degrees of a rule were all
+equal. It now follows the article. The earlier behaviour is not available.
+
 ---
 
 ## 1. Baselines
