@@ -362,6 +362,8 @@
       
         
       
+        
+      
     
     
     
@@ -1148,6 +1150,8 @@
       
         
       
+        
+      
     
     
     
@@ -1677,6 +1681,10 @@ Results change only for samples far from every rule.</p>
 the article for full-batch training (<code>epochs=200</code> gives the earlier behaviour), and its
 membership degrees are computed in one batched operation, which makes fitting about ten
 times faster on high-dimensional data without changing the result.</p>
+<p>One change in 0.33.0 concerns ADPTSK, and it changes its results. The firing strength
+lacked a factor of its formula and was not the approximation of the minimum that the
+article defines; it was exactly one whenever the membership degrees of a rule were all
+equal. It now follows the article. The earlier behaviour is not available.</p>
 <hr />
 <h2 id="1-baselines">1. Baselines</h2>
 <p>These models implement standard, textbook fuzzy logic structures. They are ideal as simple baselines for low-dimensional problems.</p>

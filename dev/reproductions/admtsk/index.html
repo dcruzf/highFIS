@@ -362,6 +362,8 @@
       
         
       
+        
+      
     
     
     
@@ -777,6 +779,8 @@
       
         
       
+        
+      
     
     
     
@@ -1045,6 +1049,33 @@
 
                 
               
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adptsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ADPTSK
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
             </ul>
           </nav>
         
@@ -1222,6 +1253,8 @@
       
         
       
+        
+      
     
     
     
@@ -1334,7 +1367,7 @@ folds.</p>
 <tr>
 <td>Colon (62 samples, 2000 genes)</td>
 <td>86.33</td>
-<td>87.38 ± 11.72</td>
+<td>85.95 ± 14.18</td>
 </tr>
 <tr>
 <td>Leukemia (72 samples, 7129 genes)</td>
@@ -1343,7 +1376,8 @@ folds.</p>
 </tr>
 </tbody>
 </table>
-<p>Both are reproduced within one point.</p>
+<p>Both are reproduced within half a point, with seed 0 and four threads. The seed was not
+chosen for this family.</p>
 <h2 id="the-six-combinations-of-the-article">The Six Combinations of the Article</h2>
 <p>The article reports, for each dataset, the best of six combinations of learning rate and
 batch size. With highFIS, ten folds, accuracy for the learning rates 0.01, 0.001 and
@@ -1398,7 +1432,7 @@ batch size. With highFIS, ten folds, accuracy for the learning rates 0.01, 0.001
 </table>
 <p>These runs read Colon from a file with the samples in another order than on OpenML, so
 their folds are not the folds of the script, and the first value of Colon (86.0) is not
-the 87.38 of the table above. On Colon the choice among the six moves the accuracy by eight points, more than the
+the 85.95 of the table above. On Colon the choice among the six moves the accuracy by eight points, more than the
 differences between the models that the article compares; with 62 samples one test
 sample is 1.6 points of the cross-validated accuracy. The best of six chosen on the
 test folds is an optimistic estimate.</p>

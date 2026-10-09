@@ -362,6 +362,8 @@
       
         
       
+        
+      
     
     
     
@@ -1192,6 +1194,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#fidelity-to-the-source-article" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Fidelity to the source article
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1385,6 +1398,8 @@
       
         
           
+        
+      
         
       
         
@@ -1685,21 +1700,24 @@ computed using the Gaussian PIMF:</p>
 \]</div>
 <p>The infimum of this membership is <span class="arithmatex">\(\exp(-K) &gt; 0\)</span>, which prevents the
 antecedent from producing zero values in high-dimensional settings.</p>
-<p>For each rule <span class="arithmatex">\(r\)</span>, ADP-softmin computes a firing coefficient using
-adaptive parameters <span class="arithmatex">\(\eta\)</span> and <span class="arithmatex">\(q\)</span>:</p>
+<p>For each rule <span class="arithmatex">\(r\)</span>, ADP-softmin approximates the minimum of the membership degrees with
+two adaptive parameters <span class="arithmatex">\(\hat\eta_r\)</span> and <span class="arithmatex">\(\hat q_r\)</span>:</p>
 <div class="arithmatex">\[
-f_r = \left(\frac{1}{D} \sum_{d=1}^{D} (\eta\,\mu_{r,d})^{q}\right)^{1/q}
+f_r = \frac{1}{\hat\eta_r}\left(\frac{1}{D} \sum_{d=1}^{D} (\hat\eta_r\,\mu_{r,d})^{\hat q_r}\right)^{1/\hat q_r}
 \]</div>
-<p>The parameters are chosen to avoid numeric underflow and fake-minimum
-behaviour:</p>
-<ul>
-<li><span class="arithmatex">\(\eta\)</span> adapts to the current rule's minimum and maximum membership values,</li>
-<li><span class="arithmatex">\(q\)</span> is selected as the tightest negative exponent that still remains
-  numerically representable.</li>
-</ul>
-<p>In practice, highFIS implements the ADP-softmin computation in a numerically
-stable log-space fashion, with recommended default values
-<span class="arithmatex">\(\kappa = 690.0\)</span> and <span class="arithmatex">\(\xi = 730.0\)</span>.</p>
+<p>With <span class="arithmatex">\(\underline\mu_r\)</span> and <span class="arithmatex">\(\bar\mu_r\)</span> the smallest and the largest degree of the rule,</p>
+<div class="arithmatex">\[
+\ln\hat\eta_r = -\frac{\xi\ln\underline\mu_r + (\kappa - \ln D)\ln\bar\mu_r}{\kappa - \ln D + \xi},
+\qquad
+\hat q_r = \frac{-\xi}{\ln(\hat\eta_r\,\bar\mu_r)}
+\]</div>
+<p>The scaling by <span class="arithmatex">\(\hat\eta_r\)</span> centres the degrees around one, so that the powers neither
+overflow nor underflow, and lets <span class="arithmatex">\(\hat q_r\)</span> be far more negative than the index of
+Ada-softmin, which brings the result closer to the minimum. The division by
+<span class="arithmatex">\(\hat\eta_r\)</span> undoes the scaling.</p>
+<p>highFIS evaluates the sum in the logarithmic domain, with the default values
+<span class="arithmatex">\(\kappa = 690.0\)</span> and <span class="arithmatex">\(\xi = 730.0\)</span> of the article, and treats <span class="arithmatex">\(\hat\eta_r\)</span> and
+<span class="arithmatex">\(\hat q_r\)</span> as constants in the backward pass.</p>
 <h3 id="consequent-and-defuzzification">Consequent and defuzzification</h3>
 <p>The consequent structure remains first-order TSK with a weighted linear output.
 The rule strengths are normalized and passed to the standard TSK consequent
@@ -1829,6 +1847,22 @@ a regression consequent head and MSE loss.</p>
 <li>Recommended default values <code>kappa=690.0</code>, <code>xi=730.0</code>, and <code>K=1.0</code> are
   derived directly from the paper's suggested settings.</li>
 </ul>
+<h2 id="fidelity-to-the-source-article">Fidelity to the source article</h2>
+<p>The defaults of <code>ADPTSKClassifier</code> are the experimental settings of the article: the
+Gaussian membership function bounded below with <span class="arithmatex">\(K = 1\)</span>, the partition with three rules
+and spreads of 1, consequents at zero, and Adam on the whole training set for 200
+iterations with a learning rate of 0.001. The published accuracies are reproduced; see
+the <a href="../../reproductions/adptsk/">reproduction</a>.</p>
+<p>Before version 0.33.0 the firing strength lacked the division by <span class="arithmatex">\(\hat\eta_r\)</span>: it was
+<span class="arithmatex">\(\hat\eta_r\)</span> times the softmin, up to 0.2 away from the minimum of the degrees, and
+exactly one whenever the degrees of a rule were all equal. The index was also rounded
+up and bounded at <span class="arithmatex">\(-1000\)</span>, which the article does not do. The firing strength now is
+within 0.002 of the minimum and gives the value of the numerical example of the
+article (<span class="arithmatex">\(1.1026 \times 10^{-26}\)</span> for a minimum of <span class="arithmatex">\(1.1 \times 10^{-26}\)</span>).</p>
+<p>Two points are not fixed by the article and were chosen here. The gradient treats
+<span class="arithmatex">\(\hat\eta_r\)</span> and <span class="arithmatex">\(\hat q_r\)</span> as constants, as the code of the same group does for
+Ada-softmin. The loss is the mean squared error instead of the sum over the classes
+halved, a constant factor that Adam compensates.</p>
 
 
 

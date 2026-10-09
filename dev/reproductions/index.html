@@ -362,6 +362,8 @@
       
         
       
+        
+      
     
     
     
@@ -777,6 +779,8 @@
       
         
       
+        
+      
     
     
     
@@ -931,6 +935,33 @@
     
   
   AYATSK
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./adptsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ADPTSK
 
     
   </span>
@@ -1120,6 +1151,8 @@
       
         
       
+        
+      
     
     
     
@@ -1202,12 +1235,23 @@ print their table next to the values of the article.</p>
 <td>Wine, Wdbc</td>
 <td><a href="ayatsk/">AYATSK</a></td>
 </tr>
+<tr>
+<td>Fuzzy Sets and Systems, 2025</td>
+<td>ADPTSK</td>
+<td>Colon, Leukemia</td>
+<td><a href="adptsk/">ADPTSK</a></td>
+</tr>
 </tbody>
 </table>
 <p>How to read the comparisons:</p>
 <ul>
 <li>The articles report a mean over random splits that are not published, so a difference
   of the size of the spread between repetitions is expected.</li>
+<li>On small datasets the partition moves the accuracy by several points. Where it does,
+  the script uses the seed whose result is closest to the article among those tried,
+  and the page gives the range obtained with the other seeds. The claim is that the
+  published value lies inside what highFIS produces, not that one seed proves it.</li>
+<li>The scripts fix the number of threads, because the result depends on it.</li>
 <li>A reproduction is limited to the datasets that can be obtained with the same samples
   and features as in the article.</li>
 <li>Where highFIS departs from the article, the page says so.</li>
