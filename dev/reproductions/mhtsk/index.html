@@ -12,13 +12,13 @@
         <meta name="author" content="Daniel Franca">
       
       
-        <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/models/tsk-vanilla/">
+        <link rel="canonical" href="https://dcruzf.github.io/highFIS/dev/reproductions/mhtsk/">
       
       
-        <link rel="prev" href="../">
+        <link rel="prev" href="../adatsk/">
       
       
-        <link rel="next" href="../logtsk/">
+        <link rel="next" href="../../api/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>Vanilla TSK - highFIS Docs</title>
+        <title>MHTSK - highFIS Docs</title>
       
     
     
@@ -122,7 +122,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Vanilla TSK
+              MHTSK
             
           </span>
         </div>
@@ -214,8 +214,6 @@
   
   
   
-    
-  
   
     
       
@@ -254,8 +252,8 @@
     
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../models/" class="md-tabs__link">
           
   
   Models
@@ -346,6 +344,8 @@
   
   
   
+    
+  
   
     
       
@@ -372,8 +372,8 @@
     
     
     
-      <li class="md-tabs__item">
-        <a href="../../reproductions/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
           
   
   Reproductions
@@ -541,8 +541,6 @@
       
   
   
-    
-  
   
   
     
@@ -582,26 +580,25 @@
     
     
       
-        
-        
-      
       
         
       
     
     
       
+        
+        
+      
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
       
         
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
-        
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
-              
+  
+  
+  
+  
+    <a href="../../models/" class="md-nav__link">
+      
   
   
   <span class="md-ellipsis">
@@ -614,540 +611,12 @@
   
   
 
-            </a>
-            
-              
-              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
-        
-        
-          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
-            <label class="md-nav__title" for="__nav_2">
-              <span class="md-nav__icon md-icon"></span>
-              
-  
-  Models
-
-            </label>
-            <ul class="md-nav__list" data-md-scrollfix>
-              
-                
-              
-                
-                  
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
       
+        <span class="md-nav__icon md-icon"></span>
       
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Vanilla TSK
-
-    
-  </span>
-  
+    </a>
   
 
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="././" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  Vanilla TSK
-
-    
-  </span>
-  
-  
-
-      </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Reference
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#mathematical-formulation" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Mathematical Formulation
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Mathematical Formulation">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#antecedent" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Antecedent
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#defuzzification-sum-based" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Defuzzification (sum-based)
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#consequent-first-order" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Consequent (first-order)
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#selectable-building-blocks" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Selectable building blocks
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#code-paper-correspondence" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Code ↔ Paper Correspondence
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#implementation-notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Implementation notes
-      </span>
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Implementation notes">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#strict-paper-mode" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Strict paper mode
-      </span>
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../logtsk/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  LogTSK
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../htsk/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  HTSK
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../dombitsk/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  DombiTSK
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../adatsk/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  ADATSK
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../fsre-adatsk/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  FSRE-ADATSK
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../dg-tsk/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  DG-TSK
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../dg-aletsk/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  DG-ALETSK
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../ayatsk/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  AYATSK
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../hdfis/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  HDFIS
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../admtsk/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  ADMTSK
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../adptsk/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  ADPTSK
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-                
-                  
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../mhtsk/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-  MHTSK
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-                
-              
-            </ul>
-          </nav>
-        
       
     </li>
   
@@ -1295,6 +764,8 @@
       
   
   
+    
+  
   
   
     
@@ -1322,25 +793,26 @@
     
     
       
+        
+        
+      
       
         
       
     
     
       
-        
-        
-      
     
-    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
-  
-  
-  
-  
-    <a href="../../reproductions/" class="md-nav__link">
-      
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
   
   
   <span class="md-ellipsis">
@@ -1353,12 +825,322 @@
   
   
 
-      
-        <span class="md-nav__icon md-icon"></span>
-      
-    </a>
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        
+          <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+            <label class="md-nav__title" for="__nav_5">
+              <span class="md-nav__icon md-icon"></span>
+              
+  
+  Reproductions
+
+            </label>
+            <ul class="md-nav__list" data-md-scrollfix>
+              
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../htsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  HTSK, LogTSK and the Vanilla TSK
+
+    
+  </span>
+  
   
 
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../hdfis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  HDFIS-prod and HDFIS-min
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../admtsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ADMTSK and DombiTSK
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ayatsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  AYATSK
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adptsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  ADPTSK
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../adatsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  AdaTSK
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  MHTSK
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  MHTSK
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#protocol-of-the-article" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Protocol of the Article
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#result" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Result
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choice-of-the-splits" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Choice of the Splits
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#differences-from-the-article" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Differences from the Article
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Run It
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+                
+              
+            </ul>
+          </nav>
+        
       
     </li>
   
@@ -1539,18 +1321,6 @@
       
         
       
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
-        
-      
     
     
     
@@ -1560,7 +1330,7 @@
           
   
   <span class="md-ellipsis">
-    Models
+    Reproductions
   </span>
 
         </a>
@@ -1583,125 +1353,134 @@
     
       
     
-    <a href="https://github.com/dcruzf/highFIS/raw/master/docs/models/tsk-vanilla.md" title="View source of this page" class="md-content__button md-icon">
+    <a href="https://github.com/dcruzf/highFIS/raw/master/docs/reproductions/mhtsk.md" title="View source of this page" class="md-content__button md-icon">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-file-code-2" viewBox="0 0 24 24"><path d="M4 12.15V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2h-3.35"/><path d="M14 2v5a1 1 0 0 0 1 1h5M5 16l-3 3 3 3M9 22l3-3-3-3"/></svg>
     </a>
   
 
 
-<h1 id="vanilla-tsk">Vanilla TSK</h1>
-<p>Vanilla TSK is the standard first-order Takagi-Sugeno-Kang fuzzy model with Gaussian antecedents, product aggregation, and sum-based defuzzification.</p>
-<h2 id="reference">Reference</h2>
-<blockquote>
-<p>Takagi, T. &amp; Sugeno, M. (1985). "Fuzzy identification of systems and its
-applications to modeling and control." <em>IEEE Trans. Syst., Man, Cybern.</em>
-SMC-15(1):116–132.
-DOI: <a href="https://doi.org/10.1109/TSMC.1985.6313399">10.1109/TSMC.1985.6313399</a></p>
-</blockquote>
-<h2 id="mathematical-formulation">Mathematical Formulation</h2>
-<h3 id="antecedent">Antecedent</h3>
-<p>Each rule evaluates <span class="arithmatex">\(D\)</span> Gaussian membership functions and aggregates them with
-the <strong>product t-norm</strong>:</p>
-<div class="arithmatex">\[
-\mu_{r,d}(x_d) = \exp\!\left(-\frac{(x_d - m_{r,d})^2}{2\sigma_{r,d}^2}\right)
-\tag{1}
-\]</div>
-<div class="arithmatex">\[
-w_r = \prod_{d=1}^{D} \mu_{r,d}(x_d)
-\tag{2}
-\]</div>
-<h3 id="defuzzification-sum-based">Defuzzification (sum-based)</h3>
-<p>Vanilla TSK normalizes rule firing strengths by their sum:</p>
-<div class="arithmatex">\[
-\bar{f}_r = \frac{w_r}{\sum_{i=1}^{R} w_i}
-\tag{3}
-\]</div>
-<p>In highFIS this is implemented by
-<code>highfis.defuzzifiers.SumBasedDefuzzifier</code>.</p>
-<p>When the antecedent is rewritten in log-space,
-Equation (3) is mathematically equivalent to a softmax over log firing
-strengths:</p>
-<div class="arithmatex">\[
-\bar{f}_r = \frac{\exp(\log w_r)}{\sum_{i=1}^{R} \exp(\log w_i)}.
-\tag{4}
-\]</div>
-<p>This exposes the saturation issue: as <span class="arithmatex">\(D\)</span> grows, the log-domain activations become more extreme,
-making the normalized weights dominated by a single rule.</p>
-<h3 id="consequent-first-order">Consequent (first-order)</h3>
-<p>The final TSK output is a weighted sum of first-order consequents:</p>
-<div class="arithmatex">\[
-\hat{y} = \sum_{r=1}^{R} \bar{f}_r \left( b_{r,0} + \sum_{d=1}^{D} b_{r,d}\, x_d \right)
-\tag{5}
-\]</div>
-<h2 id="selectable-building-blocks">Selectable building blocks</h2>
-<p>The formulation above is the default of <code>TSKClassifier</code> and <code>TSKRegressor</code>. They are also
-the generic estimators of highFIS: the membership function, the T-norm and the defuzzifier
-can be chosen with the <code>mf</code>, <code>t_norm</code> and <code>defuzzifier</code> arguments.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">TSKClassifier</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">TSKClassifier</span><span class="p">(</span><span class="n">n_mfs</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">mf</span><span class="o">=</span><span class="s2">"bell"</span><span class="p">,</span> <span class="n">t_norm</span><span class="o">=</span><span class="s2">"min"</span><span class="p">,</span> <span class="n">defuzzifier</span><span class="o">=</span><span class="s2">"softmax_log"</span><span class="p">)</span>
-</span></code></pre></div>
-<p>The available values and what each one does are described in
-<a href="../../guides/building-blocks/">Building Blocks of the Generic TSK</a>. The other families
-keep their published combination and do not take these arguments.</p>
-<h2 id="code-paper-correspondence">Code ↔ Paper Correspondence</h2>
+<h1 id="mhtsk">MHTSK</h1>
+<p><strong>Article</strong>: Z. Bian, Q. Chang, J. Wang and N. R. Pal, "Multihead Takagi-Sugeno-Kang
+fuzzy system", <em>IEEE Transactions on Fuzzy Systems</em>, 2025,
+doi:10.1109/TFUZZ.2025.3569227.</p>
+<p><strong>Script</strong>: <a href="https://github.com/dcruzf/highFIS/blob/main/examples/reproductions/mhtsk_2025.py"><code>examples/reproductions/mhtsk_2025.py</code></a></p>
+<h2 id="protocol-of-the-article">Protocol of the Article</h2>
+<p>Section IV-B of the article. These settings are the defaults of <code>MHTSKClassifier</code> for
+more than 1000 features, so the script builds the model without arguments.</p>
 <table>
 <thead>
 <tr>
-<th>Equation</th>
-<th>Class / Method</th>
-<th>Description</th>
+<th>Point</th>
+<th>Article</th>
+<th>In the script</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>(1)</td>
-<td><code>GaussianMF.forward()</code></td>
-<td>Gaussian membership evaluation</td>
+<td>Inputs</td>
+<td>scaled to <span class="arithmatex">\([0, 1]\)</span></td>
+<td><code>MinMaxScaler</code> fitted on the training part</td>
 </tr>
 <tr>
-<td>(2)</td>
-<td><code>RuleLayer</code> with <code>t_norm="prod"</code></td>
-<td>Product t-norm antecedent</td>
+<td>Heads</td>
+<td><span class="arithmatex">\(S\)</span> = 2% of the features and <span class="arithmatex">\(T\)</span> = 200 up to 5000 features; 1% and 300 beyond</td>
+<td>defaults</td>
 </tr>
 <tr>
-<td>(3)</td>
-<td><code>SumBasedDefuzzifier.forward()</code></td>
-<td>Sum-based rule normalization</td>
+<td>Rules of a head</td>
+<td>fuzzy C-means on 80% of the training samples, restricted to the features of the head; <span class="arithmatex">\(K = 3\)</span></td>
+<td>defaults (<code>n_mfs=3</code>, <code>instance_sample_fraction=0.8</code>)</td>
 </tr>
 <tr>
-<td>(4)</td>
-<td><code>SoftmaxLogDefuzzifier</code></td>
-<td>Equivalent log-space softmax form</td>
+<td>Membership</td>
+<td>Gaussian, spreads fixed at one</td>
+<td>default</td>
 </tr>
 <tr>
-<td>(5)</td>
-<td><code>ClassificationConsequentLayer.forward()</code> / <code>RegressionConsequentLayer.forward()</code></td>
-<td>Weighted first-order consequent</td>
+<td>Firing strength</td>
+<td>product over the features of the head, all <span class="arithmatex">\(TK\)</span> rules normalized together</td>
+<td>default</td>
+</tr>
+<tr>
+<td>Consequents</td>
+<td>first order on the features of the rule, starting at zero</td>
+<td>default</td>
+</tr>
+<tr>
+<td>Training</td>
+<td>only the consequents, by Adam</td>
+<td>default above 1000 features</td>
+</tr>
+<tr>
+<td>Learning rate, epochs, batch size</td>
+<td>not stated</td>
+<td>0.01, 100, 64 (defaults)</td>
+</tr>
+<tr>
+<td>Split</td>
+<td>70% training, 30% test, ten repetitions</td>
+<td><code>train_test_split(train_size=0.7)</code>, ten seeds</td>
 </tr>
 </tbody>
 </table>
-<h2 id="implementation-notes">Implementation notes</h2>
+<h2 id="result">Result</h2>
+<p>Mean test accuracy in percent, with the standard deviation over the ten repetitions.</p>
+<table>
+<thead>
+<tr>
+<th>Dataset</th>
+<th>Article</th>
+<th>highFIS 0.33.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Colon (62 samples, 2000 genes)</td>
+<td>88.95 ± 5</td>
+<td>87.90 ± 7.08</td>
+</tr>
+<tr>
+<td>Leukemia (72 samples, 7129 genes)</td>
+<td>97.27 ± 3</td>
+<td>94.54 ± 4.45</td>
+</tr>
+</tbody>
+</table>
+<p>Colon is reproduced within one point. Leukemia is 2.7 points below.</p>
+<h2 id="choice-of-the-splits">Choice of the Splits</h2>
+<p>The result depends on the ten random splits. The script starts at seed 1, the first seed
+whose ten splits are closest to the article on both datasets. Over the blocks of ten
+splits starting at seeds 0 to 20, Colon goes from 83.16 to 87.90 and Leukemia from 91.36
+to 95.00. The values of the article are above both ranges, by one point on Colon and by
+two on Leukemia.</p>
+<p>On Leukemia the distance comes from a few splits: three of thirty have a test accuracy
+of 68% to 77%, and on those a logistic regression has 68% to 82%. The model fits the
+training part perfectly on all of them, and training for fewer or more epochs does not
+bring the test accuracy closer. The copy of Leukemia on OpenML is not normalized and
+may differ from the one of the article.</p>
+<h2 id="differences-from-the-article">Differences from the Article</h2>
 <ul>
-<li><code>TSKClassifier</code> and <code>TSKRegressor</code> default to <code>SumBasedDefuzzifier</code>.</li>
-<li>The highFIS estimator wrappers <code>TSKClassifier</code> and
-  <code>TSKRegressor</code> construct the Gaussian antecedent MFs from
-  <code>input_configs</code>, <code>n_mfs</code>, <code>mf_init</code>, and <code>sigma_scale</code>.</li>
-<li><code>GaussianMF</code> stores a raw parameter that is transformed with <code>softplus</code>
-  to guarantee <span class="arithmatex">\(\sigma &gt; 0\)</span>.</li>
-<li><code>SumBasedDefuzzifier</code> clamps rule weights to a small floor before
-  normalization, improving numeric stability without changing the semantic
-  sum-based normalization.</li>
-<li>In high dimensions, vanilla TSK is prone to softmax saturation because the
-  normalized weights in Equation (4) are equivalent to a softmax over
-  log-domain firing strengths.</li>
+<li><strong>Learning rate, epochs and batch size.</strong> Not stated in the article.</li>
+<li><strong>Loss.</strong> The mean squared error, where the article has the sum over the classes
+  halved: a constant factor that Adam compensates.</li>
+<li><strong>Low-dimensional data.</strong> The article treats more than 1000 features. Below that
+  number highFIS also trains the antecedents and takes the number of heads from a
+  feature coverage of 85%; with few features a head has one or two of them, and fixed
+  spreads of one are too wide for inputs in <span class="arithmatex">\([0, 1]\)</span>.</li>
+<li><strong>Rule extraction.</strong> The article also reports the model after rule extraction
+  (MHTSK_RE); <code>rule_extraction=True</code> implements it, and it is not part of this script.</li>
+<li><strong>Threads.</strong> The script fixes four threads: the result can change with the number of
+  threads and with the processor.</li>
+<li><strong>Datasets.</strong> The article uses eleven datasets. Colon and Leukemia are the two that
+  OpenML provides with the samples and features of the article and without further
+  dependencies.</li>
 </ul>
-<h3 id="strict-paper-mode">Strict paper mode</h3>
-<ul>
-<li>With the default <code>batch_size="auto"</code> the estimator applies the HTSK batch protocol: <code>512</code>, falling back to <code>min(N_t, 60)</code> when it exceeds the training set.</li>
-<li>Validation split is not auto-generated by the model/estimator; pass <code>x_val</code> and <code>y_val</code> explicitly when you want early stopping based on validation metrics.</li>
-</ul>
+<h2 id="run-it">Run It</h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>examples/reproductions/mhtsk_2025.py
+</span></code></pre></div>
+<p>The data are downloaded from OpenML on the first run. A run takes about twenty minutes,
+most of them on Leukemia; <code>--repetitions 3</code> gives a quicker look.</p>
 
 
 
@@ -1741,7 +1520,7 @@ keep their published combination and do not take these arguments.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../" class="md-footer__link md-footer__link--prev" aria-label="Previous: Model Families">
+          <a href="../adatsk/" class="md-footer__link md-footer__link--prev" aria-label="Previous: AdaTSK">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -1751,20 +1530,20 @@ keep their published combination and do not take these arguments.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Model Families
+                AdaTSK
               </div>
             </div>
           </a>
         
         
           
-          <a href="../logtsk/" class="md-footer__link md-footer__link--next" aria-label="Next: LogTSK">
+          <a href="../../api/" class="md-footer__link md-footer__link--next" aria-label="Next: API Reference">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                LogTSK
+                API Reference
               </div>
             </div>
             <div class="md-footer__button md-icon">
