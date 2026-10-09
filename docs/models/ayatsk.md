@@ -87,7 +87,7 @@ $$
 ## Implementation notes
 
 - `AYATSKClassifierModel` uses MSE loss, Adam, and zero-initialized consequents by default.
-- `AYATSKClassifier` defaults to `n_mfs=3`, `mf_init="grid"`, `rule_base="coco"`, `epochs=300`, and `learning_rate=0.001`.
+- `AYATSKClassifier` defaults to `n_mfs=3`, `mf_init="grid"`, `rule_base="coco"`, `epochs=300`, `k=2`, and `learning_rate="auto"` (0.01 up to 1000 features, 0.001 above).
 - `AYATSKClassifier` and `AYATSKRegressor` expose `k` (CEMF parameter), with required constraint `k > 1`.
 - With the default `batch_size="auto"`, AYATSK uses full batch for `N < 500` and `0.1 * N` otherwise, matching the paper's training policy. Pass `batch_size=None` to force full batch at any size.
 - `AYATSKRegressor` remains available as a framework extension, but the paper itself evaluates classification only.
@@ -108,10 +108,13 @@ $$
 ## Fidelity to the source article
 
 The defaults of `AYATSKClassifier` are the experimental settings of the article for
-high-dimensional data: the composite exponential membership function with $K = 10$, the
-adaptive Yager T-norm, the partition with three rules, consequents at zero, and Adam on
-the whole training set for 300 epochs with a learning rate of 0.001. For
-low-dimensional data the article uses a learning rate of 0.01. On the same folds
+article: the composite exponential membership function, the adaptive Yager T-norm, the
+partition with three rules, consequents at zero, and Adam on the whole training set for
+300 epochs, with a learning rate of 0.01 up to 1000 features and of 0.001 above. The
+article studies $K$ from 2 to 10 and finds no value that is best everywhere; the default
+is $K = 2$, the one with the best mean accuracy in its Table III (1.8 points above
+$K = 10$ over the 23 datasets). Before version 0.33.0 the default was $K = 10$, which
+gives 74% where $K = 2$ gives 96% on Leukemia. On the same folds
 highFIS gives the accuracies of the authors' code on SRBCT, and the published
 accuracies are reproduced on Wine and Wdbc; see the
 [reproduction](../reproductions/ayatsk.md).

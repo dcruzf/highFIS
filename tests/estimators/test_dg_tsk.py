@@ -615,8 +615,9 @@ def test_dgtsk_default_learning_rate_matches_paper() -> None:
     default (0.01) the M-gates never opened, collapsing the model to one class in low
     dimension. The paper (Section IV) uses full-batch GD at 0.2.
     """
-    assert DGTSKClassifier().learning_rate == 0.2
-    assert DGTSKRegressor().learning_rate == 0.2
+    # The default follows the number of features and is the article's 0.2 in low dimension.
+    assert DGTSKClassifier()._resolve_learning_rate(4) == 0.2
+    assert DGTSKRegressor()._resolve_learning_rate(4) == 0.2
 
 
 def test_dgtsk_no_collapse_low_dimension() -> None:

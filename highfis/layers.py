@@ -207,6 +207,31 @@ class MembershipLayer(nn.Module):
         self._build_fast_path()
         self.register_load_state_dict_pre_hook(self._load_legacy_state_dict_hook)
 
+    def _register_constant_sets(self, all_mfs: Sequence[nn.Module]) -> list[int]:
+        """Detect one vectorizable class mixed with constant sets and index the two groups.
+
+        A layer mixes them when a rule leaves a feature out (MHTSK). The constant columns
+        are then filled in directly and the kernel runs on the others. Returns the
+        positions of the sets that are not constant, empty when the layer is not mixed.
+        """
+        self._mixed = False
+        kinds = {type(mf) for mf in all_mfs}
+        if len(kinds) != 2 or ConstantMF not in kinds:
+            return []
+        main_idx = [i for i, mf in enumerate(all_mfs) if type(mf) is not ConstantMF]
+        const_idx = [i for i, mf in enumerate(all_mfs) if type(mf) is ConstantMF]
+        if type(all_mfs[main_idx[0]]) not in _VECTORIZED_MF_KERNELS:
+            return []
+        self._mixed = True
+        self.register_buffer("_mixed_main_idx", torch.tensor(main_idx), persistent=False)
+        self.register_buffer("_mixed_const_idx", torch.tensor(const_idx), persistent=False)
+        self.register_buffer(
+            "_mixed_const_value",
+            torch.tensor([cast(Any, all_mfs[i]).value for i in const_idx]),
+            persistent=False,
+        )
+        return main_idx
+
     def _build_fast_path(self) -> None:
         """Consolidate parameters for vectorized fuzzification when possible.
 
@@ -223,24 +248,7 @@ class MembershipLayer(nn.Module):
         mutated) by the pruning routines, so it cannot go stale.
         """
         all_mfs = [mf for name in self.input_names for mf in cast(nn.ModuleList, self.input_mfs[name])]
-        # A layer may mix one vectorizable class with constant sets, which is how a rule
-        # leaves a feature out (MHTSK). The constant columns are then filled in directly
-        # and the kernel runs on the others.
-        self._mixed = False
-        main_idx: list[int] = []
-        kinds = {type(mf) for mf in all_mfs}
-        if len(kinds) == 2 and ConstantMF in kinds:
-            main_idx = [i for i, mf in enumerate(all_mfs) if type(mf) is not ConstantMF]
-            const_idx = [i for i, mf in enumerate(all_mfs) if type(mf) is ConstantMF]
-            if type(all_mfs[main_idx[0]]) in _VECTORIZED_MF_KERNELS:
-                self._mixed = True
-                self.register_buffer("_mixed_main_idx", torch.tensor(main_idx), persistent=False)
-                self.register_buffer("_mixed_const_idx", torch.tensor(const_idx), persistent=False)
-                self.register_buffer(
-                    "_mixed_const_value",
-                    torch.tensor([cast(Any, all_mfs[i]).value for i in const_idx]),
-                    persistent=False,
-                )
+        main_idx = self._register_constant_sets(all_mfs)
         flat_mfs = [all_mfs[i] for i in main_idx] if self._mixed else all_mfs
         mf_type = type(flat_mfs[0])
         kernel = _VECTORIZED_MF_KERNELS.get(mf_type)
@@ -276,6 +284,8 @@ class MembershipLayer(nn.Module):
             raw_sigma = torch.stack([cast(Tensor, mf.raw_sigma).detach() for mf in flat_mfs]).clone()
         self._flat_mean = nn.Parameter(mean)
         self._flat_raw_sigma = nn.Parameter(raw_sigma)
+        if not getattr(mf_type, "trainable_spread", True):
+            self._flat_raw_sigma.requires_grad_(False)
         for i, mf in enumerate(flat_mfs):
             mf._parameters.pop(location, None)
             mf._parameters.pop("raw_sigma", None)

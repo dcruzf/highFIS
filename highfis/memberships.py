@@ -196,6 +196,9 @@ class ADATSKGaussianMF(GaussianMF):
     the simplified paper form ``exp(-(x-c)^2)``.
     """
 
+    #: The article has no spread: a vectorized membership layer keeps it at its initial value.
+    trainable_spread = False
+
     def forward(self, x: Tensor) -> Tensor:
         """Compute ADATSK paper-style Gaussian membership values."""
         x = self._as_tensor(x)

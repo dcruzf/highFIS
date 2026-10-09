@@ -18,6 +18,7 @@ from ..models import (
     BaseTSK,
 )
 from ._base import (
+    _HIGH_DIMENSION,
     BatchSizeSpec,
     InputConfig,
     _BaseClassifierEstimator,
@@ -79,7 +80,7 @@ class AYATSKClassifier(_BaseClassifierEstimator):
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         epochs: int = 300,
-        learning_rate: float = 1e-3,
+        learning_rate: float | str = "auto",
         verbose: bool | int = False,
         rule_base: str | None = "coco",
         batch_size: BatchSizeSpec = "auto",
@@ -91,7 +92,7 @@ class AYATSKClassifier(_BaseClassifierEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 0.0,
-        k: float = 10.0,
+        k: float = 2.0,
         device: str = "cpu",
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
@@ -109,7 +110,8 @@ class AYATSKClassifier(_BaseClassifierEstimator):
             random_state: Seed for clustering and weight initialisation.
             epochs: Maximum training epochs (default ``300``, the value of the article for
                 full-batch training).
-            learning_rate: Adam learning rate (default ``0.001``).
+            learning_rate: Learning rate of Adam. ``"auto"`` (default) uses the values of
+                the source articles: ``0.01`` up to 1000 features and ``0.001`` above.
             verbose: Print per-epoch progress.
             rule_base: Rule-base strategy. Defaults to ``"coco"``.
             batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
@@ -131,7 +133,9 @@ class AYATSKClassifier(_BaseClassifierEstimator):
                 model weights after training.
                 Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
-            k: CEMF lower-bound control parameter. Must be ``> 1``.
+            k: Parameter of the membership function, whose lower bound is ``1 / k``. Must be
+                ``> 1``. The default ``2`` is the value with the best mean accuracy in Table
+                III of the source article, which finds no value that is best everywhere.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
             eval_metrics_every: Evaluate training metrics every ``n`` epochs; ``0``
@@ -168,6 +172,10 @@ class AYATSKClassifier(_BaseClassifierEstimator):
             scheduler_params=scheduler_params,
         )
         self.k = k
+
+    def _paper_learning_rate(self, n_features: int) -> float:
+        """0.01 up to 1000 features and 0.001 above."""
+        return 0.01 if n_features <= _HIGH_DIMENSION else 0.001
 
     def _build_input_mfs(
         self,
@@ -252,7 +260,7 @@ class AYATSKRegressor(_BaseRegressorEstimator):
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         epochs: int = 300,
-        learning_rate: float = 1e-3,
+        learning_rate: float | str = "auto",
         verbose: bool | int = False,
         rule_base: str | None = "coco",
         batch_size: BatchSizeSpec = "auto",
@@ -263,7 +271,7 @@ class AYATSKRegressor(_BaseRegressorEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 0.0,
-        k: float = 10.0,
+        k: float = 2.0,
         device: str = "cpu",
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
@@ -281,7 +289,8 @@ class AYATSKRegressor(_BaseRegressorEstimator):
             random_state: Seed for clustering and weight initialisation.
             epochs: Maximum training epochs (default ``300``, the value of the article for
                 full-batch training).
-            learning_rate: Adam learning rate (default ``0.001``).
+            learning_rate: Learning rate of Adam. ``"auto"`` (default) uses the values of
+                the source articles: ``0.01`` up to 1000 features and ``0.001`` above.
             verbose: Print per-epoch progress.
             rule_base: Rule-base strategy. Defaults to ``"coco"``.
             batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
@@ -301,7 +310,9 @@ class AYATSKRegressor(_BaseRegressorEstimator):
                 model weights after training.
                 Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
-            k: CEMF lower-bound control parameter. Must be ``> 1``.
+            k: Parameter of the membership function, whose lower bound is ``1 / k``. Must be
+                ``> 1``. The default ``2`` is the value with the best mean accuracy in Table
+                III of the source article, which finds no value that is best everywhere.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
             eval_metrics_every: Evaluate training metrics every ``n`` epochs; ``0``
@@ -337,6 +348,10 @@ class AYATSKRegressor(_BaseRegressorEstimator):
             scheduler_params=scheduler_params,
         )
         self.k = k
+
+    def _paper_learning_rate(self, n_features: int) -> float:
+        """0.01 up to 1000 features and 0.001 above."""
+        return 0.01 if n_features <= _HIGH_DIMENSION else 0.001
 
     def _build_input_mfs(
         self,

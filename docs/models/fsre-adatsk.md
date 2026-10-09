@@ -168,13 +168,14 @@ feature selection, rule extraction, and En-FRB support.
 
 Since version 0.32.0 the defaults of `FSREADATSKClassifier` follow the procedure of the
 article. Before that version the defaults reached 47% on Iris and 40% on Wine, at chance
-level; they now reach about 97% on Iris and 98% on Wine, with 8.8 features and 7.1 rules
-on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there).
+level; they now reach about 97% on Iris and 99% on Wine, with 9.0 features and 11.6
+rules on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there).
 
 | Point | Article | highFIS |
 |---|---|---|
 | Fuzzy sets | Centres evenly spaced between the minimum and the maximum of each feature | `mf_init="grid"`, `rule_base="coco"`, `n_mfs=3` (defaults) |
 | Phases | Feature selection on the compact rule base, rule extraction on the enhanced one, then fine-tuning without gates | Same. `use_en_frb=True` also runs feature selection on the enhanced rule base |
+| Membership | $e^{-(x-m)^2}$, which has no spread (Eq. 3) | Same since 0.33.0 (`ADATSKGaussianMF`, spread fixed at one). Before, a Gaussian with a trained spread and padded centres |
 | Gate function | $M(\lambda) = \lambda\sqrt{e^{1-\lambda^2}}$, parameters initialized to 0.01 | `gate_fn="gate4"` (default); `gate_fn=None` gives the gate used before 0.32.0 |
 | Rule gates | Trained in the rule-extraction phase | Same. Before 0.32.0 they were left out of that phase, so three arbitrary rules were kept |
 | Selection | Features and rules whose gate passes the threshold | Same, on the magnitude of the gate: the gate is an odd function and can open towards −1 as well as +1 |
@@ -195,7 +196,7 @@ Remaining differences:
 - **Thresholds.** The article uses other threshold coefficients above 1000 features (0.4
   and 0.5); highFIS keeps 0.5 and 0.3 unless `zeta_lambda` and `zeta_theta` are passed.
 - **High-dimensional data.** On SRBCT (83 samples, 2308 genes) the defaults give an accuracy
-  of 0.988 with about 22 genes and 21 rules, against 0.967, 12.3 and 4.2 in the article,
+  of 0.977 with about 19 genes and 20 rules, against 0.967, 12.3 and 4.2 in the article,
   which uses other thresholds and numbers of fuzzy sets there (see the two points above).
 - **The regressor is an extension.** The article only treats classification.
   `FSREADATSKRegressor` shares the defaults above and starts every rule from the mean of
