@@ -78,7 +78,7 @@ a regression consequent head and MSE loss.
   - three antecedent MFs per feature with centers `[0.0, 0.5, 1.0]`
     and `sigma=1.0`,
   - `rule_base="coco"` yielding a compact 3-rule structure,
-  - `epochs=200`, `learning_rate=0.001`,
+  - `epochs=200`, `learning_rate="auto"` (0.001 above 1000 features, the value of the article; 0.01 below),
   - dynamic batch policy: full-batch when `N < 500`, else `0.2 * N`,
   - Adam optimizer,
   - zero initialization of consequent weights and biases,

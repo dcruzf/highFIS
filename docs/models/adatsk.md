@@ -185,6 +185,8 @@ and they were trained. The classifier uses `highfis.losses.HalfSumSquaredErrorLo
 Eq. (8) of the article, instead of the mean squared error; with plain gradient descent
 the scale of the loss sets the size of the step.
 
-The defaults of the estimator (learning rate 0.01, 100 epochs, normalization of the
-consequent inputs) are not the article's: they give a quick first fit and keep the
-training stable in high dimension.
+The defaults of the estimator are not the article's, which does not state its learning
+rate: the step follows the number of features (`learning_rate="auto"`,
+`min(0.1, 1 / (n_features + 1))`), which cannot diverge, there are 300 epochs, and the
+consequent inputs are normalized. Before version 0.33.0 the fixed step of 0.01 was too
+small for a few features and diverged on several thousand.

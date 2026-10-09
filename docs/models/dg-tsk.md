@@ -116,7 +116,7 @@ implementation on the points below. Before that version `DGTSKClassifier` reache
 | Gate parameters | All equal to 0.1, a gate value of 0.0269 | Same |
 | Rule points when there are more samples than `pfrb_max_rules` | Drawn class by class (stratified) | Same, for classifiers |
 | After pruning | The gates are switched off; fine-tuning runs on a plain TSK system | Same. `get_feature_gates()` and `get_rule_gates()` still return the trained values |
-| Iterations | 300 in each phase, full batch, learning rate 0.2 | `dg_epochs=300`, `finetune_epochs=300`, `batch_size="auto"` (full batch), `learning_rate=0.2` |
+| Iterations | 300 in each phase, full batch, learning rate 0.2 | `dg_epochs=300`, `finetune_epochs=300`, `batch_size="auto"` (full batch), `learning_rate="auto"` (0.2 up to 50 features) |
 | Loss | Squared error summed over the outputs, divided by `2N` | `highfis.losses.HalfSumSquaredErrorLoss` |
 
 Remaining differences:

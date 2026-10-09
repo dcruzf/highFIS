@@ -7,8 +7,8 @@ fuzzy systems", *IEEE Transactions on Systems, Man, and Cybernetics: Systems*, 2
 
 ## Protocol of the Article
 
-Sections IV-A and IV-B of the article. Except for the learning rate, these settings are
-the defaults of `AYATSKClassifier`.
+Sections IV-A and IV-B of the article. Except for $K$, which the script sets, these
+settings are the defaults of `AYATSKClassifier`.
 
 | Point | Article | In the script |
 |---|---|---|
@@ -18,7 +18,7 @@ the defaults of `AYATSKClassifier`.
 | T-norm | Yager without the minimum (Eq. 28), $\lambda = -\ln D / \ln(1 - 1/K)$ (Eq. 34) | default |
 | Consequents | start at zero | default |
 | Optimizer | Adam on the whole training set, 300 epochs | defaults (`epochs=300`, full batch) |
-| Learning rate | 0.01 for low-dimensional data, 0.001 above 1000 features | `learning_rate=0.01` (the default is 0.001) |
+| Learning rate | 0.01 for low-dimensional data, 0.001 above 1000 features | `learning_rate=0.01` (also the default for these datasets) |
 | Evaluation | ten-fold cross-validation, repeated five times | ten-fold cross-validation, once |
 
 ## Result

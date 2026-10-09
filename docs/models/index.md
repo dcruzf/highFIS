@@ -31,6 +31,51 @@ the named estimators. Only the generic TSK lets you choose them; see
 
 ---
 
+## Numerical Stability and the Published Models
+
+highFIS computes several quantities in another way than the articles write them, and
+departs from the articles in a few deliberate places. The two are different things.
+
+**Same model, other arithmetic.** These changes compute the quantity that the article
+defines; the result is the same wherever the article's own formula can be evaluated,
+and remains defined where that formula would overflow or underflow.
+
+| Quantity | In the article | In highFIS |
+|---|---|---|
+| Normalized product of HDFIS-prod | product of the membership degrees, in double precision | `softmax(D log(geometric mean))`, exact in single precision too |
+| Ada-softmin, ADP-softmin | powers of the membership degrees, bounded for double precision | sums in the logarithmic domain |
+| Dombi and Yager T-norms | power means | power means relative to the largest term |
+| Normalization by the sum | division by the sum | the same, with strengths bounded below by the smallest positive number |
+| Membership degrees | one function per fuzzy set | one batched operation |
+
+**Positive spreads.** A spread is kept positive through a softplus transformation of
+the trained parameter. The membership function is the one of the article; the path of
+the optimizer differs from training the spread directly.
+
+**Deliberate differences from the articles.** These do change the model or its
+training, and each is stated on the page of the family:
+
+| Difference | Families |
+|---|---|
+| Normalization of the consequent inputs (batch normalization) by default | ADATSK, FSRE-ADATSK |
+| Regressors whose consequents start at zero start from the mean of the target | ADATSK, FSRE-ADATSK, HDFIS, MHTSK |
+| Mean squared error where the article sums over the classes and halves (a constant factor under Adam) | ADMTSK, DombiTSK, AYATSK, ADPTSK, MHTSK |
+| AdamW with a weight decay of `1e-8` where the article has Adam | families trained by Adam |
+| Initial spreads centred on the spread of the cluster (`sigma_init="constant"` gives the article's) | TSK, HTSK, LogTSK |
+| Antecedents trained and number of heads from the feature coverage below 1000 features | MHTSK |
+| Clustering with five rules by default instead of the partition of the article | DombiTSK |
+| Gaussian membership with a trained spread where the article has no spread | FSRE-ADATSK |
+| Regressors of families whose article only treats classification | all but HDFIS |
+
+**Hyperparameters are not part of the model.** The learning rate, the number of
+epochs and the batch size are often not stated in the articles, and where they are
+they were chosen for the datasets of the article. The defaults of highFIS are a
+starting point; see [The Defaults Are a Starting Point](../guides/tuning.md). The pages
+under [Reproductions](../reproductions/index.md) give, for each article, the settings
+that reproduce its results.
+
+---
+
 ## Changes in 0.32.0 for the families with gates
 
 Version 0.32.0 makes DG-TSK, DG-ALETSK and FSRE-ADATSK follow their source articles. With
@@ -120,6 +165,28 @@ consequents are trained and the number of heads is the one of the article, 200 u
 5000 features and 300 beyond (`fcr_target=0.85` gives the earlier number); below 1000
 features the antecedents are trained as before. The membership degrees are computed in
 one batched operation, which makes fitting about six times faster.
+
+Several defaults change in 0.33.0, and with them the results of the estimators left
+at their defaults:
+
+| Estimator | New default | Earlier value |
+|---|---|---|
+| ADATSK | `learning_rate="auto"` (`min(0.1, 1 / (n_features + 1))`), `epochs=300` | `learning_rate=0.01, epochs=100` |
+| DG-TSK | `learning_rate="auto"` (`min(0.2, 10 / n_features)`) | `learning_rate=0.2` |
+| AYATSK, ADPTSK | `learning_rate="auto"` (0.01 up to 1000 features, 0.001 above) | `learning_rate=0.001` |
+| DombiTSK, ADMTSK | `learning_rate="auto"` (0.01 up to 1000 features, 0.001 above) | `learning_rate=0.01` |
+| AYATSK | `k=2` | `k=10` |
+
+With the earlier values ADPTSK predicted two of the three classes of Iris, ADATSK and
+DG-TSK diverged on data with thousands of features and predicted the majority class,
+and DombiTSK collapsed on some folds of such data. The defaults remain a starting
+point: see [The Defaults Are a Starting Point](../guides/tuning.md).
+
+Three defects of saving and loading are fixed in 0.33.0: a saved ADATSK model could not
+be loaded; a loaded `DombiTSKClassifier` predicted differently, because the lower bound
+of its membership function was passed as a numerical constant that shifted its spreads
+and was not saved; and a loaded `DGTSKClassifier` returned its labels with another
+type. A `DombiTSKClassifier` trained with 0.33.0 no longer applies that shift.
 
 ---
 

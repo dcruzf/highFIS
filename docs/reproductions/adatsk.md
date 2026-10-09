@@ -54,7 +54,7 @@ and number of iterations, which the article does not state. With a learning rate
 Table III of the article also reports AdaTSK on seven datasets with more than 1000
 features, with the centres kept fixed: 71.9 on Colon, 87.5 on SRBCT and 80.0 on
 Leukemia. These are not reproduced: highFIS gives 87.4 on Colon with a learning rate of
-0.001 and 1000 iterations, and 85.7 with the defaults of the estimator. The learning
+0.001 and 1000 iterations, and 87.3 with the defaults of the estimator. The learning
 rate and the number of iterations of the article are unknown, and plain gradient
 descent on 2000 features diverges with the 0.05 used above. Later articles of the same
 group report other values for AdaTSK on the same data: 84.3 and 74.4 on Colon, 98.8 on
@@ -63,10 +63,10 @@ SRBCT, and 95.0 and 85.6 on Leukemia.
 ## Differences from the Article
 
 - **Learning rate and iterations.** Not stated in the article; chosen here.
-- **Defaults of the estimator.** `ADATSKClassifier` defaults to a learning rate of 0.01,
-  100 epochs and normalization of the consequent inputs, a setting for a quick first
-  fit that also keeps the training stable in high dimension. With the defaults the
-  three datasets give 82.7, 96.6 and 96.0.
+- **Defaults of the estimator.** `ADATSKClassifier` defaults to a learning rate that
+  falls with the number of features (`learning_rate="auto"`), 300 epochs and
+  normalization of the consequent inputs, a setting that is stable in low and in high
+  dimension. With the defaults the three datasets give 94.7, 99.4 and 96.8 with seed 0.
 - **Threads.** The script fixes four threads: the result can change with the number of
   threads and with the processor.
 - **Datasets.** The article uses nineteen datasets. Iris, Wine and Wdbc ship with
