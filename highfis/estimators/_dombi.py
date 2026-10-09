@@ -187,14 +187,14 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
             input_mfs = _build_admtsk_default_input_mfs(x_arr.shape[1])
             effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
             return (
-                _wrap_composite_gaussian_input_mfs(input_mfs, eps=float(self.lower_bound)),
+                _wrap_composite_gaussian_input_mfs(input_mfs),
                 feature_names,
                 effective_rule_base,
             )
 
         input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
         return (
-            _wrap_composite_gaussian_input_mfs(input_mfs, eps=float(self.lower_bound)),
+            _wrap_composite_gaussian_input_mfs(input_mfs),
             feature_names,
             effective_rule_base,
         )

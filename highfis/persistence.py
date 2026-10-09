@@ -38,6 +38,7 @@ from typing import Any
 def _get_mf_registry() -> dict[str, type]:
     """Lazily return the supported MF type registry to avoid circular imports."""
     from .memberships import (
+        ADATSKGaussianMF,
         BellMF,
         CompositeExponentialMF,
         CompositeGaussianMF,
@@ -59,6 +60,7 @@ def _get_mf_registry() -> dict[str, type]:
     )
 
     return {
+        "ADATSKGaussianMF": ADATSKGaussianMF,
         "BellMF": BellMF,
         "CompositeExponentialMF": CompositeExponentialMF,
         "CompositeGaussianMF": CompositeGaussianMF,
