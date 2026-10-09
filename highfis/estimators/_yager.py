@@ -18,6 +18,7 @@ from ..models import (
     BaseTSK,
 )
 from ._base import (
+    _HIGH_DIMENSION,
     BatchSizeSpec,
     InputConfig,
     _BaseClassifierEstimator,
@@ -79,7 +80,7 @@ class AYATSKClassifier(_BaseClassifierEstimator):
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         epochs: int = 300,
-        learning_rate: float = 1e-3,
+        learning_rate: float | str = "auto",
         verbose: bool | int = False,
         rule_base: str | None = "coco",
         batch_size: BatchSizeSpec = "auto",
@@ -109,7 +110,8 @@ class AYATSKClassifier(_BaseClassifierEstimator):
             random_state: Seed for clustering and weight initialisation.
             epochs: Maximum training epochs (default ``300``, the value of the article for
                 full-batch training).
-            learning_rate: Adam learning rate (default ``0.001``).
+            learning_rate: Learning rate of Adam. ``"auto"`` (default) uses the values of
+                the source articles: ``0.01`` up to 1000 features and ``0.001`` above.
             verbose: Print per-epoch progress.
             rule_base: Rule-base strategy. Defaults to ``"coco"``.
             batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
@@ -168,6 +170,10 @@ class AYATSKClassifier(_BaseClassifierEstimator):
             scheduler_params=scheduler_params,
         )
         self.k = k
+
+    def _paper_learning_rate(self, n_features: int) -> float:
+        """0.01 up to 1000 features and 0.001 above."""
+        return 0.01 if n_features <= _HIGH_DIMENSION else 0.001
 
     def _build_input_mfs(
         self,
@@ -252,7 +258,7 @@ class AYATSKRegressor(_BaseRegressorEstimator):
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         epochs: int = 300,
-        learning_rate: float = 1e-3,
+        learning_rate: float | str = "auto",
         verbose: bool | int = False,
         rule_base: str | None = "coco",
         batch_size: BatchSizeSpec = "auto",
@@ -281,7 +287,8 @@ class AYATSKRegressor(_BaseRegressorEstimator):
             random_state: Seed for clustering and weight initialisation.
             epochs: Maximum training epochs (default ``300``, the value of the article for
                 full-batch training).
-            learning_rate: Adam learning rate (default ``0.001``).
+            learning_rate: Learning rate of Adam. ``"auto"`` (default) uses the values of
+                the source articles: ``0.01`` up to 1000 features and ``0.001`` above.
             verbose: Print per-epoch progress.
             rule_base: Rule-base strategy. Defaults to ``"coco"``.
             batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
@@ -337,6 +344,10 @@ class AYATSKRegressor(_BaseRegressorEstimator):
             scheduler_params=scheduler_params,
         )
         self.k = k
+
+    def _paper_learning_rate(self, n_features: int) -> float:
+        """0.01 up to 1000 features and 0.001 above."""
+        return 0.01 if n_features <= _HIGH_DIMENSION else 0.001
 
     def _build_input_mfs(
         self,

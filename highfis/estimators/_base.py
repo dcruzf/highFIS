@@ -450,6 +450,11 @@ def _wrap_gaussian_pimf_input_mfs(
 
 _DEFAULT_MF_CACHE_SIZE = 128
 
+#: Value of ``learning_rate`` that defers to the rule of the family.
+_AUTO_LEARNING_RATE: Final = "auto"
+#: Number of features above which the source articles speak of high-dimensional data.
+_HIGH_DIMENSION: Final = 1000
+
 #: How the initial spread of a clustered fuzzy set is centred (argument ``sigma_init``).
 _SIGMA_INITS: Final = frozenset({"cluster", "constant"})
 _MFCacheValue = tuple[dict[str, Any], list[str], str]
@@ -874,6 +879,29 @@ class _BaseTSKEstimator(BaseEstimator):
         """Batch size chosen for the current fit, falling back to the raw parameter."""
         return cast("int | None", getattr(self, "batch_size_", self.batch_size))
 
+    def _resolve_learning_rate(self, n_features: int) -> float:
+        """Return the learning rate to train with, given the number of features.
+
+        A number always wins. ``"auto"`` defers to the family's rule, for the families whose
+        source article uses one value for low-dimensional data and another above 1000
+        features. ``fit`` calls this once and stores the answer in ``learning_rate_``.
+        """
+        if self.learning_rate != _AUTO_LEARNING_RATE:
+            return float(self.learning_rate)
+        return self._paper_learning_rate(n_features)
+
+    def _paper_learning_rate(self, n_features: int) -> float:
+        """Learning rate for ``learning_rate="auto"``; only some families define one."""
+        raise ValueError(f"learning_rate='auto' is not available for {type(self).__name__}; pass a number")
+
+    @property
+    def _effective_learning_rate(self) -> float:
+        """Learning rate chosen for the current fit, falling back to the raw parameter."""
+        resolved = getattr(self, "learning_rate_", None)
+        if resolved is None:
+            resolved = self._resolve_learning_rate(int(getattr(self, "n_features_in_", 0)))
+        return float(resolved)
+
     def _get_trainer(self) -> BaseTrainer:
         """Return the default :class:`~highfis.optim.GradientTrainer` for this estimator.
 
@@ -882,7 +910,7 @@ class _BaseTSKEstimator(BaseEstimator):
         """
         return GradientTrainer(
             epochs=int(self.epochs),
-            learning_rate=float(self.learning_rate),
+            learning_rate=self._effective_learning_rate,
             batch_size=self._effective_batch_size,
             shuffle=bool(self.shuffle),
             patience=self.patience,
@@ -1382,6 +1410,7 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
         # Resolve the effective batch size once, from the training-set size, and expose it
         # as a fitted attribute; the trainer is built from it below.
         self.batch_size_ = self._resolve_batch_size(int(x_t.shape[0]))
+        self.learning_rate_ = self._resolve_learning_rate(int(x_t.shape[1]))
         _trainer = self.trainer if self.trainer is not None else self._get_trainer()
         self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
         self._check_firing(x_arr)
@@ -1593,6 +1622,7 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
         # Resolve the effective batch size once, from the training-set size, and expose it
         # as a fitted attribute; the trainer is built from it below.
         self.batch_size_ = self._resolve_batch_size(int(x_t.shape[0]))
+        self.learning_rate_ = self._resolve_learning_rate(int(x_t.shape[1]))
         _trainer = self.trainer if self.trainer is not None else self._get_trainer()
         self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
         self._check_firing(x_arr)

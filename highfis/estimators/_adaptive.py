@@ -23,6 +23,7 @@ from ..models import (
     BaseTSK,
 )
 from ._base import (
+    _HIGH_DIMENSION,
     BatchSizeSpec,
     InputConfig,
     _BaseClassifierEstimator,
@@ -45,6 +46,16 @@ def _build_adptsk_default_input_mfs(x_arr: np.ndarray) -> dict[str, list[Gaussia
         sigma = max(x_max - x_min, 1e-3)
         input_mfs[f"x{i + 1}"] = [GaussianMF(mean=center, sigma=sigma) for center in centers]
     return input_mfs
+
+
+def _gradient_descent_learning_rate(n_features: int) -> float:
+    """Step of full-batch gradient descent for first-order consequents on inputs in ``[0, 1]``.
+
+    The curvature of the loss along the consequent weights grows with the number of
+    features, so the largest stable step falls as ``1 / n_features``. The constant was
+    measured: 0.01 is stable on 2000 features and diverges on 7129, where 0.003 is stable.
+    """
+    return min(0.1, 20.0 / float(max(n_features, 1)))
 
 
 def _set_sigma_to_one_and_freeze(mf: MembershipFunction) -> None:
@@ -132,7 +143,7 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         epochs: int = 200,
-        learning_rate: float = 1e-3,
+        learning_rate: float | str = "auto",
         verbose: bool | int = False,
         rule_base: str | None = "coco",
         batch_size: BatchSizeSpec = "auto",
@@ -168,8 +179,8 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
             sigma_scale: Scale factor for Gaussian MF sigma initialization.
             random_state: Seed for k-means and PyTorch weight initialization.
             epochs: Maximum number of training epochs (default ``200``).
-            learning_rate: Initial learning rate for the Adam optimizer
-                (default ``0.001``).
+            learning_rate: Learning rate of Adam. ``"auto"`` (default) uses the values of
+                the source articles: ``0.01`` up to 1000 features and ``0.001`` above.
             verbose: Verbosity level for training output.
             rule_base: Rule-base strategy (default ``"coco"``).
             batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
@@ -240,6 +251,10 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         self.k = k
         self.eps = eps
         self.zero_consequent_init = zero_consequent_init
+
+    def _paper_learning_rate(self, n_features: int) -> float:
+        """0.01 up to 1000 features and 0.001 above."""
+        return 0.01 if n_features <= _HIGH_DIMENSION else 0.001
 
     def _paper_batch_size(self, n_samples: int) -> int | None:
         """ADPTSK_2025: full batch below 500 training samples, otherwise 20% of N."""
@@ -343,7 +358,7 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         epochs: int = 200,
-        learning_rate: float = 1e-3,
+        learning_rate: float | str = "auto",
         verbose: bool | int = False,
         rule_base: str | None = "coco",
         batch_size: BatchSizeSpec = "auto",
@@ -379,8 +394,8 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
             sigma_scale: Scale factor for Gaussian MF sigma initialization.
             random_state: Seed for k-means and PyTorch weight initialization.
             epochs: Maximum number of training epochs (default ``200``).
-            learning_rate: Initial learning rate for the Adam optimizer
-                (default ``0.001``).
+            learning_rate: Learning rate of Adam. ``"auto"`` (default) uses the values of
+                the source articles: ``0.01`` up to 1000 features and ``0.001`` above.
             verbose: Verbosity level for training output.
             rule_base: Rule-base strategy (default ``"coco"``).
             batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
@@ -451,6 +466,10 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         self.k = k
         self.eps = eps
         self.zero_consequent_init = zero_consequent_init
+
+    def _paper_learning_rate(self, n_features: int) -> float:
+        """0.01 up to 1000 features and 0.001 above."""
+        return 0.01 if n_features <= _HIGH_DIMENSION else 0.001
 
     def _paper_batch_size(self, n_samples: int) -> int | None:
         """ADPTSK_2025: full batch below 500 training samples, otherwise 20% of N."""
@@ -548,8 +567,8 @@ class ADATSKClassifier(_BaseClassifierEstimator):
         mf_init: str = "grid",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 100,
-        learning_rate: float = 1e-2,
+        epochs: int = 300,
+        learning_rate: float | str = "auto",
         verbose: bool | int = False,
         rule_base: str | None = "coco",
         batch_size: BatchSizeSpec = "auto",
@@ -579,10 +598,11 @@ class ADATSKClassifier(_BaseClassifierEstimator):
             sigma_scale: Sigma scale factor used by clustering initializers.
                 In paper-strict mode, Gaussian sigmas are reset to ``1`` and frozen.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``100``).
-            learning_rate: Learning rate for the full-batch SGD (plain gradient
-                descent) optimizer used by ADATSK, matching the paper's update
-                rule (default ``0.01``).
+            epochs: Number of full-batch iterations (default ``300``).
+            learning_rate: Learning rate of the full-batch gradient descent. ``"auto"``
+                (default) uses ``min(0.1, 20 / n_features)``: the stable step of plain
+                gradient descent shrinks in proportion to the number of features, and a
+                fixed value either trains too little on few features or diverges on many.
             verbose: Print per-epoch progress.
             rule_base: Rule-base strategy. Default ``"coco"`` to match the paper.
             batch_size: Mini-batch size. ``"auto"`` (default) trains on the full batch, as in the
@@ -655,6 +675,10 @@ class ADATSKClassifier(_BaseClassifierEstimator):
         )
         self.freeze_antecedent_in_high_dim = freeze_antecedent_in_high_dim
         self.high_dim_threshold = high_dim_threshold
+
+    def _paper_learning_rate(self, n_features: int) -> float:
+        """0.1, reduced in proportion to the number of features above 200 of them."""
+        return _gradient_descent_learning_rate(n_features)
 
     def fit(
         self,
@@ -735,8 +759,8 @@ class ADATSKRegressor(_BaseRegressorEstimator):
         mf_init: str = "grid",
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
-        epochs: int = 100,
-        learning_rate: float = 1e-2,
+        epochs: int = 300,
+        learning_rate: float | str = "auto",
         verbose: bool | int = False,
         rule_base: str | None = "coco",
         batch_size: BatchSizeSpec = "auto",
@@ -764,10 +788,11 @@ class ADATSKRegressor(_BaseRegressorEstimator):
             sigma_scale: Sigma scale factor used by clustering initializers.
                 In paper-style mode, Gaussian sigmas are reset to ``1`` and frozen.
             random_state: Seed for k-means and weight initialisation.
-            epochs: Maximum training epochs (default ``100``).
-            learning_rate: Learning rate for the full-batch SGD (plain gradient
-                descent) optimizer used by ADATSK, matching the paper's update
-                rule (default ``0.01``).
+            epochs: Number of full-batch iterations (default ``300``).
+            learning_rate: Learning rate of the full-batch gradient descent. ``"auto"``
+                (default) uses ``min(0.1, 20 / n_features)``: the stable step of plain
+                gradient descent shrinks in proportion to the number of features, and a
+                fixed value either trains too little on few features or diverges on many.
             verbose: Print per-epoch progress.
             rule_base: Rule-base strategy. Default ``"coco"``.
             batch_size: Mini-batch size. ``"auto"`` (default) trains on the full batch, as in the
@@ -832,6 +857,10 @@ class ADATSKRegressor(_BaseRegressorEstimator):
         )
         self.freeze_antecedent_in_high_dim = freeze_antecedent_in_high_dim
         self.high_dim_threshold = high_dim_threshold
+
+    def _paper_learning_rate(self, n_features: int) -> float:
+        """0.1, reduced in proportion to the number of features above 200 of them."""
+        return _gradient_descent_learning_rate(n_features)
 
     def _build_regressor_model(
         self,
