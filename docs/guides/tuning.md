@@ -225,6 +225,7 @@ values for your data, and the articles behind the families do not agree on them 
 | `sigma_scale` | families initialized by clustering | 0.5, 1, 2, `"auto"` |
 | `k` | AYATSK, ADPTSK | AYATSK: 2, 2.5, 3.3, 5, 10; ADPTSK: 0.2 to 2 |
 | `zeta_lambda`, `zeta_theta` | DG-TSK, DG-ALETSK, FSRE-ADATSK | around the defaults |
+| `dg_epochs` | DG-ALETSK | 10 (default), 30, 100: with few features the default is short (Wine: 93.9% with 10, 98.9% with 100) |
 | `n_heads`, `head_size` | MHTSK | see the model page |
 
 ```python
