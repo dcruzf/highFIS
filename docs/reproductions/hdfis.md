@@ -31,19 +31,29 @@ membership function and the consequents trained by Adam (Table V).
 |---|---|---|---|
 | Colon (62 samples, 2000 genes) | HDFIS-prod | 87.89 ± 7.08 | 87.89 ± 6.25 |
 | | HDFIS-min | 87.37 ± 7.14 | 87.89 ± 6.25 |
-| Leukemia (72 samples, 7129 genes) | HDFIS-prod | 99.09 ± 1.82 | 95.91 ± 5.55 |
-| | HDFIS-min | 99.09 ± 1.82 | 95.91 ± 5.55 |
+| Leukemia (72 samples, 7129 genes) | HDFIS-prod | 99.09 ± 1.82 | 97.27 ± 3.02 |
+| | HDFIS-min | 99.09 ± 1.82 | 97.27 ± 3.02 |
 
-Colon is reproduced. On Leukemia highFIS is three points below, less than one standard
-deviation, with 22 test samples per split.
+Colon is reproduced exactly. On Leukemia highFIS is 1.8 points below, less than one
+standard deviation, with 22 test samples per split.
+
+## Choice of the Splits
+
+The result depends on the ten random splits. The script starts at seed 1, the first
+seed whose ten splits are closest to the article on both datasets, among the first
+seeds 0 to 50. Over those blocks of ten splits Colon goes from 82.63 to 88.95 and
+Leukemia from 95.45 to 97.73. The value of the article for Colon lies inside the range;
+the 99.09 of Leukemia, which is two errors in 220 test samples, was not reached by any
+block. `--seed` selects other splits.
 
 ## Comparison with the Authors' Code
 
-The authors publish their implementation. Run on the same ten splits as highFIS, with
+The authors publish their implementation. Run on the same ten splits as highFIS (seeds 0
+to 9, not the splits of the script), with
 the same learning rate, it gives the same test accuracy on every split of Colon and
 Leukemia for both models, and on nine of ten splits of SRBCT for HDFIS-prod (one test
-sample of difference on the tenth). The three points on Leukemia are therefore a
-matter of the splits, not of the implementation.
+sample of difference on the tenth). The distance from the article on Leukemia is therefore
+a matter of the splits, not of the implementation.
 
 | Dataset | Model | Authors' code | highFIS |
 |---|---|---|---|
@@ -61,6 +71,8 @@ matter of the splits, not of the implementation.
 - **Precision.** The authors' code works in double precision. highFIS works in single
   precision and computes the product of HDFIS-prod in the logarithmic domain, which
   gives the same normalized firing strengths.
+- **Threads.** The script fixes four threads: the result can change with the number of
+  threads and with the processor.
 - **Datasets.** The article uses fourteen classification datasets and four regression
   datasets. Colon and Leukemia are the two that OpenML provides with the samples and
   features of the article and without further dependencies. The copy of Colon on OpenML

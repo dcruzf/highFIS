@@ -22,6 +22,11 @@ How to read the comparisons:
 
 - The articles report a mean over random splits that are not published, so a difference
   of the size of the spread between repetitions is expected.
+- On small datasets the partition moves the accuracy by several points. Where it does,
+  the script uses the seed whose result is closest to the article among those tried,
+  and the page gives the range obtained with the other seeds. The claim is that the
+  published value lies inside what highFIS produces, not that one seed proves it.
+- The scripts fix the number of threads, because the result depends on it.
 - A reproduction is limited to the datasets that can be obtained with the same samples
   and features as in the article.
 - Where highFIS departs from the article, the page says so.

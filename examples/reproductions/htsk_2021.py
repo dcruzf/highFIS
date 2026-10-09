@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 
 import numpy as np
+import torch
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -78,6 +79,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--repetitions", type=int, default=10, help="number of random splits (default: 10)")
     args = parser.parse_args()
+    # The results depend on the number of threads through the order of the floating-point
+    # operations, so it is fixed for the values in the documentation to be reproducible.
+    torch.set_num_threads(4)
 
     print(f"{'dataset':8s} {'family':7s} {'article':>8s} {'highFIS':>16s}")
     for name, reported in ARTICLE.items():

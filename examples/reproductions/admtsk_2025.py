@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 
 import numpy as np
+import torch
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import MinMaxScaler
@@ -65,6 +66,9 @@ def main() -> None:
     parser.add_argument("--learning-rate", type=float, default=0.01, help="learning rate of Adam (default: 0.01)")
     parser.add_argument("--seed", type=int, default=0, help="seed of the folds and of the model (default: 0)")
     args = parser.parse_args()
+    # The results depend on the number of threads through the order of the floating-point
+    # operations, so it is fixed for the values in the documentation to be reproducible.
+    torch.set_num_threads(4)
 
     print(f"{'dataset':9s} {'article':>8s} {'highFIS':>16s}")
     for name, reported in ARTICLE.items():
