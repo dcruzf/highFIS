@@ -64,7 +64,6 @@ training, and each is stated on the page of the family:
 | Initial spreads centred on the spread of the cluster (`sigma_init="constant"` gives the article's) | TSK, HTSK, LogTSK |
 | Antecedents trained and number of heads from the feature coverage below 1000 features | MHTSK |
 | Clustering with five rules by default instead of the partition of the article | DombiTSK |
-| Gaussian membership with a trained spread where the article has no spread | FSRE-ADATSK |
 | Regressors of families whose article only treats classification | all but HDFIS |
 
 **Hyperparameters are not part of the model.** The learning rate, the number of
@@ -187,6 +186,13 @@ be loaded; a loaded `DombiTSKClassifier` predicted differently, because the lowe
 of its membership function was passed as a numerical constant that shifted its spreads
 and was not saved; and a loaded `DGTSKClassifier` returned its labels with another
 type. A `DombiTSKClassifier` trained with 0.33.0 no longer applies that shift.
+
+One more change in 0.33.0 concerns FSRE-ADATSK: its membership function is the one of
+the article, $e^{-(x-m)^2}$ without a spread, with the centres between the minimum and
+the maximum of each feature. Before, it was a Gaussian with a trained spread. The
+accuracy is the same or higher (Iris 96.7 and 96.7, Wine 97.8 and 98.9, SRBCT 95.3 and
+97.7 before and after); the numbers of selected features and rules change. Pass
+`input_configs` for other fuzzy sets.
 
 ---
 
