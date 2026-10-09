@@ -114,6 +114,13 @@ loss of the article, the squared error summed over the classes and halved, which
 plain gradient descent makes the steps 1.5 times larger for three classes and leaves
 two classes unchanged. The earlier behaviour is not available.
 
+Four changes in 0.33.0 concern MHTSK. A saved model could not be loaded again; it can
+now. The consequents start at zero, as in the article. Above 1000 features only the
+consequents are trained and the number of heads is the one of the article, 200 up to
+5000 features and 300 beyond (`fcr_target=0.85` gives the earlier number); below 1000
+features the antecedents are trained as before. The membership degrees are computed in
+one batched operation, which makes fitting about six times faster.
+
 ---
 
 ## 1. Baselines
