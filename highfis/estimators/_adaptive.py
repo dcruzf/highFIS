@@ -49,13 +49,16 @@ def _build_adptsk_default_input_mfs(x_arr: np.ndarray) -> dict[str, list[Gaussia
 
 
 def _gradient_descent_learning_rate(n_features: int) -> float:
-    """Step of full-batch gradient descent for first-order consequents on inputs in ``[0, 1]``.
+    """Step of full-batch gradient descent that is stable whatever the data.
 
-    The curvature of the loss along the consequent weights grows with the number of
-    features, so the largest stable step falls as ``1 / n_features``. The constant was
-    measured: 0.01 is stable on 2000 features and diverges on 7129, where 0.003 is stable.
+    For first-order consequents the loss is quadratic in the consequent weights, with a
+    curvature bounded by the sum of the mean squares of the consequent inputs. That sum is
+    at most ``n_features + 1`` for inputs in ``[0, 1]`` or standardized, the bound being
+    reached when the features are fully correlated (a spectrum, for example). Gradient
+    descent is stable below twice the inverse of the curvature, so ``1 / (n_features + 1)``
+    never diverges; ``0.1`` caps it for the smallest problems.
     """
-    return min(0.1, 20.0 / float(max(n_features, 1)))
+    return min(0.1, 1.0 / float(n_features + 1))
 
 
 def _set_sigma_to_one_and_freeze(mf: MembershipFunction) -> None:
@@ -600,9 +603,10 @@ class ADATSKClassifier(_BaseClassifierEstimator):
             random_state: Seed for k-means and weight initialisation.
             epochs: Number of full-batch iterations (default ``300``).
             learning_rate: Learning rate of the full-batch gradient descent. ``"auto"``
-                (default) uses ``min(0.1, 20 / n_features)``: the stable step of plain
-                gradient descent shrinks in proportion to the number of features, and a
-                fixed value either trains too little on few features or diverges on many.
+                (default) uses ``min(0.1, 1 / (n_features + 1))``, which is stable whatever
+                the data: the stable step of plain gradient descent shrinks in proportion
+                to the number of features, and a fixed value either trains too little on
+                few features or diverges on many.
             verbose: Print per-epoch progress.
             rule_base: Rule-base strategy. Default ``"coco"`` to match the paper.
             batch_size: Mini-batch size. ``"auto"`` (default) trains on the full batch, as in the
@@ -677,7 +681,7 @@ class ADATSKClassifier(_BaseClassifierEstimator):
         self.high_dim_threshold = high_dim_threshold
 
     def _paper_learning_rate(self, n_features: int) -> float:
-        """0.1, reduced in proportion to the number of features above 200 of them."""
+        """0.1, reduced in proportion to the number of features above nine of them."""
         return _gradient_descent_learning_rate(n_features)
 
     def fit(
@@ -790,9 +794,10 @@ class ADATSKRegressor(_BaseRegressorEstimator):
             random_state: Seed for k-means and weight initialisation.
             epochs: Number of full-batch iterations (default ``300``).
             learning_rate: Learning rate of the full-batch gradient descent. ``"auto"``
-                (default) uses ``min(0.1, 20 / n_features)``: the stable step of plain
-                gradient descent shrinks in proportion to the number of features, and a
-                fixed value either trains too little on few features or diverges on many.
+                (default) uses ``min(0.1, 1 / (n_features + 1))``, which is stable whatever
+                the data: the stable step of plain gradient descent shrinks in proportion
+                to the number of features, and a fixed value either trains too little on
+                few features or diverges on many.
             verbose: Print per-epoch progress.
             rule_base: Rule-base strategy. Default ``"coco"``.
             batch_size: Mini-batch size. ``"auto"`` (default) trains on the full batch, as in the
@@ -859,7 +864,7 @@ class ADATSKRegressor(_BaseRegressorEstimator):
         self.high_dim_threshold = high_dim_threshold
 
     def _paper_learning_rate(self, n_features: int) -> float:
-        """0.1, reduced in proportion to the number of features above 200 of them."""
+        """0.1, reduced in proportion to the number of features above nine of them."""
         return _gradient_descent_learning_rate(n_features)
 
     def _build_regressor_model(
