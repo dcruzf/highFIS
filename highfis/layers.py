@@ -222,7 +222,26 @@ class MembershipLayer(nn.Module):
         The plan is built once at construction: layers are rebuilt (not
         mutated) by the pruning routines, so it cannot go stale.
         """
-        flat_mfs = [mf for name in self.input_names for mf in cast(nn.ModuleList, self.input_mfs[name])]
+        all_mfs = [mf for name in self.input_names for mf in cast(nn.ModuleList, self.input_mfs[name])]
+        # A layer may mix one vectorizable class with constant sets, which is how a rule
+        # leaves a feature out (MHTSK). The constant columns are then filled in directly
+        # and the kernel runs on the others.
+        self._mixed = False
+        main_idx: list[int] = []
+        kinds = {type(mf) for mf in all_mfs}
+        if len(kinds) == 2 and ConstantMF in kinds:
+            main_idx = [i for i, mf in enumerate(all_mfs) if type(mf) is not ConstantMF]
+            const_idx = [i for i, mf in enumerate(all_mfs) if type(mf) is ConstantMF]
+            if type(all_mfs[main_idx[0]]) in _VECTORIZED_MF_KERNELS:
+                self._mixed = True
+                self.register_buffer("_mixed_main_idx", torch.tensor(main_idx), persistent=False)
+                self.register_buffer("_mixed_const_idx", torch.tensor(const_idx), persistent=False)
+                self.register_buffer(
+                    "_mixed_const_value",
+                    torch.tensor([cast(Any, all_mfs[i]).value for i in const_idx]),
+                    persistent=False,
+                )
+        flat_mfs = [all_mfs[i] for i in main_idx] if self._mixed else all_mfs
         mf_type = type(flat_mfs[0])
         kernel = _VECTORIZED_MF_KERNELS.get(mf_type)
         if kernel is None or not all(type(mf) is mf_type for mf in flat_mfs):
@@ -288,18 +307,22 @@ class MembershipLayer(nn.Module):
         location = _LOCATION_PARAMETER.get(type(cast("list[MembershipFunction]", self._flat_mfs)[0]), "mean")
         means: list[Tensor] = []
         raws: list[Tensor] = []
-        for name in self.input_names:
-            for i in range(len(cast(nn.ModuleList, self.input_mfs[name]))):
-                mean_key = f"{prefix}input_mfs.{name}.{i}.{location}"
-                raw_key = f"{prefix}input_mfs.{name}.{i}.raw_sigma"
-                if mean_key not in state_dict or raw_key not in state_dict:
-                    return
-                means.append(state_dict[mean_key].reshape(()))
-                raws.append(state_dict[raw_key].reshape(()))
-        for name in self.input_names:
-            for i in range(len(cast(nn.ModuleList, self.input_mfs[name]))):
-                state_dict.pop(f"{prefix}input_mfs.{name}.{i}.{location}")
-                state_dict.pop(f"{prefix}input_mfs.{name}.{i}.raw_sigma")
+        owners = [
+            (name, i)
+            for name in self.input_names
+            for i, mf in enumerate(cast(nn.ModuleList, self.input_mfs[name]))
+            if not (self._mixed and type(mf) is ConstantMF)
+        ]
+        for name, i in owners:
+            mean_key = f"{prefix}input_mfs.{name}.{i}.{location}"
+            raw_key = f"{prefix}input_mfs.{name}.{i}.raw_sigma"
+            if mean_key not in state_dict or raw_key not in state_dict:
+                return
+            means.append(state_dict[mean_key].reshape(()))
+            raws.append(state_dict[raw_key].reshape(()))
+        for name, i in owners:
+            state_dict.pop(f"{prefix}input_mfs.{name}.{i}.{location}")
+            state_dict.pop(f"{prefix}input_mfs.{name}.{i}.raw_sigma")
         state_dict[f"{prefix}_flat_mean"] = torch.stack(means)
         state_dict[f"{prefix}_flat_raw_sigma"] = torch.stack(raws)
 
@@ -330,8 +353,18 @@ class MembershipLayer(nn.Module):
 
         if self._fast_kernel is not None:
             consts = {name: cast(Tensor, getattr(self, f"_fast_const_{name}")) for name in self._fast_const_names}
-            x_flat = x.index_select(1, cast(Tensor, self._feat_idx))
-            mu_flat = self._fast_kernel(x_flat, self._flat_mean, self._flat_raw_sigma, consts)
+            feat_idx = cast(Tensor, self._feat_idx)
+            if self._mixed:
+                main_idx = cast(Tensor, self._mixed_main_idx)
+                mu_main = self._fast_kernel(
+                    x.index_select(1, feat_idx[main_idx]), self._flat_mean, self._flat_raw_sigma, consts
+                )
+                mu_flat = mu_main.new_empty((x.shape[0], feat_idx.shape[0]))
+                const_value = cast(Tensor, self._mixed_const_value).to(mu_main.dtype)
+                mu_flat[:, cast(Tensor, self._mixed_const_idx)] = const_value
+                mu_flat[:, main_idx] = mu_main
+            else:
+                mu_flat = self._fast_kernel(x.index_select(1, feat_idx), self._flat_mean, self._flat_raw_sigma, consts)
             chunks = torch.split(mu_flat, self.mf_per_input, dim=1)
             return dict(zip(self.input_names, chunks, strict=False))
 

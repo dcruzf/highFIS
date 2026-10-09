@@ -800,3 +800,52 @@ def test_adp_softmin_gradient_goes_to_the_smallest_degree() -> None:
     assert bool(torch.isfinite(grad).all())
     on_minimum = grad.gather(1, degrees.argmin(dim=1, keepdim=True)).squeeze(1)
     assert bool((on_minimum / grad.sum(dim=1) > 0.9).all())
+
+
+def test_one_class_mixed_with_constant_sets_is_vectorized() -> None:
+    """A rule leaves a feature out through a constant set; the layer stays on the batched path."""
+    from highfis.memberships import ConstantMF
+
+    layer = MembershipLayer(
+        {
+            "a": [ConstantMF(1.0), GaussianMF(0.2, 0.5), GaussianMF(0.8, 1.0)],
+            "b": [ConstantMF(1.0)],
+            "c": [ConstantMF(1.0), GaussianMF(0.5, 0.7)],
+        }
+    )
+    assert layer._fast_kernel is not None
+    assert sorted(name for name, _ in layer.named_parameters()) == ["_flat_mean", "_flat_raw_sigma"]
+    assert cast(Tensor, layer._flat_mean).shape == (3,)
+
+    torch.manual_seed(0)
+    x = torch.rand(5, 3)
+    out = layer(x)
+    ones = torch.ones(5)
+    expected = {
+        "a": torch.stack([ones, GaussianMF(0.2, 0.5)(x[:, 0]), GaussianMF(0.8, 1.0)(x[:, 0])], dim=-1),
+        "b": ones.unsqueeze(-1),
+        "c": torch.stack([ones, GaussianMF(0.5, 0.7)(x[:, 2])], dim=-1),
+    }
+    for name, value in expected.items():
+        assert torch.allclose(out[name], value, atol=1e-6)
+
+    out["a"].sum().backward()
+    assert cast(Tensor, cast(Tensor, layer._flat_mean).grad).abs().sum() > 0
+    params = cast(Any, layer.input_mfs["a"])[2].inspect_params()
+    assert params["mean"] == pytest.approx(0.8)
+
+
+def test_mixed_layer_loads_a_checkpoint_with_one_entry_per_set() -> None:
+    from highfis.memberships import ConstantMF
+
+    def build(centre: float) -> MembershipLayer:
+        return MembershipLayer({"a": [ConstantMF(1.0), GaussianMF(centre, 1.0)], "b": [ConstantMF(1.0)]})
+
+    source = build(0.25)
+    legacy = {
+        "input_mfs.a.1.mean": cast(Tensor, source._flat_mean).detach()[0].clone(),
+        "input_mfs.a.1.raw_sigma": cast(Tensor, source._flat_raw_sigma).detach()[0].clone(),
+    }
+    target = build(0.9)
+    target.load_state_dict(legacy)
+    assert cast(Tensor, target._flat_mean).tolist() == pytest.approx([0.25])
