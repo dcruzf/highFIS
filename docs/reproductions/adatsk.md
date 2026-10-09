@@ -57,7 +57,7 @@ Leukemia. These are not reproduced: highFIS gives 87.4 on Colon with a learning 
 0.001 and 1000 iterations, and 85.7 with the defaults of the estimator. The learning
 rate and the number of iterations of the article are unknown, and plain gradient
 descent on 2000 features diverges with the 0.05 used above. Later articles of the same
-group report other values for AdaTSK on the same data: 84.2 and 74.4 on Colon, 98.8 on
+group report other values for AdaTSK on the same data: 84.3 and 74.4 on Colon, 98.8 on
 SRBCT, and 95.0 and 85.6 on Leukemia.
 
 ## Differences from the Article
