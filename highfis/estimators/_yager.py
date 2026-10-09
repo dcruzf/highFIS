@@ -92,7 +92,7 @@ class AYATSKClassifier(_BaseClassifierEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 0.0,
-        k: float = 10.0,
+        k: float = 2.0,
         device: str = "cpu",
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
@@ -133,7 +133,9 @@ class AYATSKClassifier(_BaseClassifierEstimator):
                 model weights after training.
                 Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
-            k: CEMF lower-bound control parameter. Must be ``> 1``.
+            k: Parameter of the membership function, whose lower bound is ``1 / k``. Must be
+                ``> 1``. The default ``2`` is the value with the best mean accuracy in Table
+                III of the source article, which finds no value that is best everywhere.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
             eval_metrics_every: Evaluate training metrics every ``n`` epochs; ``0``
@@ -269,7 +271,7 @@ class AYATSKRegressor(_BaseRegressorEstimator):
         patience: int | None = 20,
         restore_best: bool = True,
         weight_decay: float = 0.0,
-        k: float = 10.0,
+        k: float = 2.0,
         device: str = "cpu",
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
@@ -308,7 +310,9 @@ class AYATSKRegressor(_BaseRegressorEstimator):
                 model weights after training.
                 Has no effect unless a validation set is passed to ``fit``.
             weight_decay: L2 weight decay for consequent parameters.
-            k: CEMF lower-bound control parameter. Must be ``> 1``.
+            k: Parameter of the membership function, whose lower bound is ``1 / k``. Must be
+                ``> 1``. The default ``2`` is the value with the best mean accuracy in Table
+                III of the source article, which finds no value that is best everywhere.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
             eval_metrics_every: Evaluate training metrics every ``n`` epochs; ``0``
