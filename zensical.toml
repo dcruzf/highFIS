@@ -83,6 +83,7 @@ nav = [
     { "Reproductions" = [
         "reproductions/index.md",
         "reproductions/dg-tsk.md",
+        "reproductions/dg-aletsk.md",
         "reproductions/htsk.md",
         "reproductions/hdfis.md",
         "reproductions/admtsk.md",

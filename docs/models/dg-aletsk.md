@@ -123,6 +123,9 @@ Features and rules with gate values below these thresholds are pruned.
 
 ## Fidelity to the source article
 
+The [reproduction](../reproductions/dg-aletsk.md) runs the protocol of the article and
+prints the result next to its Table V.
+
 The classifier follows the article on the points below. On the SRBCT data (83 samples,
 2308 genes) the defaults give an accuracy of 0.975 with about 16 genes and 8 rules,
 against 0.950, 15.6 and 10.1 in the article.
