@@ -14,6 +14,7 @@ print their table next to the values of the article.
 |---|---|---|---|
 | Xue, Wang, Zhang, Yuan and Dai (2023) | DG-TSK | Iris, Wine | [DG-TSK](dg-tsk.md) |
 | Xue, Wang, Yuan and Dai (2023) | DG-ALETSK | Colon | [DG-ALETSK](dg-aletsk.md) |
+| Xue, Chang, Wang, Zhang and Pal (2023) | FSRE-ADATSK | Iris, Wine, Wdbc | [FSRE-AdaTSK](fsre-adatsk.md) |
 | Cui, Wu and Xu (2021) | TSK, LogTSK, HTSK | Vowel, Biodeg | [HTSK](htsk.md) |
 | Xue, Wang, Zhang and Pal (2024) | HDFIS-prod, HDFIS-min | Colon, Leukemia | [HDFIS](hdfis.md) |
 | Xue, Hu, Wang and Ablameyko (2025) | ADMTSK, DombiTSK | Colon, Leukemia | [ADMTSK](admtsk.md) |
