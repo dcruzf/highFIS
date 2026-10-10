@@ -1861,12 +1861,10 @@ Gaussian membership function bounded below with <span class="arithmatex">\(K = 1
 and spreads of 1, consequents at zero, and Adam on the whole training set for 200
 iterations with a learning rate of 0.001. The published accuracies are reproduced; see
 the <a href="../../reproductions/adptsk/">reproduction</a>.</p>
-<p>Before version 0.33.0 the firing strength lacked the division by <span class="arithmatex">\(\hat\eta_r\)</span>: it was
-<span class="arithmatex">\(\hat\eta_r\)</span> times the softmin, up to 0.2 away from the minimum of the degrees, and
-exactly one whenever the degrees of a rule were all equal. The index was also rounded
-up and bounded at <span class="arithmatex">\(-1000\)</span>, which the article does not do. The firing strength now is
-within 0.002 of the minimum and gives the value of the numerical example of the
-article (<span class="arithmatex">\(1.1026 \times 10^{-26}\)</span> for a minimum of <span class="arithmatex">\(1.1 \times 10^{-26}\)</span>).</p>
+<p>The firing strength is within 0.002 of the minimum of the membership degrees and gives
+the value of the numerical example of the article (<span class="arithmatex">\(1.1026 \times 10^{-26}\)</span> for a
+minimum of <span class="arithmatex">\(1.1 \times 10^{-26}\)</span>). The index is neither rounded nor bounded, as in the
+article.</p>
 <p>Two points are not fixed by the article and were chosen here. The gradient treats
 <span class="arithmatex">\(\hat\eta_r\)</span> and <span class="arithmatex">\(\hat q_r\)</span> as constants, as the code of the same group does for
 Ada-softmin. The loss is the mean squared error instead of the sum over the classes

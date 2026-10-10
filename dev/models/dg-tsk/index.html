@@ -1785,9 +1785,9 @@ w_r(\mathbf{x}) = \prod_{d=1}^{D} \tilde{\mu}_{r,d}(x_d)
 </tbody>
 </table>
 <h2 id="fidelity-to-the-source-article">Fidelity to the source article</h2>
-<p>Since version 0.32.0 the estimators follow the article and the authors' reference
-implementation on the points below. Before that version <code>DGTSKClassifier</code> reached about
-66% on Iris with its defaults; it now reaches about 95%, against 96.8% in the article.</p>
+<p>The estimators follow the article and the authors' reference implementation on the
+points below. With its defaults <code>DGTSKClassifier</code> reaches about 95% on Iris, against
+96.8% in the article.</p>
 <table>
 <thead>
 <tr>
@@ -1800,7 +1800,7 @@ implementation on the points below. Before that version <code>DGTSKClassifier</c
 <tr>
 <td>Spreads of the point-based rule base</td>
 <td>One value for every feature and rule: the mean, over the features, of the sample standard deviations of the rule points (Eq. 23)</td>
-<td><code>pfrb_spread="std_mean"</code> (default). A number sets the common spread; <code>"std"</code> gives the per-feature spread used before 0.32.0</td>
+<td><code>pfrb_spread="std_mean"</code> (default). A number sets the common spread; <code>"std"</code> gives each feature its own spread</td>
 </tr>
 <tr>
 <td>Gate parameters</td>

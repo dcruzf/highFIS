@@ -1785,9 +1785,8 @@ and regression. The gate function used in the paper,
 ADATSK as the base model and FSRE-ADATSK as the three-phase extension with
 feature selection, rule extraction, and En-FRB support.</p>
 <h2 id="fidelity-to-the-source-article">Fidelity to the source article</h2>
-<p>Since version 0.32.0 the defaults of <code>FSREADATSKClassifier</code> follow the procedure of the
-article. Before that version the defaults reached 47% on Iris and 40% on Wine, at chance
-level; they now reach about 97% on Iris and 99% on Wine, with 9.0 features and 11.6
+<p>The defaults of <code>FSREADATSKClassifier</code> follow the procedure of the article. They reach
+about 97% on Iris and 99% on Wine, with 9.0 features and 11.6
 rules on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there).</p>
 <table>
 <thead>
@@ -1811,17 +1810,17 @@ rules on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there
 <tr>
 <td>Membership</td>
 <td><span class="arithmatex">\(e^{-(x-m)^2}\)</span>, which has no spread (Eq. 3)</td>
-<td>Same since 0.33.0 (<code>ADATSKGaussianMF</code>, spread fixed at one). Before, a Gaussian with a trained spread and padded centres</td>
+<td>Same (<code>ADATSKGaussianMF</code>, spread fixed at one)</td>
 </tr>
 <tr>
 <td>Gate function</td>
 <td><span class="arithmatex">\(M(\lambda) = \lambda\sqrt{e^{1-\lambda^2}}\)</span>, parameters initialized to 0.01</td>
-<td><code>gate_fn="gate4"</code> (default); <code>gate_fn=None</code> gives the gate used before 0.32.0</td>
+<td><code>gate_fn="gate4"</code> (default); <code>gate_fn=None</code> gives <code>ExpGate(k=10)</code></td>
 </tr>
 <tr>
 <td>Rule gates</td>
 <td>Trained in the rule-extraction phase</td>
-<td>Same. Before 0.32.0 they were left out of that phase, so three arbitrary rules were kept</td>
+<td>Same</td>
 </tr>
 <tr>
 <td>Selection</td>
@@ -1841,7 +1840,7 @@ rules on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there
 <tr>
 <td>Consequents</td>
 <td>Start at zero, as in ADATSK</td>
-<td>Same since 0.32.0; before, they started from a random draw</td>
+<td>Same</td>
 </tr>
 </tbody>
 </table>

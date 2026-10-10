@@ -1848,7 +1848,7 @@ standard Gaussian MFs and then freezes the antecedent parameters.</p>
 </table>
 <h2 id="implementation-notes">Implementation notes</h2>
 <h3 id="fidelity-to-the-source-article">Fidelity to the source article</h3>
-<p>Since version 0.33.0 the defaults of the four HDFIS estimators are the settings of the
+<p>The defaults of the four HDFIS estimators are the settings of the
 article, and on the same random splits they give the accuracies of the authors' code
 (see the <a href="../../reproductions/hdfis/">reproduction</a>).</p>
 <table>
@@ -1911,9 +1911,9 @@ article, and on the same random splits they give the accuracies of the authors' 
 <li><strong>Precision.</strong> The bound <span class="arithmatex">\(\xi = 745\)</span> of the article is the limit of double precision.
   highFIS trains in single precision by default and obtains the normalized product from
   the geometric mean of the membership degrees, <span class="arithmatex">\(\operatorname{softmax}(D \log \bar\mu)\)</span>,
-  which is the same quantity without underflow. Before 0.33.0 the product underflowed
-  in single precision and every rule received the same weight, so that HDFIS-prod was a
-  linear model on high-dimensional data.</li>
+  which is the same quantity without underflow. The plain product underflows in
+  single precision on high-dimensional data, and every rule then receives the same
+  weight.</li>
 <li><strong>Membership of HDFIS-min.</strong> The article reports HDFIS-min with the conventional and
   with the dimension-dependent membership function; highFIS implements the conventional
   one.</li>

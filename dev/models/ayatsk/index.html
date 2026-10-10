@@ -1734,13 +1734,13 @@ partition with three rules, consequents at zero, and Adam on the whole training 
 300 epochs, with a learning rate of 0.01 up to 1000 features and of 0.001 above. The
 article studies <span class="arithmatex">\(K\)</span> from 2 to 10 and finds no value that is best everywhere; the default
 is <span class="arithmatex">\(K = 2\)</span>, the one with the best mean accuracy in its Table III (1.8 points above
-<span class="arithmatex">\(K = 10\)</span> over the 23 datasets). Before version 0.33.0 the default was <span class="arithmatex">\(K = 10\)</span>, which
-gives 74% where <span class="arithmatex">\(K = 2\)</span> gives 96% on Leukemia. On the same folds
+<span class="arithmatex">\(K = 10\)</span> over the 23 datasets); on Leukemia <span class="arithmatex">\(K = 10\)</span> gives 74% where <span class="arithmatex">\(K = 2\)</span> gives
+96%. On the same folds
 highFIS gives the accuracies of the authors' code on SRBCT, and the published
 accuracies are reproduced on Wine and Wdbc; see the
 <a href="../../reproductions/ayatsk/">reproduction</a>.</p>
-<p>Since version 0.33.0 the membership degrees are computed in one batched operation, as
-for the Gaussian families. Fitting on 2308 features takes a tenth of the time it took.</p>
+<p>The membership degrees are computed in one batched operation, as for the Gaussian
+families.</p>
 
 
 
