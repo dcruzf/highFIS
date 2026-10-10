@@ -8,7 +8,7 @@ pp. 2167-2181, 2023.
 **Script**: [`examples/reproductions/adatsk_2022.py`](https://github.com/dcruzf/highFIS/blob/main/examples/reproductions/adatsk_2022.py)
 
 The same article proposes FSRE-AdaTSK, the version with feature selection and rule
-extraction, which is covered on the [FSRE-ADATSK](../models/fsre-adatsk.md) model page.
+extraction, which has its own [reproduction](fsre-adatsk.md).
 
 ## Protocol of the Article
 

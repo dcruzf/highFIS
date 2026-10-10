@@ -137,3 +137,28 @@ def test_membership_function_of_the_article(estimator_cls: type) -> None:
     assert [mf["sigma"] for mf in sets] == pytest.approx([1.0] * len(sets), abs=1e-5)
     trainable = [name for name, param in model.model_.named_parameters() if param.requires_grad]
     assert "membership_layer._flat_raw_sigma" not in trainable
+
+
+def test_number_of_fuzzy_sets_per_phase() -> None:
+    """The article uses 10 fuzzy sets to select features and 5 to extract rules."""
+    rng = np.random.default_rng(0)
+    x = rng.random((80, 4)).astype(np.float32)
+    y = (x[:, 0] > 0.5).astype(int)
+    model = FSREADATSKClassifier(
+        fs_n_mfs=6, re_n_mfs=4, fs_epochs=20, re_epochs=20, finetune_epochs=20, random_state=0
+    ).fit(x, y)
+    sets = model.get_mf_params()
+    assert {len(group) for group in sets.values()} == {4}
+    for name, column in zip(sets, model.selected_features_, strict=True):
+        centres = sorted(mf["mean"] for mf in sets[name])
+        # Rebuilt on an even grid over the range of the feature, then trained for a few epochs.
+        assert centres[0] == pytest.approx(float(x[:, column].min()), abs=0.1)
+        assert centres[-1] == pytest.approx(float(x[:, column].max()), abs=0.1)
+
+
+def test_fuzzy_sets_are_kept_between_phases_by_default() -> None:
+    rng = np.random.default_rng(0)
+    x = rng.random((80, 4)).astype(np.float32)
+    y = (x[:, 0] > 0.5).astype(int)
+    model = FSREADATSKClassifier(fs_epochs=20, re_epochs=20, finetune_epochs=20, random_state=0).fit(x, y)
+    assert {len(group) for group in model.get_mf_params().values()} == {3}

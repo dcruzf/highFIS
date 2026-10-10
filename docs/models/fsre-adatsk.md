@@ -168,7 +168,10 @@ feature selection, rule extraction, and En-FRB support.
 
 The defaults of `FSREADATSKClassifier` follow the procedure of the article. They reach
 about 97% on Iris and 99% on Wine, with 9.0 features and 11.6
-rules on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there).
+rules on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there). With
+the numbers of fuzzy sets of the article and standardized inputs, the accuracy and the
+numbers of features and rules of the article are reproduced on Iris, Wine and Wdbc: see
+the [reproduction of the article](../reproductions/fsre-adatsk.md).
 
 | Point | Article | highFIS |
 |---|---|---|
@@ -189,9 +192,12 @@ Remaining differences:
   measurement on Iris and Wine.
 - **Batch normalization.** The article has none; highFIS normalizes the consequent inputs
   by default (`consequent_batch_norm=True`), which gave better results on both datasets.
-- **Number of fuzzy sets.** The article uses different numbers in the feature-selection
-  and rule-extraction phases for high-dimensional data (10 and 5); highFIS has one `n_mfs`
-  for every phase.
+- **Number of fuzzy sets.** The article uses ten fuzzy sets in the feature-selection
+  phase and five in the rule-extraction phase; highFIS uses `n_mfs` in every phase
+  unless `fs_n_mfs` and `re_n_mfs` are passed.
+- **Scale of the inputs.** The article does not state it. The membership function has no
+  spread, so the scale decides how well the rules are told apart: on inputs in $[0, 1]$
+  many more rules are kept than on standardized inputs.
 - **Thresholds.** The article uses other threshold coefficients above 1000 features (0.4
   and 0.5); highFIS keeps 0.5 and 0.3 unless `zeta_lambda` and `zeta_theta` are passed.
 - **High-dimensional data.** On SRBCT (83 samples, 2308 genes) the defaults give an accuracy
