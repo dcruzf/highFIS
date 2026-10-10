@@ -59,7 +59,9 @@ results = {name: [] for name in DATASETS}
 
 for name, data_id in DATASETS.items():
     bunch = fetch_openml(data_id=data_id, as_frame=False, parser="liac-arff")
-    features = bunch.data.toarray().astype(np.float32)  # OpenML stores this dataset as a sparse matrix
+    # OpenML stores some datasets, Colon among them, as sparse matrices.
+    data = bunch.data.toarray() if hasattr(bunch.data, "toarray") else bunch.data
+    features = np.asarray(data, dtype=np.float32)
     labels = np.unique(bunch.target, return_inverse=True)[1]
 
     for repetition in range(REPETITIONS):

@@ -53,7 +53,7 @@ SRBCT was run with the copy of the data that the authors distribute with the cod
 another of their articles, since no source provides it without a further dependency.
 Leukemia comes from OpenML (identifier 1104) and takes about an hour and a half for the
 fifty runs, too long for an example; adding `"Leukemia": 1104` to `DATASETS` and
-`"Leukemia": (92.43, 10.46, 5.08)` to `ARTICLE` in the script reproduces the row above.
+`"Leukemia": (92.43, 10.46, 5.08)` to `ARTICLE` in the script runs it.
 
 ## Differences from the Article
 
