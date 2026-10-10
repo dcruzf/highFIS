@@ -36,18 +36,24 @@ are reproduced: 7.2 genes and 7.0 rules against 6.8 and 6.4. The accuracy is fiv
 above the article's, half the standard deviation between runs; with 62 samples one test
 sample is 1.6 points of a cross-validated accuracy.
 
-## SRBCT
+## SRBCT and Leukemia
 
-The same protocol on SRBCT (83 samples, 2308 genes), with the copy of the data that the
-authors distribute with the code of another of their articles:
+The same protocol on two more datasets of the article, which are not in the script:
 
 | Dataset | Article | highFIS | Standard deviation of the accuracy |
 |---|---|---|---|
-| SRBCT | 95.00 / 15.62 / 10.10 | 94.92 / 13.1 / 4.1 | 7.72 |
+| SRBCT (83 samples, 2308 genes) | 95.00 / 15.62 / 10.10 | 94.92 / 13.1 / 4.1 | 7.72 |
+| Leukemia (72 samples, 7129 genes) | 92.43 / 10.46 / 5.08 | 93.57 / 12.2 / 3.2 | 8.07 |
 
-The accuracy is reproduced within 0.1 point and the number of selected genes is close;
-highFIS keeps four rules where the article reports ten. SRBCT is not in the script
-because no source provides it without a further dependency.
+On both the accuracy is within about one point of the article and the number of
+selected genes is close; highFIS keeps fewer rules than the article reports, four
+against ten on SRBCT and three against five on Leukemia.
+
+SRBCT was run with the copy of the data that the authors distribute with the code of
+another of their articles, since no source provides it without a further dependency.
+Leukemia comes from OpenML (identifier 1104) and takes about an hour and a half for the
+fifty runs, too long for an example; adding `"Leukemia": 1104` to `DATASETS` and
+`"Leukemia": (92.43, 10.46, 5.08)` to `ARTICLE` in the script reproduces the row above.
 
 ## Differences from the Article
 
