@@ -127,8 +127,8 @@ The [reproduction](../reproductions/dg-aletsk.md) runs the protocol of the artic
 prints the result next to its Table V.
 
 The classifier follows the article on the points below. On the SRBCT data (83 samples,
-2308 genes) the defaults give an accuracy of 0.975 with about 16 genes and 8 rules,
-against 0.950, 15.6 and 10.1 in the article.
+2308 genes), with the protocol of the article, the defaults give an accuracy of 0.949
+with about 13 genes and 4 rules, against 0.950, 15.6 and 10.1 in the article.
 
 | Point | Article | highFIS |
 |---|---|---|
