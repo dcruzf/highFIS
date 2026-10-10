@@ -114,7 +114,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
                 mean, over the features, of the sample standard deviations of the rule
                 points, as in the source article (Eq. (23)). A positive number sets that
                 common spread directly. ``"std"`` gives each feature its own standard
-                deviation, the behaviour before 0.32.0. Multiplied by ``sigma_scale``.
+                deviation. Multiplied by ``sigma_scale``.
             random_state: Seed for reproducibility.
             dg_epochs: Epochs of the gate phase, in which the gates are trained and
                 the antecedents are frozen. Default ``300``, the number of full-batch
@@ -466,7 +466,7 @@ class DGTSKRegressor(_BaseRegressorEstimator):
                 mean, over the features, of the sample standard deviations of the rule
                 points, as in the source article (Eq. (23)). A positive number sets that
                 common spread directly. ``"std"`` gives each feature its own standard
-                deviation, the behaviour before 0.32.0. Multiplied by ``sigma_scale``.
+                deviation. Multiplied by ``sigma_scale``.
             random_state: Seed for reproducibility.
             dg_epochs: Epochs of the gate phase, in which the gates are trained and
                 the antecedents are frozen. Default ``300``, the number of full-batch

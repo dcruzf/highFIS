@@ -25,7 +25,7 @@ Section 4.1 of the article. These settings are the defaults of `ADPTSKClassifier
 Mean test accuracy in percent; for highFIS, with the standard deviation over the ten
 folds.
 
-| Dataset | $K$ | Article | highFIS 0.33.0 |
+| Dataset | $K$ | Article | highFIS |
 |---|---|---|---|
 | Colon (62 samples, 2000 genes) | 1.0 | 82.46 | 82.38 ± 13.43 |
 | Leukemia (72 samples, 7129 genes) | 1.0 | 97.20 | 97.14 ± 5.71 |

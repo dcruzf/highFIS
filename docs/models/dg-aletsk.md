@@ -123,14 +123,13 @@ Features and rules with gate values below these thresholds are pruned.
 
 ## Fidelity to the source article
 
-Since version 0.32.0 the classifier follows the article on the points below. On the SRBCT
-data (83 samples, 2308 genes) the defaults give an accuracy of 0.975 with about 16 genes
-and 8 rules, against 0.950, 15.6 and 10.1 in the article; before that version they gave
-0.770 with no gene selected in every fold.
+The classifier follows the article on the points below. On the SRBCT data (83 samples,
+2308 genes) the defaults give an accuracy of 0.975 with about 16 genes and 8 rules,
+against 0.950, 15.6 and 10.1 in the article.
 
 | Point | Article | highFIS |
 |---|---|---|
-| Spreads of the point-based rule base | Initialized to 1, for inputs scaled to `[0, 1]` | `pfrb_spread=1.0` (default). `"std"` gives the per-feature spread used before 0.32.0 |
+| Spreads of the point-based rule base | Initialized to 1, for inputs scaled to `[0, 1]` | `pfrb_spread=1.0` (default). `"std"` gives each feature its own spread |
 | Gate parameters | All equal to 0.01 | Same |
 | Rule points when there are more samples than the cap | Drawn class by class (stratified) | Same, for classifiers |
 | After pruning | The gates are removed and the rules become first-order rules | Same. `get_feature_gates()` and `get_rule_gates()` still return the trained values |
@@ -148,10 +147,10 @@ Remaining differences:
 - **Loss scale.** The article divides the summed squared error by `2N`; highFIS uses
   `MSELoss`, which also divides by the number of classes. With the Adam optimizer this
   family uses, the scale has little effect.
-- **The regressor is an extension.** The article only treats classification. Since 0.32.0
+- **The regressor is an extension.** The article only treats classification.
   `DGALETSKRegressor` shares the point-based rule base, the spreads and the rule cap of the
-  classifier, starts each rule from the target of its sample, and no longer refits by
-  least squares by default, because that refit diverged on a point-based rule base. On
+  classifier, starts each rule from the target of its sample, and does not refit by
+  least squares by default, because that refit diverges on a point-based rule base. On
   the Friedman-1 problem it selects informative features but stays below ridge regression
   (R² about 0.50 against 0.62); treat it as experimental.
 

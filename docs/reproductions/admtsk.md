@@ -26,7 +26,7 @@ Section IV-A of the article. These settings are the defaults of `ADMTSKClassifie
 Mean test accuracy in percent; for highFIS, with the standard deviation over the ten
 folds.
 
-| Dataset | Article | highFIS 0.33.0 |
+| Dataset | Article | highFIS |
 |---|---|---|
 | Colon (62 samples, 2000 genes) | 86.33 | 85.95 ± 14.18 |
 | Leukemia (72 samples, 7129 genes) | 97.29 | 97.14 ± 5.71 |

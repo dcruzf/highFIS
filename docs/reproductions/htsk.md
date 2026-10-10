@@ -26,7 +26,7 @@ Section IV-B of the article, as the script applies it:
 Mean test accuracy in percent; for highFIS, with the standard deviation over the ten
 repetitions.
 
-| Dataset | Family | Article | highFIS 0.32.0 |
+| Dataset | Family | Article | highFIS |
 |---|---|---|---|
 | Vowel (990 samples, 10 features, 11 classes) | TSK | 87.91 | 87.81 ± 4.67 |
 | | LogTSK | 85.42 | 84.28 ± 3.53 |

@@ -27,7 +27,7 @@ Mean test accuracy in percent; for highFIS, with the standard deviation over the
 repetitions. For HDFIS-min the article's value is the one with the conventional
 membership function and the consequents trained by Adam (Table V).
 
-| Dataset | Family | Article | highFIS 0.33.0 |
+| Dataset | Family | Article | highFIS |
 |---|---|---|---|
 | Colon (62 samples, 2000 genes) | HDFIS-prod | 87.89 ± 7.08 | 87.89 ± 6.25 |
 | | HDFIS-min | 87.37 ± 7.14 | 87.89 ± 6.25 |

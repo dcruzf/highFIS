@@ -167,16 +167,12 @@ $$
 
 ## Fidelity to the source article
 
-Since version 0.33.0 the defaults of the MHTSK estimators are the settings of the
+The defaults of the MHTSK estimators are the settings of the
 article for data with more than 1000 features: heads of 2% of the features and 200
 heads up to 5000 features, 1% and 300 beyond; three rules per head from fuzzy C-means
 on 80% of the samples; spreads fixed at one; consequents starting at zero; and only
 the consequents trained. With them the published accuracy of Colon is reproduced
 within one point; see the [reproduction](../reproductions/mhtsk.md).
-
-Before that version the antecedents were trained in every case, the consequents
-started from a random draw, and the number of heads came from a feature coverage of
-85%, which is 95 heads where the article has 200. A saved model could not be loaded.
 
 Below 1000 features, which the article does not treat, the antecedents are trained
 and the number of heads follows the feature coverage.

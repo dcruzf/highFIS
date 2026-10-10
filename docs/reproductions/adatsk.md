@@ -32,7 +32,7 @@ Section IV of the article, for the classifier without feature selection (its Tab
 Mean test accuracy in percent; for highFIS, with the standard deviation over the ten
 folds.
 
-| Dataset | Article | highFIS 0.33.0 |
+| Dataset | Article | highFIS |
 |---|---|---|
 | Iris (150 samples, 4 features) | 95.5 | 94.67 ± 4.99 |
 | Wine (178 samples, 13 features) | 98.7 | 97.22 ± 3.73 |

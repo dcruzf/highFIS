@@ -123,8 +123,7 @@ class FSREADATSKClassifier(_ArticleMembership, _BaseClassifierEstimator):
                 that is the default, ``False``.
             gate_fn: Gate function of the feature and rule gates, as a key of
                 ``highfis.gates.GATE_FNS``. ``"gate4"`` (default) is the gate of the source
-                article, ``λ sqrt(exp(1 - λ²))``. ``None`` gives ``ExpGate(k=10)``, the gate
-                used before 0.32.0.
+                article, ``λ sqrt(exp(1 - λ²))``. ``None`` gives ``ExpGate(k=10)``.
             input_configs: Per-feature InputConfig list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
             n_mfs: Number of fuzzy sets per feature (default ``3``).
@@ -393,8 +392,7 @@ class FSREADATSKRegressor(_ArticleMembership, _BaseRegressorEstimator):
                 that is the default, ``False``.
             gate_fn: Gate function of the feature and rule gates, as a key of
                 ``highfis.gates.GATE_FNS``. ``"gate4"`` (default) is the gate of the source
-                article, ``λ sqrt(exp(1 - λ²))``. ``None`` gives ``ExpGate(k=10)``, the gate
-                used before 0.32.0.
+                article, ``λ sqrt(exp(1 - λ²))``. ``None`` gives ``ExpGate(k=10)``.
             input_configs: Per-feature InputConfig list. Only
                 ``name`` is used when ``mf_init="kmeans"``.
             n_mfs: Number of fuzzy sets per feature (default ``3``).
