@@ -372,6 +372,8 @@
       
         
       
+        
+      
     
     
     
@@ -1386,6 +1388,8 @@
       
         
       
+        
+      
     
     
     
@@ -1795,7 +1799,10 @@ feature selection, rule extraction, and En-FRB support.</p>
 <h2 id="fidelity-to-the-source-article">Fidelity to the source article</h2>
 <p>The defaults of <code>FSREADATSKClassifier</code> follow the procedure of the article. They reach
 about 97% on Iris and 99% on Wine, with 9.0 features and 11.6
-rules on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there).</p>
+rules on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there). With
+the numbers of fuzzy sets of the article and standardized inputs, the accuracy and the
+numbers of features and rules of the article are reproduced on Iris, Wine and Wdbc: see
+the <a href="../../reproductions/fsre-adatsk/">reproduction of the article</a>.</p>
 <table>
 <thead>
 <tr>
@@ -1859,9 +1866,12 @@ rules on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there
   measurement on Iris and Wine.</li>
 <li><strong>Batch normalization.</strong> The article has none; highFIS normalizes the consequent inputs
   by default (<code>consequent_batch_norm=True</code>), which gave better results on both datasets.</li>
-<li><strong>Number of fuzzy sets.</strong> The article uses different numbers in the feature-selection
-  and rule-extraction phases for high-dimensional data (10 and 5); highFIS has one <code>n_mfs</code>
-  for every phase.</li>
+<li><strong>Number of fuzzy sets.</strong> The article uses ten fuzzy sets in the feature-selection
+  phase and five in the rule-extraction phase; highFIS uses <code>n_mfs</code> in every phase
+  unless <code>fs_n_mfs</code> and <code>re_n_mfs</code> are passed.</li>
+<li><strong>Scale of the inputs.</strong> The article does not state it. The membership function has no
+  spread, so the scale decides how well the rules are told apart: on inputs in <span class="arithmatex">\([0, 1]\)</span>
+  many more rules are kept than on standardized inputs.</li>
 <li><strong>Thresholds.</strong> The article uses other threshold coefficients above 1000 features (0.4
   and 0.5); highFIS keeps 0.5 and 0.3 unless <code>zeta_lambda</code> and <code>zeta_theta</code> are passed.</li>
 <li><strong>High-dimensional data.</strong> On SRBCT (83 samples, 2308 genes) the defaults give an accuracy

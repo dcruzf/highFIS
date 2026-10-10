@@ -372,6 +372,8 @@
       
         
       
+        
+      
     
     
     
@@ -797,6 +799,8 @@
       
         
       
+        
+      
     
     
     
@@ -943,6 +947,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#length-of-the-gate-phase" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Length of the Gate Phase
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#comparison-with-the-authors-code" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1010,6 +1025,33 @@
     
   
   DG-ALETSK
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+                
+              
+                
+                  
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fsre-adatsk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+  FSRE-AdaTSK
 
     
   </span>
@@ -1398,6 +1440,8 @@
       
         
       
+        
+      
     
     
     
@@ -1446,7 +1490,7 @@ extraction", <em>Fuzzy Sets and Systems</em>, vol. 469, 2023, doi:10.1016/j.fss.
 (Table 2), and DG-TSK after feature selection and rule extraction (Table 3).</p>
 <h2 id="protocol-of-the-article">Protocol of the Article</h2>
 <p>Section 4 of the article. For Table 3 these settings are the defaults of
-<code>DGTSKClassifier</code>.</p>
+<code>DGTSKClassifier</code>, except the number of iterations of the gate phase.</p>
 <table>
 <thead>
 <tr>
@@ -1487,9 +1531,19 @@ extraction", <em>Fuzzy Sets and Systems</em>, vol. 469, 2023, doi:10.1016/j.fss.
 <td>default</td>
 </tr>
 <tr>
-<td>Learning rate and iterations</td>
-<td>not stated in the article; 0.2 and 300 per phase in the authors' code</td>
-<td>defaults</td>
+<td>Learning rate</td>
+<td>0.2 in the comparison of gate functions (Section 4.1); not stated for Table 3</td>
+<td>0.2 (default)</td>
+</tr>
+<tr>
+<td>Iterations of the gate phase</td>
+<td>300 in Section 4.1; not stated for Table 3</td>
+<td><code>dg_epochs=1000</code></td>
+</tr>
+<tr>
+<td>Iterations of the fine-tuning</td>
+<td>not stated</td>
+<td>300 (default)</td>
 </tr>
 <tr>
 <td>Evaluation</td>
@@ -1504,29 +1558,104 @@ extraction", <em>Fuzzy Sets and Systems</em>, vol. 469, 2023, doi:10.1016/j.fss.
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>dataset   article  highFIS
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>Iris        94.00    95.47
 </span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>Wine        96.63    96.58
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>Table 3: DG-TSK (accuracy in percent / selected features / extracted rules)
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>dataset             article            highFIS  std of accuracy
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>Iris       96.8 / 2.3 / 3.1   95.7 / 2.0 / 6.0             5.29
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>Wine       98.3 / 8.0 / 3.0   97.7 / 5.1 / 3.0             3.37
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>Glass       64.00    66.46
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>Table 3: DG-TSK (accuracy in percent / selected features / extracted rules)
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>dataset             article            highFIS  std of accuracy
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>Iris       96.8 / 2.3 / 3.1   95.8 / 2.6 / 3.0             4.87
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>Wine       98.3 / 8.0 / 3.0   97.2 / 9.5 / 3.0             3.67
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>Glass      63.1 / 8.0 / 6.0   62.3 / 8.0 / 6.0             8.86
 </span></code></pre></div>
 <ul>
 <li><strong>Table 2.</strong> The rule base of the article, built without training, is reproduced:
-  within 0.1 point on Wine and 1.5 points above on Iris. With the same construction
-  Wdbc gives 96.45 against 96.38 in the article.</li>
-<li><strong>Table 3, accuracy.</strong> Within about one point on both datasets, a fraction of the
+  within 0.1 point on Wine, 1.5 points above on Iris and 2.5 points above on Glass. With
+  the same construction Wdbc gives 96.45 against 96.38 in the article.</li>
+<li><strong>Table 3, accuracy.</strong> Within about one point on the three datasets, a fraction of the
   standard deviation between runs.</li>
-<li><strong>Table 3, structure.</strong> The three rules of Wine are reproduced. DG-TSK keeps 5.1
-  features on Wine where the article reports 8.0, and 6.0 rules on Iris where the article
-  reports 3.1.</li>
+<li><strong>Table 3, structure.</strong> The numbers of rules are those of the article on the three
+  datasets, and the eight features of Glass are reproduced. DG-TSK keeps 2.6 features on
+  Iris where the article reports 2.3, and 9.5 on Wine where it reports 8.0.</li>
 </ul>
-<h2 id="comparison-with-the-authors-code">Comparison with the Authors' Code</h2>
-<p>The authors publish an implementation. Run on the same folds as highFIS (ten folds
-repeated twice), it gives the structure of highFIS, not the one of the article's table:</p>
+<h2 id="length-of-the-gate-phase">Length of the Gate Phase</h2>
+<p>The article trains the gates for 300 iterations when it compares gate functions on Wine
+(its Section 4.1), and does not state the number behind Table 3. The reference code of
+the authors uses 300, which is the default of <code>DGTSKClassifier</code>. The gates keep opening
+as the phase goes on, so its length decides how many features pass the threshold. With
+300 iterations too few features are kept on most datasets, and the accuracy falls with
+them; with 1000 the table of the article is reproduced.</p>
+<p>Ten-fold cross-validation, once (repeated twice for Iris, Wine and Wdbc with 300
+iterations); accuracy / selected features / extracted rules:</p>
 <table>
 <thead>
 <tr>
 <th>Dataset</th>
+<th>Article</th>
+<th>300 iterations (default)</th>
+<th>1000 iterations</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Iris</td>
+<td>96.8 / 2.3 / 3.1</td>
+<td>95.0 / 2.0 / 5.8</td>
+<td>96.0 / 2.6 / 3.1</td>
+</tr>
+<tr>
+<td>Pima</td>
+<td>75.9 / 4.5 / 2.2</td>
+<td>73.8 / 1.1 / 2.4</td>
+<td>76.6 / 4.2 / 2.0</td>
+</tr>
+<tr>
+<td>Glass</td>
+<td>63.1 / 8.0 / 6.0</td>
+<td>45.8 / 1.2 / 6.0</td>
+<td>62.2 / 8.0 / 6.0</td>
+</tr>
+<tr>
+<td>Wine</td>
+<td>98.3 / 8.0 / 3.0</td>
+<td>97.2 / 5.0 / 3.0</td>
+<td>98.3 / 9.7 / 3.0</td>
+</tr>
+<tr>
+<td>Heart</td>
+<td>85.0 / 4.0 / 3.4</td>
+<td>83.3 / 3.0 / 2.1</td>
+<td>84.1 / 9.2 / 2.9</td>
+</tr>
+<tr>
+<td>Vehicle</td>
+<td>70.3 / 12.0 / 4.0</td>
+<td>61.4 / 6.1 / 4.0</td>
+<td>67.7 / 11.9 / 4.0</td>
+</tr>
+<tr>
+<td>Wdbc</td>
+<td>96.2 / 5.0 / 2.2</td>
+<td>91.2 / 2.0 / 2.5</td>
+<td>97.0 / 7.1 / 2.6</td>
+</tr>
+<tr>
+<td>Sonar</td>
+<td>77.4 / 12.7 / 2.0</td>
+<td>72.6 / 3.9 / 2.1</td>
+<td>72.6 / 14.9 / 2.0</td>
+</tr>
+</tbody>
+</table>
+<p>With 1000 iterations Heart keeps more features than the article reports and Sonar stays
+five points below in accuracy; the other six datasets are within three points, with the
+structure of the article.</p>
+<h2 id="comparison-with-the-authors-code">Comparison with the Authors' Code</h2>
+<p>The authors publish an implementation. On the same folds, the two implementations agree
+with each other for both lengths of the gate phase:</p>
+<table>
+<thead>
+<tr>
+<th>Dataset</th>
+<th>Gate iterations</th>
 <th>Article</th>
 <th>Authors' code</th>
 <th>highFIS</th>
@@ -1535,40 +1664,69 @@ repeated twice), it gives the structure of highFIS, not the one of the article's
 <tbody>
 <tr>
 <td>Iris</td>
+<td>300</td>
 <td>96.8 / 2.3 / 3.1</td>
 <td>94.3 / 2.0 / 5.8</td>
 <td>95.0 / 2.0 / 5.8</td>
 </tr>
 <tr>
 <td>Wine</td>
+<td>300</td>
 <td>98.3 / 8.0 / 3.0</td>
 <td>95.5 / 5.0 / 3.0</td>
 <td>97.2 / 5.0 / 3.0</td>
 </tr>
 <tr>
 <td>Wdbc</td>
+<td>300</td>
 <td>96.2 / 5.0 / 2.2</td>
 <td>91.6 / 2.1 / 2.1</td>
 <td>91.2 / 2.0 / 2.5</td>
 </tr>
+<tr>
+<td>Pima</td>
+<td>300</td>
+<td>75.9 / 4.5 / 2.2</td>
+<td>74.1 / 1.2 / 2.1</td>
+<td>73.8 / 1.1 / 2.4</td>
+</tr>
+<tr>
+<td>Vehicle</td>
+<td>300</td>
+<td>70.3 / 12.0 / 4.0</td>
+<td>60.4 / 6.0 / 4.0</td>
+<td>61.4 / 6.1 / 4.0</td>
+</tr>
+<tr>
+<td>Glass</td>
+<td>300</td>
+<td>63.1 / 8.0 / 6.0</td>
+<td>46.8 / 1.2 / 6.0</td>
+<td>45.8 / 1.2 / 6.0</td>
+</tr>
+<tr>
+<td>Glass</td>
+<td>1000</td>
+<td>63.1 / 8.0 / 6.0</td>
+<td>59.9 / 8.0 / 6.0</td>
+<td>62.2 / 8.0 / 6.0</td>
+</tr>
 </tbody>
 </table>
-<p>On Wine the two implementations select the same features and the same number of rules
-in every one of the 20 folds. The distance to the article in the number of features and
-rules is therefore between the article and its published code. The article does not
-state the learning rate nor the number of iterations of its Table 3, and the number of
-features that pass the threshold depends on them: with a gate phase of 60 iterations
-instead of 300, highFIS keeps 10.7 features on Sonar, where the article reports 12.7,
-and with 300 it keeps 3.9.</p>
+<p>Iris, Wine and Wdbc use ten folds repeated twice, the other rows ten folds. On Wine the
+two implementations select the same features and the same number of rules in every one
+of the 20 folds.</p>
 <h2 id="differences-from-the-article">Differences from the Article</h2>
 <ul>
-<li><strong>Learning rate and iterations.</strong> Taken from the authors' code, since the article does
-  not state them.</li>
+<li><strong>Iterations of the gate phase.</strong> Not stated for Table 3; chosen here as described
+  above. The default of the estimator stays at 300, the value of the reference code,
+  which is three times faster.</li>
 <li><strong>Folds.</strong> The article does not say whether its folds are stratified; the script uses
-  stratified folds.</li>
-<li><strong>Wdbc</strong> is left out of the script: neither highFIS nor the authors' code reaches the
-  accuracy and the five features of the article there.</li>
-<li><strong>Datasets.</strong> The article uses eighteen datasets. Iris and Wine ship with scikit-learn.</li>
+  stratified folds. Glass has a class of nine samples, fewer than the ten folds, so some
+  test parts have no sample of that class.</li>
+<li><strong>Datasets.</strong> The article uses eighteen datasets. Iris and Wine ship with scikit-learn
+  and Glass comes from OpenML (identifier 41); the three run in an hour and a half. The
+  larger datasets take hours with 100 runs each.</li>
 </ul>
 <h2 id="reproducibility">Reproducibility</h2>
 <p>The script fixes the seeds, uses one thread and deterministic algorithms, and ends by
@@ -1578,7 +1736,7 @@ can change the last digits.</p>
 <h2 id="run-it">Run It</h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>examples/reproductions/dgtsk_2023.py
 </span></code></pre></div>
-<p>No download is needed. A run takes about fifteen minutes.</p>
+<p>Glass is downloaded from OpenML on the first run. A run takes about an hour and a half.</p>
 
 
 
