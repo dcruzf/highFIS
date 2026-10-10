@@ -10,6 +10,11 @@ Every reproduction has a script in the
 folder of the repository. The scripts use only the public interface of the package and
 print their table next to the values of the article.
 
+The reproductions of DG-TSK, DG-ALETSK and FSRE-AdaTSK also come as notebooks, in the
+[`examples/notebooks`](https://github.com/dcruzf/highFIS/tree/main/examples/notebooks)
+folder. A notebook runs the code of its script one step at a time, follows one fold in
+detail before the full protocol, and is stored with its outputs.
+
 | Article | Families | Datasets | Page |
 |---|---|---|---|
 | Xue, Wang, Zhang, Yuan and Dai (2023) | DG-TSK | Iris, Wine, Glass | [DG-TSK](dg-tsk.md) |
