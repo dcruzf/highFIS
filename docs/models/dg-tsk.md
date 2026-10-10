@@ -111,7 +111,8 @@ prints the result next to its Tables 2 and 3.
 
 The estimators follow the article and the authors' reference implementation on the
 points below. With its defaults `DGTSKClassifier` reaches about 95% on Iris, against
-96.8% in the article.
+96.8% in the article; a longer gate phase brings the selected features and rules to those
+of the article, at three times the cost.
 
 | Point | Article and reference code | highFIS |
 |---|---|---|
@@ -129,8 +130,9 @@ Remaining differences:
   the gates with zero-order consequents and converts to first order before fine-tuning.
 - **Precision.** The reference code computes in double precision; highFIS uses the PyTorch
   default, single precision, unless `torch.set_default_dtype(torch.float64)` is set.
-- **The tables of the article against the authors' code.** On the same folds, highFIS and
-  the reference implementation agree, and both differ from the article in the same way:
+- **The tables of the article against the authors' code.** On the same folds and with the
+  defaults, highFIS and the reference implementation agree, and both differ from the
+  article in the same way:
 
     | Dataset | Article | Reference code | highFIS |
     |---|---|---|---|
@@ -140,8 +142,11 @@ Remaining differences:
 
     Accuracy in percent / selected features / extracted rules, ten stratified folds
     repeated twice, inputs scaled to `[0, 1]`. On Wine the two implementations select the
-    same features in all 20 folds. The article used its own copies of the data and its own
-    splits, which is the likely source of the difference.
+    same features in all 20 folds. The difference comes from the length of the gate
+    phase, which the article does not state for its table: with `dg_epochs=1000` both
+    implementations reach the accuracy and the structure of the article (Iris
+    95.8 / 2.6 / 3.0 and Wine 97.2 / 9.5 / 3.0 with highFIS, ten folds repeated ten
+    times). See the [reproduction](../reproductions/dg-tsk.md).
 - **The regressor is an extension.** The article only treats classification.
   `DGTSKRegressor` uses the same rule base, starts each rule from the target of its sample
   and keeps the rules that pass the threshold, which is usually one or two. On the
