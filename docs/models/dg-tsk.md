@@ -106,6 +106,9 @@ The paper describes DG-TSK as a single training phase in which feature gates, ru
 
 ## Fidelity to the source article
 
+The [reproduction](../reproductions/dg-tsk.md) runs the protocol of the article and
+prints the result next to its Tables 2 and 3.
+
 The estimators follow the article and the authors' reference implementation on the
 points below. With its defaults `DGTSKClassifier` reaches about 95% on Iris, against
 96.8% in the article.
