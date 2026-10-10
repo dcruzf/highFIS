@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Literal, cast
 
+import torch
 from torch import Tensor, nn
 
 from ..defuzzifiers import SoftmaxLogDefuzzifier
@@ -77,6 +78,25 @@ class _FSREADATSKMixin:
         self.membership_layer = MembershipLayer(new_input_mfs)
         if self.consequent_batch_norm:
             self.consequent_bn = nn.BatchNorm1d(self.n_inputs)
+
+    def reinitialize_fuzzy_sets(self: Any, x: Tensor, n_mfs: int) -> None:
+        """Replace the fuzzy sets by ``n_mfs`` sets evenly placed over the range of each feature.
+
+        The article uses another number of fuzzy sets in the rule-extraction phase than in
+        the feature-selection phase, and reinitializes the system parameters between the
+        two. The new sets are of the class of the current ones, with their spread.
+        """
+        if n_mfs < 2:
+            raise ValueError("n_mfs must be at least 2")
+        new_input_mfs: dict[str, list[MembershipFunction]] = {}
+        for column, name in enumerate(self.input_names):
+            template = self.input_mfs[name][0]
+            spread = float(template.sigma.detach())
+            low, high = float(x[:, column].min()), float(x[:, column].max())
+            centres = torch.linspace(low, high, n_mfs).tolist()
+            new_input_mfs[name] = [type(template)(mean=float(c), sigma=spread) for c in centres]
+        self.input_mfs = new_input_mfs
+        self.membership_layer = MembershipLayer(new_input_mfs)
 
 
 class FSREADATSKClassifierModel(_FSREADATSKMixin, BaseTSKClassifierModel):
