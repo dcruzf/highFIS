@@ -597,6 +597,7 @@ def _get_mf_cache_key(
     pfrb_spread: Any = None,
     strata: np.ndarray | None = None,
     sigma_init: Any = None,
+    phase_n_mfs: Any = None,
 ) -> tuple[Any, ...]:
     # Determine step for sampling to hash quickly
     step = max(1, x_arr.shape[0] // 1000)
@@ -631,6 +632,7 @@ def _get_mf_cache_key(
         pfrb_spread,
         None if strata is None else hash(np.ascontiguousarray(strata).tobytes()),
         sigma_init,
+        phase_n_mfs,
     )
 
 
@@ -654,6 +656,7 @@ def _build_input_mfs_cached(
         getattr(estimator, "pfrb_spread", None),
         getattr(estimator, "_pfrb_strata", None),
         getattr(estimator, "sigma_init", None),
+        getattr(estimator, "fs_n_mfs", None),
     )
 
     cached = _MF_INIT_CACHE.get(cache_key)

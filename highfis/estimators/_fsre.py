@@ -41,7 +41,11 @@ class _ArticleMembership:
         configs: list[InputConfig] = super()._resolve_input_configs(x)  # type: ignore[misc]
         if self.input_configs is not None:
             return configs
-        return [InputConfig(name=cfg.name, n_mfs=cfg.n_mfs, overlap=cfg.overlap, margin=0.0) for cfg in configs]
+        n_mfs = getattr(self, "fs_n_mfs", None)
+        return [
+            InputConfig(name=cfg.name, n_mfs=int(n_mfs or cfg.n_mfs), overlap=cfg.overlap, margin=0.0)
+            for cfg in configs
+        ]
 
     def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
         input_mfs, feature_names, rule_base = super()._build_input_mfs(x_arr)  # type: ignore[misc]
@@ -80,6 +84,8 @@ class FSREADATSKClassifier(_ArticleMembership, _BaseClassifierEstimator):
         *,
         lambda_init: float = 1.0,
         use_en_frb: bool = False,
+        fs_n_mfs: int | None = None,
+        re_n_mfs: int | None = None,
         gate_fn: str | None = "gate4",
         input_configs: list[InputConfig] | None = None,
         n_mfs: int = 3,
@@ -117,6 +123,12 @@ class FSREADATSKClassifier(_ArticleMembership, _BaseClassifierEstimator):
                 adaptive softmin index directly from membership values;
                 DG-ALETSK uses the fixed exponent ``ξ = 700`` per
                 paper eq. 22.  Default ``1.0``.
+            fs_n_mfs: Number of fuzzy sets per feature in the feature-selection phase.
+                ``None`` (default) uses ``n_mfs``. The source article uses 10.
+            re_n_mfs: Number of fuzzy sets per feature in the rule-extraction phase, where
+                the sets are rebuilt on an even grid over the selected features. ``None``
+                (default) keeps the sets of the feature-selection phase. The source article
+                uses 5.
             use_en_frb: Whether the feature-selection phase also runs on the enhanced rule
                 base (En-FRB). The rule-extraction phase always does, as in the source
                 article, where feature selection uses the compact rule base (CoCo-FRB):
@@ -191,6 +203,8 @@ class FSREADATSKClassifier(_ArticleMembership, _BaseClassifierEstimator):
         """
         self.lambda_init = lambda_init
         self.use_en_frb = use_en_frb
+        self.fs_n_mfs = fs_n_mfs
+        self.re_n_mfs = re_n_mfs
         self.gate_fn = gate_fn
         self.fs_epochs = fs_epochs
         self.re_epochs = re_epochs
@@ -290,6 +304,7 @@ class FSREADATSKClassifier(_ArticleMembership, _BaseClassifierEstimator):
     def _get_trainer(self) -> BaseTrainer:
         """Return an FSRETrainer built from this estimator's parameters."""
         return FSRETrainer(
+            re_n_mfs=self.re_n_mfs,
             fs_epochs=self.fs_epochs,
             fs_learning_rate=float(self.learning_rate),
             fs_batch_size=self._effective_batch_size,
@@ -349,6 +364,8 @@ class FSREADATSKRegressor(_ArticleMembership, _BaseRegressorEstimator):
         *,
         lambda_init: float = 1.0,
         use_en_frb: bool = False,
+        fs_n_mfs: int | None = None,
+        re_n_mfs: int | None = None,
         gate_fn: str | None = "gate4",
         input_configs: list[InputConfig] | None = None,
         n_mfs: int = 3,
@@ -386,6 +403,12 @@ class FSREADATSKRegressor(_ArticleMembership, _BaseRegressorEstimator):
                 adaptive softmin index directly from membership values;
                 DG-ALETSK uses the fixed exponent ``ξ = 700`` per
                 paper eq. 22.  Default ``1.0``.
+            fs_n_mfs: Number of fuzzy sets per feature in the feature-selection phase.
+                ``None`` (default) uses ``n_mfs``. The source article uses 10.
+            re_n_mfs: Number of fuzzy sets per feature in the rule-extraction phase, where
+                the sets are rebuilt on an even grid over the selected features. ``None``
+                (default) keeps the sets of the feature-selection phase. The source article
+                uses 5.
             use_en_frb: Whether the feature-selection phase also runs on the enhanced rule
                 base (En-FRB). The rule-extraction phase always does, as in the source
                 article, where feature selection uses the compact rule base (CoCo-FRB):
@@ -460,6 +483,8 @@ class FSREADATSKRegressor(_ArticleMembership, _BaseRegressorEstimator):
         """
         self.lambda_init = lambda_init
         self.use_en_frb = use_en_frb
+        self.fs_n_mfs = fs_n_mfs
+        self.re_n_mfs = re_n_mfs
         self.gate_fn = gate_fn
         self.fs_epochs = fs_epochs
         self.re_epochs = re_epochs
@@ -547,6 +572,7 @@ class FSREADATSKRegressor(_ArticleMembership, _BaseRegressorEstimator):
     def _get_trainer(self) -> BaseTrainer:
         """Return an FSRETrainer built from this estimator's parameters."""
         return FSRETrainer(
+            re_n_mfs=self.re_n_mfs,
             fs_epochs=self.fs_epochs,
             fs_learning_rate=float(self.learning_rate),
             fs_batch_size=self._effective_batch_size,

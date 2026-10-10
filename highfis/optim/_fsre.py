@@ -87,6 +87,7 @@ class FSRETrainer(BaseTrainer):
         zeta_theta: float = _DEFAULT_ZETA_THETA,
         # ── Pruning ───────────────────────────────────────────────────────
         structural_pruning: bool = True,
+        re_n_mfs: int | None = None,
         # ── Shared ────────────────────────────────────────────────────────
         verbose: bool | int = False,
         loss: Callable[..., Any] | None = None,
@@ -133,6 +134,9 @@ class FSRETrainer(BaseTrainer):
             zeta_theta: Coefficient to compute the rule-extraction threshold
                 τ_θ (paper eq. 29).  ``0.3`` is recommended for
                 low-dimensional data, ``0.5`` for high-dimensional data.
+            re_n_mfs: Number of fuzzy sets per feature for the rule-extraction phase. When
+                given, the fuzzy sets are rebuilt on an even grid over the selected
+                features before that phase; ``None`` keeps the current sets.
             structural_pruning: If ``True`` (default), hard-prune the model
                 architecture after each threshold step.  If ``False``, only
                 the gate values are modified but the model structure is
@@ -179,6 +183,7 @@ class FSRETrainer(BaseTrainer):
         self.zeta_lambda = zeta_lambda
         self.zeta_theta = zeta_theta
         self.structural_pruning = structural_pruning
+        self.re_n_mfs = re_n_mfs
         self.verbose = verbose
         self.loss = loss
         self.eval_metrics_every = eval_metrics_every
@@ -264,6 +269,8 @@ class FSRETrainer(BaseTrainer):
             x_fs, x_val_fs = x, x_val
 
         # ── Phase 2: Rule Extraction ──────────────────────────────────────
+        if self.re_n_mfs is not None:
+            model.reinitialize_fuzzy_sets(x_fs, int(self.re_n_mfs))
         # Expand to En-FRB (rebuilds rule_layer and consequent_layer with mode="re")
         model.expand_to_en_frb()
         re_trainer = GradientTrainer(
