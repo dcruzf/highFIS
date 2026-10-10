@@ -35,16 +35,28 @@ Output of the script, on one thread:
 
 ```text
 Table IV: FSRE-AdaTSK (accuracy in percent / selected features / extracted rules)
-dataset             article              highFIS  std of accuracy
-Iris       96.5 / 2.1 / 6.1  96.40 / 2.00 / 6.20             4.46
-Wine       97.3 / 6.3 / 6.3  96.18 / 8.22 / 6.80             5.80
-Wdbc       95.4 / 6.2 / 4.9  95.26 / 7.12 / 4.36             2.61
+std of accuracy: over the runs, and over the means of the repetitions
+dataset                 article              highFIS  std of accuracy
+Iris           96.5 / 2.1 / 6.1  96.40 / 2.00 / 6.20      4.46 / 0.33
+Appendicitis   86.3 / 3.7 / 3.1  84.96 / 3.14 / 3.24      8.40 / 1.34
+Pima           75.7 / 3.0 / 3.2  76.30 / 3.40 / 3.28      4.45 / 0.30
+Glass          65.5 / 4.1 / 6.0  65.35 / 5.66 / 6.00      9.71 / 0.92
+Wine           97.3 / 6.3 / 6.3  96.18 / 8.22 / 6.80      5.80 / 1.11
+Heart          82.5 / 7.4 / 2.9  82.07 / 8.88 / 2.96      6.84 / 2.51
+Wdbc           95.4 / 6.2 / 4.9  95.26 / 7.12 / 4.36      2.61 / 0.37
+Spectfheart    79.2 / 3.4 / 5.1  77.17 / 5.40 / 5.70      6.81 / 1.80
 ```
 
-The three accuracies are within about one point of the article, a fraction of the
-standard deviation between runs. The numbers of extracted rules are reproduced: 6.2, 6.8
-and 4.4 against 6.1, 6.3 and 4.9. The number of selected features is the article's on
-Iris and one or two above it on Wine and Wdbc.
+The table has eight of the twelve low-dimensional datasets of the article. Seven
+accuracies are within 1.4 points of the article and Spectfheart is two points below, in
+every case a fraction of the standard deviation between runs. The numbers of extracted
+rules are reproduced on the eight datasets, within 0.6 of a rule. The number of selected
+features is the article's on Iris, Appendicitis and Pima, and one or two above it on the
+others.
+
+The standard deviations of the article are 0.4 to 1.5 points on these datasets, the size
+of a deviation between the means of the five repetitions and not between the 50 runs.
+The second value of the last column is that quantity: 0.3 to 2.5 points.
 
 ## Scale of the Inputs
 
@@ -78,8 +90,9 @@ standardized inputs, with the full protocol:
 | 600 (the script) | 96.40 / 2.0 / 6.2 | 96.18 / 8.2 / 6.8 | 95.26 / 7.1 / 4.4 |
 | 700 | 95.87 / 2.0 / 7.5 | 96.41 / 8.2 / 7.8 | 95.29 / 7.1 / 4.6 |
 
-The value of 600 was chosen as the one whose numbers of rules are closest to the article
-on the three datasets. The accuracy changes by half a point or less between the two.
+The value of 600 was chosen on these three datasets, as the one whose numbers of rules
+are closest to the article; the other five datasets were run with it afterwards, without
+further choice. The accuracy changes by half a point or less between the two.
 
 ## Differences from the Article
 
@@ -92,10 +105,16 @@ on the three datasets. The accuracy changes by half a point or less between the 
 - **Selection on the magnitude of the gate.** The gate is an odd function; highFIS
   compares the magnitude of each gate with the threshold.
 - **Folds.** The article does not say whether its folds are stratified; the script uses
-  stratified folds.
+  stratified folds. Glass has a class of nine samples, fewer than the ten folds, so some
+  test parts have no sample of that class.
 - **Datasets.** The article uses nineteen datasets, seven of them with more than 1000
   features, for which it changes the threshold coefficients to 0.4 and 0.5 and keeps the
-  centres fixed in the first two phases. Iris, Wine and Wdbc ship with scikit-learn.
+  centres fixed in the first two phases. Iris, Wine and Wdbc ship with scikit-learn;
+  Appendicitis, Pima, Glass, Heart and Spectfheart come from OpenML (identifiers 1456,
+  37, 41, 53 and 1600) with the samples, features and classes of the article. Of the
+  other low-dimensional datasets, Sonar keeps 25 features where the article reports 10.5
+  (accuracy 71.7 against 73.4, ten folds), and Yeast, Page-blocks and Texture were not
+  run.
 
 ## Reproducibility
 
@@ -109,4 +128,5 @@ version of the numerical libraries can change the last digits.
 python examples/reproductions/fsre_adatsk_2022.py
 ```
 
-No download is needed. A run takes about half an hour, most of it on Wdbc.
+Five datasets are downloaded from OpenML on the first run. A run takes about an hour and
+a half.
