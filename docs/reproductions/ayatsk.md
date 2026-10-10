@@ -26,7 +26,7 @@ settings are the defaults of `AYATSKClassifier`.
 Mean test accuracy in percent; for highFIS, with the standard deviation over the ten
 folds. $K = 10$ and $K = 2$ are the lower bounds 0.1 and 0.5 of Table III.
 
-| Dataset | $K$ | Article | highFIS 0.33.0 |
+| Dataset | $K$ | Article | highFIS |
 |---|---|---|---|
 | Wine (178 samples, 13 features) | 10 | 98.44 | 98.33 ± 3.56 |
 | | 2 | 98.42 | 98.89 ± 2.22 |

@@ -125,7 +125,7 @@ $$
 
 ### Fidelity to the source article
 
-Since version 0.33.0 the defaults of the four HDFIS estimators are the settings of the
+The defaults of the four HDFIS estimators are the settings of the
 article, and on the same random splits they give the accuracies of the authors' code
 (see the [reproduction](../reproductions/hdfis.md)).
 
@@ -149,9 +149,9 @@ Remaining differences:
 - **Precision.** The bound $\xi = 745$ of the article is the limit of double precision.
   highFIS trains in single precision by default and obtains the normalized product from
   the geometric mean of the membership degrees, $\operatorname{softmax}(D \log \bar\mu)$,
-  which is the same quantity without underflow. Before 0.33.0 the product underflowed
-  in single precision and every rule received the same weight, so that HDFIS-prod was a
-  linear model on high-dimensional data.
+  which is the same quantity without underflow. The plain product underflows in
+  single precision on high-dimensional data, and every rule then receives the same
+  weight.
 - **Membership of HDFIS-min.** The article reports HDFIS-min with the conventional and
   with the dimension-dependent membership function; highFIS implements the conventional
   one.

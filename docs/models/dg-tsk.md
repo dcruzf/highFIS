@@ -106,13 +106,13 @@ The paper describes DG-TSK as a single training phase in which feature gates, ru
 
 ## Fidelity to the source article
 
-Since version 0.32.0 the estimators follow the article and the authors' reference
-implementation on the points below. Before that version `DGTSKClassifier` reached about
-66% on Iris with its defaults; it now reaches about 95%, against 96.8% in the article.
+The estimators follow the article and the authors' reference implementation on the
+points below. With its defaults `DGTSKClassifier` reaches about 95% on Iris, against
+96.8% in the article.
 
 | Point | Article and reference code | highFIS |
 |---|---|---|
-| Spreads of the point-based rule base | One value for every feature and rule: the mean, over the features, of the sample standard deviations of the rule points (Eq. 23) | `pfrb_spread="std_mean"` (default). A number sets the common spread; `"std"` gives the per-feature spread used before 0.32.0 |
+| Spreads of the point-based rule base | One value for every feature and rule: the mean, over the features, of the sample standard deviations of the rule points (Eq. 23) | `pfrb_spread="std_mean"` (default). A number sets the common spread; `"std"` gives each feature its own spread |
 | Gate parameters | All equal to 0.1, a gate value of 0.0269 | Same |
 | Rule points when there are more samples than `pfrb_max_rules` | Drawn class by class (stratified) | Same, for classifiers |
 | After pruning | The gates are switched off; fine-tuning runs on a plain TSK system | Same. `get_feature_gates()` and `get_rule_gates()` still return the trained values |

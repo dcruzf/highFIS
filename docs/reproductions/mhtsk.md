@@ -27,7 +27,7 @@ more than 1000 features, so the script builds the model without arguments.
 
 Mean test accuracy in percent, with the standard deviation over the ten repetitions.
 
-| Dataset | Article | highFIS 0.33.0 |
+| Dataset | Article | highFIS |
 |---|---|---|
 | Colon (62 samples, 2000 genes) | 88.95 ± 5 | 87.90 ± 7.08 |
 | Leukemia (72 samples, 7129 genes) | 97.27 ± 3 | 94.54 ± 4.45 |

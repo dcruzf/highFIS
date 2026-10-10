@@ -162,12 +162,10 @@ and spreads of 1, consequents at zero, and Adam on the whole training set for 20
 iterations with a learning rate of 0.001. The published accuracies are reproduced; see
 the [reproduction](../reproductions/adptsk.md).
 
-Before version 0.33.0 the firing strength lacked the division by $\hat\eta_r$: it was
-$\hat\eta_r$ times the softmin, up to 0.2 away from the minimum of the degrees, and
-exactly one whenever the degrees of a rule were all equal. The index was also rounded
-up and bounded at $-1000$, which the article does not do. The firing strength now is
-within 0.002 of the minimum and gives the value of the numerical example of the
-article ($1.1026 \times 10^{-26}$ for a minimum of $1.1 \times 10^{-26}$).
+The firing strength is within 0.002 of the minimum of the membership degrees and gives
+the value of the numerical example of the article ($1.1026 \times 10^{-26}$ for a
+minimum of $1.1 \times 10^{-26}$). The index is neither rounded nor bounded, as in the
+article.
 
 Two points are not fixed by the article and were chosen here. The gradient treats
 $\hat\eta_r$ and $\hat q_r$ as constants, as the code of the same group does for

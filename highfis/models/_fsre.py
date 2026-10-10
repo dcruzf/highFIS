@@ -132,7 +132,7 @@ class FSREADATSKClassifierModel(_FSREADATSKMixin, BaseTSKClassifierModel):
             gate_fn: Gate function of the feature and rule gates, as a key of
                 ``highfis.gates.GATE_FNS`` or a callable. ``"gate4"`` (default) is the
                 gate of the source article, ``λ sqrt(exp(1 - λ²))``. ``None`` gives
-                ``ExpGate(k=10)``, the gate used before 0.32.0.
+                ``ExpGate(k=10)``.
 
         Raises:
             ValueError: If ``n_classes < 2``.
@@ -278,7 +278,7 @@ class FSREADATSKRegressorModel(_FSREADATSKMixin, BaseTSKRegressorModel):
             gate_fn: Gate function of the feature and rule gates, as a key of
                 ``highfis.gates.GATE_FNS`` or a callable. ``"gate4"`` (default) is the
                 gate of the source article, ``λ sqrt(exp(1 - λ²))``. ``None`` gives
-                ``ExpGate(k=10)``, the gate used before 0.32.0.
+                ``ExpGate(k=10)``.
         """
         self.eps = eps
         self.use_en_frb = bool(use_en_frb)

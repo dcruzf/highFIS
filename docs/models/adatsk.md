@@ -164,11 +164,10 @@ operator.
   consequent batch normalization for the numerical stability needed to
   reproduce the paper's high-dimensional accuracies (e.g., Colon in Table III).
 - Regression and alternative MF variants are treated as explicit framework
-  extensions, not part of the strict ADATSK paper baseline. Since 0.32.0
-  `ADATSKRegressor` is built like the classifier: the same Gaussian antecedents and
-  zero-initialized consequents, with the bias of every rule set to the mean of the
-  target before training. Before that version it started from a random draw and did
-  not learn a linear target with the default settings.
+  extensions, not part of the strict ADATSK paper baseline. `ADATSKRegressor` is
+  built like the classifier: the same Gaussian antecedents and zero-initialized
+  consequents, with the bias of every rule set to the mean of the target before
+  training.
 
 ## Fidelity to the source article
 
@@ -179,14 +178,13 @@ gradient descent on the whole training set. With a learning rate of 0.05 and 100
 iterations, which the article does not state, the published accuracies of Iris and Wdbc
 are reproduced within one point; see the [reproduction](../reproductions/adatsk.md).
 
-Two points changed in version 0.33.0. The spreads are now really fixed at one during
-training: they were set to one and meant to be frozen, but the freezing had no effect
-and they were trained. The classifier uses `highfis.losses.HalfSumSquaredErrorLoss`,
-Eq. (8) of the article, instead of the mean squared error; with plain gradient descent
-the scale of the loss sets the size of the step.
+The spreads stay fixed at one during training, since the membership function of the
+article has none. The classifier uses `highfis.losses.HalfSumSquaredErrorLoss`, Eq. (8)
+of the article; with plain gradient descent the scale of the loss sets the size of the
+step.
 
 The defaults of the estimator are not the article's, which does not state its learning
 rate: the step follows the number of features (`learning_rate="auto"`,
 `min(0.1, 1 / (n_features + 1))`), which cannot diverge, there are 300 epochs, and the
-consequent inputs are normalized. Before version 0.33.0 the fixed step of 0.01 was too
-small for a few features and diverged on several thousand.
+consequent inputs are normalized. A fixed step is either too small for a few features
+or diverges on several thousand.

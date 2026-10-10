@@ -113,11 +113,11 @@ partition with three rules, consequents at zero, and Adam on the whole training 
 300 epochs, with a learning rate of 0.01 up to 1000 features and of 0.001 above. The
 article studies $K$ from 2 to 10 and finds no value that is best everywhere; the default
 is $K = 2$, the one with the best mean accuracy in its Table III (1.8 points above
-$K = 10$ over the 23 datasets). Before version 0.33.0 the default was $K = 10$, which
-gives 74% where $K = 2$ gives 96% on Leukemia. On the same folds
+$K = 10$ over the 23 datasets); on Leukemia $K = 10$ gives 74% where $K = 2$ gives
+96%. On the same folds
 highFIS gives the accuracies of the authors' code on SRBCT, and the published
 accuracies are reproduced on Wine and Wdbc; see the
 [reproduction](../reproductions/ayatsk.md).
 
-Since version 0.33.0 the membership degrees are computed in one batched operation, as
-for the Gaussian families. Fitting on 2308 features takes a tenth of the time it took.
+The membership degrees are computed in one batched operation, as for the Gaussian
+families.
