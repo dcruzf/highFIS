@@ -138,7 +138,7 @@ operator.
 
 - The paper trains ADATSK end-to-end using full-batch gradient descent and
   MSE-style classification error.
-- The paper-strict ADATSK default in highFIS uses `nn.MSELoss()` for the
+- The paper-strict ADATSK default in highFIS uses `HalfSumSquaredErrorLoss` for the
   classifier and SGD-based full-batch optimization.
 - `eps` is used to clamp membership values and stabilize log-space
   computations in `AdaSoftminRuleLayer`.
@@ -169,3 +169,24 @@ operator.
   zero-initialized consequents, with the bias of every rule set to the mean of the
   target before training. Before that version it started from a random draw and did
   not learn a linear target with the default settings.
+
+## Fidelity to the source article
+
+The formulas of the package equal those of the article: the membership function
+$e^{-(x-m)^2}$, the Ada-softmin of Eqs. (15) and (16) within $10^{-8}$, the centres
+evenly placed over the range of each feature, consequents starting at zero and plain
+gradient descent on the whole training set. With a learning rate of 0.05 and 1000
+iterations, which the article does not state, the published accuracies of Iris and Wdbc
+are reproduced within one point; see the [reproduction](../reproductions/adatsk.md).
+
+Two points changed in version 0.33.0. The spreads are now really fixed at one during
+training: they were set to one and meant to be frozen, but the freezing had no effect
+and they were trained. The classifier uses `highfis.losses.HalfSumSquaredErrorLoss`,
+Eq. (8) of the article, instead of the mean squared error; with plain gradient descent
+the scale of the loss sets the size of the step.
+
+The defaults of the estimator are not the article's, which does not state its learning
+rate: the step follows the number of features (`learning_rate="auto"`,
+`min(0.1, 1 / (n_features + 1))`), which cannot diverge, there are 300 epochs, and the
+consequent inputs are normalized. Before version 0.33.0 the fixed step of 0.01 was too
+small for a few features and diverged on several thousand.

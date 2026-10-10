@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import cast
 
 import numpy as np
+import pytest
 import torch
 from torch import nn
 
@@ -304,3 +305,26 @@ def test_adatsk_high_dimensional_no_collapse_no_nan() -> None:
     majority = float(np.bincount(y_te).max() / len(y_te))
     acc = float(np.mean(pred == y_te))
     assert acc >= majority, f"accuracy {acc:.3f} below majority baseline {majority:.3f}"
+
+
+@pytest.mark.parametrize("estimator_cls", [ADATSKClassifier, ADATSKRegressor])
+def test_adatsk_spreads_stay_at_one_during_training(estimator_cls: type) -> None:
+    """The article has no spread to train: the membership is exp(-(x - m)^2)."""
+    rng = np.random.default_rng(0)
+    x = rng.random((80, 4)).astype(np.float32)
+    y = (x[:, 0] > 0.5).astype(int) if estimator_cls is ADATSKClassifier else x[:, 0]
+    model = estimator_cls(learning_rate=0.05, epochs=50, random_state=0).fit(x, y)
+    sigmas = [mf["sigma"] for sets in model.get_mf_params().values() for mf in sets]
+    assert sigmas == pytest.approx([1.0] * len(sigmas), abs=1e-5)
+    trainable = [name for name, param in model.model_.named_parameters() if param.requires_grad]
+    assert "membership_layer._flat_raw_sigma" not in trainable
+    assert "membership_layer._flat_mean" in trainable
+
+
+def test_large_spread_does_not_overflow() -> None:
+    """Grid sets on unscaled data have spreads in the thousands."""
+    from highfis.memberships import GaussianMF, _inv_softplus
+
+    assert _inv_softplus(5000.0) == pytest.approx(5000.0)
+    assert _inv_softplus(1.0) == pytest.approx(0.5413, abs=1e-3)
+    assert float(GaussianMF(mean=0.0, sigma=2500.0).sigma) == pytest.approx(2500.0)

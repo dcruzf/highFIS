@@ -33,6 +33,11 @@ _CROSS_ENTROPY_CLASSIFIERS = {
 _HALF_SUM_SQUARED_ERROR = {
     "DGTSKClassifierModel",
     "DGTSKRegressorModel",
+    # Eq. (14) of the HDFIS article, and the loss of the authors' code.
+    "HDFISProdClassifierModel",
+    "HDFISMinClassifierModel",
+    # Eq. (8) of the AdaTSK article.
+    "ADATSKClassifierModel",
 }
 
 

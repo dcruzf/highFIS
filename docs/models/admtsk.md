@@ -172,6 +172,15 @@ This implementation mirrors the paper by:
 - using a Dombi T-norm aggregation for antecedent rule firing strengths,
 - keeping first-order consequents and standard sum normalization.
 
+## Fidelity to the source article
+
+The defaults of `ADMTSKClassifier` are the experimental settings of the article, and
+with them the published accuracies are reproduced within one point on Colon, SRBCT and
+Leukemia; see the [reproduction](../reproductions/admtsk.md). Two differences remain:
+the loss is the mean squared error instead of the sum over the classes halved, a
+constant factor that Adam compensates, and `DombiTSKClassifier` defaults to clustering
+with five rules, a choice for general use and not the partition of the article.
+
 ## Scope note
 
 `ADMTSK` and `ADATSK` are different model families. This page documents only

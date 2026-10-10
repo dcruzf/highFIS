@@ -57,7 +57,8 @@ def _inv_softplus(value: float, eps: float | None = None) -> float:
     """Map a positive value to the unconstrained space used by softplus."""
     eps = torch.finfo(torch.get_default_dtype()).eps if eps is None else eps
     v = max(value - eps, eps)
-    return math.log(math.expm1(v))
+    # log(exp(v) - 1) = v + log(1 - exp(-v)), which does not overflow for a large spread.
+    return v + math.log(-math.expm1(-v))
 
 
 def _smoothstep(t: Tensor) -> Tensor:
@@ -194,6 +195,9 @@ class ADATSKGaussianMF(GaussianMF):
     Uses ``exp(-((x-c)^2)/(sigma^2))`` so that with ``sigma=1`` it matches
     the simplified paper form ``exp(-(x-c)^2)``.
     """
+
+    #: The article has no spread: a vectorized membership layer keeps it at its initial value.
+    trainable_spread = False
 
     def forward(self, x: Tensor) -> Tensor:
         """Compute ADATSK paper-style Gaussian membership values."""

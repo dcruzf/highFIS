@@ -60,6 +60,7 @@ from .gates import (
 )
 from .memberships import (
     ADATSKGaussianMF,
+    CompositeExponentialMF,
     ConstantMF,
     DimensionDependentGaussianMF,
     GaussianMF,
@@ -98,6 +99,12 @@ def _kernel_gaussian_pi(x: Tensor, mean: Tensor, raw_sigma: Tensor, consts: Mapp
     return torch.exp(-consts["k"] * inner)
 
 
+def _kernel_composite_exponential(x: Tensor, mean: Tensor, raw_sigma: Tensor, consts: Mapping[str, Tensor]) -> Tensor:
+    sigma = F.softplus(raw_sigma) + consts["eps"]
+    exponent = -0.5 * ((x - mean) / sigma).square()
+    return torch.pow(consts["k"], -1.0 + torch.exp(exponent))
+
+
 def _kernel_constant(x: Tensor, mean: Tensor | None, raw_sigma: Tensor | None, consts: Mapping[str, Tensor]) -> Tensor:
     return consts["value"].expand_as(x).clone()
 
@@ -118,6 +125,7 @@ _VECTORIZED_MF_KERNELS: dict[type, _MFKernel] = cast(
         ADATSKGaussianMF: _kernel_adatsk_gaussian,
         DimensionDependentGaussianMF: _kernel_dimension_dependent_gaussian,
         GaussianPiMF: _kernel_gaussian_pi,
+        CompositeExponentialMF: _kernel_composite_exponential,
         ConstantMF: _kernel_constant,
     },
 )
@@ -151,6 +159,10 @@ def _generate_en_frb(s: int, d: int) -> list[tuple[int, ...]]:
                 rules.append(plus_t)
 
     return rules
+
+
+#: Name of the trainable location parameter of the vectorized classes that do not call it ``mean``.
+_LOCATION_PARAMETER: dict[type, str] = {CompositeExponentialMF: "center"}
 
 
 class MembershipLayer(nn.Module):
@@ -195,6 +207,31 @@ class MembershipLayer(nn.Module):
         self._build_fast_path()
         self.register_load_state_dict_pre_hook(self._load_legacy_state_dict_hook)
 
+    def _register_constant_sets(self, all_mfs: Sequence[nn.Module]) -> list[int]:
+        """Detect one vectorizable class mixed with constant sets and index the two groups.
+
+        A layer mixes them when a rule leaves a feature out (MHTSK). The constant columns
+        are then filled in directly and the kernel runs on the others. Returns the
+        positions of the sets that are not constant, empty when the layer is not mixed.
+        """
+        self._mixed = False
+        kinds = {type(mf) for mf in all_mfs}
+        if len(kinds) != 2 or ConstantMF not in kinds:
+            return []
+        main_idx = [i for i, mf in enumerate(all_mfs) if type(mf) is not ConstantMF]
+        const_idx = [i for i, mf in enumerate(all_mfs) if type(mf) is ConstantMF]
+        if type(all_mfs[main_idx[0]]) not in _VECTORIZED_MF_KERNELS:
+            return []
+        self._mixed = True
+        self.register_buffer("_mixed_main_idx", torch.tensor(main_idx), persistent=False)
+        self.register_buffer("_mixed_const_idx", torch.tensor(const_idx), persistent=False)
+        self.register_buffer(
+            "_mixed_const_value",
+            torch.tensor([cast(Any, all_mfs[i]).value for i in const_idx]),
+            persistent=False,
+        )
+        return main_idx
+
     def _build_fast_path(self) -> None:
         """Consolidate parameters for vectorized fuzzification when possible.
 
@@ -210,7 +247,9 @@ class MembershipLayer(nn.Module):
         The plan is built once at construction: layers are rebuilt (not
         mutated) by the pruning routines, so it cannot go stale.
         """
-        flat_mfs = [mf for name in self.input_names for mf in cast(nn.ModuleList, self.input_mfs[name])]
+        all_mfs = [mf for name in self.input_names for mf in cast(nn.ModuleList, self.input_mfs[name])]
+        main_idx = self._register_constant_sets(all_mfs)
+        flat_mfs = [all_mfs[i] for i in main_idx] if self._mixed else all_mfs
         mf_type = type(flat_mfs[0])
         kernel = _VECTORIZED_MF_KERNELS.get(mf_type)
         if kernel is None or not all(type(mf) is mf_type for mf in flat_mfs):
@@ -226,7 +265,7 @@ class MembershipLayer(nn.Module):
         consts: dict[str, Tensor] = {"eps": torch.tensor([mf.eps for mf in flat_mfs])}
         if mf_type is DimensionDependentGaussianMF:
             consts["scale"] = torch.tensor([cast(Any, mf).scale for mf in flat_mfs])
-        elif mf_type is GaussianPiMF:
+        elif mf_type in (GaussianPiMF, CompositeExponentialMF):
             consts["k"] = torch.tensor([cast(Any, mf).k for mf in flat_mfs])
         elif mf_type is ConstantMF:
             consts["value"] = torch.tensor([cast(Any, mf).value for mf in flat_mfs])
@@ -240,19 +279,22 @@ class MembershipLayer(nn.Module):
             return
 
         with torch.no_grad():
-            mean = torch.stack([cast(Tensor, mf.mean).detach() for mf in flat_mfs]).clone()
+            location = _LOCATION_PARAMETER.get(mf_type, "mean")
+            mean = torch.stack([cast(Tensor, getattr(mf, location)).detach() for mf in flat_mfs]).clone()
             raw_sigma = torch.stack([cast(Tensor, mf.raw_sigma).detach() for mf in flat_mfs]).clone()
         self._flat_mean = nn.Parameter(mean)
         self._flat_raw_sigma = nn.Parameter(raw_sigma)
+        if not getattr(mf_type, "trainable_spread", True):
+            self._flat_raw_sigma.requires_grad_(False)
         for i, mf in enumerate(flat_mfs):
-            mf._parameters.pop("mean", None)
+            mf._parameters.pop(location, None)
             mf._parameters.pop("raw_sigma", None)
-            mf.__dict__.pop("mean", None)
+            mf.__dict__.pop(location, None)
             mf.__dict__.pop("raw_sigma", None)
             # Resolved lazily by MembershipFunction.__getattr__ so the
             # values stay current across optimizer steps and .to() moves.
             mf.__dict__["_vectorized_binding"] = {
-                "mean": (self, "_flat_mean", i),
+                location: (self, "_flat_mean", i),
                 "raw_sigma": (self, "_flat_raw_sigma", i),
             }
 
@@ -272,20 +314,25 @@ class MembershipLayer(nn.Module):
         """
         if self._flat_mean is None or f"{prefix}_flat_mean" in state_dict:
             return
+        location = _LOCATION_PARAMETER.get(type(cast("list[MembershipFunction]", self._flat_mfs)[0]), "mean")
         means: list[Tensor] = []
         raws: list[Tensor] = []
-        for name in self.input_names:
-            for i in range(len(cast(nn.ModuleList, self.input_mfs[name]))):
-                mean_key = f"{prefix}input_mfs.{name}.{i}.mean"
-                raw_key = f"{prefix}input_mfs.{name}.{i}.raw_sigma"
-                if mean_key not in state_dict or raw_key not in state_dict:
-                    return
-                means.append(state_dict[mean_key].reshape(()))
-                raws.append(state_dict[raw_key].reshape(()))
-        for name in self.input_names:
-            for i in range(len(cast(nn.ModuleList, self.input_mfs[name]))):
-                state_dict.pop(f"{prefix}input_mfs.{name}.{i}.mean")
-                state_dict.pop(f"{prefix}input_mfs.{name}.{i}.raw_sigma")
+        owners = [
+            (name, i)
+            for name in self.input_names
+            for i, mf in enumerate(cast(nn.ModuleList, self.input_mfs[name]))
+            if not (self._mixed and type(mf) is ConstantMF)
+        ]
+        for name, i in owners:
+            mean_key = f"{prefix}input_mfs.{name}.{i}.{location}"
+            raw_key = f"{prefix}input_mfs.{name}.{i}.raw_sigma"
+            if mean_key not in state_dict or raw_key not in state_dict:
+                return
+            means.append(state_dict[mean_key].reshape(()))
+            raws.append(state_dict[raw_key].reshape(()))
+        for name, i in owners:
+            state_dict.pop(f"{prefix}input_mfs.{name}.{i}.{location}")
+            state_dict.pop(f"{prefix}input_mfs.{name}.{i}.raw_sigma")
         state_dict[f"{prefix}_flat_mean"] = torch.stack(means)
         state_dict[f"{prefix}_flat_raw_sigma"] = torch.stack(raws)
 
@@ -316,8 +363,18 @@ class MembershipLayer(nn.Module):
 
         if self._fast_kernel is not None:
             consts = {name: cast(Tensor, getattr(self, f"_fast_const_{name}")) for name in self._fast_const_names}
-            x_flat = x.index_select(1, cast(Tensor, self._feat_idx))
-            mu_flat = self._fast_kernel(x_flat, self._flat_mean, self._flat_raw_sigma, consts)
+            feat_idx = cast(Tensor, self._feat_idx)
+            if self._mixed:
+                main_idx = cast(Tensor, self._mixed_main_idx)
+                mu_main = self._fast_kernel(
+                    x.index_select(1, feat_idx[main_idx]), self._flat_mean, self._flat_raw_sigma, consts
+                )
+                mu_flat = mu_main.new_empty((x.shape[0], feat_idx.shape[0]))
+                const_value = cast(Tensor, self._mixed_const_value).to(mu_main.dtype)
+                mu_flat[:, cast(Tensor, self._mixed_const_idx)] = const_value
+                mu_flat[:, main_idx] = mu_main
+            else:
+                mu_flat = self._fast_kernel(x.index_select(1, feat_idx), self._flat_mean, self._flat_raw_sigma, consts)
             chunks = torch.split(mu_flat, self.mf_per_input, dim=1)
             return dict(zip(self.input_names, chunks, strict=False))
 
@@ -537,7 +594,11 @@ def _clamp_log_denom(x: Tensor, eps: float) -> Tensor:
 
 
 class ADPSoftminRuleLayer(RuleLayer):
-    """Compute adaptive ADP-softmin firing strengths for each rule."""
+    """Compute adaptive double-parameter softmin (ADP-softmin) firing strengths for each rule.
+
+    The firing strength approximates the minimum of the membership degrees of the rule
+    (Eqs. (33) and (34) of the ADPTSK article).
+    """
 
     def __init__(
         self,
@@ -560,31 +621,40 @@ class ADPSoftminRuleLayer(RuleLayer):
         super().__init__(input_names, mf_per_input, rules=rules, rule_base=rule_base, t_norm="prod")
 
     def forward(self, membership_outputs: dict[str, Tensor]) -> Tensor:
-        """Compute ADP-softmin rule strengths from membership outputs."""
+        r"""Compute ADP-softmin rule strengths from membership outputs.
+
+        For the membership degrees :math:`v_d` of one rule, with minimum
+        :math:`\underline{v}` and maximum :math:`\bar{v}`,
+
+        .. math::
+
+            f = \frac{1}{\hat\eta}\Big[\frac{1}{D}\sum_d (\hat\eta v_d)^{\hat q}\Big]^{1/\hat q},
+            \qquad
+            \ln\hat\eta = -\frac{\xi\ln\underline{v} + (\kappa - \ln D)\ln\bar{v}}{\kappa - \ln D + \xi},
+            \qquad
+            \hat q = \frac{-\xi}{\ln(\hat\eta\bar{v})}.
+
+        :math:`\hat\eta` and :math:`\hat q` are computed from the current degrees and
+        treated as constants in the backward pass, as the index of Ada-softmin is. The sum
+        is evaluated in the logarithmic domain, so the bounds :math:`\kappa` and
+        :math:`\xi` of double precision do not have to hold in single precision.
+        """
         mu = self._gather_terms(membership_outputs).clamp(min=self.eps, max=1.0 - self.eps)
-        min_mu = mu.min(dim=-1).values
-        max_mu = mu.max(dim=-1).values
-
-        ln_D = math.log(float(self.n_inputs))
-        neg_ln_under = -torch.log(min_mu)
-        neg_ln_bar = -torch.log(max_mu)
-
-        denom = (self.kappa - ln_D) + self.xi
-        log_eta = (self.xi * neg_ln_under + (self.kappa - ln_D) * neg_ln_bar) / denom
-        eta = torch.exp(log_eta)
-
-        q1 = (self.kappa - ln_D) / _clamp_log_denom(torch.log(eta * min_mu), self.eps)
-        q2 = (-self.xi) / _clamp_log_denom(torch.log(eta * max_mu), self.eps)
-        q = torch.maximum(q1, q2)
-        q = torch.ceil(q).clamp(min=-1000.0, max=-1.0)
-
         log_mu = torch.log(mu)
-        log_terms = q.unsqueeze(-1) * (torch.log(eta).unsqueeze(-1) + log_mu)
-        max_log_terms = log_terms.amax(dim=-1, keepdim=True)
-        log_sum = max_log_terms + torch.log(torch.exp(log_terms - max_log_terms).sum(dim=-1, keepdim=True))
-        log_avg = log_sum - math.log(self.n_inputs)
-        log_w = log_avg.squeeze(-1) / q
-        return torch.exp(log_w)
+        with torch.no_grad():
+            log_min = log_mu.amin(dim=-1)
+            log_max = log_mu.amax(dim=-1)
+            headroom = self.kappa - math.log(float(self.n_inputs))
+            log_eta = -(self.xi * log_min + headroom * log_max) / (headroom + self.xi)
+            q1 = headroom / _clamp_log_denom(log_eta + log_min, self.eps)
+            q2 = (-self.xi) / _clamp_log_denom(log_eta + log_max, self.eps)
+            # Both are negative and equal at the optimum; when every degree of the rule is
+            # the same, the two logarithms vanish and any negative index gives that degree.
+            q = torch.maximum(q1, q2).clamp(max=-1.0)
+
+        log_terms = q.unsqueeze(-1) * (log_eta.unsqueeze(-1) + log_mu)
+        log_avg = torch.logsumexp(log_terms, dim=-1) - math.log(self.n_inputs)
+        return torch.exp(log_avg / q - log_eta)
 
 
 # Threshold ξ for the adaptive q̂ computation in the ALE-softmin (paper eq. 22).

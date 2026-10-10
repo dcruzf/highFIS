@@ -7,11 +7,12 @@ from collections.abc import Mapping, Sequence
 import torch
 from torch import nn
 
-from ..defuzzifiers import SumBasedDefuzzifier
+from ..defuzzifiers import SoftmaxLogDefuzzifier, SumBasedDefuzzifier
 from ..layers import (
     ClassificationConsequentLayer,
     RegressionConsequentLayer,
 )
+from ..losses import HalfSumSquaredErrorLoss
 from ..memberships import MembershipFunction
 from ..t_norms import TNormFn
 from ._common import (
@@ -29,6 +30,23 @@ def _zero_initialize_consequents(consequent_layer: nn.Module) -> None:
         nn.init.zeros_(bias)
 
 
+def _product_in_log_domain(
+    input_mfs: Mapping[str, Sequence[MembershipFunction]],
+    t_norm: str | TNormFn,
+    defuzzifier: nn.Module | None,
+) -> tuple[str | TNormFn, nn.Module]:
+    """Return the T-norm and defuzzifier that give the normalized product without underflow.
+
+    The product of ``D`` membership degrees is the ``D``-th power of their geometric mean, so
+    the normalized product equals ``softmax(D * log(geometric mean))``. The bound of the
+    article keeps the product above ``exp(-745)``, which a double represents and a single
+    does not; in the logarithmic domain the result is exact in both.
+    """
+    if defuzzifier is not None or t_norm != "prod":
+        return t_norm, defuzzifier or SumBasedDefuzzifier()
+    return "gmean", SoftmaxLogDefuzzifier(scale=float(len(input_mfs)))
+
+
 class HDFISProdClassifierModel(BaseTSKClassifierModel):
     r"""HDFIS-prod classifier with dimension-dependent Gaussian MFs.
 
@@ -44,8 +62,9 @@ class HDFISProdClassifierModel(BaseTSKClassifierModel):
         doi: 10.1109/TSMC.2023.3311475.
     """
 
-    #: MSE on one-hot targets, matching the HDFIS paper (Xue et al. 2023, eq. 14).
-    default_criterion = nn.MSELoss
+    #: Squared error on one-hot targets summed over the classes and halved, Eq. (14) of the
+    #: HDFIS article (Xue et al. 2023).
+    default_criterion = HalfSumSquaredErrorLoss
 
     def __init__(
         self,
@@ -62,12 +81,13 @@ class HDFISProdClassifierModel(BaseTSKClassifierModel):
         if n_classes < 2:
             raise ValueError("n_classes must be >= 2")
         self.n_classes = int(n_classes)
+        t_norm, defuzzifier = _product_in_log_domain(input_mfs, t_norm, defuzzifier)
         super().__init__(
             input_mfs,
             rule_base=rule_base,
             t_norm=t_norm,
             rules=rules,
-            defuzzifier=defuzzifier or SumBasedDefuzzifier(),
+            defuzzifier=defuzzifier,
             consequent_batch_norm=consequent_batch_norm,
         )
         if zero_consequent_init:
@@ -104,12 +124,13 @@ class HDFISProdRegressorModel(BaseTSKRegressorModel):
         zero_consequent_init: bool = False,
     ) -> None:
         """Initialize the HDFIS-prod regressor."""
+        t_norm, defuzzifier = _product_in_log_domain(input_mfs, t_norm, defuzzifier)
         super().__init__(
             input_mfs,
             rule_base=rule_base,
             t_norm=t_norm,
             rules=rules,
-            defuzzifier=defuzzifier or SumBasedDefuzzifier(),
+            defuzzifier=defuzzifier,
             consequent_batch_norm=consequent_batch_norm,
         )
         if zero_consequent_init:
@@ -133,8 +154,9 @@ class HDFISMinClassifierModel(BaseTSKClassifierModel):
         doi: 10.1109/TSMC.2023.3311475.
     """
 
-    #: MSE on one-hot targets, matching the HDFIS paper (Xue et al. 2023, eq. 14).
-    default_criterion = nn.MSELoss
+    #: Squared error on one-hot targets summed over the classes and halved, Eq. (14) of the
+    #: HDFIS article (Xue et al. 2023).
+    default_criterion = HalfSumSquaredErrorLoss
 
     def __init__(
         self,

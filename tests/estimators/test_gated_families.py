@@ -327,7 +327,7 @@ def test_gate_values_remain_available_for_inspection(cls: Any) -> None:
 def test_dg_tsk_defaults_follow_the_article() -> None:
     for cls in (DGTSKClassifier, DGTSKRegressor):
         est = cls()
-        assert (est.dg_epochs, est.finetune_epochs, est.learning_rate) == (300, 300, 0.2)
+        assert (est.dg_epochs, est.finetune_epochs, est._resolve_learning_rate(4)) == (300, 300, 0.2)
         assert est.batch_size == "auto"
 
 

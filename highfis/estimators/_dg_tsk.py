@@ -76,7 +76,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         random_state: int | None = None,
         dg_epochs: int = 300,
         finetune_epochs: int = 300,
-        learning_rate: float = 0.2,
+        learning_rate: float | str = "auto",
         verbose: bool | int = False,
         rule_base: str | None = "pfrb",
         batch_size: BatchSizeSpec = "auto",
@@ -121,11 +121,10 @@ class DGTSKClassifier(_BaseClassifierEstimator):
                 iterations of the source article.
             finetune_epochs: Epochs of the fine-tuning phase, run on the pruned system
                 without gates. Default ``300``, as in the source article.
-            learning_rate: Learning rate for the full-batch SGD (gradient descent)
-                used in both phases. Default ``0.2`` matches the paper (Section IV).
-                DG-TSK uses SGD, so it needs a larger rate than the Adam-based
-                estimators to open the M-gates; too small a value under-converges
-                and collapses to a single class in low dimension.
+            learning_rate: Learning rate of the full-batch gradient descent, for both
+                phases. ``"auto"`` (default) uses ``min(0.2, 10 / n_features)``: 0.2 is the
+                value of the article (Section IV), and the stable step of plain gradient
+                descent shrinks in proportion to the number of features.
             verbose: Print per-epoch progress.
             rule_base: ``"coco"``, ``"cartesian"``, or ``"pfrb"``.  Defaults
                 to ``"pfrb"`` for the paper-strict DG-TSK path, which
@@ -216,6 +215,10 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             trainer=trainer,
         )
 
+    def _paper_learning_rate(self, n_features: int) -> float:
+        """0.2, reduced in proportion to the number of features above 50 of them."""
+        return min(0.2, 10.0 / float(max(n_features, 1)))
+
     def fit(
         self,
         x: Any,
@@ -256,7 +259,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
         resolved_zeta_theta = [0.01] if self.zeta_theta is None else list(self.zeta_theta)
         return DGTrainer(
             dg_epochs=int(self.dg_epochs),
-            dg_learning_rate=float(self.learning_rate),
+            dg_learning_rate=self._effective_learning_rate,
             dg_batch_size=self._effective_batch_size,
             dg_shuffle=bool(self.shuffle),
             dg_patience=self.patience,
@@ -267,7 +270,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             zeta_theta=resolved_zeta_theta,
             use_lse=bool(self.use_lse),
             finetune_epochs=int(self.finetune_epochs),
-            finetune_learning_rate=float(self.learning_rate),
+            finetune_learning_rate=self._effective_learning_rate,
             finetune_batch_size=self._effective_batch_size,
             finetune_shuffle=bool(self.shuffle),
             finetune_patience=self.patience,
@@ -320,6 +323,7 @@ class DGTSKClassifier(_BaseClassifierEstimator):
                 "n_features_in": int(self.n_features_in_),
                 "feature_names_in": _fnames.tolist() if _fnames is not None else None,
                 "classes": self.classes_.tolist(),
+                "classes_dtype": str(self.classes_.dtype),
             },
         )
         save_checkpoint(path, checkpoint)
@@ -358,7 +362,9 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             delattr(estimator, "feature_names_in_")
         from sklearn.preprocessing import LabelEncoder
 
-        estimator.classes_ = np.asarray(fitted["classes"], dtype=object)
+        # Checkpoints written before the dtype was recorded fall back to natural inference.
+        classes_dtype = fitted.get("classes_dtype")
+        estimator.classes_ = np.asarray(fitted["classes"], dtype=np.dtype(classes_dtype) if classes_dtype else None)
         label_encoder = LabelEncoder()
         label_encoder.classes_ = estimator.classes_
         estimator._label_encoder_ = label_encoder
@@ -422,7 +428,7 @@ class DGTSKRegressor(_BaseRegressorEstimator):
         random_state: int | None = None,
         dg_epochs: int = 300,
         finetune_epochs: int = 300,
-        learning_rate: float = 0.2,
+        learning_rate: float | str = "auto",
         verbose: bool | int = False,
         rule_base: str | None = "pfrb",
         batch_size: BatchSizeSpec = "auto",
@@ -467,11 +473,10 @@ class DGTSKRegressor(_BaseRegressorEstimator):
                 iterations of the source article.
             finetune_epochs: Epochs of the fine-tuning phase, run on the pruned system
                 without gates. Default ``300``, as in the source article.
-            learning_rate: Learning rate for the full-batch SGD (gradient descent)
-                used in both phases. Default ``0.2`` matches the paper (Section IV).
-                DG-TSK uses SGD, so it needs a larger rate than the Adam-based
-                estimators to open the M-gates; too small a value under-converges
-                and collapses to a single class in low dimension.
+            learning_rate: Learning rate of the full-batch gradient descent, for both
+                phases. ``"auto"`` (default) uses ``min(0.2, 10 / n_features)``: 0.2 is the
+                value of the article (Section IV), and the stable step of plain gradient
+                descent shrinks in proportion to the number of features.
             verbose: Print per-epoch progress.
             rule_base: ``"coco"``, ``"cartesian"``, or ``"pfrb"``.  Defaults
                 to ``"pfrb"`` for the paper-strict DG-TSK regressor path.
@@ -554,6 +559,10 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             trainer=trainer,
         )
 
+    def _paper_learning_rate(self, n_features: int) -> float:
+        """0.2, reduced in proportion to the number of features above 50 of them."""
+        return min(0.2, 10.0 / float(max(n_features, 1)))
+
     def _build_regressor_model(
         self,
         input_mfs: Mapping[str, Sequence[MembershipFunction]],
@@ -577,7 +586,7 @@ class DGTSKRegressor(_BaseRegressorEstimator):
         resolved_zeta_theta = [0.01] if self.zeta_theta is None else list(self.zeta_theta)
         return DGTrainer(
             dg_epochs=int(self.dg_epochs),
-            dg_learning_rate=float(self.learning_rate),
+            dg_learning_rate=self._effective_learning_rate,
             dg_batch_size=self._effective_batch_size,
             dg_shuffle=bool(self.shuffle),
             dg_patience=self.patience,
@@ -588,7 +597,7 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             zeta_theta=resolved_zeta_theta,
             use_lse=bool(self.use_lse),
             finetune_epochs=int(self.finetune_epochs),
-            finetune_learning_rate=float(self.learning_rate),
+            finetune_learning_rate=self._effective_learning_rate,
             finetune_batch_size=self._effective_batch_size,
             finetune_shuffle=bool(self.shuffle),
             finetune_patience=self.patience,

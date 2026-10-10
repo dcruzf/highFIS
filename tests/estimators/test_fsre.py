@@ -122,3 +122,18 @@ def test_fsre_adatsk_regressor_estimator_fit_predict() -> None:
     est.fit(x, y)
     pred = est.predict(x)
     assert pred.shape == (x.shape[0],)
+
+
+@pytest.mark.parametrize("estimator_cls", [FSREADATSKClassifier, FSREADATSKRegressor])
+def test_membership_function_of_the_article(estimator_cls: type) -> None:
+    """FSRE-AdaTSK uses exp(-(x - m)^2): no spread, centres between the minimum and the maximum."""
+    rng = np.random.default_rng(0)
+    x = rng.random((80, 4)).astype(np.float32)
+    x[0], x[1] = 0.0, 1.0
+    y = (x[:, 0] > 0.5).astype(int) if estimator_cls is FSREADATSKClassifier else x[:, 0]
+    model = estimator_cls(fs_epochs=20, re_epochs=20, finetune_epochs=20, random_state=0).fit(x, y)
+    sets = [mf for group in model.get_mf_params().values() for mf in group]
+    assert {mf["type"] for mf in sets} == {"ADATSKGaussianMF"}
+    assert [mf["sigma"] for mf in sets] == pytest.approx([1.0] * len(sets), abs=1e-5)
+    trainable = [name for name, param in model.model_.named_parameters() if param.requires_grad]
+    assert "membership_layer._flat_raw_sigma" not in trainable

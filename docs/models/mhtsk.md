@@ -109,7 +109,7 @@ No internal train/validation holdout split is performed by MHTSK estimators; val
 ### Key estimator parameters
 
 - `n_mfs`: Number of FCM clusters per head (`K`). Default: `3`.
-- `n_heads`: Number of heads (`T`). When `None`, defaults are resolved from `head_size`, `fcr_target`, and `h_value`.
+- `n_heads`: Number of heads (`T`). When `None`, the values of the article are used above 1000 features (200 up to 5000 features, 300 beyond); otherwise it is resolved from `head_size`, `fcr_target`, and `h_value`.
 - `head_size`: Number of features per head (`S`). When `None`, defaults to `max(1, round(D * 0.02))` for `D <= 5000` or `max(1, round(D * 0.01))` otherwise.
 - `head_size_ratio`: Alternative way to specify `head_size` as a fraction of `D`.
 - `fcr_target`: Target feature coverage rate. Default behavior follows `0.85` when `h_value` is not set.
@@ -163,3 +163,20 @@ $$
 - The sparse consequent layers mirror the paper's per-rule subspace-specific linear consequents.
 - The `MHTSKClassifier` and `MHTSKRegressor` provide a user-facing API that maps to paper symbols `S`, `T`, `K`, and rule extraction workflow.
 - **Loss function**: `MHTSKClassifier` defaults to `MSELoss` on one-hot targets, matching the paper (Bian et al. 2025, eq. 12); regression uses `MSELoss`.
+
+
+## Fidelity to the source article
+
+Since version 0.33.0 the defaults of the MHTSK estimators are the settings of the
+article for data with more than 1000 features: heads of 2% of the features and 200
+heads up to 5000 features, 1% and 300 beyond; three rules per head from fuzzy C-means
+on 80% of the samples; spreads fixed at one; consequents starting at zero; and only
+the consequents trained. With them the published accuracy of Colon is reproduced
+within one point; see the [reproduction](../reproductions/mhtsk.md).
+
+Before that version the antecedents were trained in every case, the consequents
+started from a random draw, and the number of heads came from a feature coverage of
+85%, which is 95 heads where the article has 200. A saved model could not be loaded.
+
+Below 1000 features, which the article does not treat, the antecedents are trained
+and the number of heads follows the feature coverage.

@@ -20,6 +20,7 @@ from ..models import (
     DombiTSKRegressorModel,
 )
 from ._base import (
+    _HIGH_DIMENSION,
     BatchSizeSpec,
     InputConfig,
     _BaseClassifierEstimator,
@@ -75,7 +76,7 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         epochs: int = 100,
-        learning_rate: float = 1e-2,
+        learning_rate: float | str = "auto",
         verbose: bool | int = False,
         rule_base: str | None = None,
         batch_size: BatchSizeSpec = "auto",
@@ -107,7 +108,10 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
                 sigma.
             random_state: Seed for k-means and weight initialisation.
             epochs: Maximum training epochs (default ``100``).
-            learning_rate: Adam learning rate (default ``0.01``).
+            learning_rate: Learning rate of Adam. ``"auto"`` (default) uses ``0.01`` up
+                to 1000 features and ``0.001`` above, two of the values the source article
+                tries; with ``0.01`` the training collapses on some folds of
+                high-dimensional data.
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
             batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
@@ -171,6 +175,10 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
         self.lower_bound = lower_bound
         self.zero_consequent_init = zero_consequent_init
 
+    def _paper_learning_rate(self, n_features: int) -> float:
+        """0.01 up to 1000 features and 0.001 above."""
+        return 0.01 if n_features <= _HIGH_DIMENSION else 0.001
+
     def _paper_batch_size(self, n_samples: int) -> int | None:
         """ADMTSK_2025: a proportion of N; highFIS uses 10%."""
         return _dombi_paper_batch_size(n_samples)
@@ -187,14 +195,14 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
             input_mfs = _build_admtsk_default_input_mfs(x_arr.shape[1])
             effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
             return (
-                _wrap_composite_gaussian_input_mfs(input_mfs, eps=float(self.lower_bound)),
+                _wrap_composite_gaussian_input_mfs(input_mfs),
                 feature_names,
                 effective_rule_base,
             )
 
         input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
         return (
-            _wrap_composite_gaussian_input_mfs(input_mfs, eps=float(self.lower_bound)),
+            _wrap_composite_gaussian_input_mfs(input_mfs),
             feature_names,
             effective_rule_base,
         )
@@ -254,7 +262,7 @@ class DombiTSKRegressor(_BaseRegressorEstimator):
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         epochs: int = 100,
-        learning_rate: float = 1e-2,
+        learning_rate: float | str = "auto",
         verbose: bool | int = False,
         rule_base: str | None = None,
         batch_size: BatchSizeSpec = "auto",
@@ -280,7 +288,10 @@ class DombiTSKRegressor(_BaseRegressorEstimator):
             sigma_scale: Sigma scale factor. ``1.0`` recommended.
             random_state: Seed for k-means and weight initialisation.
             epochs: Maximum training epochs (default ``100``).
-            learning_rate: Adam learning rate (default ``0.01``).
+            learning_rate: Learning rate of Adam. ``"auto"`` (default) uses ``0.01`` up
+                to 1000 features and ``0.001`` above, two of the values the source article
+                tries; with ``0.01`` the training collapses on some folds of
+                high-dimensional data.
             verbose: Print per-epoch progress.
             rule_base: ``"coco"`` or ``"cartesian"``.
             batch_size: Mini-batch size. ``"auto"`` (default) follows the source article:
@@ -335,6 +346,10 @@ class DombiTSKRegressor(_BaseRegressorEstimator):
             scheduler_params=scheduler_params,
         )
 
+    def _paper_learning_rate(self, n_features: int) -> float:
+        """0.01 up to 1000 features and 0.001 above."""
+        return 0.01 if n_features <= _HIGH_DIMENSION else 0.001
+
     def _paper_batch_size(self, n_samples: int) -> int | None:
         """ADMTSK_2025: a proportion of N; highFIS uses 10%."""
         return _dombi_paper_batch_size(n_samples)
@@ -386,7 +401,7 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         epochs: int = 50,
-        learning_rate: float = 1e-2,
+        learning_rate: float | str = "auto",
         verbose: bool | int = False,
         rule_base: str | None = "coco",
         batch_size: BatchSizeSpec = "auto",
@@ -420,7 +435,10 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
                 values.
             random_state: Random seed for MF initialisation and weights.
             epochs: Maximum number of training epochs.
-            learning_rate: Learning rate for the optimizer.
+            learning_rate: Learning rate of Adam. ``"auto"`` (default) uses ``0.01`` up
+                to 1000 features and ``0.001`` above, two of the values the source article
+                tries; with ``0.01`` the training collapses on some folds of
+                high-dimensional data.
             verbose: Verbosity level for training output.
             rule_base: Rule base strategy override, typically ``"coco"`` or
                 ``"cartesian"``.
@@ -491,6 +509,10 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
         self.lower_bound = lower_bound
         self.k = k
         self.zero_consequent_init = zero_consequent_init
+
+    def _paper_learning_rate(self, n_features: int) -> float:
+        """0.01 up to 1000 features and 0.001 above."""
+        return 0.01 if n_features <= _HIGH_DIMENSION else 0.001
 
     def _paper_batch_size(self, n_samples: int) -> int | None:
         """ADMTSK_2025: a proportion of N; highFIS uses 10%."""
@@ -578,7 +600,7 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
         sigma_scale: float | str = 1.0,
         random_state: int | None = None,
         epochs: int = 50,
-        learning_rate: float = 1e-2,
+        learning_rate: float | str = "auto",
         verbose: bool | int = False,
         rule_base: str | None = "coco",
         batch_size: BatchSizeSpec = "auto",
@@ -611,7 +633,10 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
                 values.
             random_state: Random seed for MF initialisation and weights.
             epochs: Maximum number of training epochs.
-            learning_rate: Learning rate for the optimizer.
+            learning_rate: Learning rate of Adam. ``"auto"`` (default) uses ``0.01`` up
+                to 1000 features and ``0.001`` above, two of the values the source article
+                tries; with ``0.01`` the training collapses on some folds of
+                high-dimensional data.
             verbose: Verbosity level for training output.
             rule_base: Rule base strategy override, typically ``"coco"`` or
                 ``"cartesian"``.
@@ -680,6 +705,10 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
         self.lower_bound = lower_bound
         self.k = k
         self.zero_consequent_init = zero_consequent_init
+
+    def _paper_learning_rate(self, n_features: int) -> float:
+        """0.01 up to 1000 features and 0.001 above."""
+        return 0.01 if n_features <= _HIGH_DIMENSION else 0.001
 
     def _paper_batch_size(self, n_samples: int) -> int | None:
         """ADMTSK_2025: a proportion of N; highFIS uses 10%."""
