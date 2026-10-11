@@ -146,8 +146,10 @@ print(stable.firing_diagnostics(X_wide)["uniform_fraction"])  # 0.0
 
 At the end of `fit`, the same check runs on the training data (at most 2000 rows) and a
 `highfis.DegenerateFiringWarning` is raised when every rule has the same weight on more
-than half of the samples, or when one rule takes more than 99% of the weight on average.
-Models with a single rule are not checked. To silence it:
+than half of the samples. One rule taking almost all the weight raises no warning: some
+families concentrate the weight on high-dimensional data, and `dominated_fraction` and
+`mean_firing` show it when you ask. Models with a single rule are not checked. To silence
+the warning:
 
 ```python
 import warnings
