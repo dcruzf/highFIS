@@ -60,11 +60,12 @@ def firing_diagnostics(
 
 
 def warn_if_degenerate(report: dict[str, Any]) -> None:
-    """Warn when the rule weights of a fitted model do not depend on the input.
+    """Warn when every rule of a fitted model has the same weight on most samples.
 
-    Two cases are reported for a model with more than one rule: the weights are the same
-    for every rule on most samples, and one rule takes almost all the weight on every
-    sample. In both the model is a single linear model whatever the number of rules.
+    The firing strength of every rule has underflowed, and the model is a single linear
+    model whatever the number of rules. One rule taking almost all the weight is not
+    reported: some families concentrate the weight by construction on high-dimensional
+    data, and ``firing_diagnostics`` shows it when asked.
     """
     n_rules = int(report["n_rules"])
     if n_rules < 2:
@@ -76,15 +77,6 @@ def warn_if_degenerate(report: dict[str, Any]) -> None:
             "rule underflows: with many features, use a family built for high-dimensional data (for "
             "example HTSK) or reduce the number of features; with few features, the fuzzy sets are too "
             "narrow for the data, so increase sigma_scale. See firing_diagnostics().",
-            DegenerateFiringWarning,
-            stacklevel=3,
-        )
-        return
-    mean_firing = np.asarray(report["mean_firing"])
-    if float(mean_firing.max()) > 0.99:
-        warnings.warn(
-            f"Rule {int(mean_firing.argmax())} takes more than 99% of the weight on the training "
-            f"samples, so the other {n_rules - 1} rules have no effect. See firing_diagnostics().",
             DegenerateFiringWarning,
             stacklevel=3,
         )

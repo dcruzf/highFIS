@@ -56,10 +56,14 @@ def test_rejects_weights_that_are_not_a_matrix() -> None:
         firing_diagnostics(np.ones(3))
 
 
-def test_one_rule_taking_all_the_weight_warns() -> None:
+def test_one_rule_taking_all_the_weight_is_reported_without_a_warning() -> None:
     weights = np.tile([0.999, 0.001], (10, 1))
-    with pytest.warns(DegenerateFiringWarning, match="Rule 0 takes more than 99%"):
-        warn_if_degenerate(firing_diagnostics(weights))
+    report = firing_diagnostics(weights)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DegenerateFiringWarning)
+        warn_if_degenerate(report)
+    assert report["dominated_fraction"] == 1.0
+    assert report["mean_firing"].max() > 0.99
 
 
 def test_the_product_underflows_in_high_dimension() -> None:
