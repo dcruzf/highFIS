@@ -17,8 +17,9 @@ that OpenML provides with the samples and features of the article, Colon and Leu
 - ten-fold cross-validation repeated five times, mean of the 50 runs.
 
 The script runs the six combinations and prints each of them and the best, as the article
-does. The best is chosen on the test folds, so it is an optimistic estimate; the
-defaults of ``ADMTSKClassifier`` are the first combination.
+does. The best is chosen on the test folds, so it is an optimistic estimate. The
+defaults of ``ADMTSKClassifier`` are the third combination on these datasets: batches of
+10% and, above 1000 features, a learning rate of 0.001.
 
 Run it with::
 
