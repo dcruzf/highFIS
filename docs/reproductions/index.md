@@ -12,11 +12,10 @@ print their table next to the values of the article.
 
 Every reproduction also has a notebook, in the
 [`examples/notebooks`](https://github.com/dcruzf/highFIS/tree/main/examples/notebooks)
-folder, stored with its outputs. The notebooks of HTSK, HDFIS, ADMTSK, AYATSK, ADPTSK,
-AdaTSK and MHTSK are short walk-throughs: they go from a first fit to the setting of the
-article on one dataset, with plots of the training, of the rules and of the result, and
-run in a few minutes. The notebooks of DG-TSK, DG-ALETSK and FSRE-AdaTSK run the code of
-their scripts one step at a time, with the full protocol.
+folder, stored with its outputs. A notebook is a short walk-through on one dataset of the
+article: it goes from the data to the setting of the article, with plots of the training,
+of the rules and of the result, and runs in a few minutes. The scripts run the full
+protocol.
 
 | Article | Families | Datasets | Page |
 |---|---|---|---|
