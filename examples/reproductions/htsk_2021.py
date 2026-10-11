@@ -22,74 +22,76 @@ Run it with::
 The data are downloaded on the first run. It takes about two minutes on a laptop.
 """
 
-from __future__ import annotations
-
-import argparse
-
 import numpy as np
 import torch
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
+import highfis
 from highfis import HTSKClassifier, LogTSKClassifier, TSKClassifier
 
-# Mean test accuracy in percent reported in Table II of the article.
+# --- Settings ---------------------------------------------------------------------------
+
+SEED = 0
+REPETITIONS = 10
+THREADS = 4
+
+# OpenML identifier of each dataset.
+DATASETS = {"Vowel": 307, "Biodeg": 1494}
+
+FAMILIES = {"TSK": TSKClassifier, "LogTSK": LogTSKClassifier, "HTSK": HTSKClassifier}
+
+# Table II of the article: mean test accuracy in percent.
 ARTICLE = {
     "Vowel": {"TSK": 87.91, "LogTSK": 85.42, "HTSK": 88.32},
     "Biodeg": {"TSK": 85.71, "LogTSK": 85.87, "HTSK": 85.99},
 }
-FAMILIES = {"TSK": TSKClassifier, "LogTSK": LogTSKClassifier, "HTSK": HTSKClassifier}
 
+# --- Reproducibility --------------------------------------------------------------------
 
-def load(name: str) -> tuple[np.ndarray, np.ndarray]:
-    """Return the features and the integer labels of one dataset."""
-    if name == "Vowel":
-        bunch = fetch_openml(data_id=307, as_frame=False, parser="liac-arff")
-        features = bunch.data[:, 2:]  # the first two columns identify the speaker
-    else:
-        bunch = fetch_openml(data_id=1494, as_frame=False, parser="liac-arff")
-        features = bunch.data
-    return features.astype(np.float32), np.unique(bunch.target, return_inverse=True)[1]
+torch.set_num_threads(THREADS)
+torch.use_deterministic_algorithms(True)
+highfis.set_mf_cache_enabled(False)
 
+# --- Protocol ---------------------------------------------------------------------------
 
-def test_accuracy(family: str, features: np.ndarray, labels: np.ndarray, seed: int) -> float:
-    """Train one model with the protocol of the article and return its test accuracy."""
-    x_train, x_test, y_train, y_test = train_test_split(
-        features, labels, test_size=0.3, random_state=seed, stratify=labels
-    )
-    x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.1, random_state=seed)
-    scaler = StandardScaler().fit(x_train)
-    n_train = len(x_train)
-    model = FAMILIES[family](
-        n_mfs=30,
-        sigma_init="constant",
-        epochs=200,
-        patience=20,
-        learning_rate=0.01,
-        batch_size=512 if n_train >= 512 else min(n_train, 60),
-        random_state=seed,
-    )
-    model.fit(scaler.transform(x_train), y_train, x_val=scaler.transform(x_val), y_val=y_val)
-    return 100.0 * float(model.score(scaler.transform(x_test), y_test))
+results = {(name, family): [] for name in DATASETS for family in FAMILIES}
 
+for name, data_id in DATASETS.items():
+    bunch = fetch_openml(data_id=data_id, as_frame=False, parser="liac-arff")
+    # The first two columns of Vowel identify the speaker and are not features.
+    features = (bunch.data[:, 2:] if name == "Vowel" else bunch.data).astype(np.float32)
+    labels = np.unique(bunch.target, return_inverse=True)[1]
 
-def main() -> None:
-    """Run the comparison and print it next to the values of the article."""
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--repetitions", type=int, default=10, help="number of random splits (default: 10)")
-    args = parser.parse_args()
-    # The results depend on the number of threads through the order of the floating-point
-    # operations, so it is fixed for the values in the documentation to be reproducible.
-    torch.set_num_threads(4)
+    for family, estimator in FAMILIES.items():
+        for repetition in range(REPETITIONS):
+            seed = SEED + repetition
+            x_train, x_test, y_train, y_test = train_test_split(
+                features, labels, test_size=0.3, random_state=seed, stratify=labels
+            )
+            x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.1, random_state=seed)
+            scaler = StandardScaler().fit(x_train)
+            n_train = len(x_train)
 
-    print(f"{'dataset':8s} {'family':7s} {'article':>8s} {'highFIS':>16s}")
-    for name, reported in ARTICLE.items():
-        features, labels = load(name)
-        for family in FAMILIES:
-            scores = [test_accuracy(family, features, labels, seed) for seed in range(args.repetitions)]
-            print(f"{name:8s} {family:7s} {reported[family]:8.2f} {np.mean(scores):9.2f} +- {np.std(scores):4.2f}")
+            model = estimator(
+                n_mfs=30,
+                sigma_init="constant",
+                epochs=200,
+                patience=20,
+                learning_rate=0.01,
+                batch_size=512 if n_train >= 512 else min(n_train, 60),
+                random_state=seed,
+            )
+            model.fit(scaler.transform(x_train), y_train, x_val=scaler.transform(x_val), y_val=y_val)
+            results[name, family].append(100.0 * model.score(scaler.transform(x_test), y_test))
 
+# --- Result -----------------------------------------------------------------------------
 
-if __name__ == "__main__":
-    main()
+print("Table II: mean test accuracy in percent")
+print(f"{'dataset':8s} {'family':7s} {'article':>8s} {'highFIS':>8s} {'std':>6s}")
+for (name, family), scores in results.items():
+    print(f"{name:8s} {family:7s} {ARTICLE[name][family]:8.2f} {np.mean(scores):8.2f} {np.std(scores):6.2f}")
+
+print()
+highfis.show_versions()

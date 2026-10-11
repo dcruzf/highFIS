@@ -23,17 +23,18 @@ Section IV-B of the article, as the script applies it:
 
 ## Result
 
-Mean test accuracy in percent; for highFIS, with the standard deviation over the ten
-repetitions.
+Output of the script, on four threads; the standard deviation is over the ten repetitions:
 
-| Dataset | Family | Article | highFIS |
-|---|---|---|---|
-| Vowel (990 samples, 10 features, 11 classes) | TSK | 87.91 | 87.81 ± 4.67 |
-| | LogTSK | 85.42 | 84.28 ± 3.53 |
-| | HTSK | 88.32 | 89.97 ± 4.68 |
-| Biodeg (1055 samples, 41 features, 2 classes) | TSK | 85.71 | 85.46 ± 1.52 |
-| | LogTSK | 85.87 | 84.73 ± 2.82 |
-| | HTSK | 85.99 | 84.38 ± 2.93 |
+```text
+Table II: mean test accuracy in percent
+dataset  family   article  highFIS    std
+Vowel    TSK        87.91    87.81   4.67
+Vowel    LogTSK     85.42    84.28   3.53
+Vowel    HTSK       88.32    89.97   4.68
+Biodeg   TSK        85.71    85.46   1.52
+Biodeg   LogTSK     85.87    84.73   2.82
+Biodeg   HTSK       85.99    84.38   2.93
+```
 
 The six values are within 1.7 points of the article's, less than the standard deviation
 between repetitions.
@@ -68,11 +69,16 @@ between repetitions.
   spread (83% on average, 7 points between partitions). The published value is what a
   single favourable partition gives when the training is repeated on it.
 
+## Reproducibility
+
+The script fixes the seeds, uses deterministic algorithms and four threads, and ends by
+printing the versions of the libraries and the processor. Another processor or another
+version of the numerical libraries can change the last digits.
+
 ## Run It
 
 ```bash
 python examples/reproductions/htsk_2021.py
 ```
 
-The data are downloaded from OpenML on the first run. Ten repetitions take about two
-minutes; `--repetitions 3` gives a quicker look.
+The data are downloaded from OpenML on the first run. A run takes about two minutes.
