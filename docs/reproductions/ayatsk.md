@@ -19,28 +19,26 @@ settings are the defaults of `AYATSKClassifier`.
 | Consequents | start at zero | default |
 | Optimizer | Adam on the whole training set, 300 epochs | defaults (`epochs=300`, full batch) |
 | Learning rate | 0.01 for low-dimensional data, 0.001 above 1000 features | `learning_rate=0.01` (also the default for these datasets) |
-| Evaluation | ten-fold cross-validation, repeated five times | ten-fold cross-validation, once |
+| Evaluation | ten-fold cross-validation, repeated five times | the same, stratified folds |
 
 ## Result
 
-Mean test accuracy in percent; for highFIS, with the standard deviation over the ten
-folds. $K = 10$ and $K = 2$ are the lower bounds 0.1 and 0.5 of Table III.
+Output of the script, on four threads. $K = 10$ and $K = 2$ are the lower bounds 0.1 and
+0.5 of Table III.
 
-| Dataset | $K$ | Article | highFIS |
-|---|---|---|---|
-| Wine (178 samples, 13 features) | 10 | 98.44 | 98.33 ± 3.56 |
-| | 2 | 98.42 | 98.89 ± 2.22 |
-| Wdbc (569 samples, 30 features) | 10 | 95.11 | 95.08 ± 2.19 |
-| | 2 | 96.69 | 97.01 ± 1.77 |
+```text
+Table III: AYATSK (mean test accuracy in percent)
+std: over the runs, and over the means of the repetitions
+dataset    K  article  highFIS          std
+Wine      10    98.44    98.66  2.86 / 0.58
+Wine       2    98.42    98.77  2.31 / 0.24
+Wdbc      10    95.11    96.52  2.37 / 0.86
+Wdbc       2    96.69    96.45  2.49 / 0.41
+```
 
-The four values are reproduced within half a point.
-
-## Choice of the Partition
-
-The result depends on how the samples fall into the folds. The script uses seed 1, the
-one whose results are closest to the article among the seeds 0 to 11. Over those seeds
-Wdbc goes from 95.08 to 97.19 for $K = 10$ and from 95.61 to 97.37 for $K = 2$. The
-values of the article lie inside both ranges; `--seed` selects another partition.
+Wine is reproduced within 0.4 point for both values of $K$, and Wdbc with $K = 2$ within
+0.3 point. Wdbc with $K = 10$ is 1.4 points above the article, less than the standard
+deviation between runs; the authors' code is also above the article there (see below).
 
 ## Comparison with the Authors' Code
 
@@ -73,11 +71,16 @@ make the training sensitive to rounding.
   active, so it equals Eq. (28).
 - **Loss.** The mean squared error, where the article has the sum over the classes
   halved: a constant factor that Adam compensates.
-- **Threads.** The script fixes four threads: the result changes with the number of
-  threads, through the order of the floating-point operations, and can still change
-  with the processor.
 - **Datasets.** The article uses 23 datasets. Wine and Wdbc ship with scikit-learn;
   SRBCT above uses the copy distributed with the authors' code.
+
+## Reproducibility
+
+The script fixes the seeds, uses deterministic algorithms and four threads, and ends by
+printing the versions of the libraries and the processor. With 30 features the T-norm
+raises the membership degrees to the 32nd power, which makes the training sensitive to
+rounding: another number of threads, another processor or another version of the
+numerical libraries can change the result by a few tenths of a point.
 
 ## Run It
 
@@ -85,4 +88,4 @@ make the training sensitive to rounding.
 python examples/reproductions/ayatsk_2025.py
 ```
 
-No download is needed. A run takes about two minutes.
+No download is needed. A run takes about ten minutes.
