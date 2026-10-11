@@ -162,3 +162,16 @@ def test_fuzzy_sets_are_kept_between_phases_by_default() -> None:
     y = (x[:, 0] > 0.5).astype(int)
     model = FSREADATSKClassifier(fs_epochs=20, re_epochs=20, finetune_epochs=20, random_state=0).fit(x, y)
     assert {len(group) for group in model.get_mf_params().values()} == {3}
+
+
+@pytest.mark.parametrize("estimator_cls", [FSREADATSKClassifier, FSREADATSKRegressor])
+def test_feature_gates_are_those_of_the_feature_selection_phase(estimator_cls: type) -> None:
+    """The gates read after ``fit`` are the trained ones, not the initial value of a rebuilt layer."""
+    x, y = _make_dataset() if estimator_cls is FSREADATSKClassifier else _make_regression_dataset()
+    est = estimator_cls(fs_epochs=200, re_epochs=20, finetune_epochs=20, random_state=0).fit(x, y)
+
+    gates = np.abs(est.get_feature_gates())
+    assert gates.shape == (len(est.selected_features_),)
+    # Every selected feature passed the threshold, which is above the initial gate value.
+    assert np.all(gates > est.history_["tau_lambda"])
+    assert est.history_["tau_lambda"] > 0.0165
