@@ -64,7 +64,8 @@ as the phase goes on, so its length decides how many features pass the threshold
 them; with 1000 the table of the article is reproduced.
 
 Ten-fold cross-validation, once (repeated twice for Iris, Wine and Wdbc with 300
-iterations); accuracy / selected features / extracted rules:
+iterations, and three times for Sonar with 1000); accuracy / selected features /
+extracted rules:
 
 | Dataset | Article | 300 iterations (default) | 1000 iterations |
 |---|---|---|---|
@@ -75,11 +76,11 @@ iterations); accuracy / selected features / extracted rules:
 | Heart | 85.0 / 4.0 / 3.4 | 83.3 / 3.0 / 2.1 | 84.1 / 9.2 / 2.9 |
 | Vehicle | 70.3 / 12.0 / 4.0 | 61.4 / 6.1 / 4.0 | 67.7 / 11.9 / 4.0 |
 | Wdbc | 96.2 / 5.0 / 2.2 | 91.2 / 2.0 / 2.5 | 97.0 / 7.1 / 2.6 |
-| Sonar | 77.4 / 12.7 / 2.0 | 72.6 / 3.9 / 2.1 | 72.6 / 14.9 / 2.0 |
+| Sonar | 77.4 / 12.7 / 2.0 | 72.6 / 3.9 / 2.1 | 75.8 / 15.4 / 2.0 |
 
-With 1000 iterations Heart keeps more features than the article reports and Sonar stays
-five points below in accuracy; the other six datasets are within three points, with the
-structure of the article.
+With 1000 iterations the eight datasets are within three points of the article. Seven
+have its structure; Heart keeps nine features where the article reports four, with
+either length of the gate phase and with the reference code as well (see below).
 
 ## Comparison with the Authors' Code
 
@@ -95,10 +96,25 @@ with each other for both lengths of the gate phase:
 | Vehicle | 300 | 70.3 / 12.0 / 4.0 | 60.4 / 6.0 / 4.0 | 61.4 / 6.1 / 4.0 |
 | Glass | 300 | 63.1 / 8.0 / 6.0 | 46.8 / 1.2 / 6.0 | 45.8 / 1.2 / 6.0 |
 | Glass | 1000 | 63.1 / 8.0 / 6.0 | 59.9 / 8.0 / 6.0 | 62.2 / 8.0 / 6.0 |
+| Sonar | 300 | 77.4 / 12.7 / 2.0 | 70.2 / 4.1 / 2.0 | 72.6 / 3.9 / 2.1 |
+| Sonar | 1000 | 77.4 / 12.7 / 2.0 | 75.5 / 13.6 / 2.0 | 75.8 / 15.4 / 2.0 |
+| Heart | 300 | 85.0 / 4.0 / 3.4 | 83.3 / 3.0 / 2.1 | 83.3 / 3.0 / 2.1 |
+| Heart | 1000 | 85.0 / 4.0 / 3.4 | 81.9 / 8.4 / 2.2 | 84.1 / 9.2 / 2.9 |
 
-Iris, Wine and Wdbc use ten folds repeated twice, the other rows ten folds. On Wine the
-two implementations select the same features and the same number of rules in every one
-of the 20 folds.
+Iris, Wine and Wdbc use ten folds repeated twice, Sonar with 1000 iterations ten folds
+repeated three times, and the other rows ten folds. On Wine the two implementations
+select the same features and the same number of rules in every one of the 20 folds.
+
+Where highFIS is away from the article, the reference code is away from it in the same
+way:
+
+- **Heart.** The article reports four features and 3.4 rules. Neither implementation
+  gives them with either length of the gate phase: three features and two rules with 300
+  iterations, eight or nine features with 1000.
+- **Sonar.** With 1000 iterations both implementations reach the structure of the article
+  and an accuracy of about 75.6, against 77.4. On one repetition of the folds the two
+  differ by four points, in either direction depending on the repetition; over three
+  repetitions they agree within 0.3 point.
 
 ## Differences from the Article
 
