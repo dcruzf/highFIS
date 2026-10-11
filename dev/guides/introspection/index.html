@@ -1601,8 +1601,10 @@ space sharply. A high <code>uniform_fraction</code> is one.</p>
 </span></code></pre></div>
 <p>At the end of <code>fit</code>, the same check runs on the training data (at most 2000 rows) and a
 <code>highfis.DegenerateFiringWarning</code> is raised when every rule has the same weight on more
-than half of the samples, or when one rule takes more than 99% of the weight on average.
-Models with a single rule are not checked. To silence it:</p>
+than half of the samples. One rule taking almost all the weight raises no warning: some
+families concentrate the weight on high-dimensional data, and <code>dominated_fraction</code> and
+<code>mean_firing</code> show it when you ask. Models with a single rule are not checked. To silence
+the warning:</p>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
 </span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">DegenerateFiringWarning</span>
