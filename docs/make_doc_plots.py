@@ -1,6 +1,6 @@
 """Regenerate the figures of docs/guides/plotting.md.
 
-Run from the repository root:  hatch run python scripts/make_doc_plots.py
+Run from the repository root:  hatch run docs:plots
 The code mirrors the examples on that page, so the page and its figures stay in step.
 """
 
@@ -18,7 +18,7 @@ from sklearn.preprocessing import MinMaxScaler  # noqa: E402
 
 from highfis import DGALETSKClassifier, HTSKClassifier, HTSKRegressor, TSKClassifier  # noqa: E402
 
-OUT = Path(__file__).resolve().parent.parent / "docs" / "assets" / "plots"
+OUT = Path(__file__).resolve().parent / "assets" / "plots"
 DPI = 110
 
 
@@ -44,12 +44,14 @@ def main() -> None:
     save(clf.plot(kind="history", metric="accuracy"), "history-accuracy.png")
     save(clf.plot(kind="rule_activation", X=X_test, y=y_test), "rule-activation.png")
     save(clf.plot(kind="diagnostics", X=X_test, y=y_test), "diagnostics-classifier.png")
+    save(clf.plot(kind="feature_importance", top=8), "feature-importance.png")
 
     saturated = TSKClassifier(n_mfs=3, epochs=100, random_state=0).fit(X_fit, y_fit)
     save(saturated.plot(kind="rule_activation", X=X_test, y=y_test), "rule-activation-saturated.png")
 
     gated = DGALETSKClassifier(n_mfs=3, dg_epochs=40, finetune_epochs=60, random_state=0).fit(X_fit, y_fit)
     save(gated.plot(kind="history"), "history-phases.png")
+    save(gated.plot(kind="gates"), "gates.png")
 
     X, y = load_diabetes(return_X_y=True)
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=0)

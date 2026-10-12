@@ -225,8 +225,146 @@ def test_selected_features_are_the_survivors_after_pruning() -> None:
         lambda e: e.get_feature_gates(),
         lambda e: e.get_rule_gates(),
         lambda e: e.selected_features_,
+        lambda e: e.summary(),
+        lambda e: e.explain(np.zeros(4)),
+        lambda e: e.coverage(np.zeros((1, 4))),
     ],
 )
 def test_accessors_need_a_fitted_estimator(call: Any) -> None:
     with pytest.raises(NotFittedError):
         call(highfis.TSKClassifier())
+
+
+# --- summary, explain and coverage --------------------------------------------------------
+
+
+def _data(name: str, n_features: int = 6) -> tuple[np.ndarray, Any]:
+    rng = np.random.default_rng(0)
+    x = rng.random((80, n_features))
+    return x, ((x[:, 0] > 0.5).astype(int) if name.endswith("Classifier") else 2.0 * x[:, 0])
+
+
+@pytest.mark.parametrize("name", ESTIMATORS)
+def test_every_estimator_has_a_summary(name: str) -> None:
+    est = _fit(name)
+    text = est.summary()
+
+    assert text.splitlines()[0] == name
+    assert f"{est.model_.n_rules} (rule base" in text
+    assert f"6 seen in fit, {est.model_.n_inputs} used by the model" in text
+    assert "Training" in text and "epochs" in text
+
+
+def test_summary_reports_what_fit_resolved(clf: Any) -> None:
+    text = clf.summary(digits=2)
+
+    assert "classification, 2 classes" in text
+    assert "3 per feature, GaussianMF" in text
+    assert f"learning rate {clf.learning_rate_:g}" in text
+    assert "20 epochs" in text
+    trainable = sum(p.numel() for p in clf.model_.parameters() if p.requires_grad)
+    assert f"{trainable} trainable" in text
+
+
+def test_summary_lists_the_phases_of_a_gated_family() -> None:
+    text = _fit("FSREADATSKClassifier").summary()
+
+    assert all(phase in text for phase in ("feature selection", "rule extraction", "fine-tuning"))
+    assert text.index("feature selection") < text.index("rule extraction") < text.index("fine-tuning")
+
+
+@pytest.mark.parametrize("name", ESTIMATORS)
+def test_rule_contributions_add_up_to_the_output(name: str) -> None:
+    import torch
+
+    est = _fit(name)
+    x, _ = _data(name)
+    row = x[:1]
+    weights, contributions = est._rule_contributions(row)
+
+    assert weights.shape == (est.model_.n_rules,)
+    np.testing.assert_allclose(weights, est.rule_activation(row)[0], rtol=1e-5, atol=1e-6)
+    was_training = est.model_.training
+    est.model_.eval()
+    with torch.no_grad():
+        output = est.model_(est._as_tensor_x(est._select_model_features(row), torch.device("cpu"))).reshape(-1)
+    est.model_.train(was_training)
+    np.testing.assert_allclose(contributions.sum(axis=0), output.numpy(), rtol=1e-4, atol=1e-5)
+
+
+@pytest.mark.parametrize("name", ESTIMATORS)
+def test_every_estimator_explains_a_sample(name: str) -> None:
+    est = _fit(name)
+    x, _ = _data(name)
+    text = est.explain(x[0])
+
+    assert text.startswith("Prediction: ")
+    assert f"contributions of the {est.model_.n_rules} rules" in text
+    assert "weight" in text and "IF " in text
+
+
+def test_explain_names_classes_features_and_the_heaviest_rules(clf: Any) -> None:
+    rng = np.random.default_rng(1)
+    sample = rng.random(4)
+    text = clf.explain(sample, top_rules=1, top_features=2)
+    weights = clf.rule_activation(sample.reshape(1, -1))[0]
+
+    assert text.splitlines()[0] == f"Prediction: {clf.predict(sample.reshape(1, -1))[0]}"
+    assert "low risk: " in text and "high risk: " in text
+    assert f"Rule {int(weights.argmax())}, weight {weights.max():.2f}" in text
+    assert f"{len(weights) - 1} other rule" in text
+    assert sum(feature in text for feature in FEATURES) == 2
+
+
+def test_explain_describes_every_rule_when_asked(clf: Any) -> None:
+    text = clf.explain(np.full(4, 0.5), top_rules=None)
+
+    assert text.count("Rule ") == clf.model_.n_rules
+    assert "other rule" not in text
+
+
+def test_explain_of_a_regressor_has_one_value_per_rule() -> None:
+    est = _fit("TSKRegressor")
+    x, _ = _data("TSKRegressor")
+    text = est.explain(x[0], digits=3)
+
+    assert text.splitlines()[0] == f"Prediction: {est.predict(x[:1])[0]:.3f}"
+
+
+def test_explain_takes_one_sample(clf: Any) -> None:
+    with pytest.raises(ValueError):
+        clf.explain(np.zeros((2, 4)))
+
+
+@pytest.mark.parametrize("name", ESTIMATORS)
+def test_every_estimator_reports_coverage(name: str) -> None:
+    est = _fit(name)
+    x, _ = _data(name)
+    coverage = est.coverage(x)
+
+    assert coverage.shape == (len(x),)
+    assert np.all((coverage >= 0.0) & (coverage <= 1.0 + 1e-6))
+
+
+def test_coverage_falls_away_from_the_training_data(clf: Any) -> None:
+    rng = np.random.default_rng(0)
+    inside = clf.coverage(rng.random((50, 4)))
+    outside = clf.coverage(rng.random((50, 4)) + 5.0)
+
+    assert outside.max() < inside.min()
+
+
+def test_coverage_is_one_at_the_centre_of_a_rule(clf: Any) -> None:
+    params = clf.get_mf_params()
+    first_rule = clf.model_.get_rule_table()[0]
+    centre = [params[name][first_rule[name]]["mean"] for name in clf.model_.input_names]
+
+    assert clf.coverage(np.asarray([centre]))[0] == pytest.approx(1.0, abs=1e-5)
+
+
+def test_coverage_ignores_dont_care_sets() -> None:
+    est = _fit("MHTSKClassifier", n_features=12)
+    x, _ = _data("MHTSKClassifier", n_features=12)
+
+    # A head uses a few of the features: the others must not pull the match towards one.
+    assert est.coverage(x + 5.0).max() < est.coverage(x).min()

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Literal, cast
 
+import torch
 from torch import Tensor, nn
 
 from ..defuzzifiers import SoftmaxLogDefuzzifier
@@ -69,6 +70,9 @@ class _FSREADATSKMixin:
         """
         if not surviving_features:
             raise ValueError("surviving_features must not be empty")
+        # The consequent layer is rebuilt for the rule-extraction phase; keep the gates the
+        # feature-selection phase trained, so that they can still be inspected afterwards.
+        self._trained_feature_gates = self.consequent_layer.lambda_gates.detach()[surviving_features].clone()
         surviving_names = [self.input_names[i] for i in surviving_features]
         new_input_mfs = {name: self.input_mfs[name] for name in surviving_names}
         self.input_names = surviving_names
@@ -77,6 +81,38 @@ class _FSREADATSKMixin:
         self.membership_layer = MembershipLayer(new_input_mfs)
         if self.consequent_batch_norm:
             self.consequent_bn = nn.BatchNorm1d(self.n_inputs)
+
+    def _carry_feature_gates(self: Any, previous: Tensor) -> None:
+        """Copy the trained feature gates into a consequent layer that was just rebuilt.
+
+        The gates are not in the forward pass of the rule-extraction and fine-tuning phases,
+        so this changes nothing in the model; it keeps ``get_feature_gate_values`` meaningful.
+        """
+        trained = getattr(self, "_trained_feature_gates", previous)
+        target = self.consequent_layer.lambda_gates
+        if trained.shape == target.shape:
+            cast(Tensor, target.data).copy_(trained)
+        if hasattr(self, "_trained_feature_gates"):
+            del self._trained_feature_gates
+
+    def reinitialize_fuzzy_sets(self: Any, x: Tensor, n_mfs: int) -> None:
+        """Replace the fuzzy sets by ``n_mfs`` sets evenly placed over the range of each feature.
+
+        The article uses another number of fuzzy sets in the rule-extraction phase than in
+        the feature-selection phase, and reinitializes the system parameters between the
+        two. The new sets are of the class of the current ones, with their spread.
+        """
+        if n_mfs < 2:
+            raise ValueError("n_mfs must be at least 2")
+        new_input_mfs: dict[str, list[MembershipFunction]] = {}
+        for column, name in enumerate(self.input_names):
+            template = self.input_mfs[name][0]
+            spread = float(template.sigma.detach())
+            low, high = float(x[:, column].min()), float(x[:, column].max())
+            centres = torch.linspace(low, high, n_mfs).tolist()
+            new_input_mfs[name] = [type(template)(mean=float(c), sigma=spread) for c in centres]
+        self.input_mfs = new_input_mfs
+        self.membership_layer = MembershipLayer(new_input_mfs)
 
 
 class FSREADATSKClassifierModel(_FSREADATSKMixin, BaseTSKClassifierModel):
@@ -132,7 +168,7 @@ class FSREADATSKClassifierModel(_FSREADATSKMixin, BaseTSKClassifierModel):
             gate_fn: Gate function of the feature and rule gates, as a key of
                 ``highfis.gates.GATE_FNS`` or a callable. ``"gate4"`` (default) is the
                 gate of the source article, ``λ sqrt(exp(1 - λ²))``. ``None`` gives
-                ``ExpGate(k=10)``, the gate used before 0.32.0.
+                ``ExpGate(k=10)``.
 
         Raises:
             ValueError: If ``n_classes < 2``.
@@ -187,7 +223,9 @@ class FSREADATSKClassifierModel(_FSREADATSKMixin, BaseTSKClassifierModel):
             eps=self.eps,
         )
         self.n_rules = self.rule_layer.n_rules
+        feature_gates = self.consequent_layer.lambda_gates.detach().clone()
         self.consequent_layer = self._build_consequent_layer()
+        self._carry_feature_gates(feature_gates)
         # Rule extraction trains the rule gates; in "fs" mode they are not in the forward
         # pass, stay at their initial value and the rules cannot be told apart.
         self.consequent_layer.mode = "re"
@@ -278,7 +316,7 @@ class FSREADATSKRegressorModel(_FSREADATSKMixin, BaseTSKRegressorModel):
             gate_fn: Gate function of the feature and rule gates, as a key of
                 ``highfis.gates.GATE_FNS`` or a callable. ``"gate4"`` (default) is the
                 gate of the source article, ``λ sqrt(exp(1 - λ²))``. ``None`` gives
-                ``ExpGate(k=10)``, the gate used before 0.32.0.
+                ``ExpGate(k=10)``.
         """
         self.eps = eps
         self.use_en_frb = bool(use_en_frb)
@@ -324,7 +362,9 @@ class FSREADATSKRegressorModel(_FSREADATSKMixin, BaseTSKRegressorModel):
             eps=self.eps,
         )
         self.n_rules = self.rule_layer.n_rules
+        feature_gates = self.consequent_layer.lambda_gates.detach().clone()
         self.consequent_layer = self._build_consequent_layer()
+        self._carry_feature_gates(feature_gates)
         # Rule extraction trains the rule gates; in "fs" mode they are not in the forward
         # pass, stay at their initial value and the rules cannot be told apart.
         self.consequent_layer.mode = "re"

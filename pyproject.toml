@@ -68,10 +68,12 @@ installer = "uv"
 dependencies = [
   "zensical",
   "mkdocstrings-python",
+  "matplotlib>=3.7",
 ]
 [tool.hatch.envs.docs.scripts]
 build = "zensical build --clean"
 serve = "zensical serve"
+plots = "python docs/make_doc_plots.py"
 
 [tool.hatch.envs.cookbook]
 installer = "uv"

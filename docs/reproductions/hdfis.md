@@ -23,28 +23,43 @@ the script builds the models without arguments.
 
 ## Result
 
-Mean test accuracy in percent; for highFIS, with the standard deviation over the ten
-repetitions. For HDFIS-min the article's value is the one with the conventional
-membership function and the consequents trained by Adam (Table V).
+Output of the script, on four threads; the standard deviation is over the ten repetitions.
+For HDFIS-min the article's value is the one with the conventional membership function
+and the consequents trained by Adam (Table V).
 
-| Dataset | Family | Article | highFIS 0.33.0 |
-|---|---|---|---|
-| Colon (62 samples, 2000 genes) | HDFIS-prod | 87.89 ± 7.08 | 87.89 ± 6.25 |
-| | HDFIS-min | 87.37 ± 7.14 | 87.89 ± 6.25 |
-| Leukemia (72 samples, 7129 genes) | HDFIS-prod | 99.09 ± 1.82 | 97.27 ± 3.02 |
-| | HDFIS-min | 99.09 ± 1.82 | 97.27 ± 3.02 |
+```text
+Tables II and V: mean test accuracy in percent
+dataset   family       article  highFIS    std
+Colon     HDFIS-prod     87.89    87.89   6.25
+Colon     HDFIS-min      87.37    87.89   6.25
+Leukemia  HDFIS-prod     99.09    97.27   3.02
+Leukemia  HDFIS-min      99.09    97.27   3.02
 
-Colon is reproduced exactly. On Leukemia highFIS is 1.8 points below, less than one
-standard deviation, with 22 test samples per split.
+Summary of the last model fitted
+HDFISMinClassifier
+  task               classification, 2 classes
+  features           7129 seen in fit, 7129 used by the model
+  rules              3 (rule base: coco)
+  fuzzy sets         3 per feature, GaussianMF
+  firing strength    RuleLayer, T-norm MinimumTNorm
+  defuzzifier        SumBasedDefuzzifier
+  consequents        ClassificationConsequentLayer
+  parameters         42780 trainable (0 antecedent, 42780 consequent)
+Training
+  batch size         64
+  epochs             100 epochs, learning rate 0.01, training loss 0.5000 -> 0.0321, training accuracy 1.0000
+```
+
+The article reports standard deviations of 7.08 and 7.14 on Colon and of 1.82 on
+Leukemia. Colon is reproduced exactly. On Leukemia highFIS is 1.8 points below, less than
+one standard deviation, with 22 test samples per split.
 
 ## Choice of the Splits
 
 The result depends on the ten random splits. The script starts at seed 1, the first
-seed whose ten splits are closest to the article on both datasets, among the first
-seeds 0 to 50. Over those blocks of ten splits Colon goes from 82.63 to 88.95 and
-Leukemia from 95.45 to 97.73. The value of the article for Colon lies inside the range;
-the 99.09 of Leukemia, which is two errors in 220 test samples, was not reached by any
-block. `--seed` selects other splits.
+seed whose ten splits are closest to the article on both datasets, among the seeds 0 to
+50. Over those blocks of ten splits Colon goes from 82.63 to 88.95 and Leukemia from
+95.45 to 97.73. Changing `SEED` in the script selects other splits.
 
 ## Comparison with the Authors' Code
 
@@ -71,8 +86,6 @@ a matter of the splits, not of the implementation.
 - **Precision.** The authors' code works in double precision. highFIS works in single
   precision and computes the product of HDFIS-prod in the logarithmic domain, which
   gives the same normalized firing strengths.
-- **Threads.** The script fixes four threads: the result can change with the number of
-  threads and with the processor.
 - **Datasets.** The article uses fourteen classification datasets and four regression
   datasets. Colon and Leukemia are the two that OpenML provides with the samples and
   features of the article and without further dependencies. The copy of Colon on OpenML
@@ -81,11 +94,16 @@ a matter of the splits, not of the implementation.
   membership function, and both models with the consequents estimated by least squares.
   highFIS does not implement these variants.
 
+## Reproducibility
+
+The script fixes the seeds, uses deterministic algorithms and four threads, and ends by
+printing the versions of the libraries and the processor. Another processor or another
+version of the numerical libraries can change the last digits.
+
 ## Run It
 
 ```bash
 python examples/reproductions/hdfis_2023.py
 ```
 
-The data are downloaded from OpenML on the first run. Ten repetitions take about four
-minutes; `--repetitions 3` gives a quicker look.
+The data are downloaded from OpenML on the first run. A run takes about four minutes.

@@ -12,22 +12,18 @@ with the samples and features of the article, Colon and Leukemia:
 - inputs scaled to [0, 1] with the range of the training part;
 - three rules, centres at 0, 0.5 and 1, spreads of 1, consequents starting at zero;
 - Adam on the whole training set, 200 iterations, learning rate 0.001;
-- ten-fold cross-validation.
+- ten-fold cross-validation repeated three times, mean of the 30 runs.
 
-The accuracy on these small datasets depends on the partition into folds. The default
-seed is the one, among those tried, whose result is closest to the article; ``--seed``
-selects another partition. These are the defaults of ``ADPTSKClassifier``, with ``K = 1``. Run it with::
+These are the defaults of ``ADPTSKClassifier``. The article studies ten values of K; the
+script runs three of them, 0.6, 1.0 (the default) and 2.0.
+
+Run it with::
 
     python examples/reproductions/adptsk_2025.py
-    python examples/reproductions/adptsk_2025.py --k 0.6
 
-The data are downloaded on the first run. It takes about five minutes on a laptop,
-most of them on Leukemia.
+The data are downloaded on the first run. It takes about an hour on a laptop, most of it
+on Leukemia.
 """
-
-from __future__ import annotations
-
-import argparse
 
 import numpy as np
 import torch
@@ -35,51 +31,65 @@ from sklearn.datasets import fetch_openml
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import MinMaxScaler
 
+import highfis
 from highfis import ADPTSKClassifier
 
-# Mean test accuracy in percent reported in Table 3 of the article, by K.
+# --- Settings ---------------------------------------------------------------------------
+
+SEED = 0
+REPETITIONS = 3
+FOLDS = 10
+THREADS = 4
+
+# OpenML identifier of each dataset.
+DATASETS = {"Colon": 1432, "Leukemia": 1104}
+
+# Table 3 of the article: mean test accuracy in percent, by K.
 ARTICLE = {
-    "Colon": {0.2: 83.02, 0.4: 84.13, 0.6: 83.97, 0.8: 84.44, 1.0: 82.46, 1.5: 80.56, 2.0: 77.30},
-    "Leukemia": {0.2: 97.14, 0.4: 98.10, 0.6: 97.32, 0.8: 97.26, 1.0: 97.20, 1.5: 92.86, 2.0: 92.50},
+    "Colon": {0.6: 83.97, 1.0: 82.46, 2.0: 77.30},
+    "Leukemia": {0.6: 97.32, 1.0: 97.20, 2.0: 92.50},
 }
-OPENML_ID = {"Colon": 1432, "Leukemia": 1104}
 
+# --- Reproducibility --------------------------------------------------------------------
 
-def load(name: str) -> tuple[np.ndarray, np.ndarray]:
-    """Return the features and the integer labels of one dataset."""
-    bunch = fetch_openml(data_id=OPENML_ID[name], as_frame=False, parser="liac-arff")
-    features = bunch.data.toarray() if hasattr(bunch.data, "toarray") else bunch.data
-    return features.astype(np.float32), np.unique(bunch.target, return_inverse=True)[1]
+torch.set_num_threads(THREADS)
+torch.use_deterministic_algorithms(True)
+highfis.set_mf_cache_enabled(False)
 
+# --- Protocol ---------------------------------------------------------------------------
 
-def fold_accuracies(features: np.ndarray, labels: np.ndarray, k: float, seed: int) -> list[float]:
-    """Return the test accuracy of each fold of a ten-fold cross-validation."""
-    scores = []
-    folds = StratifiedKFold(n_splits=10, shuffle=True, random_state=seed)
-    for train, test in folds.split(features, labels):
-        scaler = MinMaxScaler().fit(features[train])
-        model = ADPTSKClassifier(k=k, random_state=seed)
-        model.fit(scaler.transform(features[train]), labels[train])
-        scores.append(100.0 * float(model.score(scaler.transform(features[test]), labels[test])))
-    return scores
+results = {(name, k): [] for name in DATASETS for k in ARTICLE[name]}
 
+for name, data_id in DATASETS.items():
+    bunch = fetch_openml(data_id=data_id, as_frame=False, parser="liac-arff")
+    # OpenML stores some datasets, Colon among them, as sparse matrices.
+    data = bunch.data.toarray() if hasattr(bunch.data, "toarray") else bunch.data
+    features = np.asarray(data, dtype=np.float32)
+    labels = np.unique(bunch.target, return_inverse=True)[1]
 
-def main() -> None:
-    """Run the comparison and print it next to the values of the article."""
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--k", type=float, default=1.0, choices=sorted(ARTICLE["Colon"]), help="K (default: 1.0)")
-    parser.add_argument("--seed", type=int, default=7, help="seed of the folds and of the model (default: 7)")
-    args = parser.parse_args()
-    # The results depend on the number of threads through the order of the floating-point
-    # operations, so it is fixed for the values in the documentation to be reproducible.
-    torch.set_num_threads(4)
+    for k in ARTICLE[name]:
+        for repetition in range(REPETITIONS):
+            folds = StratifiedKFold(n_splits=FOLDS, shuffle=True, random_state=SEED + repetition)
+            for train, test in folds.split(features, labels):
+                scaler = MinMaxScaler().fit(features[train])
+                x_train, x_test = scaler.transform(features[train]), scaler.transform(features[test])
 
-    print(f"{'dataset':9s} {'K':>4s} {'article':>8s} {'highFIS':>16s}")
-    for name, reported in ARTICLE.items():
-        features, labels = load(name)
-        scores = fold_accuracies(features, labels, args.k, args.seed)
-        print(f"{name:9s} {args.k:4.1f} {reported[args.k]:8.2f} {np.mean(scores):9.2f} +- {np.std(scores):4.2f}")
+                model = ADPTSKClassifier(k=k, random_state=SEED + repetition).fit(x_train, labels[train])
+                results[name, k].append(100.0 * model.score(x_test, labels[test]))
 
+# --- Result -----------------------------------------------------------------------------
 
-if __name__ == "__main__":
-    main()
+print("Table 3: ADPTSK (mean test accuracy in percent)")
+print("std: over the runs, and over the means of the repetitions")
+print(f"{'dataset':9s} {'K':>4s} {'article':>8s} {'highFIS':>8s} {'std':>12s}")
+for (name, k), scores in results.items():
+    accuracy = np.asarray(scores)
+    deviations = f"{accuracy.std():.2f} / {accuracy.reshape(REPETITIONS, FOLDS).mean(axis=1).std():.2f}"
+    print(f"{name:9s} {k:4.1f} {ARTICLE[name][k]:8.2f} {accuracy.mean():8.2f} {deviations:>12s}")
+
+print()
+print("Summary of the last model fitted")
+print(model.summary())
+
+print()
+highfis.show_versions()

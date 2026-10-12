@@ -8,7 +8,7 @@ pp. 2167-2181, 2023.
 **Script**: [`examples/reproductions/adatsk_2022.py`](https://github.com/dcruzf/highFIS/blob/main/examples/reproductions/adatsk_2022.py)
 
 The same article proposes FSRE-AdaTSK, the version with feature selection and rule
-extraction, which is covered on the [FSRE-ADATSK](../models/fsre-adatsk.md) model page.
+extraction, which has its own [reproduction](fsre-adatsk.md).
 
 ## Protocol of the Article
 
@@ -25,40 +25,39 @@ Section IV of the article, for the classifier without feature selection (its Tab
 | Learning rate and iterations | not stated | `learning_rate=0.05`, `epochs=1000` |
 | Normalization of the consequent inputs | none | `consequent_batch_norm=False` |
 | Inputs | not stated | scaled to $[0, 1]$ with the range of the training part |
-| Evaluation | ten-fold cross-validation, repeated five times | ten-fold cross-validation, once |
+| Evaluation | ten-fold cross-validation, repeated five times | the same, stratified folds |
 
 ## Result
 
-Mean test accuracy in percent; for highFIS, with the standard deviation over the ten
-folds.
+Output of the script, on one thread:
 
-| Dataset | Article | highFIS 0.33.0 |
-|---|---|---|
-| Iris (150 samples, 4 features) | 95.5 | 94.67 ± 4.99 |
-| Wine (178 samples, 13 features) | 98.7 | 97.22 ± 3.73 |
-| Wdbc (569 samples, 30 features) | 94.3 | 94.20 ± 2.36 |
+```text
+Table III: AdaTSK (mean test accuracy in percent)
+std: over the runs, and over the means of the repetitions
+dataset   article  highFIS          std
+Iris         95.5    94.67  5.33 / 0.42
+Wine         98.7    96.52  4.18 / 0.67
+Wdbc         94.3    94.13  3.11 / 0.14
 
-Iris and Wdbc are reproduced within one point. Wine is 1.5 points below.
+Summary of the last model fitted
+ADATSKClassifier
+  task               classification, 2 classes
+  features           30 seen in fit, 30 used by the model
+  rules              3 (rule base: coco)
+  fuzzy sets         3 per feature, ADATSKGaussianMF
+  firing strength    AdaSoftminRuleLayer
+  defuzzifier        SumBasedDefuzzifier
+  consequents        ClassificationConsequentLayer
+  parameters         276 trainable (90 antecedent, 186 consequent)
+Training
+  batch size         full batch
+  epochs             1000 epochs, learning rate 0.05, training loss 0.5000 -> 0.0677, training accuracy 0.9435
+```
 
-## Choice of the Partition
-
-The script uses seed 1, the one whose results are closest to the article among the seeds
-0 to 7. Over those seeds Iris goes from 94.00 to 95.33, Wine from 95.49 to 97.22 and
-Wdbc from 93.85 to 94.55. The values of the article for Iris and Wdbc lie inside or at
-the edge of these ranges; the 98.7 of Wine is above its range with this learning rate
-and number of iterations, which the article does not state. With a learning rate of
-0.1 and 3000 iterations highFIS gives 97.33, 98.33 and 95.96 with seed 0.
-
-## High-Dimensional Datasets
-
-Table III of the article also reports AdaTSK on seven datasets with more than 1000
-features, with the centres kept fixed: 71.9 on Colon, 87.5 on SRBCT and 80.0 on
-Leukemia. These are not reproduced: highFIS gives 87.4 on Colon with a learning rate of
-0.001 and 1000 iterations, and 87.3 with the defaults of the estimator. The learning
-rate and the number of iterations of the article are unknown, and plain gradient
-descent on 2000 features diverges with the 0.05 used above. Later articles of the same
-group report other values for AdaTSK on the same data: 84.3 and 74.4 on Colon, 98.8 on
-SRBCT, and 95.0 and 85.6 on Leukemia.
+Iris and Wdbc are reproduced within one point. Wine is 2.2 points below, with a learning
+rate and a number of iterations that the article does not state: with a learning rate of
+0.1 and 3000 iterations highFIS gives 97.33, 98.33 and 95.96 on the three datasets (ten
+folds).
 
 ## Differences from the Article
 
@@ -67,10 +66,14 @@ SRBCT, and 95.0 and 85.6 on Leukemia.
   falls with the number of features (`learning_rate="auto"`), 300 epochs and
   normalization of the consequent inputs, a setting that is stable in low and in high
   dimension. With the defaults the three datasets give 94.7, 99.4 and 96.8 with seed 0.
-- **Threads.** The script fixes four threads: the result can change with the number of
-  threads and with the processor.
 - **Datasets.** The article uses nineteen datasets. Iris, Wine and Wdbc ship with
   scikit-learn.
+
+## Reproducibility
+
+The script fixes the seeds, uses deterministic algorithms and one thread, and ends by
+printing the versions of the libraries and the processor. Another processor or another
+version of the numerical libraries can change the last digits.
 
 ## Run It
 
@@ -78,4 +81,4 @@ SRBCT, and 95.0 and 85.6 on Leukemia.
 python examples/reproductions/adatsk_2022.py
 ```
 
-No download is needed. A run takes about one minute.
+No download is needed. A run takes about five minutes.

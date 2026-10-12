@@ -166,22 +166,24 @@ feature selection, rule extraction, and En-FRB support.
 
 ## Fidelity to the source article
 
-Since version 0.32.0 the defaults of `FSREADATSKClassifier` follow the procedure of the
-article. Before that version the defaults reached 47% on Iris and 40% on Wine, at chance
-level; they now reach about 97% on Iris and 99% on Wine, with 9.0 features and 11.6
-rules on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there).
+The defaults of `FSREADATSKClassifier` follow the procedure of the article. They reach
+about 97% on Iris and 99% on Wine, with 9.0 features and 11.6
+rules on Wine against 6.3 and 6.3 in the article (accuracy 96.5% and 97.3% there). With
+the numbers of fuzzy sets of the article and standardized inputs, the accuracy and the
+numbers of features and rules of the article are reproduced on Iris, Wine and Wdbc: see
+the [reproduction of the article](../reproductions/fsre-adatsk.md).
 
 | Point | Article | highFIS |
 |---|---|---|
 | Fuzzy sets | Centres evenly spaced between the minimum and the maximum of each feature | `mf_init="grid"`, `rule_base="coco"`, `n_mfs=3` (defaults) |
 | Phases | Feature selection on the compact rule base, rule extraction on the enhanced one, then fine-tuning without gates | Same. `use_en_frb=True` also runs feature selection on the enhanced rule base |
-| Membership | $e^{-(x-m)^2}$, which has no spread (Eq. 3) | Same since 0.33.0 (`ADATSKGaussianMF`, spread fixed at one). Before, a Gaussian with a trained spread and padded centres |
-| Gate function | $M(\lambda) = \lambda\sqrt{e^{1-\lambda^2}}$, parameters initialized to 0.01 | `gate_fn="gate4"` (default); `gate_fn=None` gives the gate used before 0.32.0 |
-| Rule gates | Trained in the rule-extraction phase | Same. Before 0.32.0 they were left out of that phase, so three arbitrary rules were kept |
+| Membership | $e^{-(x-m)^2}$, which has no spread (Eq. 3) | Same (`ADATSKGaussianMF`, spread fixed at one) |
+| Gate function | $M(\lambda) = \lambda\sqrt{e^{1-\lambda^2}}$, parameters initialized to 0.01 | `gate_fn="gate4"` (default); `gate_fn=None` gives `ExpGate(k=10)` |
+| Rule gates | Trained in the rule-extraction phase | Same |
 | Selection | Features and rules whose gate passes the threshold | Same, on the magnitude of the gate: the gate is an odd function and can open towards −1 as well as +1 |
 | Loss | Squared error summed over the classes, averaged over the samples | `highfis.losses.SumSquaredErrorLoss` |
 | Optimizer | Full-batch gradient descent | Same |
-| Consequents | Start at zero, as in ADATSK | Same since 0.32.0; before, they started from a random draw |
+| Consequents | Start at zero, as in ADATSK | Same |
 
 Remaining differences:
 
@@ -190,9 +192,12 @@ Remaining differences:
   measurement on Iris and Wine.
 - **Batch normalization.** The article has none; highFIS normalizes the consequent inputs
   by default (`consequent_batch_norm=True`), which gave better results on both datasets.
-- **Number of fuzzy sets.** The article uses different numbers in the feature-selection
-  and rule-extraction phases for high-dimensional data (10 and 5); highFIS has one `n_mfs`
-  for every phase.
+- **Number of fuzzy sets.** The article uses ten fuzzy sets in the feature-selection
+  phase and five in the rule-extraction phase; highFIS uses `n_mfs` in every phase
+  unless `fs_n_mfs` and `re_n_mfs` are passed.
+- **Scale of the inputs.** The article does not state it. The membership function has no
+  spread, so the scale decides how well the rules are told apart: on inputs in $[0, 1]$
+  many more rules are kept than on standardized inputs.
 - **Thresholds.** The article uses other threshold coefficients above 1000 features (0.4
   and 0.5); highFIS keeps 0.5 and 0.3 unless `zeta_lambda` and `zeta_theta` are passed.
 - **High-dimensional data.** On SRBCT (83 samples, 2308 genes) the defaults give an accuracy

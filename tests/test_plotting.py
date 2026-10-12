@@ -64,13 +64,27 @@ def test_every_estimator_draws_every_kind(name: str) -> None:
     assert isinstance(est.plot(kind="history"), Axes)
     assert isinstance(est.plot(kind="rule_activation", X=x[90:]), Axes)
     assert isinstance(est.plot(kind="diagnostics", X=x[90:], y=target[90:]), Figure)
+    assert isinstance(est.plot(kind="feature_importance"), Axes)
+    if est.get_feature_gates() is None:
+        with pytest.raises(ValueError, match="have gates"):
+            est.plot(kind="gates")
+    else:
+        assert isinstance(est.plot(kind="gates"), Figure)
 
 
 def test_plot_methods_match_the_kinds(clf: Any) -> None:
     x, y, _ = _data()
 
-    assert plotting.PLOT_KINDS == ("memberships", "history", "rule_activation", "diagnostics")
+    assert plotting.PLOT_KINDS == (
+        "memberships",
+        "history",
+        "rule_activation",
+        "diagnostics",
+        "feature_importance",
+        "gates",
+    )
     assert isinstance(clf.plot_memberships(), Figure)
+    assert isinstance(clf.plot_feature_importance(), Axes)
     assert isinstance(clf.plot_history(), Axes)
     assert isinstance(clf.plot_rule_activation(x, y), Axes)
     assert isinstance(clf.plot_diagnostics(x, y), Figure)
@@ -358,3 +372,45 @@ def test_diagnostics_draw_on_given_axes(clf: Any) -> None:
     fig, axes = plt.subplots(1, 2)
 
     assert clf.plot_diagnostics(x, y, ax=axes) is fig
+
+
+# --- feature importance and gates ---------------------------------------------------------
+
+
+def test_feature_importance_draws_the_largest_values_in_order(clf: Any) -> None:
+    importance = clf.feature_importance()
+    panel = clf.plot_feature_importance(top=3)
+
+    widths = [bar.get_width() for bar in panel.patches]
+    assert widths == pytest.approx(np.sort(importance)[::-1][:3].tolist())
+    order = np.argsort(-importance)[:3]
+    assert [tick.get_text() for tick in panel.get_yticklabels()] == [clf.model_.input_names[i] for i in order]
+
+
+def test_feature_importance_draws_every_feature_when_asked(clf: Any) -> None:
+    assert len(clf.plot_feature_importance(top=None).patches) == clf.model_.n_inputs
+
+
+@pytest.mark.parametrize("name", ["DGTSKClassifier", "DGALETSKClassifier", "FSREADATSKClassifier"])
+def test_gates_show_the_kept_features_and_rules_with_their_thresholds(name: str) -> None:
+    est = _fit(name, epochs=40)
+    features_panel, rules_panel = est.plot_gates().axes
+
+    assert len(features_panel.patches) == len(est.selected_features_)
+    assert len(rules_panel.patches) == est.model_.n_rules
+    heights = [bar.get_height() for bar in features_panel.patches]
+    assert heights == pytest.approx(np.abs(est.get_feature_gates()).tolist())
+    for panel in (features_panel, rules_panel):
+        assert any(line.get_linestyle() == "--" for line in panel.lines)
+
+
+def test_gates_are_rejected_for_a_family_without_gates(clf: Any) -> None:
+    with pytest.raises(ValueError, match="have gates"):
+        clf.plot_gates()
+
+
+def test_gates_draw_on_given_axes() -> None:
+    est = _fit("DGTSKClassifier", epochs=40)
+    fig, axes = plt.subplots(1, 2)
+
+    assert est.plot_gates(ax=axes) is fig

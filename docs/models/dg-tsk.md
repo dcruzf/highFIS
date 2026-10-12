@@ -106,13 +106,17 @@ The paper describes DG-TSK as a single training phase in which feature gates, ru
 
 ## Fidelity to the source article
 
-Since version 0.32.0 the estimators follow the article and the authors' reference
-implementation on the points below. Before that version `DGTSKClassifier` reached about
-66% on Iris with its defaults; it now reaches about 95%, against 96.8% in the article.
+The [reproduction](../reproductions/dg-tsk.md) runs the protocol of the article and
+prints the result next to its Tables 2 and 3.
+
+The estimators follow the article and the authors' reference implementation on the
+points below. With its defaults `DGTSKClassifier` reaches about 95% on Iris, against
+96.8% in the article; a longer gate phase brings the selected features and rules to those
+of the article, at three times the cost.
 
 | Point | Article and reference code | highFIS |
 |---|---|---|
-| Spreads of the point-based rule base | One value for every feature and rule: the mean, over the features, of the sample standard deviations of the rule points (Eq. 23) | `pfrb_spread="std_mean"` (default). A number sets the common spread; `"std"` gives the per-feature spread used before 0.32.0 |
+| Spreads of the point-based rule base | One value for every feature and rule: the mean, over the features, of the sample standard deviations of the rule points (Eq. 23) | `pfrb_spread="std_mean"` (default). A number sets the common spread; `"std"` gives each feature its own spread |
 | Gate parameters | All equal to 0.1, a gate value of 0.0269 | Same |
 | Rule points when there are more samples than `pfrb_max_rules` | Drawn class by class (stratified) | Same, for classifiers |
 | After pruning | The gates are switched off; fine-tuning runs on a plain TSK system | Same. `get_feature_gates()` and `get_rule_gates()` still return the trained values |
@@ -126,8 +130,9 @@ Remaining differences:
   the gates with zero-order consequents and converts to first order before fine-tuning.
 - **Precision.** The reference code computes in double precision; highFIS uses the PyTorch
   default, single precision, unless `torch.set_default_dtype(torch.float64)` is set.
-- **The tables of the article against the authors' code.** On the same folds, highFIS and
-  the reference implementation agree, and both differ from the article in the same way:
+- **The tables of the article against the authors' code.** On the same folds and with the
+  defaults, highFIS and the reference implementation agree, and both differ from the
+  article in the same way:
 
     | Dataset | Article | Reference code | highFIS |
     |---|---|---|---|
@@ -137,8 +142,11 @@ Remaining differences:
 
     Accuracy in percent / selected features / extracted rules, ten stratified folds
     repeated twice, inputs scaled to `[0, 1]`. On Wine the two implementations select the
-    same features in all 20 folds. The article used its own copies of the data and its own
-    splits, which is the likely source of the difference.
+    same features in all 20 folds. The difference comes from the length of the gate
+    phase, which the article does not state for its table: with `dg_epochs=1000` both
+    implementations reach the accuracy and the structure of the article (Iris
+    95.8 / 2.6 / 3.0 and Wine 97.2 / 9.5 / 3.0 with highFIS, ten folds repeated ten
+    times). See the [reproduction](../reproductions/dg-tsk.md).
 - **The regressor is an extension.** The article only treats classification.
   `DGTSKRegressor` uses the same rule base, starts each rule from the target of its sample
   and keeps the rules that pass the threshold, which is usually one or two. On the

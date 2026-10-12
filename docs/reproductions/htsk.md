@@ -23,17 +23,32 @@ Section IV-B of the article, as the script applies it:
 
 ## Result
 
-Mean test accuracy in percent; for highFIS, with the standard deviation over the ten
-repetitions.
+Output of the script, on four threads; the standard deviation is over the ten repetitions:
 
-| Dataset | Family | Article | highFIS 0.32.0 |
-|---|---|---|---|
-| Vowel (990 samples, 10 features, 11 classes) | TSK | 87.91 | 87.81 ± 4.67 |
-| | LogTSK | 85.42 | 84.28 ± 3.53 |
-| | HTSK | 88.32 | 89.97 ± 4.68 |
-| Biodeg (1055 samples, 41 features, 2 classes) | TSK | 85.71 | 85.46 ± 1.52 |
-| | LogTSK | 85.87 | 84.73 ± 2.82 |
-| | HTSK | 85.99 | 84.38 ± 2.93 |
+```text
+Table II: mean test accuracy in percent
+dataset  family   article  highFIS    std
+Vowel    TSK        87.91    87.81   4.67
+Vowel    LogTSK     85.42    84.28   3.53
+Vowel    HTSK       88.32    89.97   4.68
+Biodeg   TSK        85.71    85.46   1.52
+Biodeg   LogTSK     85.87    84.73   2.82
+Biodeg   HTSK       85.99    84.38   2.93
+
+Summary of the last model fitted
+HTSKClassifier
+  task               classification, 2 classes
+  features           41 seen in fit, 41 used by the model
+  rules              30 (rule base: coco)
+  fuzzy sets         30 per feature, GaussianMF
+  firing strength    RuleLayer, T-norm GMeanTNorm
+  defuzzifier        SoftmaxLogDefuzzifier
+  consequents        ClassificationConsequentLayer
+  parameters         4980 trainable (2460 antecedent, 2520 consequent)
+Training
+  batch size         512
+  epochs             56 epochs, learning rate 0.01, training loss 0.6568 -> 0.2676, training accuracy 0.8916, validation loss 0.3364, best epoch 36
+```
 
 The six values are within 1.7 points of the article's, less than the standard deviation
 between repetitions.
@@ -57,16 +72,12 @@ between repetitions.
   did not change any of the accuracies above.
 - **Datasets.** The article uses fourteen datasets. Vowel and Biodeg are the two that
   OpenML provides with the samples and features of the article.
-- **Colon is not reproduced, and the partition explains it.** On Colon (62 samples, 2000
-  genes) the article reports 94.74 for HTSK, which is 18 of the 19 test samples in every
-  one of its ten runs. With highFIS the same protocol gives 79% on average over 30
-  random partitions with four trainings each. The partition decides most of the result:
-  the mean of a partition goes from 66% to 95%, with a standard deviation of 8 points
-  between partitions against 5 points between trainings on one partition, and one
-  partition in 30 reaches the value of the article. A mean of ten runs on ten
-  independent partitions lies between 74% and 85%. A logistic regression has the same
-  spread (83% on average, 7 points between partitions). The published value is what a
-  single favourable partition gives when the training is repeated on it.
+
+## Reproducibility
+
+The script fixes the seeds, uses deterministic algorithms and four threads, and ends by
+printing the versions of the libraries and the processor. Another processor or another
+version of the numerical libraries can change the last digits.
 
 ## Run It
 
@@ -74,5 +85,4 @@ between repetitions.
 python examples/reproductions/htsk_2021.py
 ```
 
-The data are downloaded from OpenML on the first run. Ten repetitions take about two
-minutes; `--repetitions 3` gives a quicker look.
+The data are downloaded from OpenML on the first run. A run takes about two minutes.

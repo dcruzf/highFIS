@@ -148,8 +148,7 @@ class DGALETSKClassifier(_PointRuleCap, FSREADATSKClassifier):
                 ``1.0`` (default) is the value of the source article (Section IV), for
                 inputs scaled to ``[0, 1]``. ``"std_mean"`` uses the mean, over the
                 features, of the sample standard deviations of the rule points, and
-                ``"std"`` gives each feature its own standard deviation, the behaviour
-                before 0.32.0. Multiplied by ``sigma_scale``.
+                ``"std"`` gives each feature its own standard deviation. Multiplied by ``sigma_scale``.
             random_state: Seed for reproducibility.
             dg_epochs: Maximum epochs for phase 1 (DG training). Default
                 ``10`` follows the paper.
@@ -400,8 +399,7 @@ class DGALETSKRegressor(_PointRuleCap, FSREADATSKRegressor):
                 ``1.0`` (default) is the value of the source article (Section IV), for
                 inputs scaled to ``[0, 1]``. ``"std_mean"`` uses the mean, over the
                 features, of the sample standard deviations of the rule points, and
-                ``"std"`` gives each feature its own standard deviation, the behaviour
-                before 0.32.0. Multiplied by ``sigma_scale``.
+                ``"std"`` gives each feature its own standard deviation. Multiplied by ``sigma_scale``.
             random_state: Seed for reproducibility.
             dg_epochs: Maximum epochs for phase 1 (DG training). Default
                 ``10`` follows the paper.

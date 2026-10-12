@@ -8,7 +8,8 @@ Fuzzy Systems*, vol. 33, no. 6, 2025.
 
 ## Protocol of the Article
 
-Section IV-A of the article. These settings are the defaults of `ADMTSKClassifier`.
+Section IV-A of the article. Except for the learning rate and the batch size, which the
+script varies as the article does, these settings are the defaults of `ADMTSKClassifier`.
 
 | Point | Article | In the script |
 |---|---|---|
@@ -17,43 +18,63 @@ Section IV-A of the article. These settings are the defaults of `ADMTSKClassifie
 | Membership | composite Gaussian, bounded below by $1/e$ (Eq. 31) | default (`GaussianPiMF`) |
 | T-norm | Dombi with $\lambda = \ln D / (\ln(K - \varepsilon) - \ln(1 - \varepsilon))$, $K = 10$ | default (`adaptive=True`, `k=10`) |
 | Consequents | start at zero | default |
-| Optimizer | Adam, 50 epochs, batches of 10% or 20% of the training samples | defaults (`epochs=50`, 10%) |
-| Learning rate | 0.01, 0.001 or 0.0001; the best of the six combinations with the batch size is reported | 0.01 |
-| Evaluation | ten-fold cross-validation, repeated five times | ten-fold cross-validation, once |
+| Optimizer | Adam, 50 epochs, batches of 10% or 20% of the training samples | default (`epochs=50`); both batch sizes |
+| Learning rate | 0.01, 0.001 or 0.0001; the best of the six combinations with the batch size is reported | the three values; the six combinations are printed, and the best |
+| Evaluation | ten-fold cross-validation, repeated five times | the same, stratified folds |
 
 ## Result
 
-Mean test accuracy in percent; for highFIS, with the standard deviation over the ten
-folds.
+Output of the script, on four threads; the standard deviation is over the 50 runs:
 
-| Dataset | Article | highFIS 0.33.0 |
-|---|---|---|
-| Colon (62 samples, 2000 genes) | 86.33 | 85.95 ± 14.18 |
-| Leukemia (72 samples, 7129 genes) | 97.29 | 97.14 ± 5.71 |
+```text
+ADMTSK: mean test accuracy in percent of each combination
+dataset   learning rate  batch  highFIS    std
+Colon              0.01    10%    85.86  12.68
+Colon              0.01    20%    84.86  11.49
+Colon             0.001    10%    82.86  11.45
+Colon             0.001    20%    82.86   9.89
+Colon            0.0001    10%    87.57  10.79
+Colon            0.0001    20%    86.24  11.22
+Leukemia           0.01    10%    97.43   5.49
+Leukemia           0.01    20%    97.43   5.49
+Leukemia          0.001    10%    97.14   5.71
+Leukemia          0.001    20%    96.86   5.92
+Leukemia         0.0001    10%    96.86   5.92
+Leukemia         0.0001    20%    97.14   5.71
 
-Both are reproduced within half a point, with seed 0 and four threads. The seed was not
-chosen for this family.
+Table V: the best of the six combinations (mean test accuracy in percent)
+dataset    article  highFIS
+Colon        86.33    87.57
+Leukemia     97.29    97.43
 
-## The Six Combinations of the Article
+Summary of the last model fitted
+ADMTSKClassifier
+  task               classification, 2 classes
+  features           7129 seen in fit, 7129 used by the model
+  rules              3 (rule base: coco)
+  fuzzy sets         3 per feature, GaussianPiMF
+  firing strength    RuleLayer, T-norm AdaptiveDombiTNorm
+  defuzzifier        SumBasedDefuzzifier
+  consequents        ClassificationConsequentLayer
+  parameters         85554 trainable (42774 antecedent, 42780 consequent)
+Training
+  batch size         13
+  epochs             50 epochs, learning rate 0.0001, training loss 0.3134 -> 0.0044, training accuracy 1.0000
+```
 
-The article reports, for each dataset, the best of six combinations of learning rate and
-batch size. With highFIS, ten folds, accuracy for the learning rates 0.01, 0.001 and
-0.0001, each with batches of 10% and 20%:
+The best of the six combinations is within 1.3 points of the article on Colon and within
+0.2 point on Leukemia.
 
-| Dataset | Model | Article | Best | The six values |
-|---|---|---|---|---|
-| Colon | ADMTSK | 86.33 | 87.38 | 86.0, 79.0, 84.0, 80.7, 87.4, 85.7 |
-| SRBCT (83 samples, 2308 genes) | ADMTSK | 98.81 | 98.89 | 98.9, 98.9, 98.9, 98.9, 98.9, 97.8 |
-| Leukemia | ADMTSK | 97.29 | 97.14 | 97.1, 97.1, 95.7, 95.7, 95.7, 97.1 |
-| Colon | DombiTSK, $\lambda = 1$ | — | 87.38 | 86.0, 79.0, 82.9, 84.0, 87.4, 85.7 |
-| SRBCT | DombiTSK, $\lambda = 1$ | — | 98.89 | 98.9, 98.9, 98.9, 98.9, 97.8, 97.8 |
+## The Six Combinations
 
-These runs read Colon from a file with the samples in another order than on OpenML, so
-their folds are not the folds of the script, and the first value of Colon (86.0) is not
-the 85.95 of the table above. On Colon the choice among the six moves the accuracy by eight points, more than the
-differences between the models that the article compares; with 62 samples one test
-sample is 1.6 points of the cross-validated accuracy. The best of six chosen on the
-test folds is an optimistic estimate.
+The article reports, for each dataset, the best of the six combinations, and the last
+table of the output does the same. The defaults of `ADMTSKClassifier` on these datasets
+are the third combination: a learning rate of 0.001 above 1000 features and batches of
+10%. For your own data, choose the combination on a validation part of the training
+data.
+
+On SRBCT (83 samples, 2308 genes), with ten folds, the best of the six combinations is
+98.89, against 98.81 in the article.
 
 ## Differences from the Article
 
@@ -69,12 +90,17 @@ test folds is an optimistic estimate.
   dependencies; SRBCT above uses the copy distributed with the code of the HDFIS
   article.
 
+## Reproducibility
+
+The script fixes the seeds, uses deterministic algorithms and four threads, and ends by
+printing the versions of the libraries and the processor. Another number of threads,
+another processor or another version of the numerical libraries can change the result.
+
 ## Run It
 
 ```bash
 python examples/reproductions/admtsk_2025.py
-python examples/reproductions/admtsk_2025.py --learning-rate 0.0001
 ```
 
-The data are downloaded from OpenML on the first run. A run takes about nine minutes,
-most of them on Leukemia.
+The data are downloaded from OpenML on the first run. A run takes several hours, most of
+them on Leukemia; remove it from `DATASETS` in the script for a run of about half an hour.

@@ -13,24 +13,17 @@ scikit-learn:
   maximum of the training part, membership exp(-(x - m)^2);
 - consequents starting at zero, no normalization of the consequent inputs;
 - gradient descent on the whole training set;
-- ten-fold cross-validation.
+- ten-fold cross-validation repeated five times, mean of the 50 runs.
 
-The article does not state the learning rate nor the number of iterations. The script
-uses 0.05 and 1000, with inputs scaled to [0, 1]; the defaults of ``ADATSKClassifier``
-(0.01 and 100) are meant for a quick first fit. The accuracy depends on the partition
-into folds: the default seed is the one, among those tried, whose results are closest to
-the article, and ``--seed`` selects another partition.
+The article does not state the learning rate, the number of iterations nor the scale of
+the inputs. The script uses 0.05 and 1000, with inputs scaled to [0, 1].
 
 Run it with::
 
     python examples/reproductions/adatsk_2022.py
 
-No download is needed. It takes about one minute on a laptop.
+No download is needed. It takes about five minutes on a laptop.
 """
-
-from __future__ import annotations
-
-import argparse
 
 import numpy as np
 import torch
@@ -38,40 +31,62 @@ from sklearn.datasets import load_breast_cancer, load_iris, load_wine
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import MinMaxScaler
 
+import highfis
 from highfis import ADATSKClassifier
 
-# Mean test accuracy in percent reported in Table III of the article (Ada-softmin).
+# --- Settings ---------------------------------------------------------------------------
+
+SEED = 0
+REPETITIONS = 5
+FOLDS = 10
+THREADS = 1
+
+DATASETS = {"Iris": load_iris, "Wine": load_wine, "Wdbc": load_breast_cancer}
+
+# Table III of the article (Ada-softmin): mean test accuracy in percent.
 ARTICLE = {"Iris": 95.5, "Wine": 98.7, "Wdbc": 94.3}
-LOADERS = {"Iris": load_iris, "Wine": load_wine, "Wdbc": load_breast_cancer}
 
+# --- Reproducibility --------------------------------------------------------------------
 
-def fold_accuracies(features: np.ndarray, labels: np.ndarray, seed: int) -> list[float]:
-    """Return the test accuracy of each fold of a ten-fold cross-validation."""
-    scores = []
-    folds = StratifiedKFold(n_splits=10, shuffle=True, random_state=seed)
-    for train, test in folds.split(features, labels):
-        scaler = MinMaxScaler().fit(features[train])
-        model = ADATSKClassifier(learning_rate=0.05, epochs=1000, consequent_batch_norm=False, random_state=seed)
-        model.fit(scaler.transform(features[train]), labels[train])
-        scores.append(100.0 * float(model.score(scaler.transform(features[test]), labels[test])))
-    return scores
+torch.set_num_threads(THREADS)
+torch.use_deterministic_algorithms(True)
+highfis.set_mf_cache_enabled(False)
 
+# --- Protocol ---------------------------------------------------------------------------
 
-def main() -> None:
-    """Run the comparison and print it next to the values of the article."""
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--seed", type=int, default=1, help="seed of the folds and of the model (default: 1)")
-    args = parser.parse_args()
-    # The results depend on the number of threads through the order of the floating-point
-    # operations, so it is fixed for the values in the documentation to be reproducible.
-    torch.set_num_threads(4)
+results = {name: [] for name in DATASETS}
 
-    print(f"{'dataset':8s} {'article':>8s} {'highFIS':>16s}")
-    for name, reported in ARTICLE.items():
-        features, labels = LOADERS[name](return_X_y=True)
-        scores = fold_accuracies(features.astype(np.float32), labels, args.seed)
-        print(f"{name:8s} {reported:8.1f} {np.mean(scores):9.2f} +- {np.std(scores):4.2f}")
+for name, loader in DATASETS.items():
+    features, labels = loader(return_X_y=True)
+    features = features.astype(np.float32)
 
+    for repetition in range(REPETITIONS):
+        folds = StratifiedKFold(n_splits=FOLDS, shuffle=True, random_state=SEED + repetition)
+        for train, test in folds.split(features, labels):
+            scaler = MinMaxScaler().fit(features[train])
+            x_train, x_test = scaler.transform(features[train]), scaler.transform(features[test])
 
-if __name__ == "__main__":
-    main()
+            model = ADATSKClassifier(
+                learning_rate=0.05,
+                epochs=1000,
+                consequent_batch_norm=False,
+                random_state=SEED + repetition,
+            ).fit(x_train, labels[train])
+            results[name].append(100.0 * model.score(x_test, labels[test]))
+
+# --- Result -----------------------------------------------------------------------------
+
+print("Table III: AdaTSK (mean test accuracy in percent)")
+print("std: over the runs, and over the means of the repetitions")
+print(f"{'dataset':8s} {'article':>8s} {'highFIS':>8s} {'std':>12s}")
+for name, scores in results.items():
+    accuracy = np.asarray(scores)
+    deviations = f"{accuracy.std():.2f} / {accuracy.reshape(REPETITIONS, FOLDS).mean(axis=1).std():.2f}"
+    print(f"{name:8s} {ARTICLE[name]:8.1f} {accuracy.mean():8.2f} {deviations:>12s}")
+
+print()
+print("Summary of the last model fitted")
+print(model.summary())
+
+print()
+highfis.show_versions()
