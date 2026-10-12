@@ -1,6 +1,6 @@
 """Regenerate the figures of docs/guides/plotting.md.
 
-Run from the repository root:  hatch run python docs/make_doc_plots.py
+Run from the repository root:  hatch run docs:plots
 The code mirrors the examples on that page, so the page and its figures stay in step.
 """
 

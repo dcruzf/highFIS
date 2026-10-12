@@ -71,7 +71,7 @@ Documentation is built with [Zensical](https://github.com/dcruzf/zensical).
 ```bash
 hatch run docs:serve   # live preview
 hatch run docs:build   # build static site
-hatch run python docs/make_doc_plots.py   # regenerate the figures of the plotting guide
+hatch run docs:plots   # regenerate the figures of the plotting guide
 ```
 
 ## Pull Request Guidelines
