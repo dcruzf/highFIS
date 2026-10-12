@@ -167,6 +167,11 @@ Remaining differences:
 - `fit_finetune` supports both behaviours: freeze antecedents (`freeze_antecedents=True`, model-level default) or update antecedents (`freeze_antecedents=False`). `DGTSKClassifier` now defaults to `freeze_antecedents_finetune=False` for better paper conformance in the end-to-end estimator pipeline.
 - **Loss function**: the paper uses MSE (eq. 8) throughout, including for classification (applied to one-hot targets). highFIS follows that paper contract in the DG path: classification uses MSE with one-hot targets, and regression uses MSE on scalar targets.
 - `DGTSKClassifier` and `DGTSKRegressor` support both classification and regression in the same DG-TSK style.
+- **Length of the gate phase.** `dg_epochs` defaults to 300, the value of the reference
+  code. The gates start almost closed and keep opening during the phase, so a short phase
+  keeps few features. When the fitted model keeps one or two features, or underfits,
+  train the gates for longer: the [reproduction](../reproductions/dg-tsk.md) of the
+  article uses `dg_epochs=1000`, about three times the cost.
 
 ## highFIS API summary
 

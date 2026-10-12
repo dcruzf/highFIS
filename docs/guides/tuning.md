@@ -226,6 +226,7 @@ values for your data, and the articles behind the families do not agree on them 
 | `k` | AYATSK, ADPTSK | AYATSK: 2, 2.5, 3.3, 5, 10; ADPTSK: 0.2 to 2 |
 | `zeta_lambda`, `zeta_theta` | DG-TSK, DG-ALETSK, FSRE-ADATSK | around the defaults |
 | `dg_epochs` | DG-ALETSK | 10 (default), 30, 100: with few features the default is short (Wine: 93.9% with 10, 98.9% with 100) |
+| `dg_epochs` | DG-TSK | 300 (default), 1000, 3000: the gates keep opening during the phase, so a short one keeps few features (Glass: 45.8% and one feature with 300, 62.2% and eight features with 1000) |
 | `n_heads`, `head_size` | MHTSK | see the model page |
 
 ```python
