@@ -1,6 +1,6 @@
 """Regenerate the figures of docs/guides/plotting.md.
 
-Run from the repository root:  hatch run python scripts/make_doc_plots.py
+Run from the repository root:  hatch run python docs/make_doc_plots.py
 The code mirrors the examples on that page, so the page and its figures stay in step.
 """
 
@@ -18,7 +18,7 @@ from sklearn.preprocessing import MinMaxScaler  # noqa: E402
 
 from highfis import DGALETSKClassifier, HTSKClassifier, HTSKRegressor, TSKClassifier  # noqa: E402
 
-OUT = Path(__file__).resolve().parent.parent / "docs" / "assets" / "plots"
+OUT = Path(__file__).resolve().parent / "assets" / "plots"
 DPI = 110
 
 
