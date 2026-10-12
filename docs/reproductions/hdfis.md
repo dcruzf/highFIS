@@ -95,5 +95,3 @@ python examples/reproductions/hdfis_2023.py
 ```
 
 The data are downloaded from OpenML on the first run. A run takes about four minutes.
-The estimators warn at each fit that one rule takes almost all the weight on these data
-(`DegenerateFiringWarning`); the script silences that warning.

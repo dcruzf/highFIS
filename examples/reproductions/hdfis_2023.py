@@ -24,8 +24,6 @@ Run it with::
 The data are downloaded on the first run. It takes about four minutes on a laptop.
 """
 
-import warnings
-
 import numpy as np
 import torch
 from sklearn.datasets import fetch_openml
@@ -58,9 +56,6 @@ ARTICLE = {
 torch.set_num_threads(THREADS)
 torch.use_deterministic_algorithms(True)
 highfis.set_mf_cache_enabled(False)
-
-# On these data one rule takes almost all the weight, which the estimators report at each fit.
-warnings.filterwarnings("ignore", category=highfis.DegenerateFiringWarning)
 
 # --- Protocol ---------------------------------------------------------------------------
 
