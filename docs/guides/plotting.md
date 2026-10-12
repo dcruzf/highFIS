@@ -1,6 +1,6 @@
 # Diagnostic Plots
 
-Every fitted estimator has a `plot` method. It draws one of four diagnostic plots, chosen
+Every fitted estimator has a `plot` method. It draws one of six diagnostic plots, chosen
 with `kind`:
 
 | `kind` | Shows | Needs data |
@@ -9,10 +9,12 @@ with `kind`:
 | `"history"` | Loss or a metric per epoch | no |
 | `"rule_activation"` | Mean firing strength of each rule, by class when labels are given | `X`, optionally `y` |
 | `"diagnostics"` | Confusion matrix and decision margin, or fit and residuals | `X` and `y` |
+| `"feature_importance"` | The features that weigh most in the consequents | no |
+| `"gates"` | Gates of the kept features and rules, with their thresholds (gated families) | no |
 
 Each kind is also a method of its own (`plot_memberships`, `plot_history`,
-`plot_rule_activation`, `plot_diagnostics`), which is easier to discover with
-autocompletion.
+`plot_rule_activation`, `plot_diagnostics`, `plot_feature_importance`, `plot_gates`),
+which is easier to discover with autocompletion.
 
 Plotting needs matplotlib, which is an optional dependency:
 
@@ -163,6 +165,46 @@ fig = reg.plot(
 What to look for: residuals that trend with the observed value, as here, mean the model
 shrinks its predictions towards the mean.
 
+## Feature importance
+
+```python
+ax = clf.plot(kind="feature_importance", top=8)
+```
+
+![The eight features with the largest importance](../assets/plots/feature-importance.png)
+
+The bars are the values of `clf.feature_importance()`: the mean magnitude of the
+consequent coefficients of each feature, normalized to sum to one, from the largest.
+`top` sets how many features are drawn (20 by default, `None` for all). The features are
+named as in `fit` when the data had names, for example the columns of a DataFrame.
+
+What to look for: the inputs must be on a common scale for the coefficients to be
+comparable. With thousands of features, a few bars far above the rest point to the
+features to look at first.
+
+## Gates
+
+DG-TSK, DG-ALETSK and FSRE-ADATSK train a gate for every feature and for every rule, and
+keep the features and rules whose gates pass a threshold:
+
+```python
+from highfis import DGALETSKClassifier
+
+gated = DGALETSKClassifier(n_mfs=3, dg_epochs=40, finetune_epochs=60, random_state=0).fit(X_fit, y_fit)
+fig = gated.plot(kind="gates")
+```
+
+![Gates of the features and rules that a DG-ALETSK model kept](../assets/plots/gates.png)
+
+The left panel has one bar for each feature in `selected_features_` and the right panel
+one for each rule of the fitted model; the dashed lines are the thresholds. The values
+are those of `get_feature_gates()` and `get_rule_gates()`, at the end of the phase that
+trained them. For FSRE-ADATSK, whose gate is an odd function, the magnitude is drawn.
+The other families have no gates, and the plot raises a `ValueError` for them.
+
+What to look for: gates just above the threshold belong to features or rules that a
+slightly different threshold, or a shorter gate phase, would have removed.
+
 ## Drawing on your own axes
 
 ```python
@@ -173,8 +215,8 @@ clf.plot(kind="history", ax=left)
 clf.plot(kind="rule_activation", X=X_test, y=y_test, ax=right)
 ```
 
-Single-panel plots take one `Axes`. `"memberships"` takes one per feature shown and
-`"diagnostics"` takes two.
+Single-panel plots take one `Axes`. `"memberships"` takes one per feature shown, and
+`"diagnostics"` and `"gates"` take two.
 
 The same functions are available in `highfis.plotting` and take the estimator as their
 first argument; see the [API reference](../api/plotting.md).

@@ -44,6 +44,7 @@ def _doc_globals() -> dict[str, Any]:
         "y_train": y_train, "y_test": y_test,
         "X_train_scaled": x_train_scaled, "X_test_scaled": x_test_scaled,
         "X_val": x_test_scaled, "y_val": y_test,
+        "X_fit": x_train_scaled, "y_fit": y_train,
         "clf": clf,
     }
 
