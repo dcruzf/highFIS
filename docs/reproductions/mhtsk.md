@@ -25,14 +25,17 @@ more than 1000 features, so the script builds the model without arguments.
 
 ## Result
 
-Mean test accuracy in percent, with the standard deviation over the ten repetitions.
+Output of the script, on four threads; the standard deviation is over the ten repetitions:
 
-| Dataset | Article | highFIS |
-|---|---|---|
-| Colon (62 samples, 2000 genes) | 88.95 ± 5 | 87.90 ± 7.08 |
-| Leukemia (72 samples, 7129 genes) | 97.27 ± 3 | 94.54 ± 4.45 |
+```text
+Table VI: mean test accuracy in percent
+dataset    article  highFIS    std
+Colon        88.95    87.89   7.08
+Leukemia     97.27    94.55   4.45
+```
 
-Colon is reproduced within one point. Leukemia is 2.7 points below.
+The article reports standard deviations of about 5 on Colon and 3 on Leukemia. Colon is
+reproduced within about one point. Leukemia is 2.7 points below.
 
 ## Choice of the Splits
 
@@ -59,11 +62,15 @@ may differ from the one of the article.
   spreads of one are too wide for inputs in $[0, 1]$.
 - **Rule extraction.** The article also reports the model after rule extraction
   (MHTSK_RE); `rule_extraction=True` implements it, and it is not part of this script.
-- **Threads.** The script fixes four threads: the result can change with the number of
-  threads and with the processor.
 - **Datasets.** The article uses eleven datasets. Colon and Leukemia are the two that
   OpenML provides with the samples and features of the article and without further
   dependencies.
+
+## Reproducibility
+
+The script fixes the seeds, uses deterministic algorithms and four threads, and ends by
+printing the versions of the libraries and the processor. Another processor or another
+version of the numerical libraries can change the last digits.
 
 ## Run It
 
@@ -72,4 +79,4 @@ python examples/reproductions/mhtsk_2025.py
 ```
 
 The data are downloaded from OpenML on the first run. A run takes about twenty minutes,
-most of them on Leukemia; `--repetitions 3` gives a quicker look.
+most of them on Leukemia.

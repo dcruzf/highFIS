@@ -11,6 +11,9 @@ Available kinds:
       class when labels are given.
     - ``"diagnostics"`` — confusion matrix and decision margin for classifiers;
       predicted against observed and residuals for regressors.
+    - ``"feature_importance"`` — the features that weigh most in the consequents.
+    - ``"gates"`` — the gates of the features and rules that a gated family kept, with
+      the thresholds they passed.
 
 Conventions:
     - matplotlib is an optional dependency (``pip install highfis[plot]``) and is only
@@ -34,7 +37,14 @@ from sklearn.utils.validation import check_is_fitted
 from ._describe import feature_labels as _feature_labels
 from ._describe import model_columns as _model_columns
 
-PLOT_KINDS: tuple[str, ...] = ("memberships", "history", "rule_activation", "diagnostics")
+PLOT_KINDS: tuple[str, ...] = (
+    "memberships",
+    "history",
+    "rule_activation",
+    "diagnostics",
+    "feature_importance",
+    "gates",
+)
 
 _PHASE_LABELS = {"dg": "DG", "fs": "feature selection", "re": "rule extraction", "finetune": "fine-tune"}
 _HEATMAP_MAX_ANNOTATED_CELLS = 80
@@ -366,11 +376,99 @@ def plot_diagnostics(estimator: Any, X: Any, y: Any, *, ax: Any = None) -> Any:
     return fig
 
 
+def plot_feature_importance(estimator: Any, *, top: int | None = 20, ax: Any = None) -> Any:
+    """Plot the features that weigh most in the consequents of the fitted model.
+
+    The importance is the one of ``estimator.feature_importance()``: the mean magnitude of
+    the consequent coefficients of each feature, normalized to sum to one. Features are
+    named as in ``fit`` when the data had names, and by their column otherwise.
+
+    Args:
+        estimator: A fitted estimator.
+        top: Number of features to draw, from the most important. ``None`` draws all.
+        ax: Axes to draw on. ``None`` creates a new figure.
+
+    Returns:
+        The ``Axes`` with the bar chart.
+    """
+    check_is_fitted(estimator, "model_")
+    importance = estimator.feature_importance()
+    if importance is None:
+        raise ValueError("this model has no consequent coefficients to compute a feature importance from")
+    importance = np.asarray(importance, dtype=float)
+    labels = _feature_labels(estimator)
+    order = np.argsort(-importance)
+    if top is not None:
+        order = order[: int(top)]
+
+    _, (panel,) = _axes(ax, 1, ncols=1, panel_size=(4.8, max(2.4, 0.22 * len(order) + 1.0)))
+    panel.barh(np.arange(len(order)), importance[order])
+    panel.set_yticks(np.arange(len(order)), [labels[position] for position in order])
+    panel.invert_yaxis()
+    panel.set_xlabel("Feature importance")
+    return panel
+
+
+def _gate_thresholds(history: dict[str, Any]) -> tuple[float | None, float | None]:
+    """Thresholds that the feature and rule gates passed, when ``fit`` recorded them."""
+    record = history.get("threshold", history)
+    feature, rule = record.get("tau_lambda"), record.get("tau_theta")
+    return (None if feature is None else float(feature), None if rule is None else float(rule))
+
+
+def plot_gates(estimator: Any, *, ax: Any = None) -> Any:
+    """Plot the gates of the features and of the rules that a gated family kept.
+
+    Only DG-TSK, DG-ALETSK and FSRE-ADATSK have gates. The bars are the gate values at the
+    end of the phase that trained them, for the features in ``selected_features_`` and for
+    the rules of the fitted model, and the dashed line is the threshold they passed. The
+    gate of FSRE-ADATSK is an odd function, so its magnitude is drawn.
+
+    Args:
+        estimator: A fitted estimator of a gated family.
+        ax: Two axes to draw on, for the features and for the rules. ``None`` creates a
+            new figure.
+
+    Returns:
+        The ``Figure`` with the two panels.
+    """
+    check_is_fitted(estimator, "model_")
+    feature_gates, rule_gates = estimator.get_feature_gates(), estimator.get_rule_gates()
+    if feature_gates is None or rule_gates is None:
+        raise ValueError("only DG-TSK, DG-ALETSK and FSRE-ADATSK have gates to plot")
+    thresholds = _gate_thresholds(estimator.history_)
+    panels = (
+        ("Feature gates", np.abs(np.asarray(feature_gates, dtype=float)).ravel(), _feature_labels(estimator)),
+        ("Rule gates", np.abs(np.asarray(rule_gates, dtype=float)).ravel(), None),
+    )
+
+    fig, axes = _axes(ax, 2, ncols=2, panel_size=(4.4, 3.0))
+    for panel, (title, values, labels), threshold in zip(axes, panels, thresholds, strict=True):
+        positions = np.arange(len(values))
+        panel.bar(positions, values)
+        if threshold is not None:
+            panel.axhline(threshold, color="0.3", linestyle="--", label=f"threshold ({threshold:.2f})")
+            panel.legend(loc="lower right")
+        if labels is None:
+            labels = [f"Rule {rule}" for rule in positions]
+        if len(values) <= 30:
+            slanted = len(values) > 4
+            panel.set_xticks(positions, labels, rotation=60 if slanted else 0, ha="right" if slanted else "center")
+        else:
+            panel.set_xticks([])
+        panel.set_ylim(0.0, max(1.05, float(values.max()) * 1.05))
+        panel.set_ylabel("Gate value")
+        panel.set_title(title)
+    return fig
+
+
 _PLOTTERS: dict[str, Callable[..., Any]] = {
     "memberships": plot_memberships,
     "history": plot_history,
     "rule_activation": plot_rule_activation,
     "diagnostics": plot_diagnostics,
+    "feature_importance": plot_feature_importance,
+    "gates": plot_gates,
 }
 
 
@@ -379,8 +477,8 @@ def plot(estimator: Any, kind: str = "memberships", **kwargs: Any) -> Any:
 
     Args:
         estimator: A fitted estimator.
-        kind: One of ``"memberships"`` (default), ``"history"``, ``"rule_activation"``
-            or ``"diagnostics"``.
+        kind: One of ``"memberships"`` (default), ``"history"``, ``"rule_activation"``,
+            ``"diagnostics"``, ``"feature_importance"`` or ``"gates"``.
         **kwargs: Arguments of the corresponding ``plot_<kind>`` function.
 
     Returns:
@@ -395,6 +493,8 @@ __all__: list[str] = [
     "PLOT_KINDS",
     "plot",
     "plot_diagnostics",
+    "plot_feature_importance",
+    "plot_gates",
     "plot_history",
     "plot_memberships",
     "plot_rule_activation",

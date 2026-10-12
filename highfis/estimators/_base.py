@@ -1223,8 +1223,8 @@ class _BaseTSKEstimator(BaseEstimator):
         Requires matplotlib (``pip install highfis[plot]``).
 
         Args:
-            kind: ``"memberships"`` (default), ``"history"``, ``"rule_activation"`` or
-                ``"diagnostics"``.
+            kind: ``"memberships"`` (default), ``"history"``, ``"rule_activation"``,
+                ``"diagnostics"``, ``"feature_importance"`` or ``"gates"``.
             **kwargs: Arguments of the corresponding ``plot_<kind>`` method.
 
         Returns:
@@ -1267,6 +1267,20 @@ class _BaseTSKEstimator(BaseEstimator):
         See :func:`highfis.plotting.plot_diagnostics`.
         """
         return plotting.plot_diagnostics(self, X, y, ax=ax)
+
+    def plot_feature_importance(self, *, top: int | None = 20, ax: Any = None) -> Any:
+        """Plot the features that weigh most in the consequents.
+
+        See :func:`highfis.plotting.plot_feature_importance`.
+        """
+        return plotting.plot_feature_importance(self, top=top, ax=ax)
+
+    def plot_gates(self, *, ax: Any = None) -> Any:
+        """Plot the gates of the kept features and rules of a gated family, with their thresholds.
+
+        See :func:`highfis.plotting.plot_gates`.
+        """
+        return plotting.plot_gates(self, ax=ax)
 
     def feature_importance(self) -> np.ndarray | None:
         """Compute a normalized feature importance vector from consequent weights."""

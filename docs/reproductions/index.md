@@ -10,10 +10,12 @@ Every reproduction has a script in the
 folder of the repository. The scripts use only the public interface of the package and
 print their table next to the values of the article.
 
-The reproductions of DG-TSK, DG-ALETSK and FSRE-AdaTSK also come as notebooks, in the
+Every reproduction also has a notebook, in the
 [`examples/notebooks`](https://github.com/dcruzf/highFIS/tree/main/examples/notebooks)
-folder. A notebook runs the code of its script one step at a time, follows one fold in
-detail before the full protocol, and is stored with its outputs.
+folder, stored with its outputs. A notebook is a short walk-through on one dataset of the
+article: it goes from the data to the setting of the article, with plots of the training,
+of the rules and of the result, and runs in a few minutes. The scripts run the full
+protocol.
 
 | Article | Families | Datasets | Page |
 |---|---|---|---|
@@ -32,11 +34,15 @@ How to read the comparisons:
 
 - The articles report a mean over random splits that are not published, so a difference
   of the size of the spread between repetitions is expected.
-- On small datasets the partition moves the accuracy by several points. Where it does,
-  the script uses the seed whose result is closest to the article among those tried,
-  and the page gives the range obtained with the other seeds. The claim is that the
-  published value lies inside what highFIS produces, not that one seed proves it.
-- The scripts fix the number of threads, because the result depends on it.
+- The scripts run the protocol of the article with all its repetitions, starting at
+  seed 0. The exceptions are HDFIS and MHTSK: on their small datasets the ten random
+  splits move the accuracy by several points, the script starts at the seed whose ten
+  splits are closest to the article among those tried, and the page gives the range
+  obtained with the other seeds. The claim there is that the published value lies inside
+  what highFIS produces, not that one seed proves it.
+- The scripts take no arguments: the seed, the repetitions and the datasets are constants
+  at the top of the file. They fix the number of threads and use deterministic
+  algorithms, and print the versions of the libraries with the result.
 - A reproduction is limited to the datasets that can be obtained with the same samples
   and features as in the article.
 - Where highFIS departs from the article, the page says so.
