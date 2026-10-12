@@ -46,6 +46,7 @@ def _get_mf_registry() -> dict[str, type]:
         ConstantMF,
         DiffSigmoidalMF,
         DimensionDependentGaussianMF,
+        ExtendedGaussianMF,
         GaussianMF,
         GaussianPiMF,
         LinSShapedMF,
@@ -68,6 +69,7 @@ def _get_mf_registry() -> dict[str, type]:
         "ConstantMF": ConstantMF,
         "DiffSigmoidalMF": DiffSigmoidalMF,
         "DimensionDependentGaussianMF": DimensionDependentGaussianMF,
+        "ExtendedGaussianMF": ExtendedGaussianMF,
         "GaussianMF": GaussianMF,
         "GaussianPiMF": GaussianPiMF,
         "GaussianPIMF": GaussianPiMF,  # legacy key for backward-compatible checkpoint loading

@@ -14,6 +14,7 @@ from highfis.memberships import (
     ConstantMF,
     DiffSigmoidalMF,
     DimensionDependentGaussianMF,
+    ExtendedGaussianMF,
     GaussianMF,
     GaussianPiMF,
     LinSShapedMF,
@@ -321,6 +322,10 @@ def test_gaussian_pimf_infimum_positive() -> None:
         (LinZShapedMF(a=0.0, b=1.0), {"a": 0.0, "b": 1.0}),
         (PiMF(a=0.0, b=0.5, c=1.0, d=1.5), {"a": 0.0, "b": 0.5, "c": 1.0, "d": 1.5}),
         (GaussianPiMF(mean=0.5, sigma=2.0, k=5.0), {"mean": 0.5, "sigma": 2.0, "k": 5.0}),
+        (
+            ExtendedGaussianMF(mean=0.5, sigma=2.0, lower_bound=0.3),
+            {"mean": 0.5, "sigma": 2.0, "lower_bound": 0.3},
+        ),
     ],
 )
 def test_all_membership_functions_expose_inspect_params(mf: Any, expected: dict[str, float]) -> None:
@@ -473,3 +478,29 @@ def test_adatsk_gaussian_mf_forward_matches_paper_form() -> None:
     expected = torch.exp(-(((x - 0.5) / 2.0) ** 2))
     assert torch.allclose(out, expected)
     assert float(out[0]) == pytest.approx(1.0)  # peaks at the mean
+
+
+def test_extended_gaussian_goes_from_its_lower_bound_to_one() -> None:
+    mf = ExtendedGaussianMF(mean=0.0, sigma=1.0, lower_bound=0.3)
+    values = mf(torch.tensor([0.0, 1.0, 100.0]))
+
+    assert values[0].item() == pytest.approx(1.0)
+    assert values[1].item() == pytest.approx(0.3 + 0.7 * math.exp(-0.5), rel=1e-6)
+    assert values[2].item() == pytest.approx(0.3)
+
+
+def test_extended_gaussian_with_a_zero_bound_is_the_gaussian() -> None:
+    x = torch.linspace(-3.0, 3.0, 13)
+
+    torch.testing.assert_close(ExtendedGaussianMF(0.5, 0.7, lower_bound=0.0)(x), GaussianMF(0.5, 0.7)(x))
+
+
+@pytest.mark.parametrize("bound", [-0.1, 1.0])
+def test_extended_gaussian_rejects_a_bound_outside_the_unit_interval(bound: float) -> None:
+    with pytest.raises(ValueError, match="lower_bound must be in the interval"):
+        ExtendedGaussianMF(lower_bound=bound)
+
+
+def test_extended_gaussian_rejects_invalid_sigma() -> None:
+    with pytest.raises(ValueError, match="sigma must be positive"):
+        ExtendedGaussianMF(sigma=0.0)

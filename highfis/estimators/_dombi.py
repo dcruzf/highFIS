@@ -26,6 +26,7 @@ from ._base import (
     _BaseClassifierEstimator,
     _BaseRegressorEstimator,
     _wrap_composite_gaussian_input_mfs,
+    _wrap_extended_gaussian_input_mfs,
 )
 
 
@@ -388,7 +389,31 @@ class DombiTSKRegressor(_BaseRegressorEstimator):
         )
 
 
-class ADMTSKClassifier(_BaseClassifierEstimator):
+#: Membership functions that the ADMTSK article compares, by the name of the ``membership`` argument.
+_ADMTSK_MEMBERSHIPS = frozenset({"composite", "extended", "traditional"})
+
+
+class _ADMTSKMembership:
+    """Choice of the membership function of ADMTSK and of the lower bound its T-norm uses."""
+
+    membership: str
+    lower_bound: float
+
+    def _wrap_membership(self, input_mfs: Mapping[str, Sequence[MembershipFunction]]) -> Any:
+        if self.membership not in _ADMTSK_MEMBERSHIPS:
+            raise ValueError(f"membership must be one of {sorted(_ADMTSK_MEMBERSHIPS)}; got {self.membership!r}")
+        if self.membership == "composite":
+            return _wrap_composite_gaussian_input_mfs(input_mfs)
+        if self.membership == "extended":
+            return _wrap_extended_gaussian_input_mfs(input_mfs, lower_bound=float(self.lower_bound))
+        return input_mfs
+
+    def _membership_lower_bound(self) -> float:
+        """Lower bound of the membership values, which sets the adaptive parameter of the T-norm."""
+        return 0.0 if self.membership == "traditional" else float(self.lower_bound)
+
+
+class ADMTSKClassifier(_ADMTSKMembership, _BaseClassifierEstimator):
     r"""ADMTSK classifier estimator with Composite GMF and adaptive Dombi lambda.
 
     ADMTSK is an adaptive Dombi TSK fuzzy system designed for high-dimensional inference.
@@ -442,6 +467,7 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
         scheduler_params: Mapping[str, Any] | None = None,
         use_lse: bool = False,
         lse_ridge: float = 0.0,
+        membership: str = "composite",
     ) -> None:
         """Initialize an ADMTSK classifier estimator.
 
@@ -501,6 +527,11 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
                 trained (on one-hot targets for a classifier). Default ``False``.
             lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
                 least-squares solution of minimum norm.
+            membership: Membership function of the fuzzy sets, among the three that the
+                source article compares. ``"composite"`` (default) is its composite
+                Gaussian function, whose lower bound is ``1/e``; ``"extended"`` is the
+                Gaussian function rescaled to the lower bound given by ``lower_bound``;
+                ``"traditional"`` is the Gaussian function, with a lower bound of zero.
 
         Raises:
             ValueError: If estimator hyperparameters are invalid.
@@ -531,6 +562,7 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
         )
         self.use_lse = use_lse
         self.lse_ridge = lse_ridge
+        self.membership = membership
         self.adaptive = adaptive
         self.lambda_ = lambda_
         self.lower_bound = lower_bound
@@ -558,18 +590,10 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
             feature_names = [f"x{i + 1}" for i in range(x_arr.shape[1])]
             input_mfs = _build_admtsk_default_input_mfs(x_arr.shape[1])
             effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
-            return (
-                _wrap_composite_gaussian_input_mfs(input_mfs),
-                feature_names,
-                effective_rule_base,
-            )
+            return self._wrap_membership(input_mfs), feature_names, effective_rule_base
 
         input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
-        return (
-            _wrap_composite_gaussian_input_mfs(input_mfs),
-            feature_names,
-            effective_rule_base,
-        )
+        return self._wrap_membership(input_mfs), feature_names, effective_rule_base
 
     def _build_model(
         self,
@@ -584,7 +608,7 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
             rule_base=rule_base,
             adaptive=bool(self.adaptive),
             lambda_=float(self.lambda_),
-            lower_bound=float(self.lower_bound),
+            lower_bound=self._membership_lower_bound(),
             k=float(self.k),
             rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),
@@ -596,7 +620,7 @@ class ADMTSKClassifier(_BaseClassifierEstimator):
         return hasattr(self, "model_")
 
 
-class ADMTSKRegressor(_BaseRegressorEstimator):
+class ADMTSKRegressor(_ADMTSKMembership, _BaseRegressorEstimator):
     r"""ADMTSK regressor estimator with Composite GMF and adaptive Dombi lambda.
 
     ADMTSK is an adaptive Dombi TSK fuzzy system designed for high-dimensional inference.
@@ -649,6 +673,7 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
         scheduler_params: Mapping[str, Any] | None = None,
         use_lse: bool = False,
         lse_ridge: float = 0.0,
+        membership: str = "composite",
     ) -> None:
         """Initialize an ADMTSK regressor estimator.
 
@@ -707,6 +732,11 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
                 trained (on one-hot targets for a classifier). Default ``False``.
             lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
                 least-squares solution of minimum norm.
+            membership: Membership function of the fuzzy sets, among the three that the
+                source article compares. ``"composite"`` (default) is its composite
+                Gaussian function, whose lower bound is ``1/e``; ``"extended"`` is the
+                Gaussian function rescaled to the lower bound given by ``lower_bound``;
+                ``"traditional"`` is the Gaussian function, with a lower bound of zero.
 
         Raises:
             ValueError: If estimator hyperparameters are invalid.
@@ -736,6 +766,7 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
         )
         self.use_lse = use_lse
         self.lse_ridge = lse_ridge
+        self.membership = membership
         self.adaptive = adaptive
         self.lambda_ = lambda_
         self.lower_bound = lower_bound
@@ -763,18 +794,10 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
             feature_names = [f"x{i + 1}" for i in range(x_arr.shape[1])]
             input_mfs = _build_admtsk_default_input_mfs(x_arr.shape[1])
             effective_rule_base = self.rule_base if self.rule_base is not None else "coco"
-            return (
-                _wrap_composite_gaussian_input_mfs(input_mfs),
-                feature_names,
-                effective_rule_base,
-            )
+            return self._wrap_membership(input_mfs), feature_names, effective_rule_base
 
         input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
-        return (
-            _wrap_composite_gaussian_input_mfs(input_mfs),
-            feature_names,
-            effective_rule_base,
-        )
+        return self._wrap_membership(input_mfs), feature_names, effective_rule_base
 
     def _build_regressor_model(
         self,
@@ -788,7 +811,7 @@ class ADMTSKRegressor(_BaseRegressorEstimator):
             rule_base=rule_base,
             adaptive=bool(self.adaptive),
             lambda_=float(self.lambda_),
-            lower_bound=float(self.lower_bound),
+            lower_bound=self._membership_lower_bound(),
             k=float(self.k),
             rules=rules,
             consequent_batch_norm=bool(self.consequent_batch_norm),

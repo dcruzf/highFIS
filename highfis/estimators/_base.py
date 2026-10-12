@@ -26,6 +26,7 @@ from ..clustering import FuzzyCMeans, KMeans, MiniBatchKMeans
 from ..memberships import (
     ConstantMF,
     DimensionDependentGaussianMF,
+    ExtendedGaussianMF,
     GaussianMF,
     GaussianPiMF,
     MembershipFunction,
@@ -421,6 +422,27 @@ def _wrap_composite_gaussian_input_mfs(
                     sigma=cast(GaussianMF, mf).sigma.detach().item(),
                     k=1.0,
                     eps=eps if eps is not None else mf.eps,
+                )
+                for mf in mfs
+            ],
+        )
+        for name, mfs in input_mfs.items()
+    }
+
+
+def _wrap_extended_gaussian_input_mfs(
+    input_mfs: Mapping[str, Sequence[MembershipFunction]],
+    lower_bound: float,
+) -> dict[str, list[GaussianMF]]:
+    return {
+        name: cast(
+            list[GaussianMF],
+            [
+                ExtendedGaussianMF(
+                    mean=cast(GaussianMF, mf).mean.detach().item(),
+                    sigma=cast(GaussianMF, mf).sigma.detach().item(),
+                    lower_bound=lower_bound,
+                    eps=mf.eps,
                 )
                 for mf in mfs
             ],

@@ -145,6 +145,26 @@ ADMTSK is designed around the Gaussian Pi MF (GaussianPiMF):
 
 The estimator wrappers default to `GaussianPiMF` for the ADMTSK pipeline.
 
+### The three functions of the article
+
+The article compares three membership functions with the adaptive Dombi T-norm. The
+estimators choose among them with `membership`:
+
+| `membership` | Function | Lower bound |
+|---|---|---|
+| `"composite"` (default) | composite Gaussian, $\exp(-(1 - \exp(-(x - m)^2 / 2\sigma^2)))$ | $1/e$ |
+| `"extended"` | Gaussian rescaled, $\varepsilon + (1 - \varepsilon)\exp(-(x - m)^2 / 2\sigma^2)$ | `lower_bound` |
+| `"traditional"` | Gaussian | 0 |
+
+The adaptive parameter of the T-norm is computed from the lower bound of the function in
+use.
+
+```python
+from highfis import ADMTSKClassifier
+
+clf = ADMTSKClassifier(membership="extended", lower_bound=0.1)
+```
+
 ## Training in the paper vs. highFIS
 
 The ADMTSK paper describes end-to-end gradient-based training with adaptive
