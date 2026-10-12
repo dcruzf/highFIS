@@ -167,6 +167,8 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
+        use_lse: bool = False,
+        lse_ridge: float = 0.0,
     ) -> None:
         """Initialise an ADPTSK classifier estimator.
 
@@ -224,6 +226,11 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
                 ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
                 it must bind to is only built inside ``fit``.
             scheduler_params: Keyword arguments for ``scheduler_class``.
+            use_lse: If ``True``, the consequents are replaced, at the end of the training, by
+                their least-squares solution on the training data, with the antecedents as
+                trained (on one-hot targets for a classifier). Default ``False``.
+            lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
+                least-squares solution of minimum norm.
         """
         super().__init__(
             input_configs=input_configs,
@@ -249,6 +256,8 @@ class ADPTSKClassifier(_BaseClassifierEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.use_lse = use_lse
+        self.lse_ridge = lse_ridge
         self.kappa = kappa
         self.xi = xi
         self.k = k
@@ -382,6 +391,8 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
+        use_lse: bool = False,
+        lse_ridge: float = 0.0,
     ) -> None:
         """Initialise an ADPTSK regressor estimator.
 
@@ -439,6 +450,11 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
                 ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
                 it must bind to is only built inside ``fit``.
             scheduler_params: Keyword arguments for ``scheduler_class``.
+            use_lse: If ``True``, the consequents are replaced, at the end of the training, by
+                their least-squares solution on the training data, with the antecedents as
+                trained (on one-hot targets for a classifier). Default ``False``.
+            lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
+                least-squares solution of minimum norm.
         """
         super().__init__(
             input_configs=input_configs,
@@ -464,6 +480,8 @@ class ADPTSKRegressor(_BaseRegressorEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.use_lse = use_lse
+        self.lse_ridge = lse_ridge
         self.kappa = kappa
         self.xi = xi
         self.k = k
@@ -588,6 +606,8 @@ class ADATSKClassifier(_BaseClassifierEstimator):
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
+        use_lse: bool = False,
+        lse_ridge: float = 0.0,
     ) -> None:
         """Initialise an ADATSK classifier.
 
@@ -645,6 +665,11 @@ class ADATSKClassifier(_BaseClassifierEstimator):
                 ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
                 it must bind to is only built inside ``fit``.
             scheduler_params: Keyword arguments for ``scheduler_class``.
+            use_lse: If ``True``, the consequents are replaced, at the end of the training, by
+                their least-squares solution on the training data, with the antecedents as
+                trained (on one-hot targets for a classifier). Default ``False``.
+            lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
+                least-squares solution of minimum norm.
         """
         resolved_n_mfs = n_mfs
         resolved_mf_init = mf_init
@@ -677,6 +702,8 @@ class ADATSKClassifier(_BaseClassifierEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.use_lse = use_lse
+        self.lse_ridge = lse_ridge
         self.freeze_antecedent_in_high_dim = freeze_antecedent_in_high_dim
         self.high_dim_threshold = high_dim_threshold
 
@@ -781,6 +808,8 @@ class ADATSKRegressor(_BaseRegressorEstimator):
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
+        use_lse: bool = False,
+        lse_ridge: float = 0.0,
     ) -> None:
         """Initialise an ADATSK regressor.
 
@@ -836,6 +865,11 @@ class ADATSKRegressor(_BaseRegressorEstimator):
                 ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
                 it must bind to is only built inside ``fit``.
             scheduler_params: Keyword arguments for ``scheduler_class``.
+            use_lse: If ``True``, the consequents are replaced, at the end of the training, by
+                their least-squares solution on the training data, with the antecedents as
+                trained (on one-hot targets for a classifier). Default ``False``.
+            lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
+                least-squares solution of minimum norm.
         """
         super().__init__(
             input_configs=input_configs,
@@ -860,6 +894,8 @@ class ADATSKRegressor(_BaseRegressorEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.use_lse = use_lse
+        self.lse_ridge = lse_ridge
         self.freeze_antecedent_in_high_dim = freeze_antecedent_in_high_dim
         self.high_dim_threshold = high_dim_threshold
 

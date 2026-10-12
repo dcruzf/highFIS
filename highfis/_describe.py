@@ -213,6 +213,15 @@ def summary(estimator: Any, digits: int = 4) -> str:
     training = [("batch size", "full batch" if batch is None else str(batch))]
     for label, phase in _phases(estimator.history_):
         training.append((label or "epochs", _phase_line(phase, digits)))
+    solved = estimator.history_.get("lse") if isinstance(estimator.history_, dict) else None
+    if solved:
+        training.append(
+            (
+                "least squares",
+                f"consequents solved at the end, ridge {solved['ridge']:g}, "
+                f"training error {solved['train_mse']:.{digits}f}",
+            )
+        )
 
     lines = [type(estimator).__name__]
     lines += [f"  {name:18s} {value}" for name, value in rows]

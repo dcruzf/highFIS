@@ -65,6 +65,32 @@ def set_training_flag(module: nn.Module, mode: bool) -> None:
             set_training_flag(child, mode)
 
 
+#: Largest design matrix, in entries, that ``solve_consequents`` builds (about 1 GiB of doubles).
+_MAX_LSE_ELEMENTS = 2**27
+
+
+def _least_squares(design: Tensor, target: Tensor, ridge: float, rcond: float) -> Tensor:
+    """Solve ``min ||design @ B - target||^2 + ridge * ||B||^2`` for ``B``.
+
+    Without a penalty, singular values below ``rcond`` times the largest are treated as zero.
+    """
+    n_samples, n_columns = design.shape
+    if ridge == 0.0:
+        # Minimum-norm solution, also for a rank-deficient or underdetermined system. The
+        # normalized rule weights add up to one, so the columns are often nearly dependent:
+        # the directions below the cut-off are dropped, or they would be fitted with
+        # coefficients too large for the precision in which the model stores them.
+        return torch.linalg.lstsq(design, target, rcond=rcond, driver="gelsd").solution
+    if n_samples >= n_columns:
+        gram = design.T @ design
+        gram.diagonal().add_(ridge)
+        return torch.linalg.solve(gram, design.T @ target)
+    # Fewer samples than parameters: the same solution from the smaller system.
+    gram = design @ design.T
+    gram.diagonal().add_(ridge)
+    return design.T @ torch.linalg.solve(gram, target)
+
+
 class BaseTSK(nn.Module):
     """Abstract base for TSK fuzzy models.
 
@@ -211,6 +237,86 @@ class BaseTSK(nn.Module):
         if isinstance(bias, Tensor):
             return bias.detach()
         return None
+
+    def solve_consequents(self, x: Tensor, y: Tensor, ridge: float = 0.0) -> float:
+        r"""Replace the consequents by their least-squares solution, with the antecedents as they are.
+
+        With fixed antecedents the output of a TSK system is linear in its consequent
+        parameters: :math:`\hat y = \sum_r \bar w_r(x)\,(b_r + \sum_d p_{r,d} x_d)`. The
+        parameters that minimize the squared error on ``(x, y)`` are therefore the solution
+        of a linear least-squares problem, which is solved here in double precision. For a
+        classifier the targets are the one-hot vectors of the classes.
+
+        Args:
+            x: Inputs of shape ``(n_samples, n_inputs)``.
+            y: Class indices for a classifier, values for a regressor.
+            ridge: Penalty on the squared norm of the consequent parameters. ``0.0`` gives
+                the least-squares solution of minimum norm, which exists also when there
+                are more parameters than samples.
+
+        Returns:
+            The mean squared error of the solution on ``(x, y)``.
+
+        Raises:
+            ValueError: If ``ridge`` is negative, if the gates of a gated consequent layer
+                are active, or if the problem is too large to be solved in memory.
+        """
+        if ridge < 0.0:
+            raise ValueError("ridge must be non-negative")
+        layer = self.consequent_layer
+        if getattr(layer, "mode", "finetune") != "finetune":
+            raise ValueError(
+                "the consequents can only be solved by least squares once the gates are switched off; "
+                "the gated families have their own use_lse option"
+            )
+        weight = getattr(layer, "weight", None)
+        bias = getattr(layer, "bias", None)
+        if not isinstance(bias, Tensor):
+            raise ValueError("this consequent layer has no parameters to solve for")
+        n_rules, n_inputs = int(self.n_rules), int(self.n_inputs)
+        n_columns = n_rules * (n_inputs + 1) if isinstance(weight, Tensor) else n_rules
+        if int(x.shape[0]) * n_columns > _MAX_LSE_ELEMENTS:
+            raise ValueError(
+                f"the least-squares problem has {x.shape[0]} samples and {n_columns} consequent parameters, "
+                f"more than {_MAX_LSE_ELEMENTS:,} entries; train the consequents by gradient descent instead"
+            )
+
+        was_training = self.training
+        try:
+            set_training_flag(self, False)
+            with torch.no_grad():
+                norm_w = self.forward_antecedents(x).to(torch.float64)
+                x_cons = (self.consequent_bn(x) if self.consequent_bn is not None else x).to(torch.float64)
+                if isinstance(weight, Tensor):
+                    terms = norm_w.unsqueeze(2) * x_cons.unsqueeze(1)  # (samples, rules, inputs)
+                    mask = getattr(layer, "rule_feature_mask", None)
+                    if isinstance(mask, Tensor):
+                        terms = terms * mask.to(terms.dtype).unsqueeze(0)
+                    design = torch.cat([norm_w.unsqueeze(2), terms], dim=2).reshape(x.shape[0], n_columns)
+                else:
+                    design = norm_w
+                if self.task_type == "classification":
+                    target = torch.zeros((x.shape[0], int(bias.shape[-1])), dtype=torch.float64, device=x.device)
+                    target.scatter_(1, y.reshape(-1, 1).long(), 1.0)
+                else:
+                    target = y.reshape(-1, 1).to(torch.float64)
+
+                # The solution is stored in the precision of the model, which bounds the
+                # conditioning that is worth resolving.
+                rcond = 10.0 * float(torch.finfo(bias.dtype).eps)
+                solution = _least_squares(design, target, float(ridge), rcond)
+                error = float(((design @ solution - target) ** 2).mean())
+
+                if isinstance(weight, Tensor):
+                    blocks = solution.reshape(n_rules, n_inputs + 1, -1)  # (rules, 1 + inputs, outputs)
+                    new_bias, new_weight = blocks[:, 0, :], blocks[:, 1:, :].permute(0, 2, 1)
+                    weight.copy_(new_weight.reshape(weight.shape).to(weight.dtype))
+                else:
+                    new_bias = solution
+                bias.copy_(new_bias.reshape(bias.shape).to(bias.dtype))
+        finally:
+            set_training_flag(self, was_training)
+        return error
 
     def _forward_train(self, x: Tensor) -> tuple[Tensor, Tensor]:
         """Forward pass returning ``(output, norm_w)`` to avoid double computation."""
