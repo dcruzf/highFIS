@@ -43,29 +43,38 @@ THREADS = 4
 # OpenML identifier of each dataset.
 DATASETS = {"Colon": 1432, "Leukemia": 1104}
 
-# The two models as the article trains them, and with the antecedents kept as initialized
-# and the consequents estimated by least squares.
+# The models as the article trains them, and with the antecedents kept as initialized and
+# the consequents estimated by least squares. DMF is the dimension-dependent membership
+# function, which HDFIS-prod always uses and HDFIS-min can use.
+DMF = {"membership": "dimension_dependent"}
+LEAST_SQUARES = {"epochs": 0, "use_lse": True}
 MODELS = {
     "HDFIS-prod": (HDFISProdClassifier, {}),
     "HDFIS-min": (HDFISMinClassifier, {}),
-    "HDFIS-prod, least squares": (HDFISProdClassifier, {"epochs": 0, "use_lse": True}),
-    "HDFIS-min, least squares": (HDFISMinClassifier, {"epochs": 0, "use_lse": True}),
+    "HDFIS-min (DMF)": (HDFISMinClassifier, DMF),
+    "HDFIS-prod, least squares": (HDFISProdClassifier, LEAST_SQUARES),
+    "HDFIS-min, least squares": (HDFISMinClassifier, LEAST_SQUARES),
+    "HDFIS-min (DMF), least squares": (HDFISMinClassifier, {**DMF, **LEAST_SQUARES}),
 }
 
-# Mean test accuracy in percent: Table II for HDFIS-prod, and Table V for HDFIS-min with the
-# conventional membership function and for the two models with least squares.
+# Mean test accuracy in percent: Table II for HDFIS-prod, and Table V for HDFIS-min and for
+# the rows with least squares.
 ARTICLE = {
     "Colon": {
         "HDFIS-prod": 87.89,
         "HDFIS-min": 87.37,
+        "HDFIS-min (DMF)": 86.84,
         "HDFIS-prod, least squares": 84.21,
         "HDFIS-min, least squares": 86.84,
+        "HDFIS-min (DMF), least squares": 83.16,
     },
     "Leukemia": {
         "HDFIS-prod": 99.09,
         "HDFIS-min": 99.09,
+        "HDFIS-min (DMF)": 97.27,
         "HDFIS-prod, least squares": 98.64,
         "HDFIS-min, least squares": 98.18,
+        "HDFIS-min (DMF), least squares": 98.64,
     },
 }
 
@@ -98,9 +107,9 @@ for name, data_id in DATASETS.items():
 # --- Result -----------------------------------------------------------------------------
 
 print("Tables II and V: mean test accuracy in percent")
-print(f"{'dataset':9s} {'model':26s} {'article':>8s} {'highFIS':>8s} {'std':>6s}")
+print(f"{'dataset':9s} {'model':31s} {'article':>8s} {'highFIS':>8s} {'std':>6s}")
 for (name, family), scores in results.items():
-    print(f"{name:9s} {family:26s} {ARTICLE[name][family]:8.2f} {np.mean(scores):8.2f} {np.std(scores):6.2f}")
+    print(f"{name:9s} {family:31s} {ARTICLE[name][family]:8.2f} {np.mean(scores):8.2f} {np.std(scores):6.2f}")
 
 print()
 print("Summary of the last model fitted")
