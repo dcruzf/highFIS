@@ -118,7 +118,10 @@ class DGTSKClassifier(_BaseClassifierEstimator):
             random_state: Seed for reproducibility.
             dg_epochs: Epochs of the gate phase, in which the gates are trained and
                 the antecedents are frozen. Default ``300``, the number of full-batch
-                iterations of the source article.
+                iterations of the reference code of the authors. The gates keep opening
+                as the phase goes on, so its length decides how many features pass the
+                threshold: when the fitted model keeps only one or two features, try a
+                longer phase, such as ``1000``.
             finetune_epochs: Epochs of the fine-tuning phase, run on the pruned system
                 without gates. Default ``300``, as in the source article.
             learning_rate: Learning rate of the full-batch gradient descent, for both
@@ -470,7 +473,10 @@ class DGTSKRegressor(_BaseRegressorEstimator):
             random_state: Seed for reproducibility.
             dg_epochs: Epochs of the gate phase, in which the gates are trained and
                 the antecedents are frozen. Default ``300``, the number of full-batch
-                iterations of the source article.
+                iterations of the reference code of the authors. The gates keep opening
+                as the phase goes on, so its length decides how many features pass the
+                threshold: when the fitted model keeps only one or two features, try a
+                longer phase, such as ``1000``.
             finetune_epochs: Epochs of the fine-tuning phase, run on the pruned system
                 without gates. Default ``300``, as in the source article.
             learning_rate: Learning rate of the full-batch gradient descent, for both
