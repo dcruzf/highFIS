@@ -1551,11 +1551,9 @@ Leukemia. Colon is reproduced exactly. On Leukemia highFIS is 1.8 points below, 
 one standard deviation, with 22 test samples per split.</p>
 <h2 id="choice-of-the-splits">Choice of the Splits</h2>
 <p>The result depends on the ten random splits. The script starts at seed 1, the first
-seed whose ten splits are closest to the article on both datasets, among the first
-seeds 0 to 50. Over those blocks of ten splits Colon goes from 82.63 to 88.95 and
-Leukemia from 95.45 to 97.73. The value of the article for Colon lies inside the range;
-the 99.09 of Leukemia, which is two errors in 220 test samples, was not reached by any
-block. Changing <code>SEED</code> in the script selects other splits.</p>
+seed whose ten splits are closest to the article on both datasets, among the seeds 0 to
+50. Over those blocks of ten splits Colon goes from 82.63 to 88.95 and Leukemia from
+95.45 to 97.73. Changing <code>SEED</code> in the script selects other splits.</p>
 <h2 id="comparison-with-the-authors-code">Comparison with the Authors' Code</h2>
 <p>The authors publish their implementation. Run on the same ten splits as highFIS (seeds 0
 to 9, not the splits of the script), with

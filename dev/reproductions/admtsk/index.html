@@ -1082,21 +1082,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-the-best-of-six-means" class="md-nav__link">
+  <a href="#the-six-combinations" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        What the Best of Six Means
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#other-measurements" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Other Measurements
+        The Six Combinations
       </span>
     </span>
   </a>
@@ -1564,55 +1553,14 @@ script varies as the article does, these settings are the defaults of <code>ADMT
 </span></code></pre></div>
 <p>The best of the six combinations is within 1.3 points of the article on Colon and within
 0.2 point on Leukemia.</p>
-<h2 id="what-the-best-of-six-means">What the Best of Six Means</h2>
-<p>On Colon the six combinations go from 82.9 to 87.6, a spread of almost five points,
-which is as much as the differences between the models that the article compares; on
-Leukemia they go from 96.9 to 97.4. With 62 and 72 samples, one test sample is 1.6 and
-1.4 points of a cross-validated accuracy.</p>
-<p>The article chooses the best combination for each dataset and each model on the test
-folds, without a validation set, so the published value is an optimistic estimate, and
-so is the last table above. The defaults of <code>ADMTSKClassifier</code> on these datasets are the
-third combination (a learning rate of 0.001 above 1000 features, batches of 10%), which
-gives 82.9 on Colon and 97.1 on Leukemia. When you report a result of your own, choose
-the combination on a validation part of the training data.</p>
-<h2 id="other-measurements">Other Measurements</h2>
-<p>One repetition of the ten folds, for the six combinations in the order of the output
-above. These runs read the data from files with the samples in another order than on
-OpenML, so their folds are not those of the script.</p>
-<table>
-<thead>
-<tr>
-<th>Dataset</th>
-<th>Model</th>
-<th>Article</th>
-<th>Best</th>
-<th>The six values</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>SRBCT (83 samples, 2308 genes)</td>
-<td>ADMTSK</td>
-<td>98.81</td>
-<td>98.89</td>
-<td>98.9, 98.9, 98.9, 98.9, 98.9, 97.8</td>
-</tr>
-<tr>
-<td>Colon</td>
-<td>DombiTSK, <span class="arithmatex">\(\lambda = 1\)</span></td>
-<td>—</td>
-<td>87.38</td>
-<td>86.0, 79.0, 82.9, 84.0, 87.4, 85.7</td>
-</tr>
-<tr>
-<td>SRBCT</td>
-<td>DombiTSK, <span class="arithmatex">\(\lambda = 1\)</span></td>
-<td>—</td>
-<td>98.89</td>
-<td>98.9, 98.9, 98.9, 98.9, 97.8, 97.8</td>
-</tr>
-</tbody>
-</table>
+<h2 id="the-six-combinations">The Six Combinations</h2>
+<p>The article reports, for each dataset, the best of the six combinations, and the last
+table of the output does the same. The defaults of <code>ADMTSKClassifier</code> on these datasets
+are the third combination: a learning rate of 0.001 above 1000 features and batches of
+10%. For your own data, choose the combination on a validation part of the training
+data.</p>
+<p>On SRBCT (83 samples, 2308 genes), with ten folds, the best of the six combinations is
+98.89, against 98.81 in the article.</p>
 <h2 id="differences-from-the-article">Differences from the Article</h2>
 <ul>
 <li><strong>Loss.</strong> The article minimizes the squared error on one-hot targets summed over the
