@@ -21,8 +21,8 @@ Run it with::
 
     python examples/reproductions/adptsk_2025.py
 
-The data are downloaded on the first run. It takes about forty-five minutes on a laptop,
-most of them on Leukemia.
+The data are downloaded on the first run. It takes about an hour on a laptop, most of it
+on Leukemia.
 """
 
 import numpy as np
