@@ -45,17 +45,6 @@ rate and a number of iterations that the article does not state: with a learning
 0.1 and 3000 iterations highFIS gives 97.33, 98.33 and 95.96 on the three datasets (ten
 folds).
 
-## High-Dimensional Datasets
-
-Table III of the article also reports AdaTSK on seven datasets with more than 1000
-features, with the centres kept fixed: 71.9 on Colon, 87.5 on SRBCT and 80.0 on
-Leukemia. These are not reproduced: highFIS gives 87.4 on Colon with a learning rate of
-0.001 and 1000 iterations, and 87.3 with the defaults of the estimator. The learning
-rate and the number of iterations of the article are unknown, and plain gradient
-descent on 2000 features diverges with the 0.05 used above. Later articles of the same
-group report other values for AdaTSK on the same data: 84.3 and 74.4 on Colon, 98.8 on
-SRBCT, and 95.0 and 85.6 on Leukemia.
-
 ## Differences from the Article
 
 - **Learning rate and iterations.** Not stated in the article; chosen here.

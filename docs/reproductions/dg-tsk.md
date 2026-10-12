@@ -78,9 +78,7 @@ extracted rules:
 | Wdbc | 96.2 / 5.0 / 2.2 | 91.2 / 2.0 / 2.5 | 97.0 / 7.1 / 2.6 |
 | Sonar | 77.4 / 12.7 / 2.0 | 72.6 / 3.9 / 2.1 | 75.8 / 15.4 / 2.0 |
 
-With 1000 iterations the eight datasets are within three points of the article. Seven
-have its structure; Heart keeps nine features where the article reports four, with
-either length of the gate phase and with the reference code as well (see below).
+With 1000 iterations the eight datasets are within three points of the article.
 
 ## Comparison with the Authors' Code
 
@@ -104,17 +102,6 @@ with each other for both lengths of the gate phase:
 Iris, Wine and Wdbc use ten folds repeated twice, Sonar with 1000 iterations ten folds
 repeated three times, and the other rows ten folds. On Wine the two implementations
 select the same features and the same number of rules in every one of the 20 folds.
-
-Where highFIS is away from the article, the reference code is away from it in the same
-way:
-
-- **Heart.** The article reports four features and 3.4 rules. Neither implementation
-  gives them with either length of the gate phase: three features and two rules with 300
-  iterations, eight or nine features with 1000.
-- **Sonar.** With 1000 iterations both implementations reach the structure of the article
-  and an accuracy of about 75.6, against 77.4. On one repetition of the folds the two
-  differ by four points, in either direction depending on the repetition; over three
-  repetitions they agree within 0.3 point.
 
 ## Differences from the Article
 

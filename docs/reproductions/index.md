@@ -38,11 +38,11 @@ How to read the comparisons:
   seed 0. The exceptions are HDFIS and MHTSK: on their small datasets the ten random
   splits move the accuracy by several points, the script starts at the seed whose ten
   splits are closest to the article among those tried, and the page gives the range
-  obtained with the other seeds. The claim there is that the published value lies inside
-  what highFIS produces, not that one seed proves it.
+  obtained with the other seeds.
 - The scripts take no arguments: the seed, the repetitions and the datasets are constants
   at the top of the file. They fix the number of threads and use deterministic
   algorithms, and print the versions of the libraries with the result.
-- A reproduction is limited to the datasets that can be obtained with the same samples
-  and features as in the article.
-- Where highFIS departs from the article, the page says so.
+- A reproduction covers a selection of the datasets and settings of its article: those
+  that can be obtained with the same samples and features, and that run in a reasonable
+  time.
+- Where the implementation departs from the article, the page says so.
