@@ -114,6 +114,8 @@ class FSREADATSKClassifier(_ArticleMembership, _BaseClassifierEstimator):
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
+        use_lse: bool = False,
+        lse_ridge: float = 0.0,
     ) -> None:
         """Initialise an FSRE-ADATSK classifier.
 
@@ -197,6 +199,11 @@ class FSREADATSKClassifier(_ArticleMembership, _BaseClassifierEstimator):
                 ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
                 it must bind to is only built inside ``fit``.
             scheduler_params: Keyword arguments for ``scheduler_class``.
+            use_lse: If ``True``, the consequents are replaced, at the end of the training, by
+                their least-squares solution on the training data, with the antecedents as
+                trained (on one-hot targets for a classifier). Default ``False``.
+            lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
+                least-squares solution of minimum norm.
 
         Raises:
             ValueError: If ``lambda_init <= 0``.
@@ -237,6 +244,8 @@ class FSREADATSKClassifier(_ArticleMembership, _BaseClassifierEstimator):
             scheduler_params=scheduler_params,
             trainer=trainer,
         )
+        self.use_lse = use_lse
+        self.lse_ridge = lse_ridge
 
     def fit(
         self,
@@ -394,6 +403,8 @@ class FSREADATSKRegressor(_ArticleMembership, _BaseRegressorEstimator):
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
+        use_lse: bool = False,
+        lse_ridge: float = 0.0,
     ) -> None:
         """Initialise an FSRE-ADATSK regressor.
 
@@ -477,6 +488,11 @@ class FSREADATSKRegressor(_ArticleMembership, _BaseRegressorEstimator):
                 ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
                 it must bind to is only built inside ``fit``.
             scheduler_params: Keyword arguments for ``scheduler_class``.
+            use_lse: If ``True``, the consequents are replaced, at the end of the training, by
+                their least-squares solution on the training data, with the antecedents as
+                trained (on one-hot targets for a classifier). Default ``False``.
+            lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
+                least-squares solution of minimum norm.
 
         Raises:
             ValueError: If ``lambda_init <= 0``.
@@ -516,6 +532,8 @@ class FSREADATSKRegressor(_ArticleMembership, _BaseRegressorEstimator):
             scheduler_params=scheduler_params,
             trainer=trainer,
         )
+        self.use_lse = use_lse
+        self.lse_ridge = lse_ridge
 
     def _build_regressor_model(
         self,

@@ -412,6 +412,8 @@ class MHTSKClassifier(_BaseClassifierEstimator):
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
+        use_lse: bool = False,
+        lse_ridge: float = 0.0,
     ) -> None:
         """Initialize a MHTSK classifier estimator.
 
@@ -467,6 +469,11 @@ class MHTSKClassifier(_BaseClassifierEstimator):
                 ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
                 it must bind to is only built inside ``fit``.
             scheduler_params: Keyword arguments for ``scheduler_class``.
+            use_lse: If ``True``, the consequents are replaced, at the end of the training, by
+                their least-squares solution on the training data, with the antecedents as
+                trained (on one-hot targets for a classifier). Default ``False``.
+            lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
+                least-squares solution of minimum norm.
         """
         super().__init__(
             input_configs=input_configs,
@@ -492,6 +499,8 @@ class MHTSKClassifier(_BaseClassifierEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.use_lse = use_lse
+        self.lse_ridge = lse_ridge
         self.n_heads = n_heads
         self.head_size = head_size
         self.head_size_ratio = head_size_ratio
@@ -616,6 +625,7 @@ class MHTSKClassifier(_BaseClassifierEstimator):
                 )
             trainer = self.trainer if self.trainer is not None else self._get_trainer()
             self.history_ = trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
+            self._solve_consequents(x_t, y_t)
         return self
 
 
@@ -678,6 +688,8 @@ class MHTSKRegressor(_BaseRegressorEstimator):
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
+        use_lse: bool = False,
+        lse_ridge: float = 0.0,
     ) -> None:
         """Initialize a MHTSK regressor estimator.
 
@@ -732,6 +744,11 @@ class MHTSKRegressor(_BaseRegressorEstimator):
                 ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
                 it must bind to is only built inside ``fit``.
             scheduler_params: Keyword arguments for ``scheduler_class``.
+            use_lse: If ``True``, the consequents are replaced, at the end of the training, by
+                their least-squares solution on the training data, with the antecedents as
+                trained (on one-hot targets for a classifier). Default ``False``.
+            lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
+                least-squares solution of minimum norm.
 
         Notes:
             The regressor supports only unsupervised rule extraction via
@@ -761,6 +778,8 @@ class MHTSKRegressor(_BaseRegressorEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.use_lse = use_lse
+        self.lse_ridge = lse_ridge
         self.n_heads = n_heads
         self.head_size = head_size
         self.head_size_ratio = head_size_ratio
@@ -860,6 +879,7 @@ class MHTSKRegressor(_BaseRegressorEstimator):
                 y_val_t = self._as_tensor_x(np.asarray(y_v_arr))
             trainer = self.trainer if self.trainer is not None else self._get_trainer()
             self.history_ = trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
+            self._solve_consequents(x_t, y_t)
         return self
 
     def _build_regressor_model(

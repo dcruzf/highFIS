@@ -1098,6 +1098,20 @@ class _BaseTSKEstimator(BaseEstimator):
         """
         return _diagnostics.firing_diagnostics(self.rule_activation(X), dominance=dominance, never=never)
 
+    def _solve_consequents(self, x: Tensor, y: Tensor) -> None:
+        """Replace the trained consequents by their least-squares solution when ``use_lse`` asks for it.
+
+        The gated families (DG-TSK, DG-ALETSK) solve their consequents inside their own
+        training procedure and do not reach this method.
+        """
+        if not bool(getattr(self, "use_lse", False)):
+            return
+        selected = self._select_model_features(_to_numpy(x))
+        x_model = self._as_tensor_x(selected, x.device)
+        error = self.model_.solve_consequents(x_model, y, ridge=float(getattr(self, "lse_ridge", 0.0)))
+        if isinstance(self.history_, dict):
+            self.history_["lse"] = {"ridge": float(getattr(self, "lse_ridge", 0.0)), "train_mse": error}
+
     def _check_firing(self, x_arr: np.ndarray) -> None:
         """Warn at the end of ``fit`` when the rule weights are degenerate on the training data."""
         try:
@@ -1561,6 +1575,7 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
         self.learning_rate_ = self._resolve_learning_rate(int(x_t.shape[1]))
         _trainer = self.trainer if self.trainer is not None else self._get_trainer()
         self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
+        self._solve_consequents(x_t, y_t)
         self._check_firing(x_arr)
         return self
 
@@ -1773,6 +1788,7 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
         self.learning_rate_ = self._resolve_learning_rate(int(x_t.shape[1]))
         _trainer = self.trainer if self.trainer is not None else self._get_trainer()
         self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
+        self._solve_consequents(x_t, y_t)
         self._check_firing(x_arr)
         return self
 
