@@ -124,4 +124,8 @@ for name in DATASETS:
     print(f"{name:12s} {reported:>18s} {measured:>20s} {deviations:>16s}")
 
 print()
+print("Summary of the last model fitted")
+print(model.summary())
+
+print()
 highfis.show_versions()

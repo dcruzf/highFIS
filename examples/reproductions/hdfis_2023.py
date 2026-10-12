@@ -85,4 +85,8 @@ for (name, family), scores in results.items():
     print(f"{name:9s} {family:11s} {ARTICLE[name][family]:8.2f} {np.mean(scores):8.2f} {np.std(scores):6.2f}")
 
 print()
+print("Summary of the last model fitted")
+print(model.summary())
+
+print()
 highfis.show_versions()

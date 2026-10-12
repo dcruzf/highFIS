@@ -32,6 +32,20 @@ Table VI: mean test accuracy in percent
 dataset    article  highFIS    std
 Colon        88.95    87.89   7.08
 Leukemia     97.27    94.55   4.45
+
+Summary of the last model fitted
+MHTSKClassifier
+  task               classification, 2 classes
+  features           7129 seen in fit, 7129 used by the model
+  rules              900 (rule base: custom)
+  fuzzy sets         1 or 4 or 7 or 10 or 13 or 16 or 19 or 22 or 25 or 28 or 31 per feature, ConstantMF, GaussianMF
+  firing strength    RuleLayer, T-norm ProductTNorm
+  defuzzifier        SumBasedDefuzzifier
+  consequents        SparseClassificationConsequentLayer
+  parameters         12834000 trainable (0 antecedent, 12834000 consequent)
+Training
+  batch size         64
+  epochs             100 epochs, learning rate 0.01, training loss 0.5000 -> 0.0083, training accuracy 1.0000
 ```
 
 The article reports standard deviations of about 5 on Colon and 3 on Leukemia. Colon is

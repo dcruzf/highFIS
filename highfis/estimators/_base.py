@@ -24,6 +24,7 @@ from torch import Tensor
 from .. import _describe, _diagnostics, plotting
 from ..clustering import FuzzyCMeans, KMeans, MiniBatchKMeans
 from ..memberships import (
+    ConstantMF,
     DimensionDependentGaussianMF,
     GaussianMF,
     GaussianPiMF,
@@ -47,6 +48,8 @@ from ..persistence import (
 #: Sentinel for ``batch_size``: defer to the family's paper policy, resolved from the
 #: training-set size at ``fit`` time. Distinct from ``None``, which forces full batch.
 _AUTO_BATCH_SIZE: Final = "auto"
+#: Samples processed at a time by ``coverage``, which holds a (samples, rules, features) array.
+_COVERAGE_CHUNK: Final = 64
 
 #: Accepted values for ``batch_size``: an explicit size, ``None`` for full batch, or
 #: ``"auto"`` for the source paper's policy.
@@ -1216,6 +1219,134 @@ class _BaseTSKEstimator(BaseEstimator):
         """
         check_is_fitted(self, "model_")
         return _describe.rules_as_text(self, top_features, digits, labels, max_rules)
+
+    def summary(self, digits: int = 4) -> str:
+        """Describe the fitted model: its structure, how it was trained and how training ended.
+
+        The text gives the task, the features seen in ``fit`` and used by the model, the
+        number of rules and the rule base, the fuzzy sets, how the firing strengths are
+        computed and normalized, the number of trainable parameters, and for each training
+        phase the epochs run, the learning rate used, the first and last training loss and
+        the last value of the recorded metrics. Values that ``fit`` resolved from
+        ``"auto"``, such as the learning rate and the batch size, are the resolved ones.
+
+        Args:
+            digits: Decimal places of the losses and metrics.
+
+        Returns:
+            The description, one item per line. ``print`` it to read it.
+        """
+        check_is_fitted(self, "model_")
+        return _describe.summary(self, digits)
+
+    def _rule_contributions(self, x_row: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Normalized weight of each rule on one sample, and what each rule adds to the output.
+
+        The output of the model is linear in the normalized rule weights, so the
+        contribution of a rule is the output computed with the weights of the other rules
+        set to zero. Returns ``(weights, contributions)`` of shapes ``(rules,)`` and
+        ``(rules, outputs)``; the contributions add up to the output of the model.
+        """
+        model = self.model_
+        x = self._as_tensor_x(self._select_model_features(x_row), torch.device(str(self.device)))
+        was_training = model.training
+        try:
+            set_training_flag(model, False)
+            with torch.no_grad():
+                norm_w = model.defuzzifier(model.rule_layer(model.membership_layer(x)))
+                x_cons = model.consequent_bn(x) if model.consequent_bn is not None else x
+                parts = []
+                for rule in range(norm_w.shape[1]):
+                    only = torch.zeros_like(norm_w)
+                    only[:, rule] = norm_w[:, rule]
+                    parts.append(model.consequent_layer(x_cons, only).reshape(-1))
+        finally:
+            set_training_flag(model, was_training)
+        return _to_numpy(norm_w[0]), _to_numpy(torch.stack(parts))
+
+    def explain(
+        self,
+        x: npt.ArrayLike,
+        top_rules: int | None = 3,
+        top_features: int | None = 3,
+        digits: int = 2,
+        labels: Sequence[str] | None = None,
+    ) -> str:
+        """Describe how the rules produce the prediction for one sample.
+
+        The output of a TSK system is the sum, over the rules, of the normalized weight of
+        the rule times the value of its consequent. The text gives the prediction, that
+        sum, and for the rules with the largest weights their weight, what they add to the
+        output and their antecedent. For a classifier the output has one score per class,
+        and the predicted class is the one with the largest score.
+
+        Args:
+            x: One sample, as a sequence of ``n_features_in_`` values or an array with one
+                row.
+            top_rules: Number of rules described, from the largest weight. The others are
+                summed in one line. ``None`` describes every rule.
+            top_features: Number of conditions shown in each antecedent, on the most
+                important features according to :meth:`feature_importance`. ``None`` shows
+                all of them.
+            digits: Decimal places of the weights and contributions.
+            labels: Names for the fuzzy sets, as in :meth:`rules_as_text`.
+
+        Returns:
+            The explanation as text. ``print`` it to read it.
+        """
+        check_is_fitted(self, "model_")
+        x_row = validate_data(self, np.asarray(x).reshape(1, -1), reset=False)
+        weights, contributions = self._rule_contributions(x_row)
+        prediction = self.predict(x_row)[0]
+        return _describe.explain(self, weights, contributions, prediction, top_rules, top_features, digits, labels)
+
+    def coverage(self, X: npt.ArrayLike) -> np.ndarray:
+        """Return, for each sample, how well the best-matching rule covers it.
+
+        The match of a sample with a rule is the mean of its membership degrees in the
+        fuzzy sets of the rule, so it does not depend on the number of features nor on the
+        T-norm of the family: 1 when the sample is at the centre of every set of the rule,
+        and close to 0 when it is far from all of them. The coverage of a sample is its
+        best match over the rules. A sample with a coverage well below the values of the
+        training data lies outside the region the rules were built on, and the model
+        extrapolates there.
+
+        Families whose membership function has a positive lower bound (ADPTSK, ADMTSK,
+        DombiTSK, AYATSK) cannot go below that bound.
+
+        Args:
+            X: Samples of shape ``(n_samples, n_features_in_)``.
+
+        Returns:
+            Array of shape ``(n_samples,)`` with values in ``[0, 1]``.
+        """
+        check_is_fitted(self, "model_")
+        x_arr = self._select_model_features(validate_data(self, X, reset=False))
+        model = self.model_
+        mfs = model.membership_layer.input_mfs
+        active = torch.tensor(
+            [
+                [
+                    not isinstance(mfs[name][index], ConstantMF)
+                    for name, index in zip(model.input_names, rule, strict=True)
+                ]
+                for rule in model.rule_layer.rules
+            ]
+        )
+        counts = active.sum(dim=1).clamp(min=1)
+        best = []
+        was_training = model.training
+        try:
+            set_training_flag(model, False)
+            with torch.no_grad():
+                for start in range(0, x_arr.shape[0], _COVERAGE_CHUNK):
+                    x = self._as_tensor_x(x_arr[start : start + _COVERAGE_CHUNK], torch.device(str(self.device)))
+                    terms = model.rule_layer._gather_terms(model.membership_layer(x))  # (samples, rules, features)
+                    match = (terms * active.to(terms.device)).sum(dim=2) / counts.to(terms.device)
+                    best.append(match.amax(dim=1))
+        finally:
+            set_training_flag(model, was_training)
+        return _to_numpy(torch.cat(best))
 
     def plot(self, kind: str = "memberships", **kwargs: Any) -> Any:
         """Draw a diagnostic plot of the fitted model.

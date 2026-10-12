@@ -34,6 +34,20 @@ Colon     HDFIS-prod     87.89    87.89   6.25
 Colon     HDFIS-min      87.37    87.89   6.25
 Leukemia  HDFIS-prod     99.09    97.27   3.02
 Leukemia  HDFIS-min      99.09    97.27   3.02
+
+Summary of the last model fitted
+HDFISMinClassifier
+  task               classification, 2 classes
+  features           7129 seen in fit, 7129 used by the model
+  rules              3 (rule base: coco)
+  fuzzy sets         3 per feature, GaussianMF
+  firing strength    RuleLayer, T-norm MinimumTNorm
+  defuzzifier        SumBasedDefuzzifier
+  consequents        ClassificationConsequentLayer
+  parameters         42780 trainable (0 antecedent, 42780 consequent)
+Training
+  batch size         64
+  epochs             100 epochs, learning rate 0.01, training loss 0.5000 -> 0.0321, training accuracy 1.0000
 ```
 
 The article reports standard deviations of 7.08 and 7.14 on Colon and of 1.82 on

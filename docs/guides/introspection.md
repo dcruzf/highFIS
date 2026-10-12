@@ -8,11 +8,44 @@ Fuzzy systems provide a major advantage over black-box deep learning architectur
 
 Fitted estimators can be introspected to analyze and explain their decision rules. The base estimator interface exposes:
 
+- `summary()` — a printed summary of the structure and of the training;
 - `inspect()` — a high-level summary dictionary of the fitted model;
 - `get_mf_params()` — the membership-function parameters per input feature;
 - `feature_importance()` — a normalized importance vector derived from the consequent weights;
 - `rule_activation(X)` — the normalized rule firing strengths for given inputs.
 - `firing_diagnostics(X)` — a numerical summary of how the rules fire on given inputs.
+- `explain(x)` — how the rules produce the prediction of one sample;
+- `coverage(X)` — how well the rules cover each sample.
+
+### A Printed Summary
+
+`summary()` returns a text that describes the fitted model: its structure, the training
+configuration that `fit` resolved, and how the training ended.
+
+```python
+print(clf.summary())
+```
+
+For an `HTSKClassifier` fitted on the Wine data:
+
+```text
+HTSKClassifier
+  task               classification, 3 classes
+  features           13 seen in fit, 13 used by the model
+  rules              3 (rule base: coco)
+  fuzzy sets         3 per feature, GaussianMF
+  firing strength    RuleLayer, T-norm GMeanTNorm
+  defuzzifier        SoftmaxLogDefuzzifier
+  consequents        ClassificationConsequentLayer
+  parameters         204 trainable (78 antecedent, 126 consequent)
+Training
+  batch size         60
+  epochs             100 epochs, learning rate 0.01, training loss 1.0056 -> 0.0045, training accuracy 1.0000
+```
+
+The learning rate and the batch size are the values used, also when the estimator was
+built with `"auto"`. The families that train in phases (DG-TSK, DG-ALETSK, FSRE-ADATSK)
+have one line per phase, and "features used by the model" counts the features they kept.
 
 ### High-level summary
 
@@ -80,6 +113,34 @@ print(clf.rules_as_text(top_features=2, max_rules=1))
 
 The coefficients apply to the features as they were passed to `fit`, so they are on the
 scaled features when the data were scaled first.
+
+### Explaining One Prediction
+
+`explain(x)` describes how the rules produce the prediction of one sample. The output of
+a TSK system is the sum, over the rules, of the normalized weight of the rule times the
+value of its consequent, so each rule has a contribution that can be read on its own.
+
+```python
+print(clf.explain(X_test[0], top_rules=2))
+```
+
+For the model above and one test sample:
+
+```text
+Prediction: class_2
+Output, the sum of the contributions of the 3 rules: class_0: -3.26, class_1: -3.12, class_2: +3.38
+Rule 1, weight 0.99: contributes class_0: -3.24, class_1: -3.13, class_2: +3.41
+    IF x1 is medium AND x2 is high AND x10 is high AND ... (10 more)
+Rule 0, weight 0.01: contributes class_0: -0.02, class_1: +0.02, class_2: -0.02
+    IF x1 is low AND x2 is low AND x10 is low AND ... (10 more)
+1 other rule, weight 0.00 in all: contributes class_0: +0.01, class_1: -0.01, class_2: -0.01
+```
+
+- For a classifier the output has one score per class, and the predicted class is the
+  one with the largest score. For a regressor it is the predicted value.
+- `top_rules` sets how many rules are described, from the largest weight; the others are
+  summed in one line. `None` describes every rule.
+- `top_features` and `labels` work as in `rules_as_text()`.
 
 ### Feature Importance
 
@@ -158,6 +219,26 @@ from highfis import DegenerateFiringWarning
 
 warnings.simplefilter("ignore", DegenerateFiringWarning)
 ```
+
+### Coverage
+
+`coverage(X)` says, for each sample, how well the best-matching rule covers it. The
+match of a sample with a rule is the mean of its membership degrees in the fuzzy sets of
+the rule: 1 at the centre of every set, close to 0 far from all of them. It does not
+depend on the number of features nor on the T-norm of the family.
+
+```python
+import numpy as np
+
+inside = clf.coverage(X_train)
+print(f"training data: min {inside.min():.2f}, median {np.median(inside):.2f}")
+print(f"shifted data:  median {np.median(clf.coverage(X_test + 2.0)):.2f}")
+```
+
+What to look for: compare new samples with the training data. A sample whose coverage
+is well below the lowest values seen in training lies outside the region the rules were
+built on, and the model extrapolates there. The families whose membership function has
+a positive lower bound (ADPTSK, ADMTSK, DombiTSK, AYATSK) cannot go below that bound.
 
 ### Selected Features and Gates
 

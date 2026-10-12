@@ -43,6 +43,21 @@ dataset             article            highFIS  std of accuracy
 Iris       96.8 / 2.3 / 3.1   95.8 / 2.6 / 3.0             4.87
 Wine       98.3 / 8.0 / 3.0   97.2 / 9.5 / 3.0             3.67
 Glass      63.1 / 8.0 / 6.0   62.3 / 8.0 / 6.0             8.86
+
+Summary of the last model fitted
+DGTSKClassifier
+  task               classification, 6 classes
+  features           9 seen in fit, 8 used by the model
+  rules              6 (rule base: pfrb)
+  fuzzy sets         6 per feature, GaussianMF
+  firing strength    DGTSKRuleLayer
+  defuzzifier        SoftmaxLogDefuzzifier
+  consequents        GatedClassificationConsequentLayer
+  parameters         482 trainable (96 antecedent, 378 consequent)
+Training
+  batch size         full batch
+  gates              1000 epochs, learning rate 0.2, training loss 0.4925 -> 0.2384, training accuracy 0.7668
+  fine-tuning        300 epochs, learning rate 0.2, training loss 0.5000 -> 0.2339, training accuracy 0.6839
 ```
 
 - **Table 2.** The rule base of the article, built without training, is reproduced:

@@ -85,4 +85,8 @@ for name, scores in results.items():
     print(f"{name:8s} {ARTICLE[name]:8.1f} {accuracy.mean():8.2f} {deviations:>12s}")
 
 print()
+print("Summary of the last model fitted")
+print(model.summary())
+
+print()
 highfis.show_versions()

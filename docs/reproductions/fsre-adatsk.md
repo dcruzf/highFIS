@@ -45,6 +45,22 @@ Wine           97.3 / 6.3 / 6.3  96.18 / 8.22 / 6.80      5.80 / 1.11
 Heart          82.5 / 7.4 / 2.9  82.07 / 8.88 / 2.96      6.84 / 2.51
 Wdbc           95.4 / 6.2 / 4.9  95.26 / 7.12 / 4.36      2.61 / 0.37
 Spectfheart    79.2 / 3.4 / 5.1  77.17 / 5.40 / 5.70      6.81 / 1.80
+
+Summary of the last model fitted
+FSREADATSKClassifier
+  task               classification, 2 classes
+  features           44 seen in fit, 3 used by the model
+  rules              5 (rule base: coco)
+  fuzzy sets         5 per feature, ADATSKGaussianMF
+  firing strength    AdaSoftminRuleLayer
+  defuzzifier        SoftmaxLogDefuzzifier
+  consequents        GatedClassificationConsequentLayer
+  parameters         63 trainable (15 antecedent, 48 consequent)
+Training
+  batch size         full batch
+  feature selection  1000 epochs, learning rate 0.05, training loss 1.0000 -> 0.1899, training accuracy 0.8714
+  rule extraction    600 epochs, learning rate 0.05, training loss 1.0000 -> 0.2915, training accuracy 0.8216
+  fine-tuning        1000 epochs, learning rate 0.05, training loss 0.5190 -> 0.2293, training accuracy 0.8216
 ```
 
 The table has eight of the twelve low-dimensional datasets of the article. Seven

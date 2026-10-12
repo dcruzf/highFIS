@@ -38,6 +38,20 @@ dataset   article  highFIS          std
 Iris         95.5    94.67  5.33 / 0.42
 Wine         98.7    96.52  4.18 / 0.67
 Wdbc         94.3    94.13  3.11 / 0.14
+
+Summary of the last model fitted
+ADATSKClassifier
+  task               classification, 2 classes
+  features           30 seen in fit, 30 used by the model
+  rules              3 (rule base: coco)
+  fuzzy sets         3 per feature, ADATSKGaussianMF
+  firing strength    AdaSoftminRuleLayer
+  defuzzifier        SumBasedDefuzzifier
+  consequents        ClassificationConsequentLayer
+  parameters         276 trainable (90 antecedent, 186 consequent)
+Training
+  batch size         full batch
+  epochs             1000 epochs, learning rate 0.05, training loss 0.5000 -> 0.0677, training accuracy 0.9435
 ```
 
 Iris and Wdbc are reproduced within one point. Wine is 2.2 points below, with a learning

@@ -34,6 +34,20 @@ Vowel    HTSK       88.32    89.97   4.68
 Biodeg   TSK        85.71    85.46   1.52
 Biodeg   LogTSK     85.87    84.73   2.82
 Biodeg   HTSK       85.99    84.38   2.93
+
+Summary of the last model fitted
+HTSKClassifier
+  task               classification, 2 classes
+  features           41 seen in fit, 41 used by the model
+  rules              30 (rule base: coco)
+  fuzzy sets         30 per feature, GaussianMF
+  firing strength    RuleLayer, T-norm GMeanTNorm
+  defuzzifier        SoftmaxLogDefuzzifier
+  consequents        ClassificationConsequentLayer
+  parameters         4980 trainable (2460 antecedent, 2520 consequent)
+Training
+  batch size         512
+  epochs             56 epochs, learning rate 0.01, training loss 0.6568 -> 0.2676, training accuracy 0.8916, validation loss 0.3364, best epoch 36
 ```
 
 The six values are within 1.7 points of the article's, less than the standard deviation

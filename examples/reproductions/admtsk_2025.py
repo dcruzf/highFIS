@@ -101,4 +101,8 @@ for name in DATASETS:
     print(f"{name:9s} {ARTICLE[name]:8.2f} {best:8.2f}")
 
 print()
+print("Summary of the last model fitted")
+print(model.summary())
+
+print()
 highfis.show_versions()
