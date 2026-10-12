@@ -76,6 +76,21 @@ data.
 On SRBCT (83 samples, 2308 genes), with ten folds, the best of the six combinations is
 98.89, against 98.81 in the article.
 
+## Membership Functions
+
+The article compares its composite Gaussian set with the traditional Gaussian set and
+with the extended one, for several lower bounds (its Table III). With `membership` and
+`lower_bound`, on Colon, ten folds, the best of the six combinations:
+
+| Membership function | Lower bound | Article | highFIS |
+|---|---|---|---|
+| Traditional (`membership="traditional"`) | 0 | 76.62 | 89.05 |
+| Extended (`membership="extended"`) | 0.1 | 86.10 | 89.05 |
+| | 0.3 | 86.05 | 87.38 |
+| | $1/e$ | 84.57 | 87.38 |
+| | 0.5 | 85.67 | 87.38 |
+| Composite (default) | $1/e$ | 86.33 | 87.38 |
+
 ## Differences from the Article
 
 - **Loss.** The article minimizes the squared error on one-hot targets summed over the
