@@ -34,6 +34,20 @@ Colon      2.0    77.30    75.16 13.21 / 1.89
 Leukemia   0.6    97.32    96.67  6.04 / 0.67
 Leukemia   1.0    97.20    95.24  6.73 / 0.67
 Leukemia   2.0    92.50    86.49 11.95 / 1.31
+
+Summary of the last model fitted
+ADPTSKClassifier
+  task               classification, 2 classes
+  features           7129 seen in fit, 7129 used by the model
+  rules              3 (rule base: coco)
+  fuzzy sets         3 per feature, GaussianPiMF
+  firing strength    ADPSoftminRuleLayer
+  defuzzifier        SumBasedDefuzzifier
+  consequents        ClassificationConsequentLayer
+  parameters         85554 trainable (42774 antecedent, 42780 consequent)
+Training
+  batch size         full batch
+  epochs             200 epochs, learning rate 0.001, training loss 0.5000 -> 0.0000, training accuracy 1.0000
 ```
 
 The article studies ten values of $K$ and reports each of them; the script runs three.

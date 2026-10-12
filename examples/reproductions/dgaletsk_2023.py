@@ -86,4 +86,8 @@ for name in DATASETS:
     print(f"{name:8s} {reported:>20s} {measured:>20s} {accuracy.std():16.2f}")
 
 print()
+print("Summary of the last model fitted")
+print(model.summary())
+
+print()
 highfis.show_versions()

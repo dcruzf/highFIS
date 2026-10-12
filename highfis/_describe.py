@@ -189,6 +189,10 @@ def summary(estimator: Any, digits: int = 4) -> str:
         t_norm = getattr(model.rule_layer, "_resolved_t_norm", None)
         rule_layer = f"RuleLayer, T-norm {getattr(t_norm, '__name__', type(t_norm).__name__)}"
 
+    # The rule base asked for, when one was named: a gated family prunes it during ``fit``.
+    asked = getattr(estimator, "rule_base", None)
+    rule_base = asked if isinstance(asked, str) else getattr(estimator, "rule_base_", "unknown")
+
     def count(module: Any) -> int:
         return sum(p.numel() for p in module.parameters() if p.requires_grad)
 
@@ -198,7 +202,7 @@ def summary(estimator: Any, digits: int = 4) -> str:
     rows = [
         ("task", "regression" if classes is None else f"classification, {len(classes)} classes"),
         ("features", f"{n_seen} seen in fit, {n_used} used by the model"),
-        ("rules", f"{int(model.n_rules)} (rule base: {getattr(estimator, 'rule_base_', 'unknown')})"),
+        ("rules", f"{int(model.n_rules)} (rule base: {rule_base})"),
         ("fuzzy sets", f"{' or '.join(str(n) for n in sets)} per feature, {', '.join(kinds)}"),
         ("firing strength", rule_layer),
         ("defuzzifier", type(model.defuzzifier).__name__),

@@ -34,6 +34,20 @@ Wine      10    98.44    98.66  2.86 / 0.58
 Wine       2    98.42    98.77  2.31 / 0.24
 Wdbc      10    95.11    96.52  2.37 / 0.86
 Wdbc       2    96.69    96.45  2.49 / 0.41
+
+Summary of the last model fitted
+AYATSKClassifier
+  task               classification, 2 classes
+  features           30 seen in fit, 30 used by the model
+  rules              3 (rule base: coco)
+  fuzzy sets         3 per feature, CompositeExponentialMF
+  firing strength    RuleLayer, T-norm YagerTNorm
+  defuzzifier        SumBasedDefuzzifier
+  consequents        ClassificationConsequentLayer
+  parameters         366 trainable (180 antecedent, 186 consequent)
+Training
+  batch size         51
+  epochs             300 epochs, learning rate 0.01, training loss 0.3271 -> 0.0272, training accuracy 0.9786
 ```
 
 Wine is reproduced within 0.4 point for both values of $K$, and Wdbc with $K = 2$ within

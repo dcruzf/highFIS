@@ -46,6 +46,20 @@ Table V: the best of the six combinations (mean test accuracy in percent)
 dataset    article  highFIS
 Colon        86.33    87.57
 Leukemia     97.29    97.43
+
+Summary of the last model fitted
+ADMTSKClassifier
+  task               classification, 2 classes
+  features           7129 seen in fit, 7129 used by the model
+  rules              3 (rule base: coco)
+  fuzzy sets         3 per feature, GaussianPiMF
+  firing strength    RuleLayer, T-norm AdaptiveDombiTNorm
+  defuzzifier        SumBasedDefuzzifier
+  consequents        ClassificationConsequentLayer
+  parameters         85554 trainable (42774 antecedent, 42780 consequent)
+Training
+  batch size         13
+  epochs             50 epochs, learning rate 0.0001, training loss 0.3134 -> 0.0044, training accuracy 1.0000
 ```
 
 The best of the six combinations is within 1.3 points of the article on Colon and within

@@ -29,6 +29,21 @@ Output of the script, on four threads:
 Table V: DG-ALETSK (accuracy in percent / selected features / extracted rules)
 dataset               article              highFIS  std of accuracy
 Colon     81.95 / 6.80 / 6.42  86.95 / 7.18 / 6.98            10.75
+
+Summary of the last model fitted
+DGALETSKClassifier
+  task               classification, 2 classes
+  features           2000 seen in fit, 6 used by the model
+  rules              2 (rule base: pfrb)
+  fuzzy sets         2 per feature, GaussianMF
+  firing strength    DGALETSKRuleLayer
+  defuzzifier        SoftmaxLogDefuzzifier
+  consequents        GatedClassificationConsequentLayer
+  parameters         72 trainable (24 antecedent, 42 consequent)
+Training
+  batch size         6
+  gates              10 epochs, learning rate 0.01, training loss 0.4802 -> 0.2015, training accuracy 0.6429
+  fine-tuning        50 epochs, learning rate 0.01, training loss 0.3704 -> 0.0913, training accuracy 0.9286
 ```
 
 On Colon (62 samples, 2000 genes) the numbers of selected genes and of extracted rules
