@@ -1088,6 +1088,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#reproducibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Reproducibility
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#run-it" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1525,54 +1536,26 @@ the script builds the models without arguments.</p>
 </tbody>
 </table>
 <h2 id="result">Result</h2>
-<p>Mean test accuracy in percent; for highFIS, with the standard deviation over the ten
-repetitions. For HDFIS-min the article's value is the one with the conventional
-membership function and the consequents trained by Adam (Table V).</p>
-<table>
-<thead>
-<tr>
-<th>Dataset</th>
-<th>Family</th>
-<th>Article</th>
-<th>highFIS</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Colon (62 samples, 2000 genes)</td>
-<td>HDFIS-prod</td>
-<td>87.89 ± 7.08</td>
-<td>87.89 ± 6.25</td>
-</tr>
-<tr>
-<td></td>
-<td>HDFIS-min</td>
-<td>87.37 ± 7.14</td>
-<td>87.89 ± 6.25</td>
-</tr>
-<tr>
-<td>Leukemia (72 samples, 7129 genes)</td>
-<td>HDFIS-prod</td>
-<td>99.09 ± 1.82</td>
-<td>97.27 ± 3.02</td>
-</tr>
-<tr>
-<td></td>
-<td>HDFIS-min</td>
-<td>99.09 ± 1.82</td>
-<td>97.27 ± 3.02</td>
-</tr>
-</tbody>
-</table>
-<p>Colon is reproduced exactly. On Leukemia highFIS is 1.8 points below, less than one
-standard deviation, with 22 test samples per split.</p>
+<p>Output of the script, on four threads; the standard deviation is over the ten repetitions.
+For HDFIS-min the article's value is the one with the conventional membership function
+and the consequents trained by Adam (Table V).</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Tables II and V: mean test accuracy in percent
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>dataset   family       article  highFIS    std
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>Colon     HDFIS-prod     87.89    87.89   6.25
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>Colon     HDFIS-min      87.37    87.89   6.25
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>Leukemia  HDFIS-prod     99.09    97.27   3.02
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>Leukemia  HDFIS-min      99.09    97.27   3.02
+</span></code></pre></div>
+<p>The article reports standard deviations of 7.08 and 7.14 on Colon and of 1.82 on
+Leukemia. Colon is reproduced exactly. On Leukemia highFIS is 1.8 points below, less than
+one standard deviation, with 22 test samples per split.</p>
 <h2 id="choice-of-the-splits">Choice of the Splits</h2>
 <p>The result depends on the ten random splits. The script starts at seed 1, the first
 seed whose ten splits are closest to the article on both datasets, among the first
 seeds 0 to 50. Over those blocks of ten splits Colon goes from 82.63 to 88.95 and
 Leukemia from 95.45 to 97.73. The value of the article for Colon lies inside the range;
 the 99.09 of Leukemia, which is two errors in 220 test samples, was not reached by any
-block. <code>--seed</code> selects other splits.</p>
+block. Changing <code>SEED</code> in the script selects other splits.</p>
 <h2 id="comparison-with-the-authors-code">Comparison with the Authors' Code</h2>
 <p>The authors publish their implementation. Run on the same ten splits as highFIS (seeds 0
 to 9, not the splits of the script), with
@@ -1630,8 +1613,6 @@ a matter of the splits, not of the implementation.</p>
 <li><strong>Precision.</strong> The authors' code works in double precision. highFIS works in single
   precision and computes the product of HDFIS-prod in the logarithmic domain, which
   gives the same normalized firing strengths.</li>
-<li><strong>Threads.</strong> The script fixes four threads: the result can change with the number of
-  threads and with the processor.</li>
 <li><strong>Datasets.</strong> The article uses fourteen classification datasets and four regression
   datasets. Colon and Leukemia are the two that OpenML provides with the samples and
   features of the article and without further dependencies. The copy of Colon on OpenML
@@ -1640,11 +1621,14 @@ a matter of the splits, not of the implementation.</p>
   membership function, and both models with the consequents estimated by least squares.
   highFIS does not implement these variants.</li>
 </ul>
+<h2 id="reproducibility">Reproducibility</h2>
+<p>The script fixes the seeds, uses deterministic algorithms and four threads, and ends by
+printing the versions of the libraries and the processor. Another processor or another
+version of the numerical libraries can change the last digits.</p>
 <h2 id="run-it">Run It</h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>examples/reproductions/hdfis_2023.py
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>examples/reproductions/hdfis_2023.py
 </span></code></pre></div>
-<p>The data are downloaded from OpenML on the first run. Ten repetitions take about four
-minutes; <code>--repetitions 3</code> gives a quicker look.</p>
+<p>The data are downloaded from OpenML on the first run. A run takes about four minutes.</p>
 
 
 

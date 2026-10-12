@@ -1136,32 +1136,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#choice-of-the-partition" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Choice of the Partition
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#more-values-of-k" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        More Values of K
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#differences-from-the-article" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
         Differences from the Article
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reproducibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Reproducibility
       </span>
     </span>
   </a>
@@ -1499,7 +1488,7 @@ doi:10.1016/j.fss.2025.109582.</p>
 <tr>
 <td>Membership</td>
 <td>Gaussian bounded below by <span class="arithmatex">\(e^{-K}\)</span> (Eq. 41)</td>
-<td>default (<code>GaussianPiMF</code>), <code>k=1.0</code></td>
+<td>default (<code>GaussianPiMF</code>); <code>k</code> of 0.6, 1.0 (the default) and 2.0</td>
 </tr>
 <tr>
 <td>Firing strength</td>
@@ -1519,87 +1508,32 @@ doi:10.1016/j.fss.2025.109582.</p>
 <tr>
 <td>Evaluation</td>
 <td>ten-fold cross-validation, repeated three times</td>
-<td>ten-fold cross-validation, once</td>
+<td>the same, stratified folds</td>
 </tr>
 </tbody>
 </table>
 <h2 id="result">Result</h2>
-<p>Mean test accuracy in percent; for highFIS, with the standard deviation over the ten
-folds.</p>
-<table>
-<thead>
-<tr>
-<th>Dataset</th>
-<th><span class="arithmatex">\(K\)</span></th>
-<th>Article</th>
-<th>highFIS</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Colon (62 samples, 2000 genes)</td>
-<td>1.0</td>
-<td>82.46</td>
-<td>82.38 ± 13.43</td>
-</tr>
-<tr>
-<td>Leukemia (72 samples, 7129 genes)</td>
-<td>1.0</td>
-<td>97.20</td>
-<td>97.14 ± 5.71</td>
-</tr>
-</tbody>
-</table>
-<p>Both are reproduced within 0.1 point.</p>
-<h2 id="choice-of-the-partition">Choice of the Partition</h2>
+<p>Output of the script, on four threads:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Table 3: ADPTSK (mean test accuracy in percent)
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>std: over the runs, and over the means of the repetitions
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>dataset      K  article  highFIS          std
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>Colon      0.6    83.97    84.44 10.75 / 2.91
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>Colon      1.0    82.46    80.63 11.51 / 2.63
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>Colon      2.0    77.30    75.16 13.21 / 1.89
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>Leukemia   0.6    97.32    96.67  6.04 / 0.67
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>Leukemia   1.0    97.20    95.24  6.73 / 0.67
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>Leukemia   2.0    92.50    86.49 11.95 / 1.31
+</span></code></pre></div>
+<p>The article studies ten values of <span class="arithmatex">\(K\)</span> and reports each of them; the script runs three.
+On Colon the three values are within about two points of the article, and the fall of
+the accuracy as <span class="arithmatex">\(K\)</span> grows is reproduced: 84.4, 80.6 and 75.2 against 84.0, 82.5 and 77.3.
+On Leukemia the same fall appears, and it is steeper than in the article: <span class="arithmatex">\(K = 0.6\)</span> is
+within 0.7 point, <span class="arithmatex">\(K = 1\)</span> is two points below and <span class="arithmatex">\(K = 2\)</span> six points below.</p>
 <p>With 62 and 72 samples, one test sample is 1.6 and 1.4 points of the cross-validated
-accuracy, and the result depends on how the samples fall into the folds. The script
-uses seed 7, the one whose result is closest to the article among those tried. Over the
-seeds 0 to 15 Colon goes from 75.71 to 85.71, with a mean of 80.5; over the seeds 0 to
-7 Leukemia goes from 94.29 to 98.57. The values of the article lie inside both ranges,
-which is the meaningful comparison; <code>--seed</code> selects another partition.</p>
-<h2 id="more-values-of-k">More Values of K</h2>
-<p>The article studies ten values of <span class="arithmatex">\(K\)</span> and finds that the accuracy falls for <span class="arithmatex">\(K\)</span> above
-one on some datasets. Colon with three repetitions of the cross-validation, as in the
-article (seeds 0 to 2, not the seed of the script), and SRBCT (83 samples, 2308 genes)
-with one:</p>
-<table>
-<thead>
-<tr>
-<th>Dataset</th>
-<th><span class="arithmatex">\(K\)</span></th>
-<th>Article</th>
-<th>highFIS</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Colon</td>
-<td>0.6</td>
-<td>83.97</td>
-<td>84.44</td>
-</tr>
-<tr>
-<td>Colon</td>
-<td>1.0</td>
-<td>82.46</td>
-<td>80.63</td>
-</tr>
-<tr>
-<td>Colon</td>
-<td>2.0</td>
-<td>77.30</td>
-<td>75.16</td>
-</tr>
-<tr>
-<td>SRBCT</td>
-<td>1.0</td>
-<td>98.75</td>
-<td>98.89</td>
-</tr>
-</tbody>
-</table>
-<p>The fall of the accuracy on Colon as <span class="arithmatex">\(K\)</span> grows is reproduced.</p>
+accuracy, and the standard deviation between the 30 runs is 6 to 13 points. The second
+value of the last column is the deviation between the means of the three repetitions.</p>
+<p>On SRBCT (83 samples, 2308 genes), with ten folds and <span class="arithmatex">\(K = 1\)</span>, highFIS gives 98.89
+against 98.75 in the article.</p>
 <h2 id="differences-from-the-article">Differences from the Article</h2>
 <ul>
 <li><strong>Gradient of the adaptive parameters.</strong> highFIS treats <span class="arithmatex">\(\hat\eta\)</span> and <span class="arithmatex">\(\hat q\)</span> as
@@ -1610,20 +1544,20 @@ with one:</p>
   they do not have to hold.</li>
 <li><strong>Loss.</strong> The mean squared error, where the article has the sum over the classes
   halved: a constant factor that Adam compensates.</li>
-<li><strong>Threads.</strong> The script fixes four threads: the result changes with the number of
-  threads, through the order of the floating-point operations, and can still change
-  with the processor.</li>
 <li><strong>Datasets.</strong> The article uses fourteen datasets. Colon and Leukemia are the two that
   OpenML provides with the samples and features of the article and without further
   dependencies; SRBCT above uses the copy distributed with the code of the HDFIS
   article.</li>
 </ul>
+<h2 id="reproducibility">Reproducibility</h2>
+<p>The script fixes the seeds, uses deterministic algorithms and four threads, and ends by
+printing the versions of the libraries and the processor. Another number of threads,
+another processor or another version of the numerical libraries can change the result.</p>
 <h2 id="run-it">Run It</h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>examples/reproductions/adptsk_2025.py
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>python<span class="w"> </span>examples/reproductions/adptsk_2025.py<span class="w"> </span>--k<span class="w"> </span><span class="m">0</span>.6
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>examples/reproductions/adptsk_2025.py
 </span></code></pre></div>
-<p>The data are downloaded from OpenML on the first run. A run takes about five minutes,
-most of them on Leukemia.</p>
+<p>The data are downloaded from OpenML on the first run. A run takes about an hour, most of
+it on Leukemia.</p>
 
 
 

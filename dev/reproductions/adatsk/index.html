@@ -1163,17 +1163,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#choice-of-the-partition" class="md-nav__link">
-    <span class="md-ellipsis">
-      <span class="md-typeset">
-        Choice of the Partition
-      </span>
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#high-dimensional-datasets" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1189,6 +1178,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         Differences from the Article
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reproducibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Reproducibility
       </span>
     </span>
   </a>
@@ -1537,47 +1537,23 @@ extraction, which has its own <a href="../fsre-adatsk/">reproduction</a>.</p>
 <tr>
 <td>Evaluation</td>
 <td>ten-fold cross-validation, repeated five times</td>
-<td>ten-fold cross-validation, once</td>
+<td>the same, stratified folds</td>
 </tr>
 </tbody>
 </table>
 <h2 id="result">Result</h2>
-<p>Mean test accuracy in percent; for highFIS, with the standard deviation over the ten
-folds.</p>
-<table>
-<thead>
-<tr>
-<th>Dataset</th>
-<th>Article</th>
-<th>highFIS</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Iris (150 samples, 4 features)</td>
-<td>95.5</td>
-<td>94.67 ± 4.99</td>
-</tr>
-<tr>
-<td>Wine (178 samples, 13 features)</td>
-<td>98.7</td>
-<td>97.22 ± 3.73</td>
-</tr>
-<tr>
-<td>Wdbc (569 samples, 30 features)</td>
-<td>94.3</td>
-<td>94.20 ± 2.36</td>
-</tr>
-</tbody>
-</table>
-<p>Iris and Wdbc are reproduced within one point. Wine is 1.5 points below.</p>
-<h2 id="choice-of-the-partition">Choice of the Partition</h2>
-<p>The script uses seed 1, the one whose results are closest to the article among the seeds
-0 to 7. Over those seeds Iris goes from 94.00 to 95.33, Wine from 95.49 to 97.22 and
-Wdbc from 93.85 to 94.55. The values of the article for Iris and Wdbc lie inside or at
-the edge of these ranges; the 98.7 of Wine is above its range with this learning rate
-and number of iterations, which the article does not state. With a learning rate of
-0.1 and 3000 iterations highFIS gives 97.33, 98.33 and 95.96 with seed 0.</p>
+<p>Output of the script, on one thread:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Table III: AdaTSK (mean test accuracy in percent)
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>std: over the runs, and over the means of the repetitions
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>dataset   article  highFIS          std
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>Iris         95.5    94.67  5.33 / 0.42
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>Wine         98.7    96.52  4.18 / 0.67
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>Wdbc         94.3    94.13  3.11 / 0.14
+</span></code></pre></div>
+<p>Iris and Wdbc are reproduced within one point. Wine is 2.2 points below, with a learning
+rate and a number of iterations that the article does not state: with a learning rate of
+0.1 and 3000 iterations highFIS gives 97.33, 98.33 and 95.96 on the three datasets (ten
+folds).</p>
 <h2 id="high-dimensional-datasets">High-Dimensional Datasets</h2>
 <p>Table III of the article also reports AdaTSK on seven datasets with more than 1000
 features, with the centres kept fixed: 71.9 on Colon, 87.5 on SRBCT and 80.0 on
@@ -1594,15 +1570,17 @@ SRBCT, and 95.0 and 85.6 on Leukemia.</p>
   falls with the number of features (<code>learning_rate="auto"</code>), 300 epochs and
   normalization of the consequent inputs, a setting that is stable in low and in high
   dimension. With the defaults the three datasets give 94.7, 99.4 and 96.8 with seed 0.</li>
-<li><strong>Threads.</strong> The script fixes four threads: the result can change with the number of
-  threads and with the processor.</li>
 <li><strong>Datasets.</strong> The article uses nineteen datasets. Iris, Wine and Wdbc ship with
   scikit-learn.</li>
 </ul>
+<h2 id="reproducibility">Reproducibility</h2>
+<p>The script fixes the seeds, uses deterministic algorithms and one thread, and ends by
+printing the versions of the libraries and the processor. Another processor or another
+version of the numerical libraries can change the last digits.</p>
 <h2 id="run-it">Run It</h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>examples/reproductions/adatsk_2022.py
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>examples/reproductions/adatsk_2022.py
 </span></code></pre></div>
-<p>No download is needed. A run takes about one minute.</p>
+<p>No download is needed. A run takes about five minutes.</p>
 
 
 

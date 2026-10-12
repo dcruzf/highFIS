@@ -974,6 +974,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#feature-importance" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Feature importance
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gates" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Gates
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#drawing-on-your-own-axes" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1360,7 +1382,7 @@
 
 
 <h1 id="diagnostic-plots">Diagnostic Plots</h1>
-<p>Every fitted estimator has a <code>plot</code> method. It draws one of four diagnostic plots, chosen
+<p>Every fitted estimator has a <code>plot</code> method. It draws one of six diagnostic plots, chosen
 with <code>kind</code>:</p>
 <table>
 <thead>
@@ -1391,11 +1413,21 @@ with <code>kind</code>:</p>
 <td>Confusion matrix and decision margin, or fit and residuals</td>
 <td><code>X</code> and <code>y</code></td>
 </tr>
+<tr>
+<td><code>"feature_importance"</code></td>
+<td>The features that weigh most in the consequents</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>"gates"</code></td>
+<td>Gates of the kept features and rules, with their thresholds (gated families)</td>
+<td>no</td>
+</tr>
 </tbody>
 </table>
 <p>Each kind is also a method of its own (<code>plot_memberships</code>, <code>plot_history</code>,
-<code>plot_rule_activation</code>, <code>plot_diagnostics</code>), which is easier to discover with
-autocompletion.</p>
+<code>plot_rule_activation</code>, <code>plot_diagnostics</code>, <code>plot_feature_importance</code>, <code>plot_gates</code>),
+which is easier to discover with autocompletion.</p>
 <p>Plotting needs matplotlib, which is an optional dependency:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>highfis<span class="o">[</span>plot<span class="o">]</span>
 </span></code></pre></div>
@@ -1505,15 +1537,42 @@ residuals:</p>
 <p><img alt="Predicted against observed values and residuals of the regressor" src="../../assets/plots/diagnostics-regressor.png" /></p>
 <p>What to look for: residuals that trend with the observed value, as here, mean the model
 shrinks its predictions towards the mean.</p>
-<h2 id="drawing-on-your-own-axes">Drawing on your own axes</h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mf">3.5</span><span class="p">))</span>
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="n">clf</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"history"</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">left</span><span class="p">)</span>
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="n">clf</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"rule_activation"</span><span class="p">,</span> <span class="n">X</span><span class="o">=</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y_test</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">right</span><span class="p">)</span>
+<h2 id="feature-importance">Feature importance</h2>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">ax</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"feature_importance"</span><span class="p">,</span> <span class="n">top</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
 </span></code></pre></div>
-<p>Single-panel plots take one <code>Axes</code>. <code>"memberships"</code> takes one per feature shown and
-<code>"diagnostics"</code> takes two.</p>
+<p><img alt="The eight features with the largest importance" src="../../assets/plots/feature-importance.png" /></p>
+<p>The bars are the values of <code>clf.feature_importance()</code>: the mean magnitude of the
+consequent coefficients of each feature, normalized to sum to one, from the largest.
+<code>top</code> sets how many features are drawn (20 by default, <code>None</code> for all). The features are
+named as in <code>fit</code> when the data had names, for example the columns of a DataFrame.</p>
+<p>What to look for: the inputs must be on a common scale for the coefficients to be
+comparable. With thousands of features, a few bars far above the rest point to the
+features to look at first.</p>
+<h2 id="gates">Gates</h2>
+<p>DG-TSK, DG-ALETSK and FSRE-ADATSK train a gate for every feature and for every rule, and
+keep the features and rules whose gates pass a threshold:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">DGALETSKClassifier</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">gated</span> <span class="o">=</span> <span class="n">DGALETSKClassifier</span><span class="p">(</span><span class="n">n_mfs</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">dg_epochs</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span> <span class="n">finetune_epochs</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_fit</span><span class="p">,</span> <span class="n">y_fit</span><span class="p">)</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">fig</span> <span class="o">=</span> <span class="n">gated</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"gates"</span><span class="p">)</span>
+</span></code></pre></div>
+<p><img alt="Gates of the features and rules that a DG-ALETSK model kept" src="../../assets/plots/gates.png" /></p>
+<p>The left panel has one bar for each feature in <code>selected_features_</code> and the right panel
+one for each rule of the fitted model; the dashed lines are the thresholds. The values
+are those of <code>get_feature_gates()</code> and <code>get_rule_gates()</code>, at the end of the phase that
+trained them. For FSRE-ADATSK, whose gate is an odd function, the magnitude is drawn.
+The other families have no gates, and the plot raises a <code>ValueError</code> for them.</p>
+<p>What to look for: gates just above the threshold belong to features or rules that a
+slightly different threshold, or a shorter gate phase, would have removed.</p>
+<h2 id="drawing-on-your-own-axes">Drawing on your own axes</h2>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mf">3.5</span><span class="p">))</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">clf</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"history"</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">left</span><span class="p">)</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">clf</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"rule_activation"</span><span class="p">,</span> <span class="n">X</span><span class="o">=</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y_test</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">right</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Single-panel plots take one <code>Axes</code>. <code>"memberships"</code> takes one per feature shown, and
+<code>"diagnostics"</code> and <code>"gates"</code> take two.</p>
 <p>The same functions are available in <code>highfis.plotting</code> and take the estimator as their
 first argument; see the <a href="../../api/plotting/">API reference</a>.</p>
 

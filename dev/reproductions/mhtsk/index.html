@@ -1212,6 +1212,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#reproducibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Reproducibility
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#run-it" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1524,29 +1535,14 @@ more than 1000 features, so the script builds the model without arguments.</p>
 </tbody>
 </table>
 <h2 id="result">Result</h2>
-<p>Mean test accuracy in percent, with the standard deviation over the ten repetitions.</p>
-<table>
-<thead>
-<tr>
-<th>Dataset</th>
-<th>Article</th>
-<th>highFIS</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Colon (62 samples, 2000 genes)</td>
-<td>88.95 ± 5</td>
-<td>87.90 ± 7.08</td>
-</tr>
-<tr>
-<td>Leukemia (72 samples, 7129 genes)</td>
-<td>97.27 ± 3</td>
-<td>94.54 ± 4.45</td>
-</tr>
-</tbody>
-</table>
-<p>Colon is reproduced within one point. Leukemia is 2.7 points below.</p>
+<p>Output of the script, on four threads; the standard deviation is over the ten repetitions:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Table VI: mean test accuracy in percent
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>dataset    article  highFIS    std
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>Colon        88.95    87.89   7.08
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>Leukemia     97.27    94.55   4.45
+</span></code></pre></div>
+<p>The article reports standard deviations of about 5 on Colon and 3 on Leukemia. Colon is
+reproduced within about one point. Leukemia is 2.7 points below.</p>
 <h2 id="choice-of-the-splits">Choice of the Splits</h2>
 <p>The result depends on the ten random splits. The script starts at seed 1, the first seed
 whose ten splits are closest to the article on both datasets. Over the blocks of ten
@@ -1569,17 +1565,19 @@ may differ from the one of the article.</p>
   spreads of one are too wide for inputs in <span class="arithmatex">\([0, 1]\)</span>.</li>
 <li><strong>Rule extraction.</strong> The article also reports the model after rule extraction
   (MHTSK_RE); <code>rule_extraction=True</code> implements it, and it is not part of this script.</li>
-<li><strong>Threads.</strong> The script fixes four threads: the result can change with the number of
-  threads and with the processor.</li>
 <li><strong>Datasets.</strong> The article uses eleven datasets. Colon and Leukemia are the two that
   OpenML provides with the samples and features of the article and without further
   dependencies.</li>
 </ul>
+<h2 id="reproducibility">Reproducibility</h2>
+<p>The script fixes the seeds, uses deterministic algorithms and four threads, and ends by
+printing the versions of the libraries and the processor. Another processor or another
+version of the numerical libraries can change the last digits.</p>
 <h2 id="run-it">Run It</h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>examples/reproductions/mhtsk_2025.py
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>examples/reproductions/mhtsk_2025.py
 </span></code></pre></div>
 <p>The data are downloaded from OpenML on the first run. A run takes about twenty minutes,
-most of them on Leukemia; <code>--repetitions 3</code> gives a quicker look.</p>
+most of them on Leukemia.</p>
 
 
 

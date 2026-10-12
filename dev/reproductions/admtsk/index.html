@@ -1082,10 +1082,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-six-combinations-of-the-article" class="md-nav__link">
+  <a href="#what-the-best-of-six-means" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
-        The Six Combinations of the Article
+        What the Best of Six Means
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#other-measurements" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Other Measurements
       </span>
     </span>
   </a>
@@ -1097,6 +1108,17 @@
     <span class="md-ellipsis">
       <span class="md-typeset">
         Differences from the Article
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reproducibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Reproducibility
       </span>
     </span>
   </a>
@@ -1465,7 +1487,8 @@ Takagi-Sugeno-Kang fuzzy system based on adaptive Dombi T-norm", <em>IEEE Transa
 Fuzzy Systems</em>, vol. 33, no. 6, 2025.</p>
 <p><strong>Script</strong>: <a href="https://github.com/dcruzf/highFIS/blob/main/examples/reproductions/admtsk_2025.py"><code>examples/reproductions/admtsk_2025.py</code></a></p>
 <h2 id="protocol-of-the-article">Protocol of the Article</h2>
-<p>Section IV-A of the article. These settings are the defaults of <code>ADMTSKClassifier</code>.</p>
+<p>Section IV-A of the article. Except for the learning rate and the batch size, which the
+script varies as the article does, these settings are the defaults of <code>ADMTSKClassifier</code>.</p>
 <table>
 <thead>
 <tr>
@@ -1503,50 +1526,59 @@ Fuzzy Systems</em>, vol. 33, no. 6, 2025.</p>
 <tr>
 <td>Optimizer</td>
 <td>Adam, 50 epochs, batches of 10% or 20% of the training samples</td>
-<td>defaults (<code>epochs=50</code>, 10%)</td>
+<td>default (<code>epochs=50</code>); both batch sizes</td>
 </tr>
 <tr>
 <td>Learning rate</td>
 <td>0.01, 0.001 or 0.0001; the best of the six combinations with the batch size is reported</td>
-<td>0.01</td>
+<td>the three values; the six combinations are printed, and the best</td>
 </tr>
 <tr>
 <td>Evaluation</td>
 <td>ten-fold cross-validation, repeated five times</td>
-<td>ten-fold cross-validation, once</td>
+<td>the same, stratified folds</td>
 </tr>
 </tbody>
 </table>
 <h2 id="result">Result</h2>
-<p>Mean test accuracy in percent; for highFIS, with the standard deviation over the ten
-folds.</p>
-<table>
-<thead>
-<tr>
-<th>Dataset</th>
-<th>Article</th>
-<th>highFIS</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Colon (62 samples, 2000 genes)</td>
-<td>86.33</td>
-<td>85.95 ± 14.18</td>
-</tr>
-<tr>
-<td>Leukemia (72 samples, 7129 genes)</td>
-<td>97.29</td>
-<td>97.14 ± 5.71</td>
-</tr>
-</tbody>
-</table>
-<p>Both are reproduced within half a point, with seed 0 and four threads. The seed was not
-chosen for this family.</p>
-<h2 id="the-six-combinations-of-the-article">The Six Combinations of the Article</h2>
-<p>The article reports, for each dataset, the best of six combinations of learning rate and
-batch size. With highFIS, ten folds, accuracy for the learning rates 0.01, 0.001 and
-0.0001, each with batches of 10% and 20%:</p>
+<p>Output of the script, on four threads; the standard deviation is over the 50 runs:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ADMTSK: mean test accuracy in percent of each combination
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>dataset   learning rate  batch  highFIS    std
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>Colon              0.01    10%    85.86  12.68
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>Colon              0.01    20%    84.86  11.49
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>Colon             0.001    10%    82.86  11.45
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>Colon             0.001    20%    82.86   9.89
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>Colon            0.0001    10%    87.57  10.79
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>Colon            0.0001    20%    86.24  11.22
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>Leukemia           0.01    10%    97.43   5.49
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>Leukemia           0.01    20%    97.43   5.49
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>Leukemia          0.001    10%    97.14   5.71
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>Leukemia          0.001    20%    96.86   5.92
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>Leukemia         0.0001    10%    96.86   5.92
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>Leukemia         0.0001    20%    97.14   5.71
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>Table V: the best of the six combinations (mean test accuracy in percent)
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>dataset    article  highFIS
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>Colon        86.33    87.57
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>Leukemia     97.29    97.43
+</span></code></pre></div>
+<p>The best of the six combinations is within 1.3 points of the article on Colon and within
+0.2 point on Leukemia.</p>
+<h2 id="what-the-best-of-six-means">What the Best of Six Means</h2>
+<p>On Colon the six combinations go from 82.9 to 87.6, a spread of almost five points,
+which is as much as the differences between the models that the article compares; on
+Leukemia they go from 96.9 to 97.4. With 62 and 72 samples, one test sample is 1.6 and
+1.4 points of a cross-validated accuracy.</p>
+<p>The article chooses the best combination for each dataset and each model on the test
+folds, without a validation set, so the published value is an optimistic estimate, and
+so is the last table above. The defaults of <code>ADMTSKClassifier</code> on these datasets are the
+third combination (a learning rate of 0.001 above 1000 features, batches of 10%), which
+gives 82.9 on Colon and 97.1 on Leukemia. When you report a result of your own, choose
+the combination on a validation part of the training data.</p>
+<h2 id="other-measurements">Other Measurements</h2>
+<p>One repetition of the ten folds, for the six combinations in the order of the output
+above. These runs read the data from files with the samples in another order than on
+OpenML, so their folds are not those of the script.</p>
 <table>
 <thead>
 <tr>
@@ -1559,25 +1591,11 @@ batch size. With highFIS, ten folds, accuracy for the learning rates 0.01, 0.001
 </thead>
 <tbody>
 <tr>
-<td>Colon</td>
-<td>ADMTSK</td>
-<td>86.33</td>
-<td>87.38</td>
-<td>86.0, 79.0, 84.0, 80.7, 87.4, 85.7</td>
-</tr>
-<tr>
 <td>SRBCT (83 samples, 2308 genes)</td>
 <td>ADMTSK</td>
 <td>98.81</td>
 <td>98.89</td>
 <td>98.9, 98.9, 98.9, 98.9, 98.9, 97.8</td>
-</tr>
-<tr>
-<td>Leukemia</td>
-<td>ADMTSK</td>
-<td>97.29</td>
-<td>97.14</td>
-<td>97.1, 97.1, 95.7, 95.7, 95.7, 97.1</td>
 </tr>
 <tr>
 <td>Colon</td>
@@ -1595,12 +1613,6 @@ batch size. With highFIS, ten folds, accuracy for the learning rates 0.01, 0.001
 </tr>
 </tbody>
 </table>
-<p>These runs read Colon from a file with the samples in another order than on OpenML, so
-their folds are not the folds of the script, and the first value of Colon (86.0) is not
-the 85.95 of the table above. On Colon the choice among the six moves the accuracy by eight points, more than the
-differences between the models that the article compares; with 62 samples one test
-sample is 1.6 points of the cross-validated accuracy. The best of six chosen on the
-test folds is an optimistic estimate.</p>
 <h2 id="differences-from-the-article">Differences from the Article</h2>
 <ul>
 <li><strong>Loss.</strong> The article minimizes the squared error on one-hot targets summed over the
@@ -1615,12 +1627,15 @@ test folds is an optimistic estimate.</p>
   dependencies; SRBCT above uses the copy distributed with the code of the HDFIS
   article.</li>
 </ul>
+<h2 id="reproducibility">Reproducibility</h2>
+<p>The script fixes the seeds, uses deterministic algorithms and four threads, and ends by
+printing the versions of the libraries and the processor. Another number of threads,
+another processor or another version of the numerical libraries can change the result.</p>
 <h2 id="run-it">Run It</h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>examples/reproductions/admtsk_2025.py
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>python<span class="w"> </span>examples/reproductions/admtsk_2025.py<span class="w"> </span>--learning-rate<span class="w"> </span><span class="m">0</span>.0001
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>examples/reproductions/admtsk_2025.py
 </span></code></pre></div>
-<p>The data are downloaded from OpenML on the first run. A run takes about nine minutes,
-most of them on Leukemia.</p>
+<p>The data are downloaded from OpenML on the first run. A run takes several hours, most of
+them on Leukemia; remove it from <code>DATASETS</code> in the script for a run of about half an hour.</p>
 
 
 
