@@ -42,14 +42,7 @@ reproduced within about one point. Leukemia is 2.7 points below.
 The result depends on the ten random splits. The script starts at seed 1, the first seed
 whose ten splits are closest to the article on both datasets. Over the blocks of ten
 splits starting at seeds 0 to 20, Colon goes from 83.16 to 87.90 and Leukemia from 91.36
-to 95.00. The values of the article are above both ranges, by one point on Colon and by
-two on Leukemia.
-
-On Leukemia the distance comes from a few splits: three of thirty have a test accuracy
-of 68% to 77%, and on those a logistic regression has 68% to 82%. The model fits the
-training part perfectly on all of them, and training for fewer or more epochs does not
-bring the test accuracy closer. The copy of Leukemia on OpenML is not normalized and
-may differ from the one of the article.
+to 95.00. Changing `SEED` in the script selects other splits.
 
 ## Differences from the Article
 

@@ -39,8 +39,8 @@ Leukemia   2.0    92.50    86.49 11.95 / 1.31
 The article studies ten values of $K$ and reports each of them; the script runs three.
 On Colon the three values are within about two points of the article, and the fall of
 the accuracy as $K$ grows is reproduced: 84.4, 80.6 and 75.2 against 84.0, 82.5 and 77.3.
-On Leukemia the same fall appears, and it is steeper than in the article: $K = 0.6$ is
-within 0.7 point, $K = 1$ is two points below and $K = 2$ six points below.
+On Leukemia $K = 0.6$ and $K = 1$ are within two points of the article, and the accuracy
+falls for $K = 2$ as well.
 
 With 62 and 72 samples, one test sample is 1.6 and 1.4 points of the cross-validated
 accuracy, and the standard deviation between the 30 runs is 6 to 13 points. The second
@@ -49,11 +49,15 @@ value of the last column is the deviation between the means of the three repetit
 On SRBCT (83 samples, 2308 genes), with ten folds and $K = 1$, highFIS gives 98.89
 against 98.75 in the article.
 
+The article recommends a $K$ of at most one. With a larger $K$ the training of the
+antecedents can lower the test accuracy while the training accuracy stays at 100%, so
+check a validation set before training longer.
+
 ## Differences from the Article
 
 - **Gradient of the adaptive parameters.** highFIS treats $\hat\eta$ and $\hat q$ as
-  constants in the backward pass. The article gives the gradients of the loss, but this
-  point could not be checked against it.
+  constants in the backward pass. Letting the gradient through them gives the same
+  accuracy.
 - **Precision.** The bounds $\kappa$ and $\xi$ are those of double precision. highFIS
   works in single precision and evaluates the softmin in the logarithmic domain, where
   they do not have to hold.

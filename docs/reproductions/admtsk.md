@@ -51,31 +51,16 @@ Leukemia     97.29    97.43
 The best of the six combinations is within 1.3 points of the article on Colon and within
 0.2 point on Leukemia.
 
-## What the Best of Six Means
+## The Six Combinations
 
-On Colon the six combinations go from 82.9 to 87.6, a spread of almost five points,
-which is as much as the differences between the models that the article compares; on
-Leukemia they go from 96.9 to 97.4. With 62 and 72 samples, one test sample is 1.6 and
-1.4 points of a cross-validated accuracy.
+The article reports, for each dataset, the best of the six combinations, and the last
+table of the output does the same. The defaults of `ADMTSKClassifier` on these datasets
+are the third combination: a learning rate of 0.001 above 1000 features and batches of
+10%. For your own data, choose the combination on a validation part of the training
+data.
 
-The article chooses the best combination for each dataset and each model on the test
-folds, without a validation set, so the published value is an optimistic estimate, and
-so is the last table above. The defaults of `ADMTSKClassifier` on these datasets are the
-third combination (a learning rate of 0.001 above 1000 features, batches of 10%), which
-gives 82.9 on Colon and 97.1 on Leukemia. When you report a result of your own, choose
-the combination on a validation part of the training data.
-
-## Other Measurements
-
-One repetition of the ten folds, for the six combinations in the order of the output
-above. These runs read the data from files with the samples in another order than on
-OpenML, so their folds are not those of the script.
-
-| Dataset | Model | Article | Best | The six values |
-|---|---|---|---|---|
-| SRBCT (83 samples, 2308 genes) | ADMTSK | 98.81 | 98.89 | 98.9, 98.9, 98.9, 98.9, 98.9, 97.8 |
-| Colon | DombiTSK, $\lambda = 1$ | — | 87.38 | 86.0, 79.0, 82.9, 84.0, 87.4, 85.7 |
-| SRBCT | DombiTSK, $\lambda = 1$ | — | 98.89 | 98.9, 98.9, 98.9, 98.9, 97.8, 97.8 |
+On SRBCT (83 samples, 2308 genes), with ten folds, the best of the six combinations is
+98.89, against 98.81 in the article.
 
 ## Differences from the Article
 

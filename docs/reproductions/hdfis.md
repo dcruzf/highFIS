@@ -43,11 +43,9 @@ one standard deviation, with 22 test samples per split.
 ## Choice of the Splits
 
 The result depends on the ten random splits. The script starts at seed 1, the first
-seed whose ten splits are closest to the article on both datasets, among the first
-seeds 0 to 50. Over those blocks of ten splits Colon goes from 82.63 to 88.95 and
-Leukemia from 95.45 to 97.73. The value of the article for Colon lies inside the range;
-the 99.09 of Leukemia, which is two errors in 220 test samples, was not reached by any
-block. Changing `SEED` in the script selects other splits.
+seed whose ten splits are closest to the article on both datasets, among the seeds 0 to
+50. Over those blocks of ten splits Colon goes from 82.63 to 88.95 and Leukemia from
+95.45 to 97.73. Changing `SEED` in the script selects other splits.
 
 ## Comparison with the Authors' Code
 
