@@ -303,6 +303,57 @@ class CompositeGaussianMF(MembershipFunction):
         return self.eps + (1.0 - self.eps) * torch.exp(-0.5 * z.square())
 
 
+class ExtendedGaussianMF(MembershipFunction):
+    r"""Gaussian membership rescaled to have a lower bound chosen by the user.
+
+    Defined as :math:`\varepsilon + (1 - \varepsilon)\exp(-(x - m)^2 / (2\sigma^2))`: the
+    Gaussian function mapped linearly from :math:`(0, 1]` to :math:`(\varepsilon, 1]`.
+
+    Reference: Xue et al., "ADMTSK: a high-dimensional Takagi-Sugeno-Kang fuzzy system
+    based on adaptive Dombi T-norm", IEEE Transactions on Fuzzy Systems 33(6), 2025,
+    Eq. (32), where it is called the extended Gaussian membership function.
+    """
+
+    def __init__(
+        self, mean: float = 0.0, sigma: float = 1.0, lower_bound: float = 0.1, eps: float | None = None
+    ) -> None:
+        """Initialize the extended Gaussian membership function.
+
+        Args:
+            mean: Centre of the Gaussian.
+            sigma: Spread; must be positive.
+            lower_bound: Lower bound of the membership values, in ``[0, 1)``.
+            eps: Numerical stability constant.
+        """
+        super().__init__(eps=eps)
+        if sigma <= 0:
+            raise ValueError("sigma must be positive")
+        if not 0.0 <= lower_bound < 1.0:
+            raise ValueError("lower_bound must be in the interval [0, 1)")
+        self.mean = nn.Parameter(torch.tensor(float(mean)))
+        self.raw_sigma = nn.Parameter(torch.tensor(_inv_softplus(float(sigma), eps)))
+        self.lower_bound = float(lower_bound)
+
+    @property
+    def sigma(self) -> Tensor:
+        """Return the positive spread via softplus reparameterization."""
+        return F.softplus(self.raw_sigma) + self.eps
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Compute the membership values for the input tensor."""
+        x = self._as_tensor(x)
+        z = (x - self.mean) / self.sigma
+        return self.lower_bound + (1.0 - self.lower_bound) * torch.exp(-0.5 * z.square())
+
+    def inspect_params(self) -> dict[str, Any]:
+        """Return the serializable parameters for this membership function."""
+        return {
+            "mean": float(self.mean.detach().cpu().item()),
+            "sigma": float(self.sigma.detach().cpu().item()),
+            "lower_bound": float(self.lower_bound),
+        }
+
+
 class CompositeGMF(MembershipFunction):
     """Composite Gaussian membership with a positive lower bound based on ADMTSK.
 
@@ -765,6 +816,7 @@ __all__: list[str] = [
     "BellMF",
     "CompositeExponentialMF",
     "CompositeGaussianMF",
+    "ExtendedGaussianMF",
     "GaussianMF",
     "GaussianPiMF",
     "LinSShapedMF",
