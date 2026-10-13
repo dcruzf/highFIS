@@ -86,9 +86,23 @@ class BaseTSKClassifierModel(BaseTSK):
     n_classes: int
 
     def predict_proba(self, x: Tensor) -> Tensor:
-        """Return class probabilities computed with softmax."""
+        """Return class probabilities.
+
+        A model trained with the cross-entropy loss outputs logits, and the probabilities
+        are their softmax. A model trained with a squared error on one-hot targets outputs
+        estimates of the probabilities themselves: they are clipped at zero and scaled to
+        add up to one, which keeps the order of the classes. A softmax would compress such
+        outputs: a perfect ``(1, 0)`` would become ``(0.73, 0.27)``.
+        """
         with torch.no_grad():
-            return torch.softmax(self._run_inference(x, self.forward), dim=1)
+            output = self._run_inference(x, self.forward)
+            proba = torch.softmax(output, dim=1)
+            if not issubclass(self.default_criterion, nn.MSELoss):
+                return proba
+            scores = output.clamp(min=0.0)
+            total = scores.sum(dim=1, keepdim=True)
+            # A sample with no positive score keeps the softmax, which is always defined.
+            return torch.where(total > 0.0, scores / total.clamp(min=torch.finfo(output.dtype).tiny), proba)
 
     def predict(self, x: Tensor) -> Tensor:
         """Return predicted class indices."""

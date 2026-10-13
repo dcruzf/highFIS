@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import os
 import threading
+import warnings
 from abc import abstractmethod
 from collections import OrderedDict
 from collections.abc import Callable, Hashable, Mapping, Sequence
@@ -1138,7 +1139,10 @@ class _BaseTSKEstimator(BaseEstimator):
     def _check_firing(self, x_arr: np.ndarray) -> None:
         """Warn at the end of ``fit`` when the rule weights are degenerate on the training data."""
         try:
-            weights = self.rule_activation(x_arr[: _diagnostics._FIT_CHECK_ROWS])
+            with warnings.catch_warnings():
+                # The rows are the validated array of ``fit``, without the column names.
+                warnings.filterwarnings("ignore", message="X does not have valid feature names")
+                weights = self.rule_activation(x_arr[: _diagnostics._FIT_CHECK_ROWS])
         except Exception:
             # A diagnostic must never make ``fit`` fail.
             return
@@ -1332,9 +1336,11 @@ class _BaseTSKEstimator(BaseEstimator):
             The explanation as text. ``print`` it to read it.
         """
         check_is_fitted(self, "model_")
-        x_row = validate_data(self, np.asarray(x).reshape(1, -1), reset=False)
+        # A data frame keeps its column names through the validation; anything else is one row.
+        sample = x if hasattr(x, "columns") else np.asarray(x).reshape(1, -1)
+        x_row = validate_data(self, sample, reset=False)
         weights, contributions = self._rule_contributions(x_row)
-        prediction = self.predict(x_row)[0]
+        prediction = self.predict(sample)[0]
         return _describe.explain(self, weights, contributions, prediction, top_rules, top_features, digits, labels)
 
     def coverage(self, X: npt.ArrayLike) -> np.ndarray:
@@ -1391,7 +1397,7 @@ class _BaseTSKEstimator(BaseEstimator):
         Requires matplotlib (``pip install highfis[plot]``).
 
         Args:
-            kind: ``"memberships"`` (default), ``"history"``, ``"rule_activation"``,
+            kind: ``"memberships"`` (default), ``"history"``, ``"rules"``, ``"rule_activation"``,
                 ``"diagnostics"``, ``"feature_importance"`` or ``"gates"``.
             **kwargs: Arguments of the corresponding ``plot_<kind>`` method.
 
@@ -1407,13 +1413,30 @@ class _BaseTSKEstimator(BaseEstimator):
         X: npt.ArrayLike | None = None,
         max_features: int = 6,
         n_points: int = 200,
+        set_names: Sequence[str] | None = None,
         ax: Any = None,
     ) -> Any:
         """Plot the learned fuzzy sets, one panel per feature.
 
         See :func:`highfis.plotting.plot_memberships`.
         """
-        return plotting.plot_memberships(self, features, X=X, max_features=max_features, n_points=n_points, ax=ax)
+        return plotting.plot_memberships(
+            self, features, X=X, max_features=max_features, n_points=n_points, set_names=set_names, ax=ax
+        )
+
+    def plot_rules(
+        self,
+        features: Sequence[int | str] | None = None,
+        *,
+        max_features: int = 12,
+        set_names: Sequence[str] | None = None,
+        ax: Any = None,
+    ) -> Any:
+        """Plot the rule base as a table: the fuzzy set that each rule uses on each feature.
+
+        See :func:`highfis.plotting.plot_rules`.
+        """
+        return plotting.plot_rules(self, features, max_features=max_features, set_names=set_names, ax=ax)
 
     def plot_history(self, metric: str | None = None, *, ax: Any = None) -> Any:
         """Plot the training loss, or a recorded metric, per epoch.

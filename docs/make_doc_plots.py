@@ -41,6 +41,7 @@ def main() -> None:
 
     save(clf.plot(), "memberships.png")
     save(clf.plot(kind="history"), "history.png")
+    save(clf.plot(kind="rules"), "rules.png")
     save(clf.plot(kind="history", metric="accuracy"), "history-accuracy.png")
     save(clf.plot(kind="rule_activation", X=X_test, y=y_test), "rule-activation.png")
     save(clf.plot(kind="diagnostics", X=X_test, y=y_test), "diagnostics-classifier.png")

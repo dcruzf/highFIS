@@ -62,6 +62,7 @@ def test_every_estimator_draws_every_kind(name: str) -> None:
 
     assert isinstance(est.plot(), Figure)
     assert isinstance(est.plot(kind="history"), Axes)
+    assert isinstance(est.plot(kind="rules"), Axes)
     assert isinstance(est.plot(kind="rule_activation", X=x[90:]), Axes)
     assert isinstance(est.plot(kind="diagnostics", X=x[90:], y=target[90:]), Figure)
     assert isinstance(est.plot(kind="feature_importance"), Axes)
@@ -78,6 +79,7 @@ def test_plot_methods_match_the_kinds(clf: Any) -> None:
     assert plotting.PLOT_KINDS == (
         "memberships",
         "history",
+        "rules",
         "rule_activation",
         "diagnostics",
         "feature_importance",
@@ -86,6 +88,7 @@ def test_plot_methods_match_the_kinds(clf: Any) -> None:
     assert isinstance(clf.plot_memberships(), Figure)
     assert isinstance(clf.plot_feature_importance(), Axes)
     assert isinstance(clf.plot_history(), Axes)
+    assert isinstance(clf.plot_rules(), Axes)
     assert isinstance(clf.plot_rule_activation(x, y), Axes)
     assert isinstance(clf.plot_diagnostics(x, y), Figure)
 
@@ -414,3 +417,52 @@ def test_gates_draw_on_given_axes() -> None:
     fig, axes = plt.subplots(1, 2)
 
     assert est.plot_gates(ax=axes) is fig
+
+
+def test_memberships_are_named_as_in_the_rules(clf: Any) -> None:
+    """The legend speaks of low, medium and high, as ``rules_as_text`` does, and sits beside the panels."""
+    fig = clf.plot_memberships()
+
+    assert [text.get_text() for text in fig.legends[0].get_texts()] == ["low", "medium", "high"]
+    assert all(panel.get_legend() is None for panel in fig.axes)
+
+
+def test_memberships_take_other_set_names(clf: Any) -> None:
+    fig = clf.plot_memberships(set_names=["cold", "mild", "hot"])
+    assert [text.get_text() for text in fig.legends[0].get_texts()] == ["cold", "mild", "hot"]
+
+
+def test_memberships_on_given_axes_keep_a_legend_per_panel(clf: Any) -> None:
+    _, axes = plt.subplots(1, 6)
+    fig = clf.plot_memberships(ax=axes)
+    assert not fig.legends
+    assert all(panel.get_legend() is not None for panel in axes)
+
+
+def test_rules_table_has_the_set_of_each_rule_and_feature(clf: Any) -> None:
+    panel = clf.plot_rules()
+    levels = np.asarray(panel.images[0].get_array())
+    table = clf.model_.get_rule_table()
+
+    assert levels.shape == (len(table), 6)
+    # Each feature has three sets, and each rule of the compact rule base uses one of them.
+    assert all(sorted(column) == [0.0, 0.5, 1.0] for column in levels.T.tolist())
+    first = clf.get_mf_params()[clf.model_.input_names[0]]
+    lowest = int(np.argmin([params["mean"] for params in first]))
+    assert levels[lowest, 0] == 0.0
+    assert sorted({text.get_text() for text in panel.texts}) == ["H", "L", "M"]
+    assert [tick.get_text() for tick in panel.get_yticklabels()] == ["Rule 0", "Rule 1", "Rule 2"]
+
+
+def test_rules_table_shows_the_chosen_features(clf: Any) -> None:
+    panel = clf.plot_rules(features=[0, 3])
+    assert np.asarray(panel.images[0].get_array()).shape[1] == 2
+    assert [tick.get_text() for tick in panel.get_xticklabels()] == ["x1", "x4"]
+
+
+def test_gate_thresholds_are_in_the_titles() -> None:
+    est = _fit("FSREADATSKClassifier", epochs=30)
+    fig = est.plot_gates()
+    for panel in fig.axes[:2]:
+        assert "threshold" in panel.get_title()
+        assert panel.get_legend() is None
