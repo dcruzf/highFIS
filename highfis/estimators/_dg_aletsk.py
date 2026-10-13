@@ -128,6 +128,7 @@ class DGALETSKClassifier(_PointRuleCap, FSREADATSKClassifier):
         optimizer_type: str = "adam",
         structural_pruning: bool = True,
         freeze_antecedents_finetune: bool = False,
+        gates: bool = True,
         device: str = "cpu",
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
@@ -196,6 +197,11 @@ class DGALETSKClassifier(_PointRuleCap, FSREADATSKClassifier):
                 antecedent MF parameters (centres and spreads) during
                 fine-tuning, matching the paper. Feature gates are always kept
                 frozen during fine-tuning. Set ``True`` to freeze the MFs too.
+            gates: If ``False``, the estimator is ALETSK, the system of the source article
+                without gates: no feature is selected and no rule extracted, and one
+                gradient phase of ``finetune_epochs`` trains the antecedents and the
+                first-order consequents. The article builds it on the compact rule base,
+                ``rule_base="coco"`` with ``n_mfs=3`` and ``mf_init="grid"``. Default ``True``.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
             eval_metrics_every: Evaluate training metrics every ``n`` epochs; ``0``
@@ -238,6 +244,7 @@ class DGALETSKClassifier(_PointRuleCap, FSREADATSKClassifier):
         self.pfrb_spread = pfrb_spread
         self.optimizer_type = optimizer_type
         self.freeze_antecedents_finetune = freeze_antecedents_finetune
+        self.gates = gates
         self.finetune_epochs = finetune_epochs
         self.structural_pruning = structural_pruning
         self.zeta_lambda: list[float] | None = zeta_lambda
@@ -304,6 +311,7 @@ class DGALETSKClassifier(_PointRuleCap, FSREADATSKClassifier):
             optimizer_type=self.optimizer_type,
             structural_pruning=bool(self.structural_pruning),
             finetune_freeze_antecedents=bool(self.freeze_antecedents_finetune),
+            gates=bool(self.gates),
         )
 
     def fit(
@@ -379,6 +387,7 @@ class DGALETSKRegressor(_PointRuleCap, FSREADATSKRegressor):
         optimizer_type: str = "adam",
         structural_pruning: bool = True,
         freeze_antecedents_finetune: bool = False,
+        gates: bool = True,
         device: str = "cpu",
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
@@ -444,6 +453,11 @@ class DGALETSKRegressor(_PointRuleCap, FSREADATSKRegressor):
                 antecedent MF parameters (centres and spreads) during
                 fine-tuning, matching the paper. Feature gates are always kept
                 frozen during fine-tuning. Set ``True`` to freeze the MFs too.
+            gates: If ``False``, the estimator is ALETSK, the system of the source article
+                without gates: no feature is selected and no rule extracted, and one
+                gradient phase of ``finetune_epochs`` trains the antecedents and the
+                first-order consequents. The article builds it on the compact rule base,
+                ``rule_base="coco"`` with ``n_mfs=3`` and ``mf_init="grid"``. Default ``True``.
             device: Target device for training and inference (e.g., ``"cpu"``,
                 ``"cuda"``, or ``"mps"``).
             eval_metrics_every: Evaluate training metrics every ``n`` epochs; ``0``
@@ -487,6 +501,7 @@ class DGALETSKRegressor(_PointRuleCap, FSREADATSKRegressor):
         self.pfrb_spread = pfrb_spread
         self.optimizer_type = optimizer_type
         self.freeze_antecedents_finetune = freeze_antecedents_finetune
+        self.gates = gates
         self.finetune_epochs = finetune_epochs
         self.structural_pruning = structural_pruning
         self.zeta_lambda: list[float] | None = zeta_lambda
@@ -552,6 +567,7 @@ class DGALETSKRegressor(_PointRuleCap, FSREADATSKRegressor):
             optimizer_type=self.optimizer_type,
             structural_pruning=bool(self.structural_pruning),
             finetune_freeze_antecedents=bool(self.freeze_antecedents_finetune),
+            gates=bool(self.gates),
         )
 
     def fit(

@@ -298,3 +298,46 @@ def test_dgaletsk_regressor_save_load_round_trip(tmp_path: object) -> None:
     reloaded = DGALETSKRegressor.load(target)
 
     assert np.allclose(reloaded.predict(x), reg.predict(x))
+
+
+def _aletsk(**kwargs: Any) -> DGALETSKClassifier:
+    """ALETSK as the article builds it: no gates, compact rule base, three sets on a grid."""
+    return DGALETSKClassifier(gates=False, rule_base="coco", n_mfs=3, mf_init="grid", random_state=0, **kwargs)
+
+
+def test_without_gates_the_estimator_is_trained_in_one_phase() -> None:
+    """ALETSK is the system of the article without gates: nothing is selected or extracted."""
+    x, y = _make_dataset()
+    model = _aletsk(finetune_epochs=5).fit(x, y)
+
+    assert set(model.history_) == {"finetune"}
+    assert model.model_.n_rules == 3
+    assert list(model.selected_features_) == [0, 1, 2]
+    assert not bool(cast(Any, model.model_.rule_layer).gates_enabled)
+    assert cast(Any, model.model_.consequent_layer).mode == "finetune"
+    assert model.predict_proba(x).shape == (60, 2)
+
+
+def test_without_gates_the_antecedents_are_trained() -> None:
+    x, y = _make_dataset()
+    centres = []
+    for epochs in (0, 20):
+        sets = _aletsk(finetune_epochs=epochs).fit(x, y).get_mf_params()
+        centres.append(np.array([[mf["mean"] for mf in group] for group in sets.values()]))
+    assert np.abs(centres[1] - centres[0]).max() > 1e-4
+
+
+def test_without_gates_the_regressor_fits() -> None:
+    rng = np.random.default_rng(1)
+    x = rng.normal(size=(60, 3)).astype(np.float32)
+    y = (x[:, 0] - 0.5 * x[:, 1]).astype(np.float32)
+    model = DGALETSKRegressor(
+        gates=False, rule_base="coco", n_mfs=3, mf_init="grid", finetune_epochs=5, random_state=0
+    ).fit(x, y)
+    assert set(model.history_) == {"finetune"}
+    assert model.predict(x).shape == (60,)
+
+
+def test_gates_are_on_by_default() -> None:
+    assert DGALETSKClassifier().gates is True
+    assert DGALETSKRegressor().get_params()["gates"] is True
