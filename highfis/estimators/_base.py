@@ -1230,6 +1230,7 @@ class _BaseTSKEstimator(BaseEstimator):
         digits: int = 2,
         labels: Sequence[str] | None = None,
         max_rules: int | None = None,
+        width: int = 80,
     ) -> _describe.Report:
         """Describe the fitted rule base as ``IF ... THEN ...`` sentences.
 
@@ -1237,6 +1238,11 @@ class _BaseTSKEstimator(BaseEstimator):
         and ``high`` for two sets, ``low``, ``medium``, ``high`` for three, ``very low`` to
         ``very high`` for five, and ``level i of n`` otherwise. The consequent of a rule is
         its linear function of the features, per class for a classifier.
+
+        The conditions of a rule are written in full. When more than half of the features
+        of a rule use the same fuzzy set, the rule is written as the features that differ
+        followed by ``the other N features are low``, which is what tells it from the
+        other rules.
 
         Coefficients apply to the features as they were passed to ``fit``. If the data
         were scaled first, they are on the scaled features; with
@@ -1246,23 +1252,23 @@ class _BaseTSKEstimator(BaseEstimator):
         :meth:`get_rule_gates` are applied.
 
         Args:
-            top_features: Number of conditions and of coefficients shown per rule. The
-                conditions kept are those on the most important features according to
-                :meth:`feature_importance`; the coefficients kept are the largest in
-                magnitude. ``None`` shows everything.
+            top_features: Number of coefficients shown in each consequent, the largest in
+                magnitude. ``None`` shows every coefficient.
             digits: Decimal places of the coefficients.
             labels: Names for the fuzzy sets, from the lowest centre to the highest. Used
                 for every feature whose number of sets equals ``len(labels)``.
             max_rules: Number of rules written. ``None`` writes every rule.
+            width: Width of the text, in characters. Longer lines are continued on the
+                next one, between two conditions or two terms.
 
         Returns:
             The description, one block of lines per rule: a text that an interactive session
             displays as it is, with the rule base in its ``data``.
         """
         check_is_fitted(self, "model_")
-        return _describe.rules_as_text(self, top_features, digits, labels, max_rules)
+        return _describe.rules_as_text(self, top_features, digits, labels, max_rules, width)
 
-    def summary(self, digits: int = 4) -> _describe.Report:
+    def summary(self, digits: int = 4, width: int = 80) -> _describe.Report:
         """Describe the fitted model: its structure, how it was trained and how training ended.
 
         The text gives the task, the features seen in ``fit`` and used by the model, the
@@ -1274,13 +1280,14 @@ class _BaseTSKEstimator(BaseEstimator):
 
         Args:
             digits: Decimal places of the losses and metrics.
+            width: Width of the text, in characters.
 
         Returns:
             The description, one item per line: a text that an interactive session displays
             as it is (``print`` it in a script), with the values in its ``data``.
         """
         check_is_fitted(self, "model_")
-        return _describe.summary(self, digits)
+        return _describe.summary(self, digits, width)
 
     def _rule_contributions(self, x_row: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Normalized weight of each rule on one sample, and what each rule adds to the output.
@@ -1314,13 +1321,15 @@ class _BaseTSKEstimator(BaseEstimator):
         top_features: int | None = 3,
         digits: int = 2,
         labels: Sequence[str] | None = None,
+        width: int = 80,
     ) -> _describe.Report:
         """Describe how the rules produce the prediction for one sample.
 
         The output of a TSK system is the sum, over the rules, of the normalized weight of
         the rule times the value of its consequent. The text gives the prediction, that
         sum, and for the rules with the largest weights their weight, what they add to the
-        output and their antecedent. For a classifier the output has one score per class,
+        output and their antecedent. A rule whose weight rounds to zero is counted with the
+        other rules. For a classifier the output has one score per class,
         and the predicted class is the one with the largest score.
 
         Args:
@@ -1328,11 +1337,11 @@ class _BaseTSKEstimator(BaseEstimator):
                 row.
             top_rules: Number of rules described, from the largest weight. The others are
                 summed in one line. ``None`` describes every rule.
-            top_features: Number of conditions shown in each antecedent, on the most
-                important features according to :meth:`feature_importance`. ``None`` shows
-                all of them.
+            top_features: No longer used: the conditions of a rule are written in full, as
+                in :meth:`rules_as_text`. Kept so that existing calls keep working.
             digits: Decimal places of the weights and contributions.
             labels: Names for the fuzzy sets, as in :meth:`rules_as_text`.
+            width: Width of the text, in characters.
 
         Returns:
             The explanation: a text that an interactive session displays as it is (``print``
@@ -1344,7 +1353,7 @@ class _BaseTSKEstimator(BaseEstimator):
         x_row = validate_data(self, sample, reset=False)
         weights, contributions = self._rule_contributions(x_row)
         prediction = self.predict(sample)[0]
-        return _describe.explain(self, weights, contributions, prediction, top_rules, top_features, digits, labels)
+        return _describe.explain(self, weights, contributions, prediction, top_rules, digits, labels, width)
 
     def coverage(self, X: npt.ArrayLike) -> np.ndarray:
         """Return, for each sample, how well the best-matching rule covers it.

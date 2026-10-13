@@ -10,7 +10,8 @@ import pytest
 from sklearn.exceptions import NotFittedError
 
 import highfis
-from highfis._describe import set_labels
+from highfis import _describe as describe
+from highfis._describe import _conditions, set_labels
 
 ESTIMATORS: list[str] = sorted(n for n in highfis.__all__ if n.endswith(("Classifier", "Regressor")))
 GATED = {n for n in ESTIMATORS if n.startswith(("DGTSK", "DGALETSK", "FSREADATSK"))}
@@ -86,32 +87,51 @@ def test_rule_conditions_follow_the_rule_table(clf: Any) -> None:
     params = clf.get_mf_params()["x2"]
     expected = set_labels(params)[rule["x2"]]
 
-    line = clf.rules_as_text(top_features=None).split("\n")[3]
+    line = next(line for line in clf.rules_as_text(top_features=None).split("\n") if line.startswith("Rule 1: IF "))
 
-    assert line.startswith("Rule 1: IF ")
     assert f"dose is {expected}" in line
 
 
 def test_consequents_show_the_model_coefficients(clf: Any) -> None:
     weights, bias = clf.get_consequent_weights(), clf.get_consequent_bias()
 
-    first_class = clf.rules_as_text(top_features=None, digits=4).split("\n")[1]
+    first_class = clf.rules_as_text(top_features=None, digits=4, width=200).split("\n")[1]
 
     assert f"{bias[0, 0]:.4f}" in first_class
     for d, name in enumerate(FEATURES):
         assert f"{abs(weights[0, 0, d]):.4f} * {name}" in first_class
 
 
-def test_top_features_truncates_conditions_and_coefficients(clf: Any) -> None:
+def test_top_features_truncates_the_coefficients_and_not_the_conditions(clf: Any) -> None:
     text = clf.rules_as_text(top_features=2)
 
     condition, consequent = text.split("\n")[:2]
-    assert condition.count(" is ") == 2
-    assert condition.endswith("... (2 more)")
+    assert all(f"{feature} is " in condition for feature in FEATURES)
     assert consequent.count(" * ") == 2
     assert consequent.endswith("+ ...")
-    kept = np.argsort(-clf.feature_importance())[:2]
-    assert all(f"{FEATURES[d]} is " in condition for d in kept)
+
+
+def test_long_rules_are_continued_between_conditions_and_terms(clf: Any) -> None:
+    narrow = clf.rules_as_text(top_features=None, width=40)
+
+    assert max(len(line) for line in narrow.splitlines()) <= 40
+    # Joined again, the lines give the text written without a limit.
+    wide = clf.rules_as_text(top_features=None, width=10_000)
+    assert " ".join(narrow.split()) == " ".join(wide.split())
+
+
+def test_a_rule_is_written_as_what_most_features_share_and_the_exceptions() -> None:
+    names = ["a", "b", "c", "d", "e"]
+    sets: dict[str, list[str | None]] = {name: ["low", "high"] for name in names}
+
+    def conditions(*indices: int) -> list[str]:
+        return _conditions(dict(zip(names, indices, strict=True)), names, names, sets)
+
+    assert conditions(0, 0, 0, 0, 0) == ["all 5 features are low"]
+    assert conditions(0, 1, 0, 0, 0) == ["b is high", "the other 4 features are low"]
+    assert conditions(1, 1, 1, 0, 1) == ["d is low", "the other 4 features are high"]
+    # Without a set used by more than half of the features, every condition is written.
+    assert _conditions({"a": 0, "b": 1}, ["a", "b"], ["a", "b"], sets) == ["a is low", "b is high"]
 
 
 def test_largest_coefficients_come_first(clf: Any) -> None:
@@ -260,8 +280,10 @@ def test_summary_reports_what_fit_resolved(clf: Any) -> None:
 
     assert "classification, 2 classes" in text
     assert "3 per feature, GaussianMF" in text
-    assert f"learning rate {clf.learning_rate_:g}" in text
-    assert "20 epochs" in text
+    header, row = text.splitlines()[-2:]
+    assert header.split() == ["phase", "epochs", "rate", "loss", "first", "->", "last", "accuracy"]
+    assert row.split()[:3] == ["training", "20", f"{clf.learning_rate_:g}"]
+    assert max(len(line) for line in text.splitlines()) <= 80
     trainable = sum(p.numel() for p in clf.model_.parameters() if p.requires_grad)
     assert f"{trainable} trainable" in text
 
@@ -306,14 +328,15 @@ def test_every_estimator_explains_a_sample(name: str) -> None:
 def test_explain_names_classes_features_and_the_heaviest_rules(clf: Any) -> None:
     rng = np.random.default_rng(1)
     sample = rng.random(4)
-    text = clf.explain(sample, top_rules=1, top_features=2)
+    text = clf.explain(sample, top_rules=1)
     weights = clf.rule_activation(sample.reshape(1, -1))[0]
 
     assert text.splitlines()[0] == f"Prediction: {clf.predict(sample.reshape(1, -1))[0]}"
     assert "low risk: " in text and "high risk: " in text
     assert f"Rule {int(weights.argmax())}, weight {weights.max():.2f}" in text
     assert f"{len(weights) - 1} other rule" in text
-    assert sum(feature in text for feature in FEATURES) == 2
+    assert all(feature in text for feature in FEATURES)
+    assert "-0.00" not in text
 
 
 def test_explain_describes_every_rule_when_asked(clf: Any) -> None:
@@ -368,3 +391,30 @@ def test_coverage_ignores_dont_care_sets() -> None:
 
     # A head uses a few of the features: the others must not pull the match towards one.
     assert est.coverage(x + 5.0).max() < est.coverage(x).min()
+
+
+def test_summary_of_a_gated_family_fits_the_page() -> None:
+    """One row per phase and one column per quantity, instead of one long sentence per phase."""
+    text = _fit("FSREADATSKClassifier").summary()
+    lines = text.splitlines()
+    start = next(i for i, line in enumerate(lines) if line.startswith("Training"))
+
+    assert lines[start + 1].split()[:2] == ["phase", "epochs"]
+    assert [line.split("  ")[1] for line in lines[start + 2 : start + 5]] == [
+        "feature selection",
+        "rule extraction",
+        "fine-tuning",
+    ]
+    assert max(len(line) for line in lines) <= 80
+
+
+def test_explain_groups_the_rules_that_do_not_fire() -> None:
+    """A rule whose weight is written as zero is counted with the others, unless every rule is asked for."""
+    est = _fit("HTSKClassifier")
+    weights = np.array([0.999, 0.001, 0.0])
+    contributions = np.array([[0.9, 0.1], [-0.0001, 0.0], [0.0, 0.0]])
+    text = describe.explain(est, weights, contributions, est.classes_[0], top_rules=3)
+
+    assert text.count("\nRule ") == 1
+    assert "2 other rules, weight 0.00 in all" in text
+    assert "-0.00" not in text

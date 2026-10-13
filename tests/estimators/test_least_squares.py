@@ -178,7 +178,7 @@ def test_the_summary_reports_the_solution() -> None:
     assert "least squares" not in _fit("TSKClassifier").summary()
     text = _fit("TSKClassifier", use_lse=True, lse_ridge=0.5).summary()
 
-    assert "least squares      consequents solved at the end, ridge 0.5, training error" in text
+    assert "least squares: consequents solved at the end, ridge 0.5, training error" in text
 
 
 def _leave_one_out_error(design: torch.Tensor, target: torch.Tensor, ridge: float) -> float:
