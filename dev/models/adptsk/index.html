@@ -1178,6 +1178,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#highfismembershipstriangularpimf-and-trapezoidalpimf" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        <code>highfis.memberships.TriangularPiMF</code> and <code>TrapezoidalPiMF</code>
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1762,6 +1773,11 @@ a regression consequent head and MSE loss.</p>
 <td>Gaussian membership with positive infimum <code>exp(-K)</code></td>
 </tr>
 <tr>
+<td>Triangular and trapezoidal PIMF</td>
+<td><code>highfis.memberships.TriangularPiMF</code>, <code>TrapezoidalPiMF</code></td>
+<td>The two shapes with infimum <code>exp(-K)</code> inside their support</td>
+</tr>
+<tr>
 <td>ADP-softmin antecedent</td>
 <td><code>highfis.layers.ADPSoftminRuleLayer</code></td>
 <td>Adaptive double-parameter softmin rule aggregation</td>
@@ -1847,6 +1863,12 @@ a regression consequent head and MSE loss.</p>
 <li>Prevents crash caused by zero membership values in large dimensionality.</li>
 <li><code>K</code> controls the lower bound: membership infimum is <code>exp(-K)</code>.</li>
 </ul>
+<h3 id="highfismembershipstriangularpimf-and-trapezoidalpimf"><code>highfis.memberships.TriangularPiMF</code> and <code>TrapezoidalPiMF</code></h3>
+<p>The article also gives the triangular and the trapezoidal function a positive infimum
+(its Eqs. 44 and 45): inside the support, the degree is rescaled to <code>[exp(-K), 1]</code>;
+outside it, the degree stays at zero. The article does not use them in ADPTSK, which
+needs a differentiable function, and neither do the estimators; the two classes are
+available to build a model by hand.</p>
 <h2 id="training-in-the-paper-vs-highfis">Training in the paper vs. highFIS</h2>
 <ul>
 <li>The paper optimizes ADPTSK end-to-end with gradient-based learning.</li>

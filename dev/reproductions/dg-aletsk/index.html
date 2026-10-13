@@ -1592,7 +1592,7 @@ fifty runs, too long for an example; adding <code>"Leukemia": 1104</code> to <co
   samples. <code>use_lse=True</code> gives the refit.</li>
 <li><strong>Loss.</strong> The mean squared error, where the article has the sum over the classes
   halved: a constant factor that Adam compensates.</li>
-<li><strong>Folds.</strong> The article does not say whether its folds are stratified; the script uses
+<li><strong>Folds.</strong> The article partitions the data without stratification; the script uses
   stratified folds.</li>
 <li><strong>Datasets.</strong> The article uses twelve datasets. Colon is the one that OpenML provides
   with the samples and features of the article, without a further dependency, and that
