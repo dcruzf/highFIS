@@ -34,14 +34,14 @@ def test_squared_error_classifiers_scale_their_outputs(name: str) -> None:
     np.testing.assert_allclose(proba.sum(axis=1), 1.0, atol=1e-6)
     assert proba.min() >= 0.0
     positive = output.clamp(min=0.0)
-    has_positive = (positive.sum(dim=1) > 0).numpy()
-    expected = (positive / positive.sum(dim=1, keepdim=True).clamp(min=1e-30)).numpy()
-    np.testing.assert_allclose(proba[has_positive], expected[has_positive], atol=1e-6)
+    total = positive.sum(dim=1, keepdim=True)
+    expected = positive / total.clamp(min=1.0) + (1.0 - total).clamp(min=0.0) / 3.0
+    np.testing.assert_allclose(proba, expected.numpy(), atol=1e-6)
     # The class predicted is the one with the largest output, as before.
     np.testing.assert_array_equal(est.predict(x), est.classes_[output.argmax(dim=1).numpy()])
 
 
-def test_outputs_without_a_positive_score_fall_back_to_the_softmax() -> None:
+def test_outputs_without_a_positive_score_give_uniform_probabilities() -> None:
     x, y = _data()
     est = highfis.HDFISProdClassifier(epochs=2, random_state=0).fit(x, y)
     layer: Any = est.model_.consequent_layer
@@ -67,3 +67,22 @@ def test_a_fit_on_a_data_frame_does_not_warn_about_feature_names() -> None:
         est = highfis.HTSKClassifier(epochs=3, random_state=0).fit(frame, y)
         est.explain(frame.iloc[[0]])
         est.predict_proba(frame)
+
+
+@pytest.mark.parametrize(
+    ("output", "expected"),
+    [
+        ([1.0, 0.0], [1.0, 0.0]),  # a perfect output is a certain prediction
+        ([0.3, 0.0], [0.65, 0.35]),  # a weak output is close to no opinion
+        ([1.5, 0.5], [0.75, 0.25]),  # too much mass is scaled down
+        ([-0.2, -0.1], [0.5, 0.5]),
+    ],
+)
+def test_probabilities_from_squared_error_outputs(output: list[float], expected: list[float]) -> None:
+    x, y = _data()
+    est = highfis.HDFISProdClassifier(epochs=1, random_state=0).fit(x, (y > 0).astype(int))
+    layer: Any = est.model_.consequent_layer
+    with torch.no_grad():
+        layer.weight.zero_()
+        layer.bias.copy_(torch.tensor(output).expand_as(layer.bias))
+    np.testing.assert_allclose(est.predict_proba(x[:3]), [expected] * 3, atol=1e-6)
