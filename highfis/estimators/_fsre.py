@@ -109,6 +109,7 @@ class FSREADATSKClassifier(_ArticleMembership, _BaseClassifierEstimator):
         zeta_lambda: float = 0.5,
         zeta_theta: float = 0.3,
         structural_pruning: bool = True,
+        freeze_antecedents: bool = False,
         trainer: BaseTrainer | None = None,
         device: str = "cpu",
         eval_metrics_every: int = 1,
@@ -186,6 +187,10 @@ class FSREADATSKClassifier(_ArticleMembership, _BaseClassifierEstimator):
                 Larger values retain more rules.  Default ``0.3``.
             structural_pruning: If ``True`` (default), hard-prune the model
                 architecture after each threshold step.
+            freeze_antecedents: If ``True``, the fuzzy sets are kept fixed in the
+                feature-selection and rule-extraction phases, and only the fine-tuning phase
+                trains them, as the source article does for high-dimensional data. Default
+                ``False``.
             trainer: Optional custom BaseTrainer.
                 When ``None`` (default) an FSRETrainer is built automatically
                 from this estimator's hyperparameters.
@@ -219,6 +224,7 @@ class FSREADATSKClassifier(_ArticleMembership, _BaseClassifierEstimator):
         self.zeta_lambda = zeta_lambda
         self.zeta_theta = zeta_theta
         self.structural_pruning = structural_pruning
+        self.freeze_antecedents = freeze_antecedents
 
         super().__init__(
             input_configs=input_configs,
@@ -342,6 +348,7 @@ class FSREADATSKClassifier(_ArticleMembership, _BaseClassifierEstimator):
             zeta_lambda=float(self.zeta_lambda),
             zeta_theta=float(self.zeta_theta),
             structural_pruning=bool(self.structural_pruning),
+            freeze_antecedents=bool(self.freeze_antecedents),
             verbose=self.verbose,
             eval_metrics_every=self.eval_metrics_every,
             scheduler_class=self.scheduler_class,
@@ -398,6 +405,7 @@ class FSREADATSKRegressor(_ArticleMembership, _BaseRegressorEstimator):
         zeta_lambda: float = 0.5,
         zeta_theta: float = 0.3,
         structural_pruning: bool = True,
+        freeze_antecedents: bool = False,
         trainer: BaseTrainer | None = None,
         device: str = "cpu",
         eval_metrics_every: int = 1,
@@ -475,6 +483,10 @@ class FSREADATSKRegressor(_ArticleMembership, _BaseRegressorEstimator):
                 Larger values retain more rules.  Default ``0.3``.
             structural_pruning: If ``True`` (default), hard-prune the model
                 architecture after each threshold step.
+            freeze_antecedents: If ``True``, the fuzzy sets are kept fixed in the
+                feature-selection and rule-extraction phases, and only the fine-tuning phase
+                trains them, as the source article does for high-dimensional data. Default
+                ``False``.
             trainer: Optional custom BaseTrainer.
                 When ``None`` (default) an FSRETrainer is built automatically
                 from this estimator's hyperparameters.
@@ -508,6 +520,7 @@ class FSREADATSKRegressor(_ArticleMembership, _BaseRegressorEstimator):
         self.zeta_lambda = zeta_lambda
         self.zeta_theta = zeta_theta
         self.structural_pruning = structural_pruning
+        self.freeze_antecedents = freeze_antecedents
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -619,6 +632,7 @@ class FSREADATSKRegressor(_ArticleMembership, _BaseRegressorEstimator):
             zeta_lambda=float(self.zeta_lambda),
             zeta_theta=float(self.zeta_theta),
             structural_pruning=bool(self.structural_pruning),
+            freeze_antecedents=bool(self.freeze_antecedents),
             verbose=self.verbose,
             eval_metrics_every=self.eval_metrics_every,
             scheduler_class=self.scheduler_class,

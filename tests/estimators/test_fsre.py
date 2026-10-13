@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pytest
 
@@ -175,3 +177,36 @@ def test_feature_gates_are_those_of_the_feature_selection_phase(estimator_cls: t
     # Every selected feature passed the threshold, which is above the initial gate value.
     assert np.all(gates > est.history_["tau_lambda"])
     assert est.history_["tau_lambda"] > 0.0165
+
+
+def _centres_after_fit(**kwargs: Any) -> tuple[np.ndarray, np.ndarray]:
+    """Return the centres of the fitted fuzzy sets and the even grid they started from."""
+    rng = np.random.default_rng(0)
+    x = rng.random((80, 4)).astype(np.float32)
+    y = (x[:, 0] > 0.5).astype(int)
+    model = FSREADATSKClassifier(re_n_mfs=4, fs_epochs=20, re_epochs=20, random_state=0, **kwargs).fit(x, y)
+    sets = model.get_mf_params()
+    centres = np.array([[mf["mean"] for mf in group] for group in sets.values()])
+    grid = np.array([np.linspace(x[:, c].min(), x[:, c].max(), 4) for c in model.selected_features_])
+    return centres, grid
+
+
+def test_freeze_antecedents_keeps_the_fuzzy_sets_in_the_gated_phases() -> None:
+    """The article does not update the antecedents in the first two phases on high-dimensional data."""
+    centres, grid = _centres_after_fit(freeze_antecedents=True, finetune_epochs=0, learning_rate=1.0)
+    np.testing.assert_allclose(centres, grid, atol=1e-7)
+
+    trained, grid = _centres_after_fit(finetune_epochs=0, learning_rate=1.0)
+    assert np.abs(trained - grid).max() > 1e-4
+
+
+def test_freeze_antecedents_leaves_the_fine_tuning_free() -> None:
+    centres, grid = _centres_after_fit(freeze_antecedents=True, finetune_epochs=20)
+    assert np.abs(centres - grid).max() > 1e-4
+
+
+def test_freeze_antecedents_reaches_the_trainer() -> None:
+    trainer = FSREADATSKRegressor(freeze_antecedents=True)._get_trainer()
+    assert isinstance(trainer, FSRETrainer)
+    assert trainer.freeze_antecedents is True
+    assert FSRETrainer().freeze_antecedents is False

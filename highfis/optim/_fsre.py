@@ -88,6 +88,7 @@ class FSRETrainer(BaseTrainer):
         # ── Pruning ───────────────────────────────────────────────────────
         structural_pruning: bool = True,
         re_n_mfs: int | None = None,
+        freeze_antecedents: bool = False,
         # ── Shared ────────────────────────────────────────────────────────
         verbose: bool | int = False,
         loss: Callable[..., Any] | None = None,
@@ -141,6 +142,10 @@ class FSRETrainer(BaseTrainer):
                 architecture after each threshold step.  If ``False``, only
                 the gate values are modified but the model structure is
                 unchanged.
+            freeze_antecedents: If ``True``, the fuzzy sets are kept fixed in the
+                feature-selection and rule-extraction phases, and only the fine-tuning
+                phase trains them, as the source article does for high-dimensional data.
+                Default ``False``.
             verbose: Verbosity level forwarded to all three phases.
             loss: Custom loss function ``f(output, target) -> scalar``.
                 ``None`` uses the model's built-in criterion.
@@ -184,11 +189,33 @@ class FSRETrainer(BaseTrainer):
         self.zeta_theta = zeta_theta
         self.structural_pruning = structural_pruning
         self.re_n_mfs = re_n_mfs
+        self.freeze_antecedents = freeze_antecedents
         self.verbose = verbose
         self.loss = loss
         self.eval_metrics_every = eval_metrics_every
         self.scheduler_class = scheduler_class
         self.scheduler_params = scheduler_params
+
+    def _fit_phase(
+        self,
+        trainer: Any,
+        model: BaseTSK,
+        x: Tensor,
+        y: Tensor,
+        x_val: Tensor | None,
+        y_val: Tensor | None,
+        metrics: list[str] | None,
+    ) -> dict[str, Any]:
+        """Run a gated phase, with the fuzzy sets fixed when ``freeze_antecedents`` is set."""
+        frozen = [p for p in model.membership_layer.parameters() if p.requires_grad] if self.freeze_antecedents else []
+        for p in frozen:
+            p.requires_grad_(False)
+        try:
+            history: dict[str, Any] = trainer.fit(model, x, y, x_val=x_val, y_val=y_val, metrics=metrics)
+            return history
+        finally:
+            for p in frozen:
+                p.requires_grad_(True)
 
     def fit(
         self,
@@ -248,7 +275,7 @@ class FSRETrainer(BaseTrainer):
             patience=self.fs_patience,
             weight_decay=float(self.fs_weight_decay),
         )
-        fs_history: dict[str, Any] = fs_trainer.fit(model, x, y, x_val=x_val, y_val=y_val, metrics=metrics)
+        fs_history: dict[str, Any] = self._fit_phase(fs_trainer, model, x, y, x_val, y_val, metrics)
 
         # ── Feature threshold & selection (paper eq. 28) ──────────────────
         # The gate of the article is an odd function, so a gate can open towards -1 as well
@@ -288,7 +315,7 @@ class FSRETrainer(BaseTrainer):
             patience=self.re_patience,
             weight_decay=float(self.re_weight_decay),
         )
-        re_history: dict[str, Any] = re_trainer.fit(model, x_fs, y, x_val=x_val_fs, y_val=y_val, metrics=metrics)
+        re_history: dict[str, Any] = self._fit_phase(re_trainer, model, x_fs, y, x_val_fs, y_val, metrics)
 
         # ── Rule threshold & selection (paper eq. 29) ─────────────────────
         rule_gates: Tensor = model.get_rule_gate_values().abs()

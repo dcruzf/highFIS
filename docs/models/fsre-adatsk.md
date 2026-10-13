@@ -200,6 +200,9 @@ Remaining differences:
   many more rules are kept than on standardized inputs.
 - **Thresholds.** The article uses other threshold coefficients above 1000 features (0.4
   and 0.5); highFIS keeps 0.5 and 0.3 unless `zeta_lambda` and `zeta_theta` are passed.
+- **Fixed antecedents.** Above 1000 features the article does not update the fuzzy sets
+  in the first two phases; highFIS trains them in every phase unless
+  `freeze_antecedents=True` is passed.
 - **High-dimensional data.** On SRBCT (83 samples, 2308 genes) the defaults give an accuracy
   of 0.977 with about 19 genes and 20 rules, against 0.967, 12.3 and 4.2 in the article,
   which uses other thresholds and numbers of fuzzy sets there (see the two points above).
