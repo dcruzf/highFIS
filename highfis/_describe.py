@@ -111,20 +111,25 @@ def set_labels(mf_params: Sequence[dict[str, Any]], labels: Sequence[str] | None
     return result
 
 
-def _pack(prefix: str, parts: Sequence[str], separator: str, width: int) -> list[str]:
+def _pack(prefix: str, parts: Sequence[str], separator: str, width: int, indent: str | None = None) -> list[str]:
     """Lay *parts* out after *prefix*, breaking lines between parts and never inside one.
 
-    The lines that continue the first are indented to the width of the prefix.
+    The lines that continue the first are indented to the width of the prefix, or with
+    *indent* when it is given. A separator that is a punctuation mark stays at the end of
+    the line it closes; a word such as ``AND`` opens the next line.
     """
-    indent = " " * len(prefix)
+    indent = " " * len(prefix) if indent is None else indent
     lines, current = [], prefix
     for index, part in enumerate(parts):
         piece = part if index == 0 else separator + part
-        if current.strip() and len(current) + len(piece) > width:
+        if not current.strip() or len(current) + len(piece) <= width:
+            current += piece
+        elif separator[:1].strip():
+            lines.append(current + separator.rstrip())
+            current = indent + part
+        else:
             lines.append(current.rstrip())
             current = indent + piece.lstrip()
-        else:
-            current += piece
     lines.append(current.rstrip())
     return lines
 
@@ -400,10 +405,10 @@ def explain(
     shown_prediction = f"{float(prediction):.{digits}f}" if classes is None else str(prediction)
     lines = [f"Prediction: {shown_prediction}"]
     total = f"Output, the sum of the contributions of the {len(order)} rules: "
-    lines += _pack(total, scores(contributions.sum(axis=0)), ", ", width)
+    lines += _pack(total, scores(contributions.sum(axis=0)), ", ", width, indent="    ")
     for r in kept:
         head = f"Rule {r}, weight {float(weights[r]):.{digits}f}: contributes "
-        lines += _pack(head, scores(contributions[r]), ", ", width)
+        lines += _pack(head, scores(contributions[r]), ", ", width, indent="    ")
         lines += _pack("    IF ", _conditions(table[r], model_names, names, sets), " AND ", width)
     if len(kept) < len(order):
         rest = np.setdiff1d(order, kept)
@@ -412,7 +417,7 @@ def explain(
             f"{len(rest)} other rule{'s' if several else ''}, weight {float(weights[rest].sum()):.{digits}f} "
             f"in all: contribute{'' if several else 's'} "
         )
-        lines += _pack(head, scores(contributions[rest].sum(axis=0)), ", ", width)
+        lines += _pack(head, scores(contributions[rest].sum(axis=0)), ", ", width, indent="    ")
     data = {
         "prediction": prediction,
         "classes": None if classes is None else list(classes),

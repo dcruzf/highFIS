@@ -49,9 +49,9 @@ ADATSKClassifier
   defuzzifier        SumBasedDefuzzifier
   consequents        ClassificationConsequentLayer
   parameters         276 trainable (90 antecedent, 186 consequent)
-Training
-  batch size         full batch
-  epochs             1000 epochs, learning rate 0.05, training loss 0.5000 -> 0.0677, training accuracy 0.9435
+Training (full batch)
+  phase     epochs  rate  loss first -> last  accuracy
+  training    1000  0.05    0.5000 -> 0.0677    0.9435
 ```
 
 Iris and Wdbc are reproduced within one point. Wine is 2.2 points below, with a learning

@@ -45,9 +45,9 @@ ADPTSKClassifier
   defuzzifier        SumBasedDefuzzifier
   consequents        ClassificationConsequentLayer
   parameters         85554 trainable (42774 antecedent, 42780 consequent)
-Training
-  batch size         full batch
-  epochs             200 epochs, learning rate 0.001, training loss 0.5000 -> 0.0000, training accuracy 1.0000
+Training (full batch)
+  phase     epochs   rate  loss first -> last  accuracy
+  training     200  0.001    0.5000 -> 0.0000    1.0000
 ```
 
 The article studies ten values of $K$ and reports each of them; the script runs three.

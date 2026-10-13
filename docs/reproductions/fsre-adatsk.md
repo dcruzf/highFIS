@@ -56,11 +56,11 @@ FSREADATSKClassifier
   defuzzifier        SoftmaxLogDefuzzifier
   consequents        GatedClassificationConsequentLayer
   parameters         63 trainable (15 antecedent, 48 consequent)
-Training
-  batch size         full batch
-  feature selection  1000 epochs, learning rate 0.05, training loss 1.0000 -> 0.1899, training accuracy 0.8714
-  rule extraction    600 epochs, learning rate 0.05, training loss 1.0000 -> 0.2915, training accuracy 0.8216
-  fine-tuning        1000 epochs, learning rate 0.05, training loss 0.5190 -> 0.2293, training accuracy 0.8216
+Training (full batch)
+  phase              epochs  rate  loss first -> last  accuracy
+  feature selection    1000  0.05    1.0000 -> 0.1899    0.8714
+  rule extraction       600  0.05    1.0000 -> 0.2915    0.8216
+  fine-tuning          1000  0.05    0.5190 -> 0.2293    0.8216
 ```
 
 The table has eight of the twelve low-dimensional datasets of the article. Seven

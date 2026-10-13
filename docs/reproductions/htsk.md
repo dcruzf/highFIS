@@ -45,9 +45,9 @@ HTSKClassifier
   defuzzifier        SoftmaxLogDefuzzifier
   consequents        ClassificationConsequentLayer
   parameters         4980 trainable (2460 antecedent, 2520 consequent)
-Training
-  batch size         512
-  epochs             56 epochs, learning rate 0.01, training loss 0.6568 -> 0.2676, training accuracy 0.8916, validation loss 0.3364, best epoch 36
+Training (batch size 512)
+  phase     epochs  rate  loss first -> last  accuracy  val. loss  best epoch
+  training      56  0.01    0.6568 -> 0.2676    0.8916     0.3364          36
 ```
 
 The six values are within 1.7 points of the article's, less than the standard deviation

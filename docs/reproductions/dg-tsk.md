@@ -54,10 +54,10 @@ DGTSKClassifier
   defuzzifier        SoftmaxLogDefuzzifier
   consequents        GatedClassificationConsequentLayer
   parameters         482 trainable (96 antecedent, 378 consequent)
-Training
-  batch size         full batch
-  gates              1000 epochs, learning rate 0.2, training loss 0.4925 -> 0.2384, training accuracy 0.7668
-  fine-tuning        300 epochs, learning rate 0.2, training loss 0.5000 -> 0.2339, training accuracy 0.6839
+Training (full batch)
+  phase        epochs  rate  loss first -> last  accuracy
+  gates          1000   0.2    0.4925 -> 0.2384    0.7668
+  fine-tuning     300   0.2    0.5000 -> 0.2339    0.6839
 ```
 
 - **Table 2.** The rule base of the article, built without training, is reproduced:

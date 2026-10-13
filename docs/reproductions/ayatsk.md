@@ -45,9 +45,9 @@ AYATSKClassifier
   defuzzifier        SumBasedDefuzzifier
   consequents        ClassificationConsequentLayer
   parameters         366 trainable (180 antecedent, 186 consequent)
-Training
-  batch size         51
-  epochs             300 epochs, learning rate 0.01, training loss 0.3271 -> 0.0272, training accuracy 0.9786
+Training (batch size 51)
+  phase     epochs  rate  loss first -> last  accuracy
+  training     300  0.01    0.3271 -> 0.0272    0.9786
 ```
 
 Wine is reproduced within 0.4 point for both values of $K$, and Wdbc with $K = 2$ within

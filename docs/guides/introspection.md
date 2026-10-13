@@ -8,7 +8,7 @@ Fuzzy systems provide a major advantage over black-box deep learning architectur
 
 Fitted estimators can be introspected to analyze and explain their decision rules. The base estimator interface exposes:
 
-- `summary()` — a printed summary of the structure and of the training;
+- `summary()` — a summary of the structure and of the training;
 - `inspect()` — a high-level summary dictionary of the fitted model;
 - `get_mf_params()` — the membership-function parameters per input feature;
 - `feature_importance()` — a normalized importance vector derived from the consequent weights;
@@ -23,7 +23,7 @@ Fitted estimators can be introspected to analyze and explain their decision rule
 configuration that `fit` resolved, and how the training ended.
 
 ```python
-print(clf.summary())
+clf.summary()
 ```
 
 For an `HTSKClassifier` fitted on the Wine data:
@@ -38,9 +38,9 @@ HTSKClassifier
   defuzzifier        SoftmaxLogDefuzzifier
   consequents        ClassificationConsequentLayer
   parameters         204 trainable (78 antecedent, 126 consequent)
-Training
-  batch size         60
-  epochs             100 epochs, learning rate 0.01, training loss 1.0056 -> 0.0045, training accuracy 1.0000
+Training (batch size 60)
+  phase     epochs  rate  loss first -> last  accuracy
+  training     100  0.01    1.0056 -> 0.0045    1.0000
 ```
 
 The learning rate and the batch size are the values used, also when the estimator was
@@ -100,11 +100,15 @@ sets), and the consequent of each rule is its linear function of the features, p
 for a classifier.
 
 ```python
-print(clf.rules_as_text(top_features=2, max_rules=1))
+clf.rules_as_text(top_features=2, max_rules=1)
 ```
 
-- `top_features` limits each rule to the conditions on the most important features and
-  to the coefficients with the largest magnitude; `None` shows everything.
+- The conditions of a rule are written in full; when more than half of the features use
+  the same fuzzy set, the rule is written as the features that differ followed by
+  `the other N features are low`.
+- `top_features` limits each consequent to the coefficients with the largest magnitude;
+  `None` shows them all.
+- `width` is the width of the text; longer lines are continued on the next one.
 - `labels=["cold", "mild", "hot"]` replaces the default names for the features that have
   that many sets.
 - `max_rules` limits the number of rules written.
@@ -121,26 +125,33 @@ a TSK system is the sum, over the rules, of the normalized weight of the rule ti
 value of its consequent, so each rule has a contribution that can be read on its own.
 
 ```python
-print(clf.explain(X_test[0], top_rules=2))
+clf.explain(X_test[0], top_rules=2)
 ```
 
 For the model above and one test sample:
 
 ```text
 Prediction: class_2
-Output, the sum of the contributions of the 3 rules: class_0: -3.26, class_1: -3.12, class_2: +3.38
+Output, the sum of the contributions of the 3 rules: class_0: -3.26,
+    class_1: -3.12, class_2: +3.38
 Rule 1, weight 0.99: contributes class_0: -3.24, class_1: -3.13, class_2: +3.41
-    IF x1 is medium AND x2 is high AND x10 is high AND ... (10 more)
+    IF x1 is medium AND x2 is high AND x3 is high AND x4 is medium
+       AND x5 is medium AND x6 is low AND x7 is low AND x8 is high AND x9 is low
+       AND x10 is high AND x11 is low AND x12 is low AND x13 is medium
 Rule 0, weight 0.01: contributes class_0: -0.02, class_1: +0.02, class_2: -0.02
-    IF x1 is low AND x2 is low AND x10 is low AND ... (10 more)
-1 other rule, weight 0.00 in all: contributes class_0: +0.01, class_1: -0.01, class_2: -0.01
+    IF x1 is low AND x2 is low AND x3 is low AND x4 is high AND x5 is low
+       AND x6 is medium AND x7 is high AND x8 is medium AND x9 is high
+       AND x10 is low AND x11 is high AND x12 is high AND x13 is low
+1 other rule, weight 0.00 in all: contributes class_0: +0.01, class_1: -0.01,
+    class_2: -0.01
 ```
 
 - For a classifier the output has one score per class, and the predicted class is the
   one with the largest score. For a regressor it is the predicted value.
 - `top_rules` sets how many rules are described, from the largest weight; the others are
   summed in one line. `None` describes every rule.
-- `top_features` and `labels` work as in `rules_as_text()`.
+- `labels` works as in `rules_as_text()`, and the conditions of each rule are written in
+  full. A rule whose weight rounds to zero is counted with the other rules.
 
 ### Feature Importance
 
