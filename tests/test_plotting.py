@@ -588,3 +588,23 @@ def test_show_can_be_forced_in_a_script(clf: Any, monkeypatch: pytest.MonkeyPatc
 
     assert clf.plot("memberships", show=True) is None
     assert shown == [True]
+
+
+def test_a_rule_table_that_cannot_show_every_feature_shows_those_that_tell_the_rules_apart() -> None:
+    """The features on which a rule departs from its usual fuzzy set are shown first."""
+
+    class Model:
+        def feature_importance(self) -> np.ndarray:
+            return np.array([0.4, 0.3, 0.2, 0.05, 0.05])
+
+    names = ["a", "b", "c", "d", "e"]
+    table = [
+        dict(zip(names, [0, 0, 0, 0, 1], strict=True)),  # e is the exception
+        dict(zip(names, [0, 0, 0, 1, 0], strict=True)),  # d is the exception
+        dict(zip(names, [1, 1, 1, 1, 0], strict=True)),  # e again
+    ]
+
+    assert plotting._distinguishing_features(Model(), table, names, 1) == [4]
+    assert plotting._distinguishing_features(Model(), table, names, 2) == [3, 4]
+    # Once the exceptions are in, the most important features complete the selection.
+    assert plotting._distinguishing_features(Model(), table, names, 3) == [0, 3, 4]

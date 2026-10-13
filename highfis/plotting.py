@@ -644,6 +644,27 @@ def _abbreviation(label: str) -> str:
     return "".join(word[0].upper() for word in words)
 
 
+def _distinguishing_features(
+    estimator: Any, table: list[dict[str, Any]], model_names: list[str], max_features: int
+) -> list[int]:
+    """Positions of the features to show in a table of the rule base that cannot show all.
+
+    A rule on many features is told from the others by the few features on which it does
+    not use the fuzzy set it uses on most of them. Those features come first, the ones
+    that are an exception in more rules before the others, and the most important
+    features complete the selection.
+    """
+    importance = estimator.feature_importance()
+    weight = np.zeros(len(model_names)) if importance is None else np.asarray(importance, dtype=float)
+    exceptions = np.zeros(len(model_names), dtype=int)
+    for rule in table:
+        used = [int(rule[name]) for name in model_names]
+        usual = max(sorted(set(used)), key=used.count)
+        exceptions += np.array([index != usual for index in used])
+    order = sorted(range(len(model_names)), key=lambda position: (-exceptions[position], -weight[position]))
+    return sorted(order[:max_features])
+
+
 @_shown
 def plot_rules(
     estimator: Any,
@@ -665,8 +686,10 @@ def plot_rules(
     Args:
         estimator: A fitted estimator.
         features: Features to show, as names or as column indices of the data seen in
-            ``fit``. ``None`` shows every feature, or the ``max_features`` most important
-            ones when the model has more.
+            ``fit``. ``None`` shows every feature or, when the model has more than
+            ``max_features``, the features that tell the rules apart: those on which a
+            rule departs from the fuzzy set it uses on most features, then the most
+            important ones.
         max_features: Number of features shown when ``features`` is ``None``.
         set_names: Names of the fuzzy sets of a feature, as in :func:`plot_memberships`.
         colors: Colours of the fuzzy sets, from the lowest to the highest. ``None`` uses the
@@ -683,11 +706,14 @@ def plot_rules(
         The ``Axes`` with the table.
     """
     check_is_fitted(estimator, "model_")
-    positions = _select_features(estimator, features, max_features)
     labels = _feature_labels(estimator)
     model_names = [str(name) for name in estimator.model_.input_names]
     mf_params = estimator.get_mf_params()
     table = estimator.model_.get_rule_table()
+    if features is None and len(model_names) > max_features:
+        positions = _distinguishing_features(estimator, table, model_names, max_features)
+    else:
+        positions = _select_features(estimator, features, max_features)
 
     levels = np.full((len(table), len(positions)), np.nan)  # position of the set among those of its feature
     n_sets = 1
