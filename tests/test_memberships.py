@@ -25,7 +25,9 @@ from highfis.memberships import (
     SigmoidalMF,
     SShapedMF,
     TrapezoidalMF,
+    TrapezoidalPiMF,
     TriangularMF,
+    TriangularPiMF,
     ZShapedMF,
 )
 from highfis.models import TSKRegressorModel
@@ -323,6 +325,14 @@ def test_gaussian_pimf_infimum_positive() -> None:
         (PiMF(a=0.0, b=0.5, c=1.0, d=1.5), {"a": 0.0, "b": 0.5, "c": 1.0, "d": 1.5}),
         (GaussianPiMF(mean=0.5, sigma=2.0, k=5.0), {"mean": 0.5, "sigma": 2.0, "k": 5.0}),
         (
+            TriangularPiMF(left=0.0, center=0.5, right=2.0, k=3.0),
+            {"left": 0.0, "center": 0.5, "right": 2.0, "k": 3.0},
+        ),
+        (
+            TrapezoidalPiMF(a=0.0, b=0.5, c=1.0, d=2.0, k=3.0),
+            {"a": 0.0, "b": 0.5, "c": 1.0, "d": 2.0, "k": 3.0},
+        ),
+        (
             ExtendedGaussianMF(mean=0.5, sigma=2.0, lower_bound=0.3),
             {"mean": 0.5, "sigma": 2.0, "lower_bound": 0.3},
         ),
@@ -504,3 +514,45 @@ def test_extended_gaussian_rejects_a_bound_outside_the_unit_interval(bound: floa
 def test_extended_gaussian_rejects_invalid_sigma() -> None:
     with pytest.raises(ValueError, match="sigma must be positive"):
         ExtendedGaussianMF(sigma=0.0)
+
+
+def test_triangular_pimf_follows_eq_44() -> None:
+    """Inside the support the triangle is rescaled to [exp(-K), 1]; outside it is zero."""
+    mf = TriangularPiMF(left=0.0, center=1.0, right=3.0, k=2.0)
+    infimum = math.exp(-2.0)
+    x = torch.tensor([-0.5, 0.0, 0.5, 1.0, 2.0, 3.0, 3.5])
+    half = 0.5 * (1 - infimum) + infimum
+    expected = torch.tensor([0.0, infimum, half, 1.0, half, infimum, 0.0])
+    torch.testing.assert_close(mf(x), expected, atol=1e-6, rtol=0)
+
+
+def test_trapezoidal_pimf_follows_eq_45() -> None:
+    mf = TrapezoidalPiMF(a=0.0, b=1.0, c=2.0, d=4.0, k=2.0)
+    infimum = math.exp(-2.0)
+    x = torch.tensor([-0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 4.5])
+    half = 0.5 * (1 - infimum) + infimum
+    expected = torch.tensor([0.0, infimum, half, 1.0, 1.0, 1.0, half, infimum, 0.0])
+    torch.testing.assert_close(mf(x), expected, atol=1e-6, rtol=0)
+
+
+@pytest.mark.parametrize("mf_cls", [TriangularPiMF, TrapezoidalPiMF])
+def test_piecewise_pimfs_have_the_infimum_of_the_article(mf_cls: type) -> None:
+    mf = mf_cls(k=5.0)
+    low, high = (-1.0, 1.0) if mf_cls is TriangularPiMF else (-2.0, 2.0)
+    inside = mf(torch.linspace(low, high, 201))
+    assert float(inside.min()) == pytest.approx(math.exp(-5.0), abs=1e-6)
+    assert float(inside.max()) == pytest.approx(1.0, abs=1e-6)
+
+
+@pytest.mark.parametrize("mf_cls", [TriangularPiMF, TrapezoidalPiMF])
+@pytest.mark.parametrize("k", [0.0, -1.0, 746.0])
+def test_piecewise_pimfs_reject_k_outside_the_range(mf_cls: type, k: float) -> None:
+    with pytest.raises(ValueError, match="k must be in the interval"):
+        mf_cls(k=k)
+
+
+@pytest.mark.parametrize("mf_cls", [TriangularPiMF, TrapezoidalPiMF])
+def test_piecewise_pimfs_are_rebuilt_from_their_parameters(mf_cls: type) -> None:
+    mf = mf_cls(k=4.0)
+    x = torch.linspace(-3.0, 3.0, 31)
+    torch.testing.assert_close(mf_cls(**mf.inspect_params())(x), mf(x))

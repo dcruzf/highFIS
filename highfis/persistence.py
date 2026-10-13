@@ -56,7 +56,9 @@ def _get_mf_registry() -> dict[str, type]:
         SigmoidalMF,
         SShapedMF,
         TrapezoidalMF,
+        TrapezoidalPiMF,
         TriangularMF,
+        TriangularPiMF,
         ZShapedMF,
     )
 
@@ -80,7 +82,9 @@ def _get_mf_registry() -> dict[str, type]:
         "SShapedMF": SShapedMF,
         "SigmoidalMF": SigmoidalMF,
         "TrapezoidalMF": TrapezoidalMF,
+        "TrapezoidalPiMF": TrapezoidalPiMF,
         "TriangularMF": TriangularMF,
+        "TriangularPiMF": TriangularPiMF,
         "ZShapedMF": ZShapedMF,
     }
 
