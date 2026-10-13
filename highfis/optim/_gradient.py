@@ -119,7 +119,10 @@ class GradientTrainer(BaseTrainer):
                 over the training set, and the resulting ``history["train_<metric>"]``
                 entries are diagnostic only -- they never feed early stopping, which
                 consults validation metrics alone. Validation metrics are unaffected and
-                are always evaluated every epoch.
+                are always evaluated every epoch. The pass draws one number from the
+                random stream of torch, so with shuffled mini-batches a different value of
+                this option gives another order of the batches: the criterion that keeps
+                the best epoch is the same, the run is not bit for bit the same.
             scheduler_class: Learning-rate scheduler *class* (e.g.
                 ``torch.optim.lr_scheduler.StepLR``), not an instance. A scheduler binds
                 to an optimiser when constructed and the optimiser is only built inside
