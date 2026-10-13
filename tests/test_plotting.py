@@ -478,3 +478,106 @@ def test_gate_thresholds_are_in_the_titles() -> None:
     for panel in fig.axes[:2]:
         assert "threshold" in panel.get_title()
         assert panel.get_legend() is None
+
+
+# --- theme ------------------------------------------------------------------------------
+
+
+@pytest.fixture
+def _theme() -> Iterator[None]:
+    yield
+    highfis.reset_plot_theme()
+
+
+def _hex(colour: Any) -> str:
+    return matplotlib.colors.to_hex(colour)
+
+
+def test_every_plot_uses_the_colours_of_the_theme(clf: Any) -> None:
+    x, y, _ = _data()
+    theme = highfis.get_plot_theme()
+
+    assert [_hex(line.get_color()) for line in clf.plot_history().lines[:2]] == [_hex(c) for c in theme.colors[:2]]
+    assert _hex(clf.plot_feature_importance().patches[0].get_facecolor()) == _hex(theme.colors[0])
+    assert clf.plot_rules().images[0].get_cmap().name == theme.diverging
+    assert clf.plot_rule_activation(x, y).images[0].get_cmap().name == theme.sequential
+    assert clf.plot_diagnostics(x, y).axes[0].images[0].get_cmap().name == theme.sequential
+
+
+def test_the_theme_changes_the_colours_of_the_next_plots(clf: Any, _theme: None) -> None:
+    x, y, _ = _data()
+    theme = highfis.set_plot_theme(colors=["black", "red"], sequential="Greys", diverging="PuOr")
+
+    assert theme.colors == ("black", "red")
+    assert theme.reference == "0.4"  # what is not given is kept
+    assert [_hex(line.get_color()) for line in clf.plot_history().lines[:2]] == ["#000000", "#ff0000"]
+    assert clf.plot_rules().images[0].get_cmap().name == "PuOr"
+    assert clf.plot_rule_activation(x, y).images[0].get_cmap().name == "Greys"
+
+    assert highfis.reset_plot_theme() == plotting.PlotTheme()
+    assert clf.plot_rules().images[0].get_cmap().name == plotting.PlotTheme().diverging
+
+
+def test_a_call_can_choose_its_own_colours(clf: Any) -> None:
+    x, y, _ = _data()
+
+    assert clf.plot_rules(cmap="viridis").images[0].get_cmap().name == "viridis"
+    assert clf.plot_diagnostics(x, y, cmap="Greys").axes[0].images[0].get_cmap().name == "Greys"
+    assert _hex(clf.plot_feature_importance(colors=["green"]).patches[0].get_facecolor()) == "#008000"
+    lines = clf.plot_memberships(colors=["black", "red", "blue"]).axes[0].lines
+    assert sorted(_hex(line.get_color()) for line in lines) == ["#000000", "#0000ff", "#ff0000"]
+    assert highfis.get_plot_theme() == plotting.PlotTheme()  # the theme is left as it was
+
+
+def test_an_empty_list_of_colours_is_rejected(clf: Any, _theme: None) -> None:
+    with pytest.raises(ValueError, match="at least one colour"):
+        highfis.set_plot_theme(colors=[])
+    with pytest.raises(ValueError, match="at least one colour"):
+        clf.plot_history(colors=[])
+
+
+def test_heatmap_labels_contrast_with_their_cells(clf: Any) -> None:
+    panel = clf.plot_rules(cmap="Greys")
+    image = panel.images[0]
+    levels = np.asarray(image.get_array())
+    for text in panel.texts:
+        column, row = (round(v) for v in text.get_position())
+        red, green, blue, _ = image.cmap(image.norm(levels[row, column]))
+        dark = 0.299 * red + 0.587 * green + 0.114 * blue < 0.5
+        assert text.get_color() == ("white" if dark else "black")
+
+
+# --- show -------------------------------------------------------------------------------
+
+
+def test_a_script_gets_the_figure_and_no_window(clf: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    shown: list[bool] = []
+    monkeypatch.setattr(plt, "show", lambda *args, **kwargs: shown.append(True))
+    monkeypatch.setattr(plotting, "_interactive_session", lambda: False)
+
+    assert isinstance(clf.plot("history"), Axes)
+    assert not shown
+
+
+def test_an_interactive_session_sees_the_figure_and_gets_nothing(clf: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    shown: list[bool] = []
+    monkeypatch.setattr(plt, "show", lambda *args, **kwargs: shown.append(True))
+    monkeypatch.setattr(plotting, "_interactive_session", lambda: True)
+
+    assert clf.plot("history") is None
+    assert clf.plot_rules() is None
+    assert shown == [True, True]
+    # Asking for the figure, or drawing on one's own axes, shows nothing.
+    assert isinstance(clf.plot("history", show=False), Axes)
+    _, ax = plt.subplots()
+    assert clf.plot_history(ax=ax) is ax
+    assert shown == [True, True]
+
+
+def test_show_can_be_forced_in_a_script(clf: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    shown: list[bool] = []
+    monkeypatch.setattr(plt, "show", lambda *args, **kwargs: shown.append(True))
+    monkeypatch.setattr(plotting, "_interactive_session", lambda: False)
+
+    assert clf.plot("memberships", show=True) is None
+    assert shown == [True]

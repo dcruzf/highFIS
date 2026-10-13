@@ -1230,7 +1230,7 @@ class _BaseTSKEstimator(BaseEstimator):
         digits: int = 2,
         labels: Sequence[str] | None = None,
         max_rules: int | None = None,
-    ) -> str:
+    ) -> _describe.Report:
         """Describe the fitted rule base as ``IF ... THEN ...`` sentences.
 
         The fuzzy sets of each feature are named from the order of their centres: ``low``
@@ -1256,12 +1256,13 @@ class _BaseTSKEstimator(BaseEstimator):
             max_rules: Number of rules written. ``None`` writes every rule.
 
         Returns:
-            The description, one block of lines per rule.
+            The description, one block of lines per rule: a text that an interactive session
+            displays as it is, with the rule base in its ``data``.
         """
         check_is_fitted(self, "model_")
         return _describe.rules_as_text(self, top_features, digits, labels, max_rules)
 
-    def summary(self, digits: int = 4) -> str:
+    def summary(self, digits: int = 4) -> _describe.Report:
         """Describe the fitted model: its structure, how it was trained and how training ended.
 
         The text gives the task, the features seen in ``fit`` and used by the model, the
@@ -1275,7 +1276,8 @@ class _BaseTSKEstimator(BaseEstimator):
             digits: Decimal places of the losses and metrics.
 
         Returns:
-            The description, one item per line. ``print`` it to read it.
+            The description, one item per line: a text that an interactive session displays
+            as it is (``print`` it in a script), with the values in its ``data``.
         """
         check_is_fitted(self, "model_")
         return _describe.summary(self, digits)
@@ -1312,7 +1314,7 @@ class _BaseTSKEstimator(BaseEstimator):
         top_features: int | None = 3,
         digits: int = 2,
         labels: Sequence[str] | None = None,
-    ) -> str:
+    ) -> _describe.Report:
         """Describe how the rules produce the prediction for one sample.
 
         The output of a TSK system is the sum, over the rules, of the normalized weight of
@@ -1333,7 +1335,8 @@ class _BaseTSKEstimator(BaseEstimator):
             labels: Names for the fuzzy sets, as in :meth:`rules_as_text`.
 
         Returns:
-            The explanation as text. ``print`` it to read it.
+            The explanation: a text that an interactive session displays as it is (``print``
+            it in a script), with the weights and contributions of the rules in its ``data``.
         """
         check_is_fitted(self, "model_")
         # A data frame keeps its column names through the validation; anything else is one row.
@@ -1415,13 +1418,15 @@ class _BaseTSKEstimator(BaseEstimator):
         n_points: int = 200,
         set_names: Sequence[str] | None = None,
         ax: Any = None,
+        **style: Any,
     ) -> Any:
         """Plot the learned fuzzy sets, one panel per feature.
 
-        See :func:`highfis.plotting.plot_memberships`.
+        See :func:`highfis.plotting.plot_memberships`. ``style`` takes its other
+        arguments, such as ``colors``.
         """
         return plotting.plot_memberships(
-            self, features, X=X, max_features=max_features, n_points=n_points, set_names=set_names, ax=ax
+            self, features, X=X, max_features=max_features, n_points=n_points, set_names=set_names, ax=ax, **style
         )
 
     def plot_rules(
@@ -1431,47 +1436,56 @@ class _BaseTSKEstimator(BaseEstimator):
         max_features: int = 12,
         set_names: Sequence[str] | None = None,
         ax: Any = None,
+        **style: Any,
     ) -> Any:
         """Plot the rule base as a table: the fuzzy set that each rule uses on each feature.
 
-        See :func:`highfis.plotting.plot_rules`.
+        See :func:`highfis.plotting.plot_rules`. ``style`` takes its other arguments,
+        such as ``cmap``.
         """
-        return plotting.plot_rules(self, features, max_features=max_features, set_names=set_names, ax=ax)
+        return plotting.plot_rules(self, features, max_features=max_features, set_names=set_names, ax=ax, **style)
 
-    def plot_history(self, metric: str | None = None, *, ax: Any = None) -> Any:
+    def plot_history(self, metric: str | None = None, *, ax: Any = None, **style: Any) -> Any:
         """Plot the training loss, or a recorded metric, per epoch.
 
-        See :func:`highfis.plotting.plot_history`.
+        See :func:`highfis.plotting.plot_history`. ``style`` takes its other arguments, such
+        as ``colors``.
         """
-        return plotting.plot_history(self, metric, ax=ax)
+        return plotting.plot_history(self, metric, ax=ax, **style)
 
-    def plot_rule_activation(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, *, ax: Any = None) -> Any:
+    def plot_rule_activation(
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, *, ax: Any = None, **style: Any
+    ) -> Any:
         """Plot the mean normalized firing strength of each rule, by class when ``y`` is given.
 
-        See :func:`highfis.plotting.plot_rule_activation`.
+        See :func:`highfis.plotting.plot_rule_activation`. ``style`` takes its other
+        arguments, such as ``cmap``.
         """
-        return plotting.plot_rule_activation(self, X, y, ax=ax)
+        return plotting.plot_rule_activation(self, X, y, ax=ax, **style)
 
-    def plot_diagnostics(self, X: npt.ArrayLike, y: npt.ArrayLike, *, ax: Any = None) -> Any:
+    def plot_diagnostics(self, X: npt.ArrayLike, y: npt.ArrayLike, *, ax: Any = None, **style: Any) -> Any:
         """Plot the confusion matrix and decision margin, or the regression fit and residuals.
 
-        See :func:`highfis.plotting.plot_diagnostics`.
+        See :func:`highfis.plotting.plot_diagnostics`. ``style`` takes its other arguments,
+        such as ``cmap`` and ``colors``.
         """
-        return plotting.plot_diagnostics(self, X, y, ax=ax)
+        return plotting.plot_diagnostics(self, X, y, ax=ax, **style)
 
-    def plot_feature_importance(self, *, top: int | None = 20, ax: Any = None) -> Any:
+    def plot_feature_importance(self, *, top: int | None = 20, ax: Any = None, **style: Any) -> Any:
         """Plot the features that weigh most in the consequents.
 
-        See :func:`highfis.plotting.plot_feature_importance`.
+        See :func:`highfis.plotting.plot_feature_importance`. ``style`` takes its other
+        arguments, such as ``colors``.
         """
-        return plotting.plot_feature_importance(self, top=top, ax=ax)
+        return plotting.plot_feature_importance(self, top=top, ax=ax, **style)
 
-    def plot_gates(self, *, ax: Any = None) -> Any:
+    def plot_gates(self, *, ax: Any = None, **style: Any) -> Any:
         """Plot the gates of the kept features and rules of a gated family, with their thresholds.
 
-        See :func:`highfis.plotting.plot_gates`.
+        See :func:`highfis.plotting.plot_gates`. ``style`` takes its other arguments, such as
+        ``colors``.
         """
-        return plotting.plot_gates(self, ax=ax)
+        return plotting.plot_gates(self, ax=ax, **style)
 
     def feature_importance(self) -> np.ndarray | None:
         """Compute a normalized feature importance vector from consequent weights."""

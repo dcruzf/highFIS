@@ -14,6 +14,32 @@ _LEVELS: dict[int, tuple[str, ...]] = {
 }
 
 
+class Report(str):
+    """Text that shows itself, and carries the numbers it was written from.
+
+    A report is a string: ``print`` it, search it, write it to a file. At an interactive
+    prompt or as the last line of a notebook cell it is displayed as the text itself, with
+    its line breaks, so no ``print`` is needed there. ``data`` holds what the text
+    describes, for the code that needs the values and not their description.
+    """
+
+    data: dict[str, Any]
+
+    def __new__(cls, text: str, data: dict[str, Any] | None = None) -> Report:
+        """Create the report from its text and from the values it describes."""
+        report = super().__new__(cls, text)
+        report.data = dict(data or {})
+        return report
+
+    def __repr__(self) -> str:
+        """Return the text itself, which is what an interactive session displays."""
+        return str.__str__(self)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return the values that the text describes."""
+        return dict(self.data)
+
+
 def model_columns(estimator: Any) -> np.ndarray:
     """Original column index of each model input, in model order.
 
@@ -104,7 +130,7 @@ def rules_as_text(
     digits: int = 2,
     labels: Sequence[str] | None = None,
     max_rules: int | None = None,
-) -> str:
+) -> Report:
     """Describe the fitted rule base as ``IF ... THEN ...`` sentences.
 
     See :meth:`highfis.estimators._base._BaseTSKEstimator.rules_as_text`.
@@ -143,7 +169,15 @@ def rules_as_text(
             lines.append(f"{indent}{prefix}{label}: {_linear_terms(b, w, names, top_features, digits)}")
     if len(rules) < len(table):
         lines.append(f"... ({len(table) - len(rules)} more rules)")
-    return "\n".join(lines)
+    data = {
+        "features": names,
+        "classes": None if classes is None else list(classes),
+        "fuzzy_sets": {names[i]: sets[model_names[i]] for i in range(len(names))},
+        "rules": [{names[i]: sets[model_names[i]][rule[model_names[i]]] for i in range(len(names))} for rule in table],
+        "bias": bias,
+        "weights": weights,
+    }
+    return Report("\n".join(lines), data)
 
 
 _PHASES = {"dg": "gates", "fs": "feature selection", "re": "rule extraction", "finetune": "fine-tuning"}
@@ -174,7 +208,7 @@ def _phase_line(phase: dict[str, Any], digits: int) -> str:
     return ", ".join(parts)
 
 
-def summary(estimator: Any, digits: int = 4) -> str:
+def summary(estimator: Any, digits: int = 4) -> Report:
     """Describe a fitted estimator: structure, training configuration and training outcome.
 
     See :meth:`highfis.estimators._base._BaseTSKEstimator.summary`.
@@ -227,7 +261,31 @@ def summary(estimator: Any, digits: int = 4) -> str:
     lines += [f"  {name:18s} {value}" for name, value in rows]
     lines.append("Training")
     lines += [f"  {name:18s} {value}" for name, value in training]
-    return "\n".join(lines)
+    data = {
+        "estimator": type(estimator).__name__,
+        "task": "regression" if classes is None else "classification",
+        "classes": None if classes is None else list(classes),
+        "n_features_in": n_seen,
+        "n_features_used": n_used,
+        "n_rules": int(model.n_rules),
+        "rule_base": rule_base,
+        "n_fuzzy_sets": sets,
+        "membership_functions": kinds,
+        "n_parameters": {"total": total, "antecedent": antecedent, "consequent": consequent},
+        "batch_size": batch,
+        "phases": [
+            {
+                "name": label or "training",
+                "epochs": len(phase.get("train_loss") or []),
+                "first_loss": (phase.get("train_loss") or [None])[0],
+                "last_loss": (phase.get("train_loss") or [None])[-1],
+                "best_epoch": phase.get("best_epoch"),
+            }
+            for label, phase in _phases(estimator.history_)
+        ],
+        "least_squares": dict(solved) if solved else None,
+    }
+    return Report("\n".join(lines), data)
 
 
 def explain(
@@ -239,7 +297,7 @@ def explain(
     top_features: int | None = 3,
     digits: int = 2,
     labels: Sequence[str] | None = None,
-) -> str:
+) -> Report:
     """Describe how the rules produce the prediction of one sample.
 
     See :meth:`highfis.estimators._base._BaseTSKEstimator.explain`.
@@ -274,4 +332,11 @@ def explain(
             f"{len(rest)} other rule{'s' if len(rest) > 1 else ''}, weight {float(weights[rest].sum()):.{digits}f} "
             f"in all: contribute{'' if len(rest) > 1 else 's'} {scores(contributions[rest].sum(axis=0))}"
         )
-    return "\n".join(lines)
+    data = {
+        "prediction": prediction,
+        "classes": None if classes is None else list(classes),
+        "output": contributions.sum(axis=0),
+        "weights": weights,
+        "contributions": contributions,
+    }
+    return Report("\n".join(lines), data)
