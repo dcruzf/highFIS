@@ -458,7 +458,7 @@ def test_rules_table_has_the_set_of_each_rule_and_feature(clf: Any) -> None:
 
     assert levels.shape == (len(table), 6)
     # Each feature has three sets, and each rule of the compact rule base uses one of them.
-    assert all(sorted(column) == [0.0, 0.5, 1.0] for column in levels.T.tolist())
+    assert all(sorted(column) == [0.0, 1.0, 2.0] for column in levels.T.tolist())
     first = clf.get_mf_params()[clf.model_.input_names[0]]
     lowest = int(np.argmin([params["mean"] for params in first]))
     assert levels[lowest, 0] == 0.0
@@ -499,29 +499,36 @@ def test_every_plot_uses_the_colours_of_the_theme(clf: Any) -> None:
 
     assert [_hex(line.get_color()) for line in clf.plot_history().lines[:2]] == [_hex(c) for c in theme.colors[:2]]
     assert _hex(clf.plot_feature_importance().patches[0].get_facecolor()) == _hex(theme.colors[0])
-    assert clf.plot_rules().images[0].get_cmap().name == theme.diverging
+    # The table of the rule base gives each fuzzy set the colour it has in the membership plot.
+    table = clf.plot_rules().images[0]
+    assert [_hex(table.cmap(table.norm(rank))) for rank in range(3)] == [_hex(c) for c in theme.colors[:3]]
+    curves = clf.plot_memberships().axes[0].lines
+    assert sorted(_hex(line.get_color()) for line in curves) == sorted(_hex(c) for c in theme.colors[:3])
     assert clf.plot_rule_activation(x, y).images[0].get_cmap().name == theme.sequential
     assert clf.plot_diagnostics(x, y).axes[0].images[0].get_cmap().name == theme.sequential
 
 
 def test_the_theme_changes_the_colours_of_the_next_plots(clf: Any, _theme: None) -> None:
     x, y, _ = _data()
-    theme = highfis.set_plot_theme(colors=["black", "red"], sequential="Greys", diverging="PuOr")
+    theme = highfis.set_plot_theme(colors=["black", "red"], sequential="Greys")
 
     assert theme.colors == ("black", "red")
     assert theme.reference == "0.4"  # what is not given is kept
     assert [_hex(line.get_color()) for line in clf.plot_history().lines[:2]] == ["#000000", "#ff0000"]
-    assert clf.plot_rules().images[0].get_cmap().name == "PuOr"
+    # Three fuzzy sets and two colours: the table is shaded with the sequential colormap.
+    assert clf.plot_rules().images[0].get_cmap().name == "Greys"
     assert clf.plot_rule_activation(x, y).images[0].get_cmap().name == "Greys"
 
     assert highfis.reset_plot_theme() == plotting.PlotTheme()
-    assert clf.plot_rules().images[0].get_cmap().name == plotting.PlotTheme().diverging
+    assert clf.plot_rules().images[0].get_cmap().name == "fuzzy sets"
 
 
 def test_a_call_can_choose_its_own_colours(clf: Any) -> None:
     x, y, _ = _data()
 
     assert clf.plot_rules(cmap="viridis").images[0].get_cmap().name == "viridis"
+    table = clf.plot_rules(colors=["white", "grey", "black"]).images[0]
+    assert [_hex(table.cmap(table.norm(rank))) for rank in range(3)] == ["#ffffff", "#808080", "#000000"]
     assert clf.plot_diagnostics(x, y, cmap="Greys").axes[0].images[0].get_cmap().name == "Greys"
     assert _hex(clf.plot_feature_importance(colors=["green"]).patches[0].get_facecolor()) == "#008000"
     lines = clf.plot_memberships(colors=["black", "red", "blue"]).axes[0].lines

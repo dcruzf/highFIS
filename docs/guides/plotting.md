@@ -126,8 +126,8 @@ ax = clf.plot(kind="rules")
 ![The fuzzy set that each rule uses on each feature](../assets/plots/rules.png)
 
 One row per rule and one column per feature. Each cell is the fuzzy set that the rule
-uses on the feature, coloured from the lowest set (blue) to the highest (red) and, in
-small rule bases, labelled with the initials of its name: `L`, `M`, `H`. It is the
+uses on the feature, in the colour that the set has in the plot of the membership
+functions and, in small rule bases, labelled with the initials of its name: `L`, `M`, `H`. It is the
 complete antecedent part of the model in one figure, where `rules_as_text()` writes one
 rule at a time. `features`, `max_features` and `set_names` work as for the membership
 functions.
@@ -252,7 +252,6 @@ import highfis
 highfis.set_plot_theme(
     colors=["#1b9e77", "#d95f02", "#7570b3"],  # fuzzy sets, curves, classes
     sequential="Greys",                         # confusion matrix, rule activation
-    diverging="PuOr",                           # table of the rule base
 )
 highfis.reset_plot_theme()                      # back to the colours of the package
 ```
@@ -269,7 +268,7 @@ clf.plot(kind="memberships", colors=["black", "grey", "silver"])
 |---|---|---|
 | `"memberships"` | the fuzzy sets, from the lowest to the highest | |
 | `"history"` | the training and the validation curve | |
-| `"rules"` | | the cells, from the lowest set to the highest |
+| `"rules"` | the fuzzy sets, from the lowest to the highest | shades from the lowest set to the highest, in place of one colour per set |
 | `"rule_activation"` | the bars, without `y` | the table, with `y` |
 | `"diagnostics"` | the classes, or the points of a regressor | the confusion matrix |
 | `"feature_importance"`, `"gates"` | the bars | |

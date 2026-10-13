@@ -68,18 +68,16 @@ class PlotTheme:
 
     Attributes:
         colors: Colours of the things that are told apart by name: the fuzzy sets of a
-            feature, the training and validation curves, the classes.
+            feature, in the membership plot and in the table of the rule base, the training
+            and validation curves, the classes.
         sequential: Colormap of the tables whose cells are amounts, from little to much:
             the confusion matrix and the rule activation.
-        diverging: Colormap of the table of the rule base, from the lowest fuzzy set of a
-            feature to the highest.
         reference: Colour of the lines that mark a reference: thresholds, the decision
             boundary, the best epoch.
     """
 
     colors: tuple[str, ...] = _OKABE_ITO
     sequential: str = "Blues"
-    diverging: str = "RdBu_r"
     reference: str = "0.4"
 
 
@@ -95,7 +93,6 @@ def set_plot_theme(
     *,
     colors: Sequence[str] | None = None,
     sequential: str | None = None,
-    diverging: str | None = None,
     reference: str | None = None,
 ) -> PlotTheme:
     """Change the colours of every plot drawn from now on.
@@ -106,14 +103,13 @@ def set_plot_theme(
     Args:
         colors: Colours of the things told apart by name, in the order they are used.
         sequential: Colormap of the confusion matrix and of the rule activation.
-        diverging: Colormap of the table of the rule base.
         reference: Colour of the reference lines.
 
     Returns:
         The theme now in use.
     """
     global _theme
-    changes: dict[str, Any] = {"sequential": sequential, "diverging": diverging, "reference": reference}
+    changes: dict[str, Any] = {"sequential": sequential, "reference": reference}
     if colors is not None:
         if len(colors) == 0:
             raise ValueError("colors must have at least one colour")
@@ -655,15 +651,16 @@ def plot_rules(
     *,
     max_features: int = 12,
     set_names: Sequence[str] | None = None,
+    colors: Sequence[str] | None = None,
     cmap: str | None = None,
     ax: Any = None,
 ) -> Any:
     """Plot the rule base as a table: one row per rule, one column per feature.
 
-    Each cell is the fuzzy set that the rule uses on the feature, coloured from the lowest
-    set of the feature to the highest (blue to red by default) and, in small rule bases, labelled with
-    the initials of its name: ``VL`` for *very low*, ``M`` for *medium*. A blank cell is a
-    feature that the rule does not use.
+    Each cell is the fuzzy set that the rule uses on the feature. A set has the colour it
+    has in :func:`plot_memberships`, the first colour for the lowest set of a feature, and
+    in small rule bases it is labelled with the initials of its name: ``VL`` for *very
+    low*, ``M`` for *medium*. A blank cell is a feature that the rule does not use.
 
     Args:
         estimator: A fitted estimator.
@@ -672,8 +669,11 @@ def plot_rules(
             ones when the model has more.
         max_features: Number of features shown when ``features`` is ``None``.
         set_names: Names of the fuzzy sets of a feature, as in :func:`plot_memberships`.
-        cmap: Colormap of the cells. ``None`` uses the diverging colormap of the theme
-            (see :func:`set_plot_theme`).
+        colors: Colours of the fuzzy sets, from the lowest to the highest. ``None`` uses the
+            theme (see :func:`set_plot_theme`).
+        cmap: Colormap that shades the cells from the lowest set to the highest, in place
+            of one colour per set. It is also what is used, with the sequential colormap
+            of the theme, when a feature has more sets than there are colours.
         ax: Axes to draw on. ``None`` creates a new figure.
         show: Display the figure and return nothing (``True``), or return it without
             displaying (``False``). ``None`` displays in an interactive session or a
@@ -689,14 +689,16 @@ def plot_rules(
     mf_params = estimator.get_mf_params()
     table = estimator.model_.get_rule_table()
 
-    levels = np.full((len(table), len(positions)), np.nan)
+    levels = np.full((len(table), len(positions)), np.nan)  # position of the set among those of its feature
+    n_sets = 1
     text: list[list[str]] = [["" for _ in positions] for _ in table]
     for column, position in enumerate(positions):
         name = model_names[position]
         names = _set_labels(mf_params[name], set_names)
         located = (j for j, label in enumerate(names) if label is not None)
         order = sorted(located, key=lambda j: _set_position(mf_params[name][j]))
-        rank = {j: (i / (len(order) - 1) if len(order) > 1 else 0.5) for i, j in enumerate(order)}
+        rank = {j: i for i, j in enumerate(order)}
+        n_sets = max(n_sets, len(order))
         for row, rule in enumerate(table):
             j = int(rule[name])
             if j in rank:
@@ -705,9 +707,14 @@ def plot_rules(
 
     size = (max(3.6, 0.62 * len(positions) + 1.6), max(2.4, 0.3 * len(table) + 1.4))
     _, (panel,) = _axes(ax, 1, ncols=1, panel_size=size)
-    # The range is wider than the values, so that the two ends of the colormap, its darkest
-    # colours, are not used: the labels stay readable.
-    image = panel.imshow(levels, cmap=cmap or _theme.diverging, aspect="auto", vmin=-0.25, vmax=1.25)
+    palette = _colours(colors)
+    if cmap is None and n_sets <= len(palette):
+        from matplotlib.colors import ListedColormap
+
+        shades: Any = ListedColormap(list(palette[:n_sets]), name="fuzzy sets")
+        image = panel.imshow(levels, cmap=shades, aspect="auto", vmin=-0.5, vmax=n_sets - 0.5)
+    else:
+        image = panel.imshow(levels, cmap=cmap or _theme.sequential, aspect="auto", vmin=0.0, vmax=max(n_sets - 1, 1))
     if levels.size <= _RULE_TABLE_MAX_ANNOTATED_CELLS:
         for (row, column), value in np.ndenumerate(levels):
             if not np.isnan(value):
