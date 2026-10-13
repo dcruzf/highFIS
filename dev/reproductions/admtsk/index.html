@@ -1094,6 +1094,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#membership-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Membership Functions
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#differences-from-the-article" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1576,6 +1587,58 @@ are the third combination: a learning rate of 0.001 above 1000 features and batc
 data.</p>
 <p>On SRBCT (83 samples, 2308 genes), with ten folds, the best of the six combinations is
 98.89, against 98.81 in the article.</p>
+<h2 id="membership-functions">Membership Functions</h2>
+<p>The article compares its composite Gaussian set with the traditional Gaussian set and
+with the extended one, for several lower bounds (its Table III). With <code>membership</code> and
+<code>lower_bound</code>, on Colon, ten folds, the best of the six combinations:</p>
+<table>
+<thead>
+<tr>
+<th>Membership function</th>
+<th>Lower bound</th>
+<th>Article</th>
+<th>highFIS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Traditional (<code>membership="traditional"</code>)</td>
+<td>0</td>
+<td>76.62</td>
+<td>89.05</td>
+</tr>
+<tr>
+<td>Extended (<code>membership="extended"</code>)</td>
+<td>0.1</td>
+<td>86.10</td>
+<td>89.05</td>
+</tr>
+<tr>
+<td></td>
+<td>0.3</td>
+<td>86.05</td>
+<td>87.38</td>
+</tr>
+<tr>
+<td></td>
+<td><span class="arithmatex">\(1/e\)</span></td>
+<td>84.57</td>
+<td>87.38</td>
+</tr>
+<tr>
+<td></td>
+<td>0.5</td>
+<td>85.67</td>
+<td>87.38</td>
+</tr>
+<tr>
+<td>Composite (default)</td>
+<td><span class="arithmatex">\(1/e\)</span></td>
+<td>86.33</td>
+<td>87.38</td>
+</tr>
+</tbody>
+</table>
 <h2 id="differences-from-the-article">Differences from the Article</h2>
 <ul>
 <li><strong>Loss.</strong> The article minimizes the squared error on one-hot targets summed over the

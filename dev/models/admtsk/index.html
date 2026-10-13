@@ -1103,6 +1103,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Membership functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-three-functions-of-the-article" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        The three functions of the article
+      </span>
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1810,6 +1827,41 @@ bound membership design.</p>
 <li>improves robustness in adaptive lambda selection.</li>
 </ul>
 <p>The estimator wrappers default to <code>GaussianPiMF</code> for the ADMTSK pipeline.</p>
+<h3 id="the-three-functions-of-the-article">The three functions of the article</h3>
+<p>The article compares three membership functions with the adaptive Dombi T-norm. The
+estimators choose among them with <code>membership</code>:</p>
+<table>
+<thead>
+<tr>
+<th><code>membership</code></th>
+<th>Function</th>
+<th>Lower bound</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"composite"</code> (default)</td>
+<td>composite Gaussian, <span class="arithmatex">\(\exp(-(1 - \exp(-(x - m)^2 / 2\sigma^2)))\)</span></td>
+<td><span class="arithmatex">\(1/e\)</span></td>
+</tr>
+<tr>
+<td><code>"extended"</code></td>
+<td>Gaussian rescaled, <span class="arithmatex">\(\varepsilon + (1 - \varepsilon)\exp(-(x - m)^2 / 2\sigma^2)\)</span></td>
+<td><code>lower_bound</code></td>
+</tr>
+<tr>
+<td><code>"traditional"</code></td>
+<td>Gaussian</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+<p>The adaptive parameter of the T-norm is computed from the lower bound of the function in
+use.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">ADMTSKClassifier</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">ADMTSKClassifier</span><span class="p">(</span><span class="n">membership</span><span class="o">=</span><span class="s2">"extended"</span><span class="p">,</span> <span class="n">lower_bound</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+</span></code></pre></div>
 <h2 id="training-in-the-paper-vs-highfis">Training in the paper vs. highFIS</h2>
 <p>The ADMTSK paper describes end-to-end gradient-based training with adaptive
 Dombi lambda and GaussianPiMF antecedents. In highFIS, the default ADMTSK
