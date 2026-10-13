@@ -109,11 +109,14 @@ class FSREADATSKClassifier(_ArticleMembership, _BaseClassifierEstimator):
         zeta_lambda: float = 0.5,
         zeta_theta: float = 0.3,
         structural_pruning: bool = True,
+        freeze_antecedents: bool = False,
         trainer: BaseTrainer | None = None,
         device: str = "cpu",
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
+        use_lse: bool = False,
+        lse_ridge: float = 0.0,
     ) -> None:
         """Initialise an FSRE-ADATSK classifier.
 
@@ -184,6 +187,10 @@ class FSREADATSKClassifier(_ArticleMembership, _BaseClassifierEstimator):
                 Larger values retain more rules.  Default ``0.3``.
             structural_pruning: If ``True`` (default), hard-prune the model
                 architecture after each threshold step.
+            freeze_antecedents: If ``True``, the fuzzy sets are kept fixed in the
+                feature-selection and rule-extraction phases, and only the fine-tuning phase
+                trains them, as the source article does for high-dimensional data. Default
+                ``False``.
             trainer: Optional custom BaseTrainer.
                 When ``None`` (default) an FSRETrainer is built automatically
                 from this estimator's hyperparameters.
@@ -197,6 +204,11 @@ class FSREADATSKClassifier(_ArticleMembership, _BaseClassifierEstimator):
                 ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
                 it must bind to is only built inside ``fit``.
             scheduler_params: Keyword arguments for ``scheduler_class``.
+            use_lse: If ``True``, the consequents are replaced, at the end of the training, by
+                their least-squares solution on the training data, with the antecedents as
+                trained (on one-hot targets for a classifier). Default ``False``.
+            lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
+                least-squares solution of minimum norm.
 
         Raises:
             ValueError: If ``lambda_init <= 0``.
@@ -212,6 +224,7 @@ class FSREADATSKClassifier(_ArticleMembership, _BaseClassifierEstimator):
         self.zeta_lambda = zeta_lambda
         self.zeta_theta = zeta_theta
         self.structural_pruning = structural_pruning
+        self.freeze_antecedents = freeze_antecedents
 
         super().__init__(
             input_configs=input_configs,
@@ -237,6 +250,8 @@ class FSREADATSKClassifier(_ArticleMembership, _BaseClassifierEstimator):
             scheduler_params=scheduler_params,
             trainer=trainer,
         )
+        self.use_lse = use_lse
+        self.lse_ridge = lse_ridge
 
     def fit(
         self,
@@ -333,6 +348,7 @@ class FSREADATSKClassifier(_ArticleMembership, _BaseClassifierEstimator):
             zeta_lambda=float(self.zeta_lambda),
             zeta_theta=float(self.zeta_theta),
             structural_pruning=bool(self.structural_pruning),
+            freeze_antecedents=bool(self.freeze_antecedents),
             verbose=self.verbose,
             eval_metrics_every=self.eval_metrics_every,
             scheduler_class=self.scheduler_class,
@@ -389,11 +405,14 @@ class FSREADATSKRegressor(_ArticleMembership, _BaseRegressorEstimator):
         zeta_lambda: float = 0.5,
         zeta_theta: float = 0.3,
         structural_pruning: bool = True,
+        freeze_antecedents: bool = False,
         trainer: BaseTrainer | None = None,
         device: str = "cpu",
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
+        use_lse: bool = False,
+        lse_ridge: float = 0.0,
     ) -> None:
         """Initialise an FSRE-ADATSK regressor.
 
@@ -464,6 +483,10 @@ class FSREADATSKRegressor(_ArticleMembership, _BaseRegressorEstimator):
                 Larger values retain more rules.  Default ``0.3``.
             structural_pruning: If ``True`` (default), hard-prune the model
                 architecture after each threshold step.
+            freeze_antecedents: If ``True``, the fuzzy sets are kept fixed in the
+                feature-selection and rule-extraction phases, and only the fine-tuning phase
+                trains them, as the source article does for high-dimensional data. Default
+                ``False``.
             trainer: Optional custom BaseTrainer.
                 When ``None`` (default) an FSRETrainer is built automatically
                 from this estimator's hyperparameters.
@@ -477,6 +500,11 @@ class FSREADATSKRegressor(_ArticleMembership, _BaseRegressorEstimator):
                 ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
                 it must bind to is only built inside ``fit``.
             scheduler_params: Keyword arguments for ``scheduler_class``.
+            use_lse: If ``True``, the consequents are replaced, at the end of the training, by
+                their least-squares solution on the training data, with the antecedents as
+                trained (on one-hot targets for a classifier). Default ``False``.
+            lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
+                least-squares solution of minimum norm.
 
         Raises:
             ValueError: If ``lambda_init <= 0``.
@@ -492,6 +520,7 @@ class FSREADATSKRegressor(_ArticleMembership, _BaseRegressorEstimator):
         self.zeta_lambda = zeta_lambda
         self.zeta_theta = zeta_theta
         self.structural_pruning = structural_pruning
+        self.freeze_antecedents = freeze_antecedents
         super().__init__(
             input_configs=input_configs,
             n_mfs=n_mfs,
@@ -516,6 +545,8 @@ class FSREADATSKRegressor(_ArticleMembership, _BaseRegressorEstimator):
             scheduler_params=scheduler_params,
             trainer=trainer,
         )
+        self.use_lse = use_lse
+        self.lse_ridge = lse_ridge
 
     def _build_regressor_model(
         self,
@@ -601,6 +632,7 @@ class FSREADATSKRegressor(_ArticleMembership, _BaseRegressorEstimator):
             zeta_lambda=float(self.zeta_lambda),
             zeta_theta=float(self.zeta_theta),
             structural_pruning=bool(self.structural_pruning),
+            freeze_antecedents=bool(self.freeze_antecedents),
             verbose=self.verbose,
             eval_metrics_every=self.eval_metrics_every,
             scheduler_class=self.scheduler_class,

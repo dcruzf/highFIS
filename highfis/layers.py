@@ -63,6 +63,7 @@ from .memberships import (
     CompositeExponentialMF,
     ConstantMF,
     DimensionDependentGaussianMF,
+    ExtendedGaussianMF,
     GaussianMF,
     GaussianPiMF,
     MembershipFunction,
@@ -99,6 +100,13 @@ def _kernel_gaussian_pi(x: Tensor, mean: Tensor, raw_sigma: Tensor, consts: Mapp
     return torch.exp(-consts["k"] * inner)
 
 
+def _kernel_extended_gaussian(x: Tensor, mean: Tensor, raw_sigma: Tensor, consts: Mapping[str, Tensor]) -> Tensor:
+    sigma = F.softplus(raw_sigma) + consts["eps"]
+    z = (x - mean) / sigma
+    bound = consts["lower_bound"]
+    return bound + (1.0 - bound) * torch.exp(-0.5 * z.square())
+
+
 def _kernel_composite_exponential(x: Tensor, mean: Tensor, raw_sigma: Tensor, consts: Mapping[str, Tensor]) -> Tensor:
     sigma = F.softplus(raw_sigma) + consts["eps"]
     exponent = -0.5 * ((x - mean) / sigma).square()
@@ -125,6 +133,7 @@ _VECTORIZED_MF_KERNELS: dict[type, _MFKernel] = cast(
         ADATSKGaussianMF: _kernel_adatsk_gaussian,
         DimensionDependentGaussianMF: _kernel_dimension_dependent_gaussian,
         GaussianPiMF: _kernel_gaussian_pi,
+        ExtendedGaussianMF: _kernel_extended_gaussian,
         CompositeExponentialMF: _kernel_composite_exponential,
         ConstantMF: _kernel_constant,
     },
@@ -267,6 +276,8 @@ class MembershipLayer(nn.Module):
             consts["scale"] = torch.tensor([cast(Any, mf).scale for mf in flat_mfs])
         elif mf_type in (GaussianPiMF, CompositeExponentialMF):
             consts["k"] = torch.tensor([cast(Any, mf).k for mf in flat_mfs])
+        elif mf_type is ExtendedGaussianMF:
+            consts["lower_bound"] = torch.tensor([cast(Any, mf).lower_bound for mf in flat_mfs])
         elif mf_type is ConstantMF:
             consts["value"] = torch.tensor([cast(Any, mf).value for mf in flat_mfs])
         for cname, tensor in consts.items():

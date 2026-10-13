@@ -27,6 +27,8 @@ Membership functions:
     **Piecewise polynomial**
         - ``TriangularMF`` — triangular membership with left/center/right.
         - ``TrapezoidalMF`` — trapezoidal membership with four vertices.
+        - ``TriangularPiMF`` / ``TrapezoidalPiMF`` — the same shapes with a positive
+          infimum inside their support, from the ADPTSK article.
         - ``PiMF`` — pi-shaped membership with smooth S/Z transitions.
         - ``SShapedMF`` / ``ZShapedMF`` — smooth S/Z membership curves.
         - ``LinSShapedMF`` / ``LinZShapedMF`` — linear S/Z membership curves.
@@ -269,27 +271,39 @@ class DimensionDependentGaussianMF(GaussianMF):
 
 
 class CompositeGaussianMF(MembershipFunction):
-    """Composite Gaussian membership with a nonzero lower bound."""
+    r"""Gaussian membership with a nonzero lower bound.
 
-    def __init__(self, mean: float = 0.0, sigma: float = 1.0, eps: float | None = None) -> None:
+    Defined as :math:`b + (1 - b)\exp(-(x - m)^2 / (2\sigma^2))`, where :math:`b` is the
+    lower bound. It is the function of :class:`ExtendedGaussianMF`, whose lower bound
+    defaults to 0.1; here the default is the numerical constant ``eps``.
+    """
+
+    def __init__(
+        self, mean: float = 0.0, sigma: float = 1.0, eps: float | None = None, lower_bound: float | None = None
+    ) -> None:
         r"""Initialize composite Gaussian membership function.
 
         Args:
             mean: Center of the Gaussian $c$.
             sigma: Width $\sigma > 0$.  Softplus-reparameterized to
                 remain positive during training.
-            eps: Numeric stability constant and lower bound of the
-                membership value.  ``None`` uses :func:`torch.finfo`
+            eps: Numeric stability constant.  ``None`` uses :func:`torch.finfo`
                 machine epsilon.
+            lower_bound: Lower bound of the membership values, in ``[0, 1)``. ``None``
+                (default) uses the value of ``eps``.
 
         Raises:
-            ValueError: If *sigma* is not positive.
+            ValueError: If *sigma* is not positive or *lower_bound* is outside ``[0, 1)``.
         """
         super().__init__(eps=eps)
         if sigma <= 0:
             raise ValueError("sigma must be positive")
+        bound = float(self.eps) if lower_bound is None else float(lower_bound)
+        if not 0.0 <= bound < 1.0:
+            raise ValueError("lower_bound must be in the interval [0, 1)")
         self.mean = nn.Parameter(torch.tensor(float(mean)))
         self.raw_sigma = nn.Parameter(torch.tensor(_inv_softplus(float(sigma), eps)))
+        self.lower_bound = bound
 
     @property
     def sigma(self) -> Tensor:
@@ -300,7 +314,62 @@ class CompositeGaussianMF(MembershipFunction):
         """Compute Composite Gaussian membership values for input tensor."""
         x = self._as_tensor(x)
         z = (x - self.mean) / self.sigma
-        return self.eps + (1.0 - self.eps) * torch.exp(-0.5 * z.square())
+        return self.lower_bound + (1.0 - self.lower_bound) * torch.exp(-0.5 * z.square())
+
+    def inspect_params(self) -> dict[str, Any]:
+        """Return the serializable parameters for this membership function."""
+        return {**super().inspect_params(), "lower_bound": self.lower_bound}
+
+
+class ExtendedGaussianMF(MembershipFunction):
+    r"""Gaussian membership rescaled to have a lower bound chosen by the user.
+
+    Defined as :math:`\varepsilon + (1 - \varepsilon)\exp(-(x - m)^2 / (2\sigma^2))`: the
+    Gaussian function mapped linearly from :math:`(0, 1]` to :math:`(\varepsilon, 1]`.
+
+    Reference: Xue et al., "ADMTSK: a high-dimensional Takagi-Sugeno-Kang fuzzy system
+    based on adaptive Dombi T-norm", IEEE Transactions on Fuzzy Systems 33(6), 2025,
+    Eq. (32), where it is called the extended Gaussian membership function.
+    """
+
+    def __init__(
+        self, mean: float = 0.0, sigma: float = 1.0, lower_bound: float = 0.1, eps: float | None = None
+    ) -> None:
+        """Initialize the extended Gaussian membership function.
+
+        Args:
+            mean: Centre of the Gaussian.
+            sigma: Spread; must be positive.
+            lower_bound: Lower bound of the membership values, in ``[0, 1)``.
+            eps: Numerical stability constant.
+        """
+        super().__init__(eps=eps)
+        if sigma <= 0:
+            raise ValueError("sigma must be positive")
+        if not 0.0 <= lower_bound < 1.0:
+            raise ValueError("lower_bound must be in the interval [0, 1)")
+        self.mean = nn.Parameter(torch.tensor(float(mean)))
+        self.raw_sigma = nn.Parameter(torch.tensor(_inv_softplus(float(sigma), eps)))
+        self.lower_bound = float(lower_bound)
+
+    @property
+    def sigma(self) -> Tensor:
+        """Return the positive spread via softplus reparameterization."""
+        return F.softplus(self.raw_sigma) + self.eps
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Compute the membership values for the input tensor."""
+        x = self._as_tensor(x)
+        z = (x - self.mean) / self.sigma
+        return self.lower_bound + (1.0 - self.lower_bound) * torch.exp(-0.5 * z.square())
+
+    def inspect_params(self) -> dict[str, Any]:
+        """Return the serializable parameters for this membership function."""
+        return {
+            "mean": float(self.mean.detach().cpu().item()),
+            "sigma": float(self.sigma.detach().cpu().item()),
+            "lower_bound": float(self.lower_bound),
+        }
 
 
 class CompositeGMF(MembershipFunction):
@@ -398,6 +467,104 @@ class TrapezoidalMF(MembershipFunction):
         left = (x - self.a) / (self.b - self.a + self.eps)
         right = (self.d - x) / (self.d - self.c + self.eps)
         return torch.clamp(torch.minimum(left, right), min=0.0, max=1.0)
+
+
+def _check_pimf_k(k: float) -> float:
+    if not (0.0 < k <= 745.0):
+        raise ValueError("k must be in the interval (0, 745]")
+    return float(k)
+
+
+class TriangularPiMF(TriangularMF):
+    """Triangular membership with a positive infimum (PIMF).
+
+    Inside ``[left, right]`` the triangle is rescaled to ``[exp(-K), 1]``:
+    ``triangle(x) * (1 - exp(-K)) + exp(-K)``; outside that interval the degree is zero,
+    as in the triangular function it comes from.
+
+    Reference: Ma et al., "An adaptive double-parameter softmin based
+    Takagi-Sugeno-Kang fuzzy system for high-dimensional data", Fuzzy
+    Sets and Systems 521 (2025), Eq. (44).
+    """
+
+    def __init__(
+        self,
+        left: float = -1.0,
+        center: float = 0.0,
+        right: float = 1.0,
+        k: float = 1.0,
+        eps: float | None = None,
+    ) -> None:
+        """Initialize triangular PIMF with its vertices and infimum control k.
+
+        Args:
+            left: Left vertex, where the degree is ``exp(-k)``.
+            center: Vertex of degree one.
+            right: Right vertex, where the degree is ``exp(-k)``.
+            k: Positive infimum control parameter in (0, 745]. The infimum of the degree
+                inside ``[left, right]`` is ``exp(-k)``.
+            eps: Numerical stability constant.
+        """
+        super().__init__(left=left, center=center, right=right, eps=eps)
+        self.k = _check_pimf_k(k)
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Compute triangular PIMF membership values for input tensor."""
+        x = self._as_tensor(x)
+        infimum = math.exp(-self.k)
+        inside = (x >= self.left) & (x <= self.right)
+        return torch.where(inside, super().forward(x) * (1.0 - infimum) + infimum, torch.zeros_like(x))
+
+    def inspect_params(self) -> dict[str, Any]:
+        """Return the serializable parameters for this membership function."""
+        return {**super().inspect_params(), "k": self.k}
+
+
+class TrapezoidalPiMF(TrapezoidalMF):
+    """Trapezoidal membership with a positive infimum (PIMF).
+
+    Inside ``[a, d]`` the trapezoid is rescaled to ``[exp(-K), 1]``:
+    ``trapezoid(x) * (1 - exp(-K)) + exp(-K)``; outside that interval the degree is zero,
+    as in the trapezoidal function it comes from.
+
+    Reference: Ma et al., "An adaptive double-parameter softmin based
+    Takagi-Sugeno-Kang fuzzy system for high-dimensional data", Fuzzy
+    Sets and Systems 521 (2025), Eq. (45).
+    """
+
+    def __init__(
+        self,
+        a: float = -2.0,
+        b: float = -1.0,
+        c: float = 1.0,
+        d: float = 2.0,
+        k: float = 1.0,
+        eps: float | None = None,
+    ) -> None:
+        """Initialize trapezoidal PIMF with its vertices and infimum control k.
+
+        Args:
+            a: Left foot, where the degree is ``exp(-k)``.
+            b: Left shoulder, where the degree reaches one.
+            c: Right shoulder, where the degree leaves one.
+            d: Right foot, where the degree is ``exp(-k)``.
+            k: Positive infimum control parameter in (0, 745]. The infimum of the degree
+                inside ``[a, d]`` is ``exp(-k)``.
+            eps: Numerical stability constant.
+        """
+        super().__init__(a=a, b=b, c=c, d=d, eps=eps)
+        self.k = _check_pimf_k(k)
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Compute trapezoidal PIMF membership values for input tensor."""
+        x = self._as_tensor(x)
+        infimum = math.exp(-self.k)
+        inside = (x >= self.a) & (x <= self.d)
+        return torch.where(inside, super().forward(x) * (1.0 - infimum) + infimum, torch.zeros_like(x))
+
+    def inspect_params(self) -> dict[str, Any]:
+        """Return the serializable parameters for this membership function."""
+        return {**super().inspect_params(), "k": self.k}
 
 
 class BellMF(MembershipFunction):
@@ -765,6 +932,7 @@ __all__: list[str] = [
     "BellMF",
     "CompositeExponentialMF",
     "CompositeGaussianMF",
+    "ExtendedGaussianMF",
     "GaussianMF",
     "GaussianPiMF",
     "LinSShapedMF",
@@ -775,6 +943,8 @@ __all__: list[str] = [
     "SShapedMF",
     "SigmoidalMF",
     "TrapezoidalMF",
+    "TrapezoidalPiMF",
     "TriangularMF",
+    "TriangularPiMF",
     "ZShapedMF",
 ]

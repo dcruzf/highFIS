@@ -9,7 +9,8 @@ pp. 507-519, 2024.
 ## Protocol of the Article
 
 Section IV-B of the article. These settings are the defaults of the HDFIS estimators, so
-the script builds the models without arguments.
+the script builds the models without arguments, except for the rows with the
+dimension-dependent membership function (DMF) in HDFIS-min and with least squares.
 
 | Point | Article | In the script |
 |---|---|---|
@@ -18,7 +19,8 @@ the script builds the models without arguments.
 | Rules | three, one per fuzzy set | default |
 | Consequents | start at zero | default |
 | Optimizer | Adam, batches of 64, 100 epochs | defaults; learning rate 0.01 |
-| HDFIS-min | antecedents fixed, consequents trained | default |
+| HDFIS-min | antecedents fixed, consequents trained; conventional Gaussian set, or the dimension-dependent one of HDFIS-prod | default; `membership="dimension_dependent"` |
+| Least squares | antecedents fixed, consequents estimated by least squares (Table V) | `epochs=0, use_lse=True` |
 | Split | 70% training, 30% test, ten repetitions | `train_test_split(train_size=0.7)`, ten seeds |
 
 ## Result
@@ -29,30 +31,44 @@ and the consequents trained by Adam (Table V).
 
 ```text
 Tables II and V: mean test accuracy in percent
-dataset   family       article  highFIS    std
-Colon     HDFIS-prod     87.89    87.89   6.25
-Colon     HDFIS-min      87.37    87.89   6.25
-Leukemia  HDFIS-prod     99.09    97.27   3.02
-Leukemia  HDFIS-min      99.09    97.27   3.02
+dataset   model                            article  highFIS    std
+Colon     HDFIS-prod                         87.89    87.89   6.25
+Colon     HDFIS-min                          87.37    87.89   6.25
+Colon     HDFIS-min (DMF)                    86.84    87.89   6.25
+Colon     HDFIS-prod, least squares          84.21    84.74   3.68
+Colon     HDFIS-min, least squares           86.84    84.74   3.68
+Colon     HDFIS-min (DMF), least squares     83.16    84.74   3.68
+Leukemia  HDFIS-prod                         99.09    97.27   3.02
+Leukemia  HDFIS-min                          99.09    97.27   3.02
+Leukemia  HDFIS-min (DMF)                    97.27    97.27   3.02
+Leukemia  HDFIS-prod, least squares          98.64    96.36   3.40
+Leukemia  HDFIS-min, least squares           98.18    96.36   3.40
+Leukemia  HDFIS-min (DMF), least squares     98.64    96.36   3.40
 
 Summary of the last model fitted
 HDFISMinClassifier
   task               classification, 2 classes
   features           7129 seen in fit, 7129 used by the model
   rules              3 (rule base: coco)
-  fuzzy sets         3 per feature, GaussianMF
+  fuzzy sets         3 per feature, DimensionDependentGaussianMF
   firing strength    RuleLayer, T-norm MinimumTNorm
   defuzzifier        SumBasedDefuzzifier
   consequents        ClassificationConsequentLayer
   parameters         42780 trainable (0 antecedent, 42780 consequent)
 Training
   batch size         64
-  epochs             100 epochs, learning rate 0.01, training loss 0.5000 -> 0.0321, training accuracy 1.0000
+  epochs             0 epochs, learning rate 0.01
+  least squares      consequents solved at the end, ridge 0, training error 0.0000
 ```
 
 The article reports standard deviations of 7.08 and 7.14 on Colon and of 1.82 on
 Leukemia. Colon is reproduced exactly. On Leukemia highFIS is 1.8 points below, less than
 one standard deviation, with 22 test samples per split.
+
+HDFIS-min with the dimension-dependent set gives 87.89 on Colon, against 86.84 in the
+article, and the 97.27 of the article on Leukemia. With the consequents estimated by
+least squares, highFIS is within two points of the article on Colon and about two points
+below on Leukemia.
 
 ## Choice of the Splits
 
@@ -90,9 +106,6 @@ a matter of the splits, not of the implementation.
   datasets. Colon and Leukemia are the two that OpenML provides with the samples and
   features of the article and without further dependencies. The copy of Colon on OpenML
   is already normalized.
-- **Variants.** The article also reports HDFIS-min with the dimension-dependent
-  membership function, and both models with the consequents estimated by least squares.
-  highFIS does not implement these variants.
 
 ## Reproducibility
 

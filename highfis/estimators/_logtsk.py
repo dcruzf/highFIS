@@ -72,6 +72,8 @@ class LogTSKClassifier(_BaseClassifierEstimator):
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
+        use_lse: bool = False,
+        lse_ridge: float = 0.0,
     ) -> None:
         """Initialise a LogTSK classifier.
 
@@ -118,6 +120,11 @@ class LogTSKClassifier(_BaseClassifierEstimator):
                 ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
                 it must bind to is only built inside ``fit``.
             scheduler_params: Keyword arguments for ``scheduler_class``.
+            use_lse: If ``True``, the consequents are replaced, at the end of the training, by
+                their least-squares solution on the training data, with the antecedents as
+                trained (on one-hot targets for a classifier). Default ``False``.
+            lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
+                least-squares solution of minimum norm.
         """
         super().__init__(
             input_configs=input_configs,
@@ -142,6 +149,8 @@ class LogTSKClassifier(_BaseClassifierEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.use_lse = use_lse
+        self.lse_ridge = lse_ridge
         self.sigma_init = sigma_init
 
     def _paper_batch_size(self, n_samples: int) -> int | None:
@@ -215,6 +224,8 @@ class LogTSKRegressor(_BaseRegressorEstimator):
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
+        use_lse: bool = False,
+        lse_ridge: float = 0.0,
     ) -> None:
         """Initialise a LogTSK regressor.
 
@@ -261,6 +272,11 @@ class LogTSKRegressor(_BaseRegressorEstimator):
                 ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
                 it must bind to is only built inside ``fit``.
             scheduler_params: Keyword arguments for ``scheduler_class``.
+            use_lse: If ``True``, the consequents are replaced, at the end of the training, by
+                their least-squares solution on the training data, with the antecedents as
+                trained (on one-hot targets for a classifier). Default ``False``.
+            lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
+                least-squares solution of minimum norm.
         """
         super().__init__(
             input_configs=input_configs,
@@ -285,6 +301,8 @@ class LogTSKRegressor(_BaseRegressorEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.use_lse = use_lse
+        self.lse_ridge = lse_ridge
         self.sigma_init = sigma_init
 
     def _paper_batch_size(self, n_samples: int) -> int | None:

@@ -32,6 +32,12 @@ def _hdfis_paper_batch_size(n_samples: int) -> int:
     return 64
 
 
+#: Membership functions that HDFIS-min can be built with.
+_HDFIS_MIN_MEMBERSHIPS = frozenset({"conventional", "dimension_dependent"})
+#: Precision constant of the dimension-dependent membership function, the default of HDFIS-prod.
+_HDFIS_XI = 745.0
+
+
 class _ArticlePartition:
     """Fuzzy sets of the HDFIS article for ``mf_init="grid"``.
 
@@ -114,6 +120,8 @@ class HDFISProdClassifier(_ArticlePartition, _BaseClassifierEstimator):
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
+        use_lse: bool = False,
+        lse_ridge: float = 0.0,
     ) -> None:
         r"""Initialise an HDFIS-prod classifier estimator.
 
@@ -163,6 +171,11 @@ class HDFISProdClassifier(_ArticlePartition, _BaseClassifierEstimator):
                 ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
                 it must bind to is only built inside ``fit``.
             scheduler_params: Keyword arguments for ``scheduler_class``.
+            use_lse: If ``True``, the consequents are replaced, at the end of the training, by
+                their least-squares solution on the training data, with the antecedents as
+                trained (on one-hot targets for a classifier). Default ``False``.
+            lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
+                least-squares solution of minimum norm.
         """
         super().__init__(
             input_configs=input_configs,
@@ -188,6 +201,8 @@ class HDFISProdClassifier(_ArticlePartition, _BaseClassifierEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.use_lse = use_lse
+        self.lse_ridge = lse_ridge
         self.xi = xi
         self.rho = rho
 
@@ -276,6 +291,8 @@ class HDFISProdRegressor(_ArticlePartition, _BaseRegressorEstimator):
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
+        use_lse: bool = False,
+        lse_ridge: float = 0.0,
     ) -> None:
         r"""Initialise an HDFIS-prod regressor estimator.
 
@@ -323,6 +340,11 @@ class HDFISProdRegressor(_ArticlePartition, _BaseRegressorEstimator):
                 ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
                 it must bind to is only built inside ``fit``.
             scheduler_params: Keyword arguments for ``scheduler_class``.
+            use_lse: If ``True``, the consequents are replaced, at the end of the training, by
+                their least-squares solution on the training data, with the antecedents as
+                trained (on one-hot targets for a classifier). Default ``False``.
+            lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
+                least-squares solution of minimum norm.
         """
         super().__init__(
             input_configs=input_configs,
@@ -347,6 +369,8 @@ class HDFISProdRegressor(_ArticlePartition, _BaseRegressorEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.use_lse = use_lse
+        self.lse_ridge = lse_ridge
         self.xi = xi
         self.rho = rho
 
@@ -435,6 +459,9 @@ class HDFISMinClassifier(_ArticlePartition, _BaseClassifierEstimator):
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
+        use_lse: bool = False,
+        lse_ridge: float = 0.0,
+        membership: str = "conventional",
     ) -> None:
         """Initialise an HDFIS-min classifier estimator.
 
@@ -480,6 +507,15 @@ class HDFISMinClassifier(_ArticlePartition, _BaseClassifierEstimator):
                 ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
                 it must bind to is only built inside ``fit``.
             scheduler_params: Keyword arguments for ``scheduler_class``.
+            use_lse: If ``True``, the consequents are replaced, at the end of the training, by
+                their least-squares solution on the training data, with the antecedents as
+                trained (on one-hot targets for a classifier). Default ``False``.
+            lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
+                least-squares solution of minimum norm.
+            membership: Membership function of the fuzzy sets. ``"conventional"``
+                (default) is the Gaussian function; ``"dimension_dependent"`` is the
+                Gaussian function whose width grows with the number of features, the one
+                of HDFIS-prod. The source article evaluates HDFIS-min with both.
         """
         super().__init__(
             input_configs=input_configs,
@@ -505,6 +541,21 @@ class HDFISMinClassifier(_ArticlePartition, _BaseClassifierEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.use_lse = use_lse
+        self.lse_ridge = lse_ridge
+        self.membership = membership
+
+    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
+        if self.membership not in _HDFIS_MIN_MEMBERSHIPS:
+            raise ValueError(f"membership must be one of {sorted(_HDFIS_MIN_MEMBERSHIPS)}; got {self.membership!r}")
+        input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
+        if self.membership == "dimension_dependent":
+            if x_arr.shape[1] < 2:
+                raise ValueError("the dimension-dependent membership function requires at least 2 features")
+            input_mfs = _wrap_dimension_dependent_gaussian_input_mfs(
+                input_mfs, dimension=x_arr.shape[1], xi=_HDFIS_XI, rho=None
+            )
+        return input_mfs, feature_names, effective_rule_base
 
     def _paper_batch_size(self, n_samples: int) -> int | None:
         """HDFIS_2023: a fixed batch of 64."""
@@ -575,6 +626,9 @@ class HDFISMinRegressor(_ArticlePartition, _BaseRegressorEstimator):
         eval_metrics_every: int = 1,
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
+        use_lse: bool = False,
+        lse_ridge: float = 0.0,
+        membership: str = "conventional",
     ) -> None:
         """Initialise an HDFIS-min regressor estimator.
 
@@ -618,6 +672,15 @@ class HDFISMinRegressor(_ArticlePartition, _BaseRegressorEstimator):
                 ``torch.optim.lr_scheduler.StepLR``), not an instance -- the optimiser
                 it must bind to is only built inside ``fit``.
             scheduler_params: Keyword arguments for ``scheduler_class``.
+            use_lse: If ``True``, the consequents are replaced, at the end of the training, by
+                their least-squares solution on the training data, with the antecedents as
+                trained (on one-hot targets for a classifier). Default ``False``.
+            lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
+                least-squares solution of minimum norm.
+            membership: Membership function of the fuzzy sets. ``"conventional"``
+                (default) is the Gaussian function; ``"dimension_dependent"`` is the
+                Gaussian function whose width grows with the number of features, the one
+                of HDFIS-prod. The source article evaluates HDFIS-min with both.
         """
         super().__init__(
             input_configs=input_configs,
@@ -642,6 +705,21 @@ class HDFISMinRegressor(_ArticlePartition, _BaseRegressorEstimator):
             scheduler_class=scheduler_class,
             scheduler_params=scheduler_params,
         )
+        self.use_lse = use_lse
+        self.lse_ridge = lse_ridge
+        self.membership = membership
+
+    def _build_input_mfs(self, x_arr: np.ndarray) -> tuple[Mapping[str, Sequence[MembershipFunction]], list[str], str]:
+        if self.membership not in _HDFIS_MIN_MEMBERSHIPS:
+            raise ValueError(f"membership must be one of {sorted(_HDFIS_MIN_MEMBERSHIPS)}; got {self.membership!r}")
+        input_mfs, feature_names, effective_rule_base = super()._build_input_mfs(x_arr)
+        if self.membership == "dimension_dependent":
+            if x_arr.shape[1] < 2:
+                raise ValueError("the dimension-dependent membership function requires at least 2 features")
+            input_mfs = _wrap_dimension_dependent_gaussian_input_mfs(
+                input_mfs, dimension=x_arr.shape[1], xi=_HDFIS_XI, rho=None
+            )
+        return input_mfs, feature_names, effective_rule_base
 
     def _paper_batch_size(self, n_samples: int) -> int | None:
         """HDFIS_2023: a fixed batch of 64."""

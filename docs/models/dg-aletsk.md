@@ -157,6 +157,25 @@ Remaining differences:
   the Friedman-1 problem it selects informative features but stays below ridge regression
   (R² about 0.50 against 0.62); treat it as experimental.
 
+## ALETSK, the system without gates
+
+The article first proposes ALETSK, a TSK system whose firing strengths are computed with
+the adaptive Ln-Exp softmin and that has no gates, and evaluates it on its own before
+adding the gates. `gates=False` gives it: no feature is selected and no rule is
+extracted, and one gradient phase of `finetune_epochs` trains the fuzzy sets and the
+first-order consequents.
+
+```python
+from highfis import DGALETSKClassifier
+
+# As in the article: compact rule base, three fuzzy sets per feature on an even grid.
+aletsk = DGALETSKClassifier(gates=False, rule_base="coco", n_mfs=3, mf_init="grid")
+```
+
+The arguments of the gates (`dg_epochs`, `zeta_lambda`, `zeta_theta`,
+`structural_pruning`) have no effect in that case, and the regressor takes the same
+option.
+
 ## Implementation notes
 
 - `DGALETSKClassifier` now defaults to the paper profile for classification:

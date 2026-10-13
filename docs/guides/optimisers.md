@@ -256,6 +256,41 @@ clf.fit(X, y)
 
 ---
 
+## Consequents by Least Squares
+
+With the antecedents fixed, the output of a TSK system is linear in its consequent
+parameters, so the parameters that minimize the squared error have a closed form. Every
+estimator can use it through two arguments:
+
+- `use_lse=True` replaces the consequents, at the end of the training, by their
+  least-squares solution on the training data, with the antecedents as trained. For a
+  classifier the targets are the one-hot vectors of the classes.
+- `lse_ridge` adds a ridge penalty on the consequent parameters. With the default,
+  `0.0`, the solution of minimum norm is returned, which exists also when there are more
+  parameters than samples.
+
+```python
+from highfis import HTSKRegressor
+
+# Train antecedents and consequents by gradient, then solve the consequents.
+reg = HTSKRegressor(n_mfs=3, epochs=50, use_lse=True, random_state=0).fit(X_train, y_train)
+
+# Keep the antecedents as initialized and only solve the consequents: no gradient step.
+reg = HTSKRegressor(n_mfs=3, epochs=0, use_lse=True, lse_ridge=1e-3, random_state=0).fit(X_train, y_train)
+
+print(reg.history_["lse"])  # the penalty and the training error of the solution
+```
+
+When to use it: for a regressor, the solution is the best the consequents can do for the
+antecedents at hand, where a short gradient training may stop far from it. With many
+features and few samples the unpenalized solution fits the training data exactly;
+`lse_ridge` is then the hyperparameter to search. The problem is solved in double
+precision and has one column per rule and feature, so it is refused when it would not
+fit in memory; train the consequents by gradient in that case.
+
+DG-TSK and DG-ALETSK have a `use_lse` argument of their own, which their training
+procedure uses while it searches the gate thresholds (see `DGTrainer` above).
+
 ## Optimizer selection
 
 The optimizer is chosen automatically from the model family, so there is no

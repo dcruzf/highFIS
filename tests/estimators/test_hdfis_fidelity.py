@@ -119,3 +119,50 @@ def test_predictions_survive_save_and_load(name: str, tmp_path: Path) -> None:
     model.save(path)
     loaded = getattr(highfis, name).load(path)
     np.testing.assert_allclose(loaded.predict(x), model.predict(x), rtol=1e-6, atol=1e-6)
+
+
+# --- HDFIS-min with the dimension-dependent membership function ---------------------------
+
+
+@pytest.mark.parametrize("name", ["HDFISMinClassifier", "HDFISMinRegressor"])
+def test_hdfis_min_uses_the_conventional_set_by_default(name: str) -> None:
+    x, y = _wide()
+    target = y if name.endswith("Classifier") else x[:, 0]
+    model = getattr(highfis, name)(epochs=1, random_state=0).fit(x, target)
+
+    assert model.get_params()["membership"] == "conventional"
+    assert {type(mf).__name__ for mfs in model.model_.input_mfs.values() for mf in mfs} == {"GaussianMF"}
+
+
+@pytest.mark.parametrize("name", ["HDFISMinClassifier", "HDFISMinRegressor"])
+def test_hdfis_min_can_use_the_set_of_hdfis_prod(name: str) -> None:
+    x, y = _wide()
+    target = y if name.endswith("Classifier") else x[:, 0]
+    model = getattr(highfis, name)(membership="dimension_dependent", epochs=1, random_state=0).fit(x, target)
+    reference = getattr(highfis, name.replace("Min", "Prod"))(epochs=1, random_state=0).fit(x, target)
+
+    kinds = {type(mf).__name__ for mfs in model.model_.input_mfs.values() for mf in mfs}
+    assert kinds == {"DimensionDependentGaussianMF"}
+    # The same fuzzy sets as HDFIS-prod at the start, combined by the minimum.
+    first = next(iter(model.model_.input_mfs))
+    assert model.get_mf_params()[first][0]["type"] == reference.get_mf_params()[first][0]["type"]
+    assert type(model.model_.rule_layer._resolved_t_norm).__name__ == "MinimumTNorm"
+    # The antecedents of HDFIS-min stay fixed with either membership function.
+    assert sum(p.numel() for p in model.model_.membership_layer.parameters() if p.requires_grad) == 0
+
+
+def test_hdfis_min_rejects_an_unknown_membership() -> None:
+    x, y = _wide()
+    with pytest.raises(ValueError, match="membership must be one of"):
+        highfis.HDFISMinClassifier(membership="triangular", epochs=1).fit(x, y)
+
+
+def test_hdfis_min_with_the_dimension_dependent_set_is_saved(tmp_path: Any) -> None:
+    x, y = _wide()
+    model = highfis.HDFISMinClassifier(membership="dimension_dependent", epochs=2, random_state=0).fit(x, y)
+    path = str(tmp_path / "model.pt")
+    model.save(path)
+    loaded = highfis.HDFISMinClassifier.load(path)
+
+    assert loaded.membership == "dimension_dependent"
+    np.testing.assert_allclose(loaded.predict_proba(x), model.predict_proba(x), rtol=1e-6)

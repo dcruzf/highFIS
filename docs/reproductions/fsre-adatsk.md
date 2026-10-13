@@ -110,6 +110,42 @@ The value of 600 was chosen on these three datasets, as the one whose numbers of
 are closest to the article; the other five datasets were run with it afterwards, without
 further choice. The accuracy changes by half a point or less between the two.
 
+## High-Dimensional Data
+
+For the datasets with more than 1000 features, the article changes the threshold
+coefficients to 0.4 for the features and 0.5 for the rules, and reports the fine-tuning
+phase both with gradient descent and with the consequents solved by least squares
+(its Table V). Both are options of the estimator:
+
+```python
+settings = dict(fs_n_mfs=10, re_n_mfs=5, re_epochs=600, consequent_batch_norm=False,
+                zeta_lambda=0.4, zeta_theta=0.5)
+
+FSREADATSKClassifier(**settings)                                   # gradient descent
+FSREADATSKClassifier(**settings, finetune_epochs=0, use_lse=True)  # least squares
+```
+
+The article also keeps the fuzzy sets fixed in the first two phases on these datasets,
+which is the option `freeze_antecedents=True`; by default highFIS trains them in every
+phase.
+
+One repetition of the ten folds, standardized inputs, on four threads; accuracy in
+percent / selected features / extracted rules:
+
+| Dataset | Fine-tuning | Article | highFIS | highFIS, `freeze_antecedents=True` |
+|---|---|---|---|---|
+| Colon | gradient descent | 81.6 / 9.0 / 6.2 | 85.95 / 11.0 / 6.7 | 79.29 / 14.5 / 8.5 |
+| Colon | least squares | 77.0 / 9.0 / 6.2 | 74.29 / 11.0 / 6.7 | 64.29 / 14.5 / 8.5 |
+| Leukemia | gradient descent | 93.4 / 11.5 / 4.2 | 90.00 / 4.5 / 6.5 | 87.32 / 4.5 / 8.2 |
+| Leukemia | least squares | 92.3 / 11.5 / 4.2 | 88.93 / 4.5 / 6.5 | 87.14 / 4.5 / 8.2 |
+
+The two datasets come from OpenML (identifiers 1432 and 1104). With the fuzzy sets
+trained in every phase, the differences in accuracy are within the standard deviation
+between folds, which is 12 points on Colon and 9 on Leukemia with gradient descent, and
+that setting gave the higher accuracies here. As in the article, gradient descent is
+ahead of least squares on both datasets. A row takes about half an hour on Colon and forty
+minutes on Leukemia, and these runs are not part of the script.
+
 ## Differences from the Article
 
 - **Scale of the inputs, learning rate and iterations.** Not stated in the article;
@@ -124,8 +160,7 @@ further choice. The accuracy changes by half a point or less between the two.
   stratified folds. Glass has a class of nine samples, fewer than the ten folds, so some
   test parts have no sample of that class.
 - **Datasets.** The article uses nineteen datasets, seven of them with more than 1000
-  features, for which it changes the threshold coefficients to 0.4 and 0.5 and keeps the
-  centres fixed in the first two phases. Iris, Wine and Wdbc ship with scikit-learn;
+  features; two of those are measured in the section above. Iris, Wine and Wdbc ship with scikit-learn;
   Appendicitis, Pima, Glass, Heart and Spectfheart come from OpenML (identifiers 1456,
   37, 41, 53 and 1600) with the samples, features and classes of the article.
 

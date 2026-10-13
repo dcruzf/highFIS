@@ -95,6 +95,7 @@ class DGTrainer(BaseTrainer):
         optimizer_type: str = "sgd",
         structural_pruning: bool = True,
         finetune_freeze_antecedents: bool = True,
+        gates: bool = True,
     ) -> None:
         """Initialise a DG trainer.
 
@@ -140,6 +141,10 @@ class DGTrainer(BaseTrainer):
             finetune_freeze_antecedents: If ``True`` (paper default), freeze MF
                 parameters and feature-selection gates during fine-tuning.  If
                 ``False``, only feature gates are frozen (MFs train freely).
+            gates: If ``False``, the system is trained without gates: the DG phase and the
+                threshold search are skipped, and one gradient phase, with the settings of
+                the fine-tune phase, trains the antecedents and the first-order consequents.
+                Default ``True``.
         """
         self.dg_epochs = dg_epochs
         self.dg_learning_rate = dg_learning_rate
@@ -169,6 +174,7 @@ class DGTrainer(BaseTrainer):
         self.optimizer_type = optimizer_type
         self.structural_pruning = structural_pruning
         self.finetune_freeze_antecedents = finetune_freeze_antecedents
+        self.gates = gates
 
     def _run_dg_phase(
         self,
@@ -213,6 +219,7 @@ class DGTrainer(BaseTrainer):
         x_val_ft: Tensor | None,
         y_val: Tensor | None,
         metrics: list[str] | None,
+        freeze_antecedents: bool | None = None,
     ) -> dict[str, Any]:
         import torch.nn as nn
 
@@ -240,7 +247,7 @@ class DGTrainer(BaseTrainer):
 
         # Freeze params per paper: antecedents + lambda_gates frozen during fine-tune.
         frozen: list[Any] = []
-        if self.finetune_freeze_antecedents:
+        if self.finetune_freeze_antecedents if freeze_antecedents is None else freeze_antecedents:
             frozen.extend(model.membership_layer.parameters())
         rule_layer = model.rule_layer
         lambda_gates = getattr(rule_layer, "lambda_gates", None)
@@ -306,6 +313,10 @@ class DGTrainer(BaseTrainer):
 
         if not isinstance(model, DGModelProtocol):
             raise TypeError("model must implement DGModelProtocol")
+
+        if not self.gates:
+            # A system without gates has nothing to select: it is trained in one phase.
+            return {"finetune": self._run_finetune_phase(model, x, y, x_val, y_val, metrics, freeze_antecedents=False)}
 
         # ── Phase 1: DG training ──────────────────────────────────────────
         dg_history = self._run_dg_phase(model, x, y, x_val, y_val, metrics)
