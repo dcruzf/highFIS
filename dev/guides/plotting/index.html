@@ -953,6 +953,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#rule-base" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Rule base
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#rule-activation" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1383,7 +1394,7 @@
 
 
 <h1 id="diagnostic-plots">Diagnostic Plots</h1>
-<p>Every fitted estimator has a <code>plot</code> method. It draws one of six diagnostic plots, chosen
+<p>Every fitted estimator has a <code>plot</code> method. It draws one of seven diagnostic plots, chosen
 with <code>kind</code>:</p>
 <table>
 <thead>
@@ -1402,6 +1413,11 @@ with <code>kind</code>:</p>
 <tr>
 <td><code>"history"</code></td>
 <td>Loss or a metric per epoch</td>
+<td>no</td>
+</tr>
+<tr>
+<td><code>"rules"</code></td>
+<td>The rule base as a table: the fuzzy set of each feature in each rule</td>
 <td>no</td>
 </tr>
 <tr>
@@ -1426,7 +1442,7 @@ with <code>kind</code>:</p>
 </tr>
 </tbody>
 </table>
-<p>Each kind is also a method of its own (<code>plot_memberships</code>, <code>plot_history</code>,
+<p>Each kind is also a method of its own (<code>plot_memberships</code>, <code>plot_history</code>, <code>plot_rules</code>,
 <code>plot_rule_activation</code>, <code>plot_diagnostics</code>, <code>plot_feature_importance</code>, <code>plot_gates</code>),
 which is easier to discover with autocompletion.</p>
 <p>Plotting needs matplotlib, which is an optional dependency:</p>
@@ -1464,9 +1480,16 @@ never call <code>plt.show()</code> or change global settings. Save a plot with
 <p><img alt="Learned membership functions of the six most important features" src="../../assets/plots/memberships.png" /></p>
 <p>One panel per feature, one curve per fuzzy set, drawn from the trained model itself.</p>
 <ul>
-<li>With more than <code>max_features</code> features (6 by default), the most important ones
+<li>
+<p>The sets are named as in <code>rules_as_text()</code>: two, three and five sets are <code>low</code> to
+  <code>high</code>. Pass <code>set_names=[...]</code> to use other names. A name has the same colour on every
+  panel, and when every feature has the same sets one legend is drawn beside the panels.</p>
+</li>
+<li>
+<p>With more than <code>max_features</code> features (6 by default), the most important ones
   according to <code>feature_importance()</code> are shown. Pass <code>features=[...]</code> to choose them, by
-  name or by column index.</li>
+  name or by column index.</p>
+</li>
 <li>Panels are titled with the feature names when the model was fitted on a pandas
   <code>DataFrame</code>, and with <code>x1</code>, <code>x2</code>, ... otherwise.</li>
 <li>The horizontal range is taken from the fuzzy sets. Pass <code>X=</code> to span the data instead.</li>
@@ -1487,13 +1510,26 @@ training can stop while the loss is still falling, as it does here. For regresso
 the epoch with the lowest validation loss.</p>
 <p><code>metric</code> plots any metric requested in <code>fit(..., metrics=[...])</code>:</p>
 <p><img alt="Training and validation accuracy per epoch" src="../../assets/plots/history-accuracy.png" /></p>
-<p>Families that train in phases show them one after the other:</p>
+<p>Families that train in phases get one panel per phase, on the same vertical scale. The
+plot then returns the <code>Figure</code>, and <code>ax</code> takes one axes per phase:</p>
 <p><img alt="Training loss of a DG-ALETSK model across its two gradient phases" src="../../assets/plots/history-phases.png" /></p>
 <p>What to look for: a training curve that keeps oscillating at the last epoch means the
 model returned depends on where training happened to stop. Lower the learning rate or
 use a scheduler.</p>
+<h2 id="rule-base">Rule base</h2>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">ax</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"rules"</span><span class="p">)</span>
+</span></code></pre></div>
+<p><img alt="The fuzzy set that each rule uses on each feature" src="../../assets/plots/rules.png" /></p>
+<p>One row per rule and one column per feature. Each cell is the fuzzy set that the rule
+uses on the feature, coloured from the lowest set (blue) to the highest (red) and, in
+small rule bases, labelled with the initials of its name: <code>L</code>, <code>M</code>, <code>H</code>. It is the
+complete antecedent part of the model in one figure, where <code>rules_as_text()</code> writes one
+rule at a time. <code>features</code>, <code>max_features</code> and <code>set_names</code> work as for the membership
+functions.</p>
+<p>What to look for: rows that are almost equal describe rules that differ in one or two
+features only; columns of a single colour are features on which the rules do not differ.</p>
 <h2 id="rule-activation">Rule activation</h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">ax</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"rule_activation"</span><span class="p">,</span> <span class="n">X</span><span class="o">=</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y_test</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">ax</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"rule_activation"</span><span class="p">,</span> <span class="n">X</span><span class="o">=</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y_test</span><span class="p">)</span>
 </span></code></pre></div>
 <p><img alt="Mean rule activation by true class" src="../../assets/plots/rule-activation.png" /></p>
 <p>Each cell is the mean normalized firing strength of a rule over the samples of a class.
@@ -1507,7 +1543,7 @@ linear model. Here is the same data fitted with <code>TSKClassifier</code>:</p>
 <p>Its accuracy is still high on this dataset, so the score alone does not reveal the
 problem. The high-dimensional families exist to avoid it.</p>
 <h2 id="prediction-diagnostics">Prediction diagnostics</h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">fig</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"diagnostics"</span><span class="p">,</span> <span class="n">X</span><span class="o">=</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y_test</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">fig</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"diagnostics"</span><span class="p">,</span> <span class="n">X</span><span class="o">=</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y_test</span><span class="p">)</span>
 </span></code></pre></div>
 <p><img alt="Confusion matrix and decision margin of the classifier" src="../../assets/plots/diagnostics-classifier.png" /></p>
 <p>For a classifier, the left panel is the confusion matrix. The right panel shows the
@@ -1516,30 +1552,30 @@ true class minus the highest probability given to another class. A sample below 
 misclassified, and samples just above zero are the ones the model is least sure about.</p>
 <p>For a regressor, the panels are the predicted against the observed values and the
 residuals:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_diabetes</span>
-</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.model_selection</span><span class="w"> </span><span class="kn">import</span> <span class="n">train_test_split</span>
-</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.preprocessing</span><span class="w"> </span><span class="kn">import</span> <span class="n">MinMaxScaler</span>
-</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
-</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKRegressor</span>
-</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>
-</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">load_diabetes</span><span class="p">(</span><span class="n">return_X_y</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="n">x_scaler</span><span class="p">,</span> <span class="n">y_scaler</span> <span class="o">=</span> <span class="n">MinMaxScaler</span><span class="p">()</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">),</span> <span class="n">MinMaxScaler</span><span class="p">()</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">y_train</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
-</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>
-</span><span id="__span-6-11"><a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="n">reg</span> <span class="o">=</span> <span class="n">HTSKRegressor</span><span class="p">(</span><span class="n">n_mfs</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-</span><span id="__span-6-12"><a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="n">reg</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">x_scaler</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">X_train</span><span class="p">),</span> <span class="n">y_scaler</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">y_train</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
-</span><span id="__span-6-13"><a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>
-</span><span id="__span-6-14"><a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="n">fig</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
-</span><span id="__span-6-15"><a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>    <span class="n">kind</span><span class="o">=</span><span class="s2">"diagnostics"</span><span class="p">,</span>
-</span><span id="__span-6-16"><a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>    <span class="n">X</span><span class="o">=</span><span class="n">x_scaler</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">X_test</span><span class="p">),</span>
-</span><span id="__span-6-17"><a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a>    <span class="n">y</span><span class="o">=</span><span class="n">y_scaler</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">y_test</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span>
-</span><span id="__span-6-18"><a id="__codelineno-6-18" name="__codelineno-6-18" href="#__codelineno-6-18"></a><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_diabetes</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.model_selection</span><span class="w"> </span><span class="kn">import</span> <span class="n">train_test_split</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.preprocessing</span><span class="w"> </span><span class="kn">import</span> <span class="n">MinMaxScaler</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKRegressor</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="n">X</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">load_diabetes</span><span class="p">(</span><span class="n">return_X_y</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="n">X_train</span><span class="p">,</span> <span class="n">X_test</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> <span class="n">y_test</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="n">x_scaler</span><span class="p">,</span> <span class="n">y_scaler</span> <span class="o">=</span> <span class="n">MinMaxScaler</span><span class="p">()</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_train</span><span class="p">),</span> <span class="n">MinMaxScaler</span><span class="p">()</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">y_train</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="n">reg</span> <span class="o">=</span> <span class="n">HTSKRegressor</span><span class="p">(</span><span class="n">n_mfs</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">150</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="n">reg</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">x_scaler</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">X_train</span><span class="p">),</span> <span class="n">y_scaler</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">y_train</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">ravel</span><span class="p">())</span>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="n">fig</span> <span class="o">=</span> <span class="n">reg</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    <span class="n">kind</span><span class="o">=</span><span class="s2">"diagnostics"</span><span class="p">,</span>
+</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>    <span class="n">X</span><span class="o">=</span><span class="n">x_scaler</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">X_test</span><span class="p">),</span>
+</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>    <span class="n">y</span><span class="o">=</span><span class="n">y_scaler</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">y_test</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">ravel</span><span class="p">(),</span>
+</span><span id="__span-7-18"><a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a><span class="p">)</span>
 </span></code></pre></div>
 <p><img alt="Predicted against observed values and residuals of the regressor" src="../../assets/plots/diagnostics-regressor.png" /></p>
 <p>What to look for: residuals that trend with the observed value, as here, mean the model
 shrinks its predictions towards the mean.</p>
 <h2 id="feature-importance">Feature importance</h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">ax</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"feature_importance"</span><span class="p">,</span> <span class="n">top</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">ax</span> <span class="o">=</span> <span class="n">clf</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"feature_importance"</span><span class="p">,</span> <span class="n">top</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
 </span></code></pre></div>
 <p><img alt="The eight features with the largest importance" src="../../assets/plots/feature-importance.png" /></p>
 <p>The bars are the values of <code>clf.feature_importance()</code>: the mean magnitude of the
@@ -1552,25 +1588,26 @@ features to look at first.</p>
 <h2 id="gates">Gates</h2>
 <p>DG-TSK, DG-ALETSK and FSRE-ADATSK train a gate for every feature and for every rule, and
 keep the features and rules whose gates pass a threshold:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">DGALETSKClassifier</span>
-</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
-</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">gated</span> <span class="o">=</span> <span class="n">DGALETSKClassifier</span><span class="p">(</span><span class="n">n_mfs</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">dg_epochs</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span> <span class="n">finetune_epochs</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_fit</span><span class="p">,</span> <span class="n">y_fit</span><span class="p">)</span>
-</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="n">fig</span> <span class="o">=</span> <span class="n">gated</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"gates"</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">DGALETSKClassifier</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">gated</span> <span class="o">=</span> <span class="n">DGALETSKClassifier</span><span class="p">(</span><span class="n">n_mfs</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">dg_epochs</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span> <span class="n">finetune_epochs</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X_fit</span><span class="p">,</span> <span class="n">y_fit</span><span class="p">)</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">fig</span> <span class="o">=</span> <span class="n">gated</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"gates"</span><span class="p">)</span>
 </span></code></pre></div>
 <p><img alt="Gates of the features and rules that a DG-ALETSK model kept" src="../../assets/plots/gates.png" /></p>
 <p>The left panel has one bar for each feature in <code>selected_features_</code> and the right panel
-one for each rule of the fitted model; the dashed lines are the thresholds. The values
+one for each rule of the fitted model; the dashed lines are the thresholds, whose values
+are in the titles. The values
 are those of <code>get_feature_gates()</code> and <code>get_rule_gates()</code>, at the end of the phase that
 trained them. For FSRE-ADATSK, whose gate is an odd function, the magnitude is drawn.
 The other families have no gates, and the plot raises a <code>ValueError</code> for them.</p>
 <p>What to look for: gates just above the threshold belong to features or rules that a
 slightly different threshold, or a shorter gate phase, would have removed.</p>
 <h2 id="drawing-on-your-own-axes">Drawing on your own axes</h2>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
-</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
-</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mf">3.5</span><span class="p">))</span>
-</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="n">clf</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"history"</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">left</span><span class="p">)</span>
-</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="n">clf</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"rule_activation"</span><span class="p">,</span> <span class="n">X</span><span class="o">=</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y_test</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">right</span><span class="p">)</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">fig</span><span class="p">,</span> <span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">9</span><span class="p">,</span> <span class="mf">3.5</span><span class="p">))</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="n">clf</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"history"</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">left</span><span class="p">)</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="n">clf</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"rule_activation"</span><span class="p">,</span> <span class="n">X</span><span class="o">=</span><span class="n">X_test</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">y_test</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">right</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Single-panel plots take one <code>Axes</code>. <code>"memberships"</code> takes one per feature shown, and
 <code>"diagnostics"</code> and <code>"gates"</code> take two.</p>

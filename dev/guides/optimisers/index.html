@@ -1898,7 +1898,9 @@ estimator can use it through two arguments:</p>
   classifier the targets are the one-hot vectors of the classes.</li>
 <li><code>lse_ridge</code> adds a ridge penalty on the consequent parameters. With the default,
   <code>0.0</code>, the solution of minimum norm is returned, which exists also when there are more
-  parameters than samples.</li>
+  parameters than samples. <code>"auto"</code> chooses the penalty with the smallest
+  leave-one-out squared error on the training data; the value chosen is in
+  <code>history_["lse"]["ridge"]</code>.</li>
 </ul>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">highfis</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTSKRegressor</span>
 </span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
@@ -1913,7 +1915,8 @@ estimator can use it through two arguments:</p>
 <p>When to use it: for a regressor, the solution is the best the consequents can do for the
 antecedents at hand, where a short gradient training may stop far from it. With many
 features and few samples the unpenalized solution fits the training data exactly;
-<code>lse_ridge</code> is then the hyperparameter to search. The problem is solved in double
+<code>lse_ridge</code> is then the hyperparameter to search, or to leave to <code>lse_ridge="auto"</code>, which
+evaluates the candidates in closed form, from one decomposition of the problem. The problem is solved in double
 precision and has one column per rule and feature, so it is refused when it would not
 fit in memory; train the consequents by gradient in that case.</p>
 <p>DG-TSK and DG-ALETSK have a <code>use_lse</code> argument of their own, which their training
