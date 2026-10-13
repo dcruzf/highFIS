@@ -304,7 +304,10 @@ def test_gaussian_pimf_infimum_positive() -> None:
                 "rho": float(1.0 - math.log(745.0) / math.log(1000.0)),
             },
         ),
-        (CompositeGaussianMF(mean=0.5, sigma=2.0), {"mean": 0.5, "sigma": 2.0}),
+        (
+            CompositeGaussianMF(mean=0.5, sigma=2.0, lower_bound=0.2),
+            {"mean": 0.5, "sigma": 2.0, "lower_bound": 0.2},
+        ),
         (TriangularMF(left=-1.0, center=0.0, right=1.0), {"left": -1.0, "center": 0.0, "right": 1.0}),
         (TrapezoidalMF(a=0.0, b=1.0, c=2.0, d=3.0), {"a": 0.0, "b": 1.0, "c": 2.0, "d": 3.0}),
         (BellMF(a=1.0, b=2.0, center=0.0), {"a": 1.0, "b": 2.0, "center": 0.0}),
@@ -556,3 +559,31 @@ def test_piecewise_pimfs_are_rebuilt_from_their_parameters(mf_cls: type) -> None
     mf = mf_cls(k=4.0)
     x = torch.linspace(-3.0, 3.0, 31)
     torch.testing.assert_close(mf_cls(**mf.inspect_params())(x), mf(x))
+
+
+def test_composite_gaussian_lower_bound_is_its_own_argument() -> None:
+    """The lower bound no longer has to be passed as the numerical constant."""
+    mf = CompositeGaussianMF(mean=0.0, sigma=1.0, lower_bound=0.25)
+    values = mf(torch.tensor([0.0, 100.0]))
+    torch.testing.assert_close(values, torch.tensor([1.0, 0.25]))
+    x = torch.linspace(-3, 3, 13)
+    torch.testing.assert_close(mf(x), ExtendedGaussianMF(0.0, 1.0, lower_bound=0.25)(x))
+
+
+def test_composite_gaussian_lower_bound_defaults_to_eps() -> None:
+    mf = CompositeGaussianMF(mean=0.0, sigma=1.0, eps=0.05)
+    assert mf.lower_bound == pytest.approx(0.05)
+    assert float(mf(torch.tensor(100.0))) == pytest.approx(0.05)
+
+
+def test_composite_gaussian_is_rebuilt_with_its_lower_bound() -> None:
+    """A set built with ``eps`` as lower bound keeps that bound when rebuilt from its parameters."""
+    mf = CompositeGaussianMF(mean=0.0, sigma=1.0, eps=0.05)
+    rebuilt = CompositeGaussianMF(**mf.inspect_params())
+    assert float(rebuilt(torch.tensor(100.0))) == pytest.approx(0.05)
+
+
+@pytest.mark.parametrize("bound", [-0.1, 1.0])
+def test_composite_gaussian_rejects_a_lower_bound_outside_the_range(bound: float) -> None:
+    with pytest.raises(ValueError, match="lower_bound must be in the interval"):
+        CompositeGaussianMF(lower_bound=bound)
