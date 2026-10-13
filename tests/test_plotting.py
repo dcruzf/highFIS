@@ -61,7 +61,7 @@ def test_every_estimator_draws_every_kind(name: str) -> None:
     target = y if name.endswith("Classifier") else y_reg
 
     assert isinstance(est.plot(), Figure)
-    assert isinstance(est.plot(kind="history"), Axes)
+    assert isinstance(est.plot(kind="history"), Figure if len(plotting._history_phases(est.history_)) > 1 else Axes)
     assert isinstance(est.plot(kind="rules"), Axes)
     assert isinstance(est.plot(kind="rule_activation", X=x[90:]), Axes)
     assert isinstance(est.plot(kind="diagnostics", X=x[90:], y=target[90:]), Figure)
@@ -270,19 +270,31 @@ def test_history_plots_a_recorded_metric(clf: Any) -> None:
 @pytest.mark.parametrize(
     ("name", "phases"),
     [
-        ("DGALETSKClassifier", ["DG", "fine-tune"]),
-        ("FSREADATSKClassifier", ["feature selection", "rule extraction", "fine-tune"]),
+        ("DGALETSKClassifier", ["DG", "Fine-tune"]),
+        ("FSREADATSKClassifier", ["Feature selection", "Rule extraction", "Fine-tune"]),
     ],
 )
-def test_history_lays_out_training_phases_in_order(name: str, phases: list[str]) -> None:
+def test_history_has_one_panel_per_training_phase(name: str, phases: list[str]) -> None:
     est = _fit(name)
 
-    ax = est.plot_history()
+    fig = est.plot_history()
 
-    assert [text.get_text().strip() for text in ax.texts] == phases
-    total = sum(len(est.history_[key]["train_loss"]) for key in ("dg", "fs", "re", "finetune") if key in est.history_)
-    curves = [line for line in ax.lines if len(line.get_xdata()) > 2]
-    assert max(float(np.max(line.get_xdata())) for line in curves) == total
+    assert isinstance(fig, Figure)
+    assert [panel.get_title() for panel in fig.axes] == phases
+    keys = [key for key in ("dg", "fs", "re", "finetune") if key in est.history_]
+    for panel, key in zip(fig.axes, keys, strict=True):
+        np.testing.assert_allclose(np.asarray(panel.lines[0].get_ydata(), dtype=float), est.history_[key]["train_loss"])
+    # The panels share the vertical scale, and only the first names it.
+    assert len({panel.get_ylim() for panel in fig.axes}) == 1
+    assert [bool(panel.get_ylabel()) for panel in fig.axes] == [True] + [False] * (len(phases) - 1)
+
+
+def test_history_of_several_phases_draws_on_given_axes() -> None:
+    est = _fit("FSREADATSKClassifier")
+    fig, axes = plt.subplots(1, 3)
+    assert est.plot_history(ax=axes) is fig
+    with pytest.raises(ValueError, match="needs 3 axes"):
+        est.plot_history(ax=axes[0])
 
 
 def test_history_draws_on_a_given_axes(clf: Any) -> None:

@@ -98,7 +98,8 @@ the epoch with the lowest validation loss.
 
 ![Training and validation accuracy per epoch](../assets/plots/history-accuracy.png)
 
-Families that train in phases show them one after the other:
+Families that train in phases get one panel per phase, on the same vertical scale. The
+plot then returns the `Figure`, and `ax` takes one axes per phase:
 
 ![Training loss of a DG-ALETSK model across its two gradient phases](../assets/plots/history-phases.png)
 

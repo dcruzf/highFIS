@@ -231,21 +231,39 @@ def _available_metrics(phases: list[tuple[str, dict[str, Any]]]) -> list[str]:
     return sorted(keys - reserved)
 
 
+def _draw_phase(panel: Any, phase: dict[str, Any], name: str) -> None:
+    """Draw the training and validation curves of one training phase, and its best epoch."""
+    n_epochs = len(phase["train_loss"])
+    for prefix, colour in (("train", "C0"), ("val", "C1")):
+        series = phase.get(f"{prefix}_{name}")
+        if not series:
+            continue
+        # Metrics may be evaluated every few epochs; spread them over the phase.
+        epochs = (np.arange(len(series)) + 1) * n_epochs / len(series)
+        panel.plot(epochs, series, color=colour, label={"train": "training", "val": "validation"}[prefix])
+    best = phase.get("best_epoch")
+    if best is not None:
+        panel.axvline(best + 1, color="0.4", linestyle="--", label="best epoch")
+    panel.set_xlabel("Epoch")
+
+
 def plot_history(estimator: Any, metric: str | None = None, *, ax: Any = None) -> Any:
     """Plot the training loss, or a metric, per epoch.
 
     The validation curve is drawn when a validation set was passed to ``fit``, and the
     best epoch is marked when early stopping recorded one. Families that train in several
-    phases (DG-TSK, DG-ALETSK, FSRE-ADATSK) show the phases one after the other.
+    phases (DG-TSK, DG-ALETSK, FSRE-ADATSK) get one panel per phase, side by side and on
+    the same vertical scale.
 
     Args:
         estimator: A fitted estimator.
         metric: Name of a metric recorded during ``fit`` (for example ``"accuracy"``).
             ``None`` plots the loss.
-        ax: Axes to draw on. ``None`` creates a new figure.
+        ax: Axes to draw on, one per training phase. ``None`` creates a new figure.
 
     Returns:
-        The ``Axes`` with the curves.
+        The ``Axes`` with the curves, or the ``Figure`` holding one panel per phase for a
+        family that trains in several phases.
     """
     check_is_fitted(estimator, "model_")
     phases = _history_phases(estimator.history_)
@@ -253,29 +271,23 @@ def plot_history(estimator: Any, metric: str | None = None, *, ax: Any = None) -
     if metric is not None and metric not in _available_metrics(phases):
         raise ValueError(f"metric {metric!r} was not recorded during fit; available: {_available_metrics(phases)}")
 
-    _, (panel,) = _axes(ax, 1, ncols=1, panel_size=(4.8, 3.2))
-    offset = 0
-    for index, (label, phase) in enumerate(phases):
-        n_epochs = len(phase["train_loss"])
-        for prefix, colour in (("train", "C0"), ("val", "C1")):
-            series = phase.get(f"{prefix}_{name}")
-            if not series:
-                continue
-            # Metrics may be evaluated every few epochs; spread them over the phase.
-            epochs = offset + (np.arange(len(series)) + 1) * n_epochs / len(series)
-            legend = {"train": "training", "val": "validation"}[prefix] if index == 0 else None
-            panel.plot(epochs, series, color=colour, label=legend)
-        best = phase.get("best_epoch")
-        if best is not None:
-            panel.axvline(offset + best + 1, color="0.4", linestyle="--", label="best epoch" if index == 0 else None)
+    several = len(phases) > 1
+    fig, panels = _axes(ax, len(phases), ncols=len(phases), panel_size=(3.4, 3.0) if several else (4.8, 3.2))
+    for index, (panel, (label, phase)) in enumerate(zip(panels, phases, strict=True)):
+        _draw_phase(panel, phase, name)
         if label:
-            panel.axvline(offset + 0.5, color="0.8", linewidth=0.8)
-            panel.text(offset + 0.5, 1.01, f" {label}", transform=panel.get_xaxis_transform(), va="bottom")
-        offset += n_epochs
-    panel.set_xlabel("Epoch")
-    panel.set_ylabel(name.replace("_", " ").capitalize())
-    panel.legend()
-    return panel
+            panel.set_title(label[0].upper() + label[1:])
+        if index == 0:
+            panel.set_ylabel(name.replace("_", " ").capitalize())
+            if panel.get_legend_handles_labels()[0]:
+                panel.legend()
+    if several:
+        # One vertical scale, so that the level reached by a phase can be compared with the next.
+        limits = [panel.get_ylim() for panel in panels]
+        for panel in panels:
+            panel.set_ylim(min(lo for lo, _ in limits), max(hi for _, hi in limits))
+        return fig
+    return panels[0]
 
 
 def _annotated_heatmap(panel: Any, values: np.ndarray, cmap: str, fmt: Callable[[float], str]) -> None:
