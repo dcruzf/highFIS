@@ -1024,6 +1024,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#high-dimensional-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        High-Dimensional Data
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#differences-from-the-article" class="md-nav__link">
     <span class="md-ellipsis">
       <span class="md-typeset">
@@ -1670,6 +1681,69 @@ standardized inputs, with the full protocol:</p>
 <p>The value of 600 was chosen on these three datasets, as the one whose numbers of rules
 are closest to the article; the other five datasets were run with it afterwards, without
 further choice. The accuracy changes by half a point or less between the two.</p>
+<h2 id="high-dimensional-data">High-Dimensional Data</h2>
+<p>For the datasets with more than 1000 features, the article changes the threshold
+coefficients to 0.4 for the features and 0.5 for the rules, and reports the fine-tuning
+phase both with gradient descent and with the consequents solved by least squares
+(its Table V). Both are options of the estimator:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">settings</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">fs_n_mfs</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">re_n_mfs</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">re_epochs</span><span class="o">=</span><span class="mi">600</span><span class="p">,</span> <span class="n">consequent_batch_norm</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>                <span class="n">zeta_lambda</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">zeta_theta</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">FSREADATSKClassifier</span><span class="p">(</span><span class="o">**</span><span class="n">settings</span><span class="p">)</span>                                   <span class="c1"># gradient descent</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="n">FSREADATSKClassifier</span><span class="p">(</span><span class="o">**</span><span class="n">settings</span><span class="p">,</span> <span class="n">finetune_epochs</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">use_lse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># least squares</span>
+</span></code></pre></div>
+<p>The article also keeps the fuzzy sets fixed in the first two phases on these datasets,
+which is the option <code>freeze_antecedents=True</code>; by default highFIS trains them in every
+phase.</p>
+<p>One repetition of the ten folds, standardized inputs, on four threads; accuracy in
+percent / selected features / extracted rules:</p>
+<table>
+<thead>
+<tr>
+<th>Dataset</th>
+<th>Fine-tuning</th>
+<th>Article</th>
+<th>highFIS</th>
+<th>highFIS, <code>freeze_antecedents=True</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Colon</td>
+<td>gradient descent</td>
+<td>81.6 / 9.0 / 6.2</td>
+<td>85.95 / 11.0 / 6.7</td>
+<td>79.29 / 14.5 / 8.5</td>
+</tr>
+<tr>
+<td>Colon</td>
+<td>least squares</td>
+<td>77.0 / 9.0 / 6.2</td>
+<td>74.29 / 11.0 / 6.7</td>
+<td>64.29 / 14.5 / 8.5</td>
+</tr>
+<tr>
+<td>Leukemia</td>
+<td>gradient descent</td>
+<td>93.4 / 11.5 / 4.2</td>
+<td>90.00 / 4.5 / 6.5</td>
+<td>87.32 / 4.5 / 8.2</td>
+</tr>
+<tr>
+<td>Leukemia</td>
+<td>least squares</td>
+<td>92.3 / 11.5 / 4.2</td>
+<td>88.93 / 4.5 / 6.5</td>
+<td>87.14 / 4.5 / 8.2</td>
+</tr>
+</tbody>
+</table>
+<p>The two datasets come from OpenML (identifiers 1432 and 1104). With the fuzzy sets
+trained in every phase, the differences in accuracy are within the standard deviation
+between folds, which is 12 points on Colon and 9 on Leukemia with gradient descent, and
+that setting gave the higher accuracies here. As in the article, gradient descent is
+ahead of least squares on both datasets. A row takes about half an hour on Colon and forty
+minutes on Leukemia, and these runs are not part of the script.</p>
 <h2 id="differences-from-the-article">Differences from the Article</h2>
 <ul>
 <li><strong>Scale of the inputs, learning rate and iterations.</strong> Not stated in the article;
@@ -1684,8 +1758,7 @@ further choice. The accuracy changes by half a point or less between the two.</p
   stratified folds. Glass has a class of nine samples, fewer than the ten folds, so some
   test parts have no sample of that class.</li>
 <li><strong>Datasets.</strong> The article uses nineteen datasets, seven of them with more than 1000
-  features, for which it changes the threshold coefficients to 0.4 and 0.5 and keeps the
-  centres fixed in the first two phases. Iris, Wine and Wdbc ship with scikit-learn;
+  features; two of those are measured in the section above. Iris, Wine and Wdbc ship with scikit-learn;
   Appendicitis, Pima, Glass, Heart and Spectfheart come from OpenML (identifiers 1456,
   37, 41, 53 and 1600) with the samples, features and classes of the article.</li>
 </ul>
@@ -1694,7 +1767,7 @@ further choice. The accuracy changes by half a point or less between the two.</p
 printing the versions of the libraries and the processor. Another processor or another
 version of the numerical libraries can change the last digits.</p>
 <h2 id="run-it">Run It</h2>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>examples/reproductions/fsre_adatsk_2022.py
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>examples/reproductions/fsre_adatsk_2022.py
 </span></code></pre></div>
 <p>Five datasets are downloaded from OpenML on the first run. A run takes about an hour and
 a half.</p>

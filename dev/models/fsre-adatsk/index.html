@@ -1875,6 +1875,9 @@ the <a href="../../reproductions/fsre-adatsk/">reproduction of the article</a>.<
   many more rules are kept than on standardized inputs.</li>
 <li><strong>Thresholds.</strong> The article uses other threshold coefficients above 1000 features (0.4
   and 0.5); highFIS keeps 0.5 and 0.3 unless <code>zeta_lambda</code> and <code>zeta_theta</code> are passed.</li>
+<li><strong>Fixed antecedents.</strong> Above 1000 features the article does not update the fuzzy sets
+  in the first two phases; highFIS trains them in every phase unless
+  <code>freeze_antecedents=True</code> is passed.</li>
 <li><strong>High-dimensional data.</strong> On SRBCT (83 samples, 2308 genes) the defaults give an accuracy
   of 0.977 with about 19 genes and 20 rules, against 0.967, 12.3 and 4.2 in the article,
   which uses other thresholds and numbers of fuzzy sets there (see the two points above).</li>
