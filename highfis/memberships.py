@@ -27,6 +27,8 @@ Membership functions:
     **Piecewise polynomial**
         - ``TriangularMF`` — triangular membership with left/center/right.
         - ``TrapezoidalMF`` — trapezoidal membership with four vertices.
+        - ``TriangularPiMF`` / ``TrapezoidalPiMF`` — the same shapes with a positive
+          infimum inside their support, from the ADPTSK article.
         - ``PiMF`` — pi-shaped membership with smooth S/Z transitions.
         - ``SShapedMF`` / ``ZShapedMF`` — smooth S/Z membership curves.
         - ``LinSShapedMF`` / ``LinZShapedMF`` — linear S/Z membership curves.
@@ -451,6 +453,104 @@ class TrapezoidalMF(MembershipFunction):
         return torch.clamp(torch.minimum(left, right), min=0.0, max=1.0)
 
 
+def _check_pimf_k(k: float) -> float:
+    if not (0.0 < k <= 745.0):
+        raise ValueError("k must be in the interval (0, 745]")
+    return float(k)
+
+
+class TriangularPiMF(TriangularMF):
+    """Triangular membership with a positive infimum (PIMF).
+
+    Inside ``[left, right]`` the triangle is rescaled to ``[exp(-K), 1]``:
+    ``triangle(x) * (1 - exp(-K)) + exp(-K)``; outside that interval the degree is zero,
+    as in the triangular function it comes from.
+
+    Reference: Ma et al., "An adaptive double-parameter softmin based
+    Takagi-Sugeno-Kang fuzzy system for high-dimensional data", Fuzzy
+    Sets and Systems 521 (2025), Eq. (44).
+    """
+
+    def __init__(
+        self,
+        left: float = -1.0,
+        center: float = 0.0,
+        right: float = 1.0,
+        k: float = 1.0,
+        eps: float | None = None,
+    ) -> None:
+        """Initialize triangular PIMF with its vertices and infimum control k.
+
+        Args:
+            left: Left vertex, where the degree is ``exp(-k)``.
+            center: Vertex of degree one.
+            right: Right vertex, where the degree is ``exp(-k)``.
+            k: Positive infimum control parameter in (0, 745]. The infimum of the degree
+                inside ``[left, right]`` is ``exp(-k)``.
+            eps: Numerical stability constant.
+        """
+        super().__init__(left=left, center=center, right=right, eps=eps)
+        self.k = _check_pimf_k(k)
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Compute triangular PIMF membership values for input tensor."""
+        x = self._as_tensor(x)
+        infimum = math.exp(-self.k)
+        inside = (x >= self.left) & (x <= self.right)
+        return torch.where(inside, super().forward(x) * (1.0 - infimum) + infimum, torch.zeros_like(x))
+
+    def inspect_params(self) -> dict[str, Any]:
+        """Return the serializable parameters for this membership function."""
+        return {**super().inspect_params(), "k": self.k}
+
+
+class TrapezoidalPiMF(TrapezoidalMF):
+    """Trapezoidal membership with a positive infimum (PIMF).
+
+    Inside ``[a, d]`` the trapezoid is rescaled to ``[exp(-K), 1]``:
+    ``trapezoid(x) * (1 - exp(-K)) + exp(-K)``; outside that interval the degree is zero,
+    as in the trapezoidal function it comes from.
+
+    Reference: Ma et al., "An adaptive double-parameter softmin based
+    Takagi-Sugeno-Kang fuzzy system for high-dimensional data", Fuzzy
+    Sets and Systems 521 (2025), Eq. (45).
+    """
+
+    def __init__(
+        self,
+        a: float = -2.0,
+        b: float = -1.0,
+        c: float = 1.0,
+        d: float = 2.0,
+        k: float = 1.0,
+        eps: float | None = None,
+    ) -> None:
+        """Initialize trapezoidal PIMF with its vertices and infimum control k.
+
+        Args:
+            a: Left foot, where the degree is ``exp(-k)``.
+            b: Left shoulder, where the degree reaches one.
+            c: Right shoulder, where the degree leaves one.
+            d: Right foot, where the degree is ``exp(-k)``.
+            k: Positive infimum control parameter in (0, 745]. The infimum of the degree
+                inside ``[a, d]`` is ``exp(-k)``.
+            eps: Numerical stability constant.
+        """
+        super().__init__(a=a, b=b, c=c, d=d, eps=eps)
+        self.k = _check_pimf_k(k)
+
+    def forward(self, x: Tensor) -> Tensor:
+        """Compute trapezoidal PIMF membership values for input tensor."""
+        x = self._as_tensor(x)
+        infimum = math.exp(-self.k)
+        inside = (x >= self.a) & (x <= self.d)
+        return torch.where(inside, super().forward(x) * (1.0 - infimum) + infimum, torch.zeros_like(x))
+
+    def inspect_params(self) -> dict[str, Any]:
+        """Return the serializable parameters for this membership function."""
+        return {**super().inspect_params(), "k": self.k}
+
+
 class BellMF(MembershipFunction):
     """Generalized bell membership: 1 / (1 + |((x-c)/a)|^(2b))."""
 
@@ -827,6 +927,8 @@ __all__: list[str] = [
     "SShapedMF",
     "SigmoidalMF",
     "TrapezoidalMF",
+    "TrapezoidalPiMF",
     "TriangularMF",
+    "TriangularPiMF",
     "ZShapedMF",
 ]

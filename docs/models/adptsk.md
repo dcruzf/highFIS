@@ -62,6 +62,7 @@ a regression consequent head and MSE loss.
 | Paper concept | highFIS class / method | Description |
 | --- | --- | --- |
 | Gaussian PIMF | `highfis.memberships.GaussianPiMF` | Gaussian membership with positive infimum `exp(-K)` |
+| Triangular and trapezoidal PIMF | `highfis.memberships.TriangularPiMF`, `TrapezoidalPiMF` | The two shapes with infimum `exp(-K)` inside their support |
 | ADP-softmin antecedent | `highfis.layers.ADPSoftminRuleLayer` | Adaptive double-parameter softmin rule aggregation |
 | ADPTSK classifier | `highfis.models.ADPTSKClassifierModel` | Classifier model using ADP-softmin antecedents |
 | ADPTSK regressor | `highfis.models.ADPTSKRegressorModel` | Regressor model using ADP-softmin antecedents |
@@ -132,6 +133,14 @@ This estimator is analogous to the classifier wrapper but builds
 - Implements the PIMF version of Gaussian membership.
 - Prevents crash caused by zero membership values in large dimensionality.
 - `K` controls the lower bound: membership infimum is `exp(-K)`.
+
+### `highfis.memberships.TriangularPiMF` and `TrapezoidalPiMF`
+
+The article also gives the triangular and the trapezoidal function a positive infimum
+(its Eqs. 44 and 45): inside the support, the degree is rescaled to `[exp(-K), 1]`;
+outside it, the degree stays at zero. The article does not use them in ADPTSK, which
+needs a differentiable function, and neither do the estimators; the two classes are
+available to build a model by hand.
 
 ## Training in the paper vs. highFIS
 
