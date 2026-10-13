@@ -271,27 +271,39 @@ class DimensionDependentGaussianMF(GaussianMF):
 
 
 class CompositeGaussianMF(MembershipFunction):
-    """Composite Gaussian membership with a nonzero lower bound."""
+    r"""Gaussian membership with a nonzero lower bound.
 
-    def __init__(self, mean: float = 0.0, sigma: float = 1.0, eps: float | None = None) -> None:
+    Defined as :math:`b + (1 - b)\exp(-(x - m)^2 / (2\sigma^2))`, where :math:`b` is the
+    lower bound. It is the function of :class:`ExtendedGaussianMF`, whose lower bound
+    defaults to 0.1; here the default is the numerical constant ``eps``.
+    """
+
+    def __init__(
+        self, mean: float = 0.0, sigma: float = 1.0, eps: float | None = None, lower_bound: float | None = None
+    ) -> None:
         r"""Initialize composite Gaussian membership function.
 
         Args:
             mean: Center of the Gaussian $c$.
             sigma: Width $\sigma > 0$.  Softplus-reparameterized to
                 remain positive during training.
-            eps: Numeric stability constant and lower bound of the
-                membership value.  ``None`` uses :func:`torch.finfo`
+            eps: Numeric stability constant.  ``None`` uses :func:`torch.finfo`
                 machine epsilon.
+            lower_bound: Lower bound of the membership values, in ``[0, 1)``. ``None``
+                (default) uses the value of ``eps``.
 
         Raises:
-            ValueError: If *sigma* is not positive.
+            ValueError: If *sigma* is not positive or *lower_bound* is outside ``[0, 1)``.
         """
         super().__init__(eps=eps)
         if sigma <= 0:
             raise ValueError("sigma must be positive")
+        bound = float(self.eps) if lower_bound is None else float(lower_bound)
+        if not 0.0 <= bound < 1.0:
+            raise ValueError("lower_bound must be in the interval [0, 1)")
         self.mean = nn.Parameter(torch.tensor(float(mean)))
         self.raw_sigma = nn.Parameter(torch.tensor(_inv_softplus(float(sigma), eps)))
+        self.lower_bound = bound
 
     @property
     def sigma(self) -> Tensor:
@@ -302,7 +314,11 @@ class CompositeGaussianMF(MembershipFunction):
         """Compute Composite Gaussian membership values for input tensor."""
         x = self._as_tensor(x)
         z = (x - self.mean) / self.sigma
-        return self.eps + (1.0 - self.eps) * torch.exp(-0.5 * z.square())
+        return self.lower_bound + (1.0 - self.lower_bound) * torch.exp(-0.5 * z.square())
+
+    def inspect_params(self) -> dict[str, Any]:
+        """Return the serializable parameters for this membership function."""
+        return {**super().inspect_params(), "lower_bound": self.lower_bound}
 
 
 class ExtendedGaussianMF(MembershipFunction):
