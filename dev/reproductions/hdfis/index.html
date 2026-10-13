@@ -1489,7 +1489,8 @@ pp. 507-519, 2024.</p>
 <p><strong>Script</strong>: <a href="https://github.com/dcruzf/highFIS/blob/main/examples/reproductions/hdfis_2023.py"><code>examples/reproductions/hdfis_2023.py</code></a></p>
 <h2 id="protocol-of-the-article">Protocol of the Article</h2>
 <p>Section IV-B of the article. These settings are the defaults of the HDFIS estimators, so
-the script builds the models without arguments, except for the rows with least squares.</p>
+the script builds the models without arguments, except for the rows with the
+dimension-dependent membership function (DMF) in HDFIS-min and with least squares.</p>
 <table>
 <thead>
 <tr>
@@ -1526,8 +1527,8 @@ the script builds the models without arguments, except for the rows with least s
 </tr>
 <tr>
 <td>HDFIS-min</td>
-<td>antecedents fixed, consequents trained</td>
-<td>default</td>
+<td>antecedents fixed, consequents trained; conventional Gaussian set, or the dimension-dependent one of HDFIS-prod</td>
+<td>default; <code>membership="dimension_dependent"</code></td>
 </tr>
 <tr>
 <td>Least squares</td>
@@ -1546,36 +1547,42 @@ the script builds the models without arguments, except for the rows with least s
 For HDFIS-min the article's value is the one with the conventional membership function
 and the consequents trained by Adam (Table V).</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Tables II and V: mean test accuracy in percent
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>dataset   model                       article  highFIS    std
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>Colon     HDFIS-prod                    87.89    87.89   6.25
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>Colon     HDFIS-min                     87.37    87.89   6.25
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>Colon     HDFIS-prod, least squares     84.21    84.74   3.68
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>Colon     HDFIS-min, least squares      86.84    84.74   3.68
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>Leukemia  HDFIS-prod                    99.09    97.27   3.02
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>Leukemia  HDFIS-min                     99.09    97.27   3.02
-</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>Leukemia  HDFIS-prod, least squares     98.64    96.36   3.40
-</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>Leukemia  HDFIS-min, least squares      98.18    96.36   3.40
-</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>
-</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>Summary of the last model fitted
-</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>HDFISMinClassifier
-</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>  task               classification, 2 classes
-</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>  features           7129 seen in fit, 7129 used by the model
-</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>  rules              3 (rule base: coco)
-</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>  fuzzy sets         3 per feature, GaussianMF
-</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>  firing strength    RuleLayer, T-norm MinimumTNorm
-</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>  defuzzifier        SumBasedDefuzzifier
-</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>  consequents        ClassificationConsequentLayer
-</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>  parameters         42780 trainable (0 antecedent, 42780 consequent)
-</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>Training
-</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>  batch size         64
-</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>  epochs             0 epochs, learning rate 0.01
-</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>  least squares      consequents solved at the end, ridge 0, training error 0.0000
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>dataset   model                            article  highFIS    std
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>Colon     HDFIS-prod                         87.89    87.89   6.25
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>Colon     HDFIS-min                          87.37    87.89   6.25
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>Colon     HDFIS-min (DMF)                    86.84    87.89   6.25
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>Colon     HDFIS-prod, least squares          84.21    84.74   3.68
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>Colon     HDFIS-min, least squares           86.84    84.74   3.68
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>Colon     HDFIS-min (DMF), least squares     83.16    84.74   3.68
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>Leukemia  HDFIS-prod                         99.09    97.27   3.02
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>Leukemia  HDFIS-min                          99.09    97.27   3.02
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>Leukemia  HDFIS-min (DMF)                    97.27    97.27   3.02
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>Leukemia  HDFIS-prod, least squares          98.64    96.36   3.40
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>Leukemia  HDFIS-min, least squares           98.18    96.36   3.40
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>Leukemia  HDFIS-min (DMF), least squares     98.64    96.36   3.40
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>Summary of the last model fitted
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>HDFISMinClassifier
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>  task               classification, 2 classes
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>  features           7129 seen in fit, 7129 used by the model
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>  rules              3 (rule base: coco)
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>  fuzzy sets         3 per feature, DimensionDependentGaussianMF
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>  firing strength    RuleLayer, T-norm MinimumTNorm
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>  defuzzifier        SumBasedDefuzzifier
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>  consequents        ClassificationConsequentLayer
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>  parameters         42780 trainable (0 antecedent, 42780 consequent)
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>Training
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>  batch size         64
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>  epochs             0 epochs, learning rate 0.01
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>  least squares      consequents solved at the end, ridge 0, training error 0.0000
 </span></code></pre></div>
 <p>The article reports standard deviations of 7.08 and 7.14 on Colon and of 1.82 on
 Leukemia. Colon is reproduced exactly. On Leukemia highFIS is 1.8 points below, less than
 one standard deviation, with 22 test samples per split.</p>
-<p>With the consequents estimated by least squares, highFIS is within 0.5 point of the
-article for HDFIS-prod on Colon, and about two points below in the other three rows.</p>
+<p>HDFIS-min with the dimension-dependent set gives 87.89 on Colon, against 86.84 in the
+article, and the 97.27 of the article on Leukemia. With the consequents estimated by
+least squares, highFIS is within two points of the article on Colon and about two points
+below on Leukemia.</p>
 <h2 id="choice-of-the-splits">Choice of the Splits</h2>
 <p>The result depends on the ten random splits. The script starts at seed 1, the first
 seed whose ten splits are closest to the article on both datasets, among the seeds 0 to
@@ -1642,8 +1649,6 @@ a matter of the splits, not of the implementation.</p>
   datasets. Colon and Leukemia are the two that OpenML provides with the samples and
   features of the article and without further dependencies. The copy of Colon on OpenML
   is already normalized.</li>
-<li><strong>Variants.</strong> The article also reports HDFIS-min with the dimension-dependent
-  membership function, which highFIS does not implement.</li>
 </ul>
 <h2 id="reproducibility">Reproducibility</h2>
 <p>The script fixes the seeds, uses deterministic algorithms and four threads, and ends by
