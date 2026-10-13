@@ -1130,9 +1130,10 @@ class _BaseTSKEstimator(BaseEstimator):
             return
         selected = self._select_model_features(_to_numpy(x))
         x_model = self._as_tensor_x(selected, x.device)
-        error = self.model_.solve_consequents(x_model, y, ridge=float(getattr(self, "lse_ridge", 0.0)))
+        ridge = getattr(self, "lse_ridge", 0.0)
+        error = self.model_.solve_consequents(x_model, y, ridge=ridge if isinstance(ridge, str) else float(ridge))
         if isinstance(self.history_, dict):
-            self.history_["lse"] = {"ridge": float(getattr(self, "lse_ridge", 0.0)), "train_mse": error}
+            self.history_["lse"] = {"ridge": float(self.model_.lse_ridge_), "train_mse": error}
 
     def _check_firing(self, x_arr: np.ndarray) -> None:
         """Warn at the end of ``fit`` when the rule weights are degenerate on the training data."""

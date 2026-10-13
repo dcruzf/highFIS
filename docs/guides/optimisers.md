@@ -267,7 +267,9 @@ estimator can use it through two arguments:
   classifier the targets are the one-hot vectors of the classes.
 - `lse_ridge` adds a ridge penalty on the consequent parameters. With the default,
   `0.0`, the solution of minimum norm is returned, which exists also when there are more
-  parameters than samples.
+  parameters than samples. `"auto"` chooses the penalty with the smallest
+  leave-one-out squared error on the training data; the value chosen is in
+  `history_["lse"]["ridge"]`.
 
 ```python
 from highfis import HTSKRegressor
@@ -284,7 +286,8 @@ print(reg.history_["lse"])  # the penalty and the training error of the solution
 When to use it: for a regressor, the solution is the best the consequents can do for the
 antecedents at hand, where a short gradient training may stop far from it. With many
 features and few samples the unpenalized solution fits the training data exactly;
-`lse_ridge` is then the hyperparameter to search. The problem is solved in double
+`lse_ridge` is then the hyperparameter to search, or to leave to `lse_ridge="auto"`, which
+evaluates the candidates in closed form, from one decomposition of the problem. The problem is solved in double
 precision and has one column per rule and feature, so it is refused when it would not
 fit in memory; train the consequents by gradient in that case.
 

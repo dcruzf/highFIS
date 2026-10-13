@@ -179,3 +179,56 @@ def test_the_summary_reports_the_solution() -> None:
     text = _fit("TSKClassifier", use_lse=True, lse_ridge=0.5).summary()
 
     assert "least squares      consequents solved at the end, ridge 0.5, training error" in text
+
+
+def _leave_one_out_error(design: torch.Tensor, target: torch.Tensor, ridge: float) -> float:
+    """Leave-one-out squared error of ridge regression, by refitting once per sample."""
+    error = 0.0
+    for i in range(design.shape[0]):
+        keep = [j for j in range(design.shape[0]) if j != i]
+        solution = model_base._least_squares(design[keep], target[keep], ridge, 1e-12)
+        error += float((design[i : i + 1] @ solution - target[i : i + 1]).square().sum())
+    return error
+
+
+@pytest.mark.parametrize("shape", [(40, 300), (120, 8), (25, 25)])
+def test_the_automatic_ridge_minimizes_the_leave_one_out_error(shape: tuple[int, int]) -> None:
+    """The closed form picks the candidate that refitting sample by sample would pick."""
+    generator = torch.Generator().manual_seed(0)
+    design = torch.randn(shape, dtype=torch.float64, generator=generator)
+    coefficients = torch.zeros((shape[1], 1), dtype=torch.float64)
+    coefficients[:5] = 1.0
+    target = design @ coefficients + 0.5 * torch.randn((shape[0], 1), dtype=torch.float64, generator=generator)
+
+    chosen = model_base._select_ridge(design, target)
+
+    candidates = (model_base._RIDGE_GRID * torch.linalg.svdvals(design).max() ** 2).tolist()
+    errors = [_leave_one_out_error(design, target, ridge) for ridge in candidates]
+    assert chosen == pytest.approx(candidates[int(np.argmin(errors))], rel=1e-9)
+
+
+def test_the_automatic_ridge_generalizes_better_than_no_ridge() -> None:
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=(120, 150)).astype(np.float32)
+    y = (x[:, 0] - x[:, 1] + 0.5 * rng.normal(size=120)).astype(np.float32)
+    train, test = slice(0, 40), slice(40, 120)
+    scores = {}
+    for ridge in (0.0, "auto"):
+        est = highfis.HTSKRegressor(n_mfs=2, epochs=0, use_lse=True, lse_ridge=ridge, random_state=0)
+        scores[ridge] = est.fit(x[train], y[train]).score(x[test], y[test])
+        if ridge == "auto":
+            assert est.history_["lse"]["ridge"] > 0.0
+            assert est.model_.lse_ridge_ == est.history_["lse"]["ridge"]
+    assert scores["auto"] > scores[0.0]
+
+
+def test_the_automatic_ridge_works_for_a_classifier_and_is_cloned() -> None:
+    est = _fit("HDFISProdClassifier", use_lse=True, lse_ridge="auto")
+    assert est.history_["lse"]["ridge"] > 0.0
+    assert clone(est).lse_ridge == "auto"
+    assert "least squares" in est.summary()
+
+
+def test_an_unknown_ridge_name_is_rejected() -> None:
+    with pytest.raises(ValueError, match="ridge must be a non-negative number or 'auto'"):
+        _fit("TSKRegressor", use_lse=True, lse_ridge="best")
