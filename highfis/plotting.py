@@ -7,6 +7,8 @@ Available kinds:
     - ``"memberships"`` — the learned fuzzy sets, one panel per feature.
     - ``"history"`` — loss or a metric per epoch, with the validation curve and the
       best epoch when they were recorded.
+    - ``"rules"`` — the rule base as a table: the fuzzy set that each rule uses on each
+      feature.
     - ``"rule_activation"`` — mean normalized firing strength of each rule, split by
       class when labels are given.
     - ``"diagnostics"`` — confusion matrix and decision margin for classifiers;
@@ -36,10 +38,12 @@ from sklearn.utils.validation import check_is_fitted
 
 from ._describe import feature_labels as _feature_labels
 from ._describe import model_columns as _model_columns
+from ._describe import set_labels as _set_labels
 
 PLOT_KINDS: tuple[str, ...] = (
     "memberships",
     "history",
+    "rules",
     "rule_activation",
     "diagnostics",
     "feature_importance",
@@ -48,6 +52,7 @@ PLOT_KINDS: tuple[str, ...] = (
 
 _PHASE_LABELS = {"dg": "DG", "fs": "feature selection", "re": "rule extraction", "finetune": "fine-tune"}
 _HEATMAP_MAX_ANNOTATED_CELLS = 80
+_RULE_TABLE_MAX_ANNOTATED_CELLS = 400
 _MAX_LEGEND_ENTRIES = 6
 
 
@@ -101,6 +106,14 @@ def _select_features(estimator: Any, features: Sequence[int | str] | None, max_f
     return positions
 
 
+def _set_position(params: dict[str, Any]) -> float:
+    """Location of a fuzzy set on the axis of its feature, to order the sets of a feature."""
+    centre = params.get("mean", params.get("center"))
+    if centre is None and {"b", "c"} <= params.keys():
+        centre = (params["b"] + params["c"]) / 2.0
+    return float(centre) if centre is not None else 0.0
+
+
 def _mf_extent(params: dict[str, Any]) -> tuple[float, float] | None:
     """Interval that shows a fuzzy set, read from its parameters."""
     centre = params.get("mean", params.get("center"))
@@ -133,6 +146,7 @@ def plot_memberships(
     X: Any = None,
     max_features: int = 6,
     n_points: int = 200,
+    set_names: Sequence[str] | None = None,
     ax: Any = None,
 ) -> Any:
     """Plot the learned fuzzy sets, one panel per feature.
@@ -146,6 +160,9 @@ def plot_memberships(
             the range is taken from the parameters of the fuzzy sets.
         max_features: Number of features shown when ``features`` is ``None``.
         n_points: Number of points used to draw each curve.
+        set_names: Names of the fuzzy sets of a feature, from the lowest to the highest,
+            used when their number matches. By default two, three and five sets are named
+            ``low`` ... ``high``, as in :meth:`rules_as_text`.
         ax: Axes to draw on, one per feature. ``None`` creates a new figure.
 
     Returns:
@@ -160,6 +177,7 @@ def plot_memberships(
     data = None if X is None else estimator._select_model_features(np.asarray(X))
 
     fig, axes = _axes(ax, len(positions), ncols=min(3, len(positions)), panel_size=(3.2, 2.4))
+    legends: list[list[str]] = []
     for panel, position in zip(axes, positions, strict=True):
         name = model_names[position]
         lo, hi = _feature_range(mf_params[name], None if data is None else data[:, position])
@@ -168,16 +186,31 @@ def plot_memberships(
         centres = [c for c in centres if c is not None and lo <= c <= hi]
         points = np.unique(np.concatenate([np.linspace(lo, hi, n_points), centres]))
         grid = torch.as_tensor(points, dtype=estimator._model_dtype(), device=str(estimator.device))
-        sets = [(j, mf) for j, mf in enumerate(input_mfs[name]) if type(mf).__name__ != "ConstantMF"]
+        names = _set_labels(mf_params[name], set_names)
+        located = [j for j in range(len(names)) if names[j] is not None]
+        # The colour follows the position of a set among those of its feature, from the
+        # lowest to the highest, so that a name has the same colour on every panel.
+        rank = {j: i for i, j in enumerate(sorted(located, key=lambda j: _set_position(mf_params[name][j])))}
         with torch.no_grad():
-            for j, mf in sets:
-                panel.plot(grid.cpu().numpy(), mf(grid).cpu().numpy(), label=f"MF{j}")
+            for j in located:
+                curve = input_mfs[name][j](grid).cpu().numpy()
+                panel.plot(grid.cpu().numpy(), curve, label=names[j], color=f"C{rank[j] % 10}")
+        legends.append([str(names[j]) for j in sorted(located, key=rank.__getitem__)])
         panel.set_title(labels[position])
         panel.set_ylim(0.0, 1.05)
         panel.set_xlabel("Feature value")
         panel.set_ylabel("Membership degree")
-        if 0 < len(sets) <= _MAX_LEGEND_ENTRIES:
-            panel.legend()
+    # The same sets on every panel: one legend beside the panels, where it hides no curve.
+    shared = ax is None and len(set(map(tuple, legends))) == 1 and 0 < len(legends[0]) <= _MAX_LEGEND_ENTRIES
+    for panel, entries in zip(axes[:1] if shared else axes, legends, strict=False):
+        if not 0 < len(entries) <= _MAX_LEGEND_ENTRIES:
+            continue
+        by_label = dict(zip(*reversed(panel.get_legend_handles_labels()), strict=True))
+        handles = [by_label[entry] for entry in entries]
+        if shared:
+            fig.legend(handles, entries, loc="outside right upper", title="Fuzzy set")
+        else:
+            panel.legend(handles, entries, fontsize="small")
     return fig
 
 
@@ -198,21 +231,39 @@ def _available_metrics(phases: list[tuple[str, dict[str, Any]]]) -> list[str]:
     return sorted(keys - reserved)
 
 
+def _draw_phase(panel: Any, phase: dict[str, Any], name: str) -> None:
+    """Draw the training and validation curves of one training phase, and its best epoch."""
+    n_epochs = len(phase["train_loss"])
+    for prefix, colour in (("train", "C0"), ("val", "C1")):
+        series = phase.get(f"{prefix}_{name}")
+        if not series:
+            continue
+        # Metrics may be evaluated every few epochs; spread them over the phase.
+        epochs = (np.arange(len(series)) + 1) * n_epochs / len(series)
+        panel.plot(epochs, series, color=colour, label={"train": "training", "val": "validation"}[prefix])
+    best = phase.get("best_epoch")
+    if best is not None:
+        panel.axvline(best + 1, color="0.4", linestyle="--", label="best epoch")
+    panel.set_xlabel("Epoch")
+
+
 def plot_history(estimator: Any, metric: str | None = None, *, ax: Any = None) -> Any:
     """Plot the training loss, or a metric, per epoch.
 
     The validation curve is drawn when a validation set was passed to ``fit``, and the
     best epoch is marked when early stopping recorded one. Families that train in several
-    phases (DG-TSK, DG-ALETSK, FSRE-ADATSK) show the phases one after the other.
+    phases (DG-TSK, DG-ALETSK, FSRE-ADATSK) get one panel per phase, side by side and on
+    the same vertical scale.
 
     Args:
         estimator: A fitted estimator.
         metric: Name of a metric recorded during ``fit`` (for example ``"accuracy"``).
             ``None`` plots the loss.
-        ax: Axes to draw on. ``None`` creates a new figure.
+        ax: Axes to draw on, one per training phase. ``None`` creates a new figure.
 
     Returns:
-        The ``Axes`` with the curves.
+        The ``Axes`` with the curves, or the ``Figure`` holding one panel per phase for a
+        family that trains in several phases.
     """
     check_is_fitted(estimator, "model_")
     phases = _history_phases(estimator.history_)
@@ -220,29 +271,23 @@ def plot_history(estimator: Any, metric: str | None = None, *, ax: Any = None) -
     if metric is not None and metric not in _available_metrics(phases):
         raise ValueError(f"metric {metric!r} was not recorded during fit; available: {_available_metrics(phases)}")
 
-    _, (panel,) = _axes(ax, 1, ncols=1, panel_size=(4.8, 3.2))
-    offset = 0
-    for index, (label, phase) in enumerate(phases):
-        n_epochs = len(phase["train_loss"])
-        for prefix, colour in (("train", "C0"), ("val", "C1")):
-            series = phase.get(f"{prefix}_{name}")
-            if not series:
-                continue
-            # Metrics may be evaluated every few epochs; spread them over the phase.
-            epochs = offset + (np.arange(len(series)) + 1) * n_epochs / len(series)
-            legend = {"train": "training", "val": "validation"}[prefix] if index == 0 else None
-            panel.plot(epochs, series, color=colour, label=legend)
-        best = phase.get("best_epoch")
-        if best is not None:
-            panel.axvline(offset + best + 1, color="0.4", linestyle="--", label="best epoch" if index == 0 else None)
+    several = len(phases) > 1
+    fig, panels = _axes(ax, len(phases), ncols=len(phases), panel_size=(3.4, 3.0) if several else (4.8, 3.2))
+    for index, (panel, (label, phase)) in enumerate(zip(panels, phases, strict=True)):
+        _draw_phase(panel, phase, name)
         if label:
-            panel.axvline(offset + 0.5, color="0.8", linewidth=0.8)
-            panel.text(offset + 0.5, 1.01, f" {label}", transform=panel.get_xaxis_transform(), va="bottom")
-        offset += n_epochs
-    panel.set_xlabel("Epoch")
-    panel.set_ylabel(name.replace("_", " ").capitalize())
-    panel.legend()
-    return panel
+            panel.set_title(label[0].upper() + label[1:])
+        if index == 0:
+            panel.set_ylabel(name.replace("_", " ").capitalize())
+            if panel.get_legend_handles_labels()[0]:
+                panel.legend()
+    if several:
+        # One vertical scale, so that the level reached by a phase can be compared with the next.
+        limits = [panel.get_ylim() for panel in panels]
+        for panel in panels:
+            panel.set_ylim(min(lo for lo, _ in limits), max(hi for _, hi in limits))
+        return fig
+    return panels[0]
 
 
 def _annotated_heatmap(panel: Any, values: np.ndarray, cmap: str, fmt: Callable[[float], str]) -> None:
@@ -409,6 +454,79 @@ def plot_feature_importance(estimator: Any, *, top: int | None = 20, ax: Any = N
     return panel
 
 
+def _abbreviation(label: str) -> str:
+    """Short form of the name of a fuzzy set: initials of a phrase, the rank of a level."""
+    words = label.split()
+    if len(words) >= 2 and words[0] == "level":
+        return words[1]
+    return "".join(word[0].upper() for word in words)
+
+
+def plot_rules(
+    estimator: Any,
+    features: Sequence[int | str] | None = None,
+    *,
+    max_features: int = 12,
+    set_names: Sequence[str] | None = None,
+    ax: Any = None,
+) -> Any:
+    """Plot the rule base as a table: one row per rule, one column per feature.
+
+    Each cell is the fuzzy set that the rule uses on the feature, coloured from the lowest
+    set of the feature (blue) to the highest (red) and, in small rule bases, labelled with
+    the initials of its name: ``VL`` for *very low*, ``M`` for *medium*. A blank cell is a
+    feature that the rule does not use.
+
+    Args:
+        estimator: A fitted estimator.
+        features: Features to show, as names or as column indices of the data seen in
+            ``fit``. ``None`` shows every feature, or the ``max_features`` most important
+            ones when the model has more.
+        max_features: Number of features shown when ``features`` is ``None``.
+        set_names: Names of the fuzzy sets of a feature, as in :func:`plot_memberships`.
+        ax: Axes to draw on. ``None`` creates a new figure.
+
+    Returns:
+        The ``Axes`` with the table.
+    """
+    check_is_fitted(estimator, "model_")
+    positions = _select_features(estimator, features, max_features)
+    labels = _feature_labels(estimator)
+    model_names = [str(name) for name in estimator.model_.input_names]
+    mf_params = estimator.get_mf_params()
+    table = estimator.model_.get_rule_table()
+
+    levels = np.full((len(table), len(positions)), np.nan)
+    text: list[list[str]] = [["" for _ in positions] for _ in table]
+    for column, position in enumerate(positions):
+        name = model_names[position]
+        names = _set_labels(mf_params[name], set_names)
+        located = (j for j, label in enumerate(names) if label is not None)
+        order = sorted(located, key=lambda j: _set_position(mf_params[name][j]))
+        rank = {j: (i / (len(order) - 1) if len(order) > 1 else 0.5) for i, j in enumerate(order)}
+        for row, rule in enumerate(table):
+            j = int(rule[name])
+            if j in rank:
+                levels[row, column] = rank[j]
+                text[row][column] = _abbreviation(str(names[j]))
+
+    size = (max(3.6, 0.62 * len(positions) + 1.6), max(2.4, 0.3 * len(table) + 1.4))
+    _, (panel,) = _axes(ax, 1, ncols=1, panel_size=size)
+    panel.imshow(levels, cmap="coolwarm", aspect="auto", vmin=0.0, vmax=1.0)
+    if levels.size <= _RULE_TABLE_MAX_ANNOTATED_CELLS:
+        for (row, column), value in np.ndenumerate(levels):
+            if not np.isnan(value):
+                colour = "white" if abs(value - 0.5) > 0.3 else "black"
+                panel.text(column, row, text[row][column], ha="center", va="center", color=colour, fontsize="small")
+    panel.set_xticks(np.arange(len(positions)), [labels[p] for p in positions], rotation=60, ha="right")
+    if len(table) <= 30:
+        panel.set_yticks(np.arange(len(table)), [f"Rule {rule['rule_id']}" for rule in table])
+    else:
+        panel.set_ylabel("Rule")
+    panel.set_title("Fuzzy set of each feature in each rule")
+    return panel
+
+
 def _gate_thresholds(history: dict[str, Any]) -> tuple[float | None, float | None]:
     """Thresholds that the feature and rule gates passed, when ``fit`` recorded them."""
     record = history.get("threshold", history)
@@ -447,8 +565,8 @@ def plot_gates(estimator: Any, *, ax: Any = None) -> Any:
         positions = np.arange(len(values))
         panel.bar(positions, values)
         if threshold is not None:
-            panel.axhline(threshold, color="0.3", linestyle="--", label=f"threshold ({threshold:.2f})")
-            panel.legend(loc="lower right")
+            panel.axhline(threshold, color="0.3", linestyle="--")
+            title = f"{title} (dashed: threshold {threshold:.2f})"
         if labels is None:
             labels = [f"Rule {rule}" for rule in positions]
         if len(values) <= 30:
@@ -456,7 +574,7 @@ def plot_gates(estimator: Any, *, ax: Any = None) -> Any:
             panel.set_xticks(positions, labels, rotation=60 if slanted else 0, ha="right" if slanted else "center")
         else:
             panel.set_xticks([])
-        panel.set_ylim(0.0, max(1.05, float(values.max()) * 1.05))
+        panel.set_ylim(0.0, 1.1 * max(float(values.max()), threshold or 0.0))
         panel.set_ylabel("Gate value")
         panel.set_title(title)
     return fig
@@ -465,6 +583,7 @@ def plot_gates(estimator: Any, *, ax: Any = None) -> Any:
 _PLOTTERS: dict[str, Callable[..., Any]] = {
     "memberships": plot_memberships,
     "history": plot_history,
+    "rules": plot_rules,
     "rule_activation": plot_rule_activation,
     "diagnostics": plot_diagnostics,
     "feature_importance": plot_feature_importance,

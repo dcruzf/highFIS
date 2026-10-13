@@ -136,7 +136,7 @@ class HTSKClassifier(_BaseClassifierEstimator):
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
         use_lse: bool = False,
-        lse_ridge: float = 0.0,
+        lse_ridge: float | str = 0.0,
     ) -> None:
         """Initialise an HTSK classifier.
 
@@ -189,7 +189,8 @@ class HTSKClassifier(_BaseClassifierEstimator):
                 their least-squares solution on the training data, with the antecedents as
                 trained (on one-hot targets for a classifier). Default ``False``.
             lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
-                least-squares solution of minimum norm.
+                least-squares solution of minimum norm. ``"auto"`` chooses the penalty with
+                the smallest leave-one-out error on the training data.
         """
         super().__init__(
             input_configs=input_configs,
@@ -288,7 +289,7 @@ class HTSKRegressor(_BaseRegressorEstimator):
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
         use_lse: bool = False,
-        lse_ridge: float = 0.0,
+        lse_ridge: float | str = 0.0,
     ) -> None:
         """Initialise an HTSK regressor.
 
@@ -342,7 +343,8 @@ class HTSKRegressor(_BaseRegressorEstimator):
                 their least-squares solution on the training data, with the antecedents as
                 trained (on one-hot targets for a classifier). Default ``False``.
             lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
-                least-squares solution of minimum norm.
+                least-squares solution of minimum norm. ``"auto"`` chooses the penalty with
+                the smallest leave-one-out error on the training data.
         """
         resolved_n_mfs = 3 if n_mfs is None else n_mfs
         resolved_mf_init = "kmeans" if mf_init is None else mf_init
@@ -458,7 +460,7 @@ class TSKClassifier(_BaseClassifierEstimator):
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
         use_lse: bool = False,
-        lse_ridge: float = 0.0,
+        lse_ridge: float | str = 0.0,
     ) -> None:
         """Initialise a vanilla TSK classifier.
 
@@ -525,7 +527,8 @@ class TSKClassifier(_BaseClassifierEstimator):
                 their least-squares solution on the training data, with the antecedents as
                 trained (on one-hot targets for a classifier). Default ``False``.
             lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
-                least-squares solution of minimum norm.
+                least-squares solution of minimum norm. ``"auto"`` chooses the penalty with
+                the smallest leave-one-out error on the training data.
         """
         super().__init__(
             input_configs=input_configs,
@@ -635,7 +638,7 @@ class TSKRegressor(_BaseRegressorEstimator):
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
         use_lse: bool = False,
-        lse_ridge: float = 0.0,
+        lse_ridge: float | str = 0.0,
     ) -> None:
         """Initialise a vanilla TSK regressor.
 
@@ -700,7 +703,8 @@ class TSKRegressor(_BaseRegressorEstimator):
                 their least-squares solution on the training data, with the antecedents as
                 trained (on one-hot targets for a classifier). Default ``False``.
             lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
-                least-squares solution of minimum norm.
+                least-squares solution of minimum norm. ``"auto"`` chooses the penalty with
+                the smallest leave-one-out error on the training data.
         """
         super().__init__(
             input_configs=input_configs,

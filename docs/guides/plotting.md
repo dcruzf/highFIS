@@ -1,18 +1,19 @@
 # Diagnostic Plots
 
-Every fitted estimator has a `plot` method. It draws one of six diagnostic plots, chosen
+Every fitted estimator has a `plot` method. It draws one of seven diagnostic plots, chosen
 with `kind`:
 
 | `kind` | Shows | Needs data |
 |---|---|---|
 | `"memberships"` (default) | The learned fuzzy sets, one panel per feature | no |
 | `"history"` | Loss or a metric per epoch | no |
+| `"rules"` | The rule base as a table: the fuzzy set of each feature in each rule | no |
 | `"rule_activation"` | Mean firing strength of each rule, by class when labels are given | `X`, optionally `y` |
 | `"diagnostics"` | Confusion matrix and decision margin, or fit and residuals | `X` and `y` |
 | `"feature_importance"` | The features that weigh most in the consequents | no |
 | `"gates"` | Gates of the kept features and rules, with their thresholds (gated families) | no |
 
-Each kind is also a method of its own (`plot_memberships`, `plot_history`,
+Each kind is also a method of its own (`plot_memberships`, `plot_history`, `plot_rules`,
 `plot_rule_activation`, `plot_diagnostics`, `plot_feature_importance`, `plot_gates`),
 which is easier to discover with autocompletion.
 
@@ -62,6 +63,10 @@ fig = clf.plot(kind="memberships")
 
 One panel per feature, one curve per fuzzy set, drawn from the trained model itself.
 
+- The sets are named as in `rules_as_text()`: two, three and five sets are `low` to
+  `high`. Pass `set_names=[...]` to use other names. A name has the same colour on every
+  panel, and when every feature has the same sets one legend is drawn beside the panels.
+
 - With more than `max_features` features (6 by default), the most important ones
   according to `feature_importance()` are shown. Pass `features=[...]` to choose them, by
   name or by column index.
@@ -93,13 +98,32 @@ the epoch with the lowest validation loss.
 
 ![Training and validation accuracy per epoch](../assets/plots/history-accuracy.png)
 
-Families that train in phases show them one after the other:
+Families that train in phases get one panel per phase, on the same vertical scale. The
+plot then returns the `Figure`, and `ax` takes one axes per phase:
 
 ![Training loss of a DG-ALETSK model across its two gradient phases](../assets/plots/history-phases.png)
 
 What to look for: a training curve that keeps oscillating at the last epoch means the
 model returned depends on where training happened to stop. Lower the learning rate or
 use a scheduler.
+
+## Rule base
+
+```python
+ax = clf.plot(kind="rules")
+```
+
+![The fuzzy set that each rule uses on each feature](../assets/plots/rules.png)
+
+One row per rule and one column per feature. Each cell is the fuzzy set that the rule
+uses on the feature, coloured from the lowest set (blue) to the highest (red) and, in
+small rule bases, labelled with the initials of its name: `L`, `M`, `H`. It is the
+complete antecedent part of the model in one figure, where `rules_as_text()` writes one
+rule at a time. `features`, `max_features` and `set_names` work as for the membership
+functions.
+
+What to look for: rows that are almost equal describe rules that differ in one or two
+features only; columns of a single colour are features on which the rules do not differ.
 
 ## Rule activation
 
@@ -197,7 +221,8 @@ fig = gated.plot(kind="gates")
 ![Gates of the features and rules that a DG-ALETSK model kept](../assets/plots/gates.png)
 
 The left panel has one bar for each feature in `selected_features_` and the right panel
-one for each rule of the fitted model; the dashed lines are the thresholds. The values
+one for each rule of the fitted model; the dashed lines are the thresholds, whose values
+are in the titles. The values
 are those of `get_feature_gates()` and `get_rule_gates()`, at the end of the phase that
 trained them. For FSRE-ADATSK, whose gate is an odd function, the magnitude is drawn.
 The other families have no gates, and the plot raises a `ValueError` for them.

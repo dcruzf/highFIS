@@ -91,6 +91,51 @@ def _least_squares(design: Tensor, target: Tensor, ridge: float, rcond: float) -
     return design.T @ torch.linalg.solve(gram, target)
 
 
+def _check_ridge(ridge: float | str) -> None:
+    """Reject a penalty that is neither a non-negative number nor ``"auto"``."""
+    if isinstance(ridge, str):
+        if ridge != "auto":
+            raise ValueError(f"ridge must be a non-negative number or 'auto'; got {ridge!r}")
+    elif ridge < 0.0:
+        raise ValueError("ridge must be non-negative")
+
+
+#: Candidate penalties of the automatic choice, as fractions of the largest squared singular
+#: value of the design matrix.
+_RIDGE_GRID = torch.logspace(-6.0, 2.0, 41, dtype=torch.float64)
+
+
+def _select_ridge(design: Tensor, target: Tensor) -> float:
+    """Choose the ridge penalty with the smallest leave-one-out squared error.
+
+    For ridge regression the leave-one-out residuals have a closed form,
+    ``e_i / (1 - h_ii)`` with ``h`` the diagonal of the hat matrix, so every candidate is
+    evaluated from one singular value decomposition of the design matrix, without refitting.
+    """
+    u, s, _ = torch.linalg.svd(design, full_matrices=False)
+    s2 = s.square()
+    projected = u.T @ target  # (rank, outputs)
+    u2 = u.square()
+    # Part of the targets, and of each sample, outside the column space of the design
+    # matrix: exactly zero when there are at least as many columns as samples.
+    if u.shape[0] <= u.shape[1]:
+        outside, free = torch.zeros_like(target), torch.zeros_like(s2[:1]).expand(u.shape[0])
+    else:
+        outside, free = target - u @ projected, (1.0 - u2.sum(dim=1)).clamp(min=0.0)
+    tiny = torch.finfo(design.dtype).tiny
+    best_penalty, best_error = 0.0, float("inf")
+    for penalty in (_RIDGE_GRID.to(design.device) * s2.max()).tolist():
+        # Written with ``penalty / (s2 + penalty)`` so that small residuals and small
+        # denominators keep their precision when the fit is close to an interpolation.
+        kept = penalty / (s2 + penalty)
+        residual = outside + u @ (kept.unsqueeze(1) * projected)
+        denominator = (free + u2 @ kept).clamp(min=tiny)
+        error = float((residual / denominator.unsqueeze(1)).square().sum())
+        if error < best_error:
+            best_penalty, best_error = float(penalty), error
+    return best_penalty
+
+
 class BaseTSK(nn.Module):
     """Abstract base for TSK fuzzy models.
 
@@ -112,6 +157,7 @@ class BaseTSK(nn.Module):
     consequent_bn: nn.BatchNorm1d | None
     consequent_layer: nn.Module
     logger: logging.Logger
+    lse_ridge_: float
 
     def __init__(
         self,
@@ -238,7 +284,7 @@ class BaseTSK(nn.Module):
             return bias.detach()
         return None
 
-    def solve_consequents(self, x: Tensor, y: Tensor, ridge: float = 0.0) -> float:
+    def solve_consequents(self, x: Tensor, y: Tensor, ridge: float | str = 0.0) -> float:
         r"""Replace the consequents by their least-squares solution, with the antecedents as they are.
 
         With fixed antecedents the output of a TSK system is linear in its consequent
@@ -253,16 +299,18 @@ class BaseTSK(nn.Module):
             ridge: Penalty on the squared norm of the consequent parameters. ``0.0`` gives
                 the least-squares solution of minimum norm, which exists also when there
                 are more parameters than samples.
+                ``"auto"`` chooses the penalty with the smallest leave-one-out squared error
+                on ``(x, y)``, among values spread over eight orders of magnitude; the
+                value chosen is kept in ``lse_ridge_``.
 
         Returns:
             The mean squared error of the solution on ``(x, y)``.
 
         Raises:
-            ValueError: If ``ridge`` is negative, if the gates of a gated consequent layer
+            ValueError: If ``ridge`` is negative or an unknown name, if the gates of a gated consequent layer
                 are active, or if the problem is too large to be solved in memory.
         """
-        if ridge < 0.0:
-            raise ValueError("ridge must be non-negative")
+        _check_ridge(ridge)
         layer = self.consequent_layer
         if getattr(layer, "mode", "finetune") != "finetune":
             raise ValueError(
@@ -304,7 +352,9 @@ class BaseTSK(nn.Module):
                 # The solution is stored in the precision of the model, which bounds the
                 # conditioning that is worth resolving.
                 rcond = 10.0 * float(torch.finfo(bias.dtype).eps)
-                solution = _least_squares(design, target, float(ridge), rcond)
+                penalty = _select_ridge(design, target) if isinstance(ridge, str) else float(ridge)
+                self.lse_ridge_ = penalty
+                solution = _least_squares(design, target, penalty, rcond)
                 error = float(((design @ solution - target) ** 2).mean())
 
                 if isinstance(weight, Tensor):

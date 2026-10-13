@@ -61,7 +61,8 @@ def test_every_estimator_draws_every_kind(name: str) -> None:
     target = y if name.endswith("Classifier") else y_reg
 
     assert isinstance(est.plot(), Figure)
-    assert isinstance(est.plot(kind="history"), Axes)
+    assert isinstance(est.plot(kind="history"), Figure if len(plotting._history_phases(est.history_)) > 1 else Axes)
+    assert isinstance(est.plot(kind="rules"), Axes)
     assert isinstance(est.plot(kind="rule_activation", X=x[90:]), Axes)
     assert isinstance(est.plot(kind="diagnostics", X=x[90:], y=target[90:]), Figure)
     assert isinstance(est.plot(kind="feature_importance"), Axes)
@@ -78,6 +79,7 @@ def test_plot_methods_match_the_kinds(clf: Any) -> None:
     assert plotting.PLOT_KINDS == (
         "memberships",
         "history",
+        "rules",
         "rule_activation",
         "diagnostics",
         "feature_importance",
@@ -86,6 +88,7 @@ def test_plot_methods_match_the_kinds(clf: Any) -> None:
     assert isinstance(clf.plot_memberships(), Figure)
     assert isinstance(clf.plot_feature_importance(), Axes)
     assert isinstance(clf.plot_history(), Axes)
+    assert isinstance(clf.plot_rules(), Axes)
     assert isinstance(clf.plot_rule_activation(x, y), Axes)
     assert isinstance(clf.plot_diagnostics(x, y), Figure)
 
@@ -267,19 +270,31 @@ def test_history_plots_a_recorded_metric(clf: Any) -> None:
 @pytest.mark.parametrize(
     ("name", "phases"),
     [
-        ("DGALETSKClassifier", ["DG", "fine-tune"]),
-        ("FSREADATSKClassifier", ["feature selection", "rule extraction", "fine-tune"]),
+        ("DGALETSKClassifier", ["DG", "Fine-tune"]),
+        ("FSREADATSKClassifier", ["Feature selection", "Rule extraction", "Fine-tune"]),
     ],
 )
-def test_history_lays_out_training_phases_in_order(name: str, phases: list[str]) -> None:
+def test_history_has_one_panel_per_training_phase(name: str, phases: list[str]) -> None:
     est = _fit(name)
 
-    ax = est.plot_history()
+    fig = est.plot_history()
 
-    assert [text.get_text().strip() for text in ax.texts] == phases
-    total = sum(len(est.history_[key]["train_loss"]) for key in ("dg", "fs", "re", "finetune") if key in est.history_)
-    curves = [line for line in ax.lines if len(line.get_xdata()) > 2]
-    assert max(float(np.max(line.get_xdata())) for line in curves) == total
+    assert isinstance(fig, Figure)
+    assert [panel.get_title() for panel in fig.axes] == phases
+    keys = [key for key in ("dg", "fs", "re", "finetune") if key in est.history_]
+    for panel, key in zip(fig.axes, keys, strict=True):
+        np.testing.assert_allclose(np.asarray(panel.lines[0].get_ydata(), dtype=float), est.history_[key]["train_loss"])
+    # The panels share the vertical scale, and only the first names it.
+    assert len({panel.get_ylim() for panel in fig.axes}) == 1
+    assert [bool(panel.get_ylabel()) for panel in fig.axes] == [True] + [False] * (len(phases) - 1)
+
+
+def test_history_of_several_phases_draws_on_given_axes() -> None:
+    est = _fit("FSREADATSKClassifier")
+    fig, axes = plt.subplots(1, 3)
+    assert est.plot_history(ax=axes) is fig
+    with pytest.raises(ValueError, match="needs 3 axes"):
+        est.plot_history(ax=axes[0])
 
 
 def test_history_draws_on_a_given_axes(clf: Any) -> None:
@@ -414,3 +429,52 @@ def test_gates_draw_on_given_axes() -> None:
     fig, axes = plt.subplots(1, 2)
 
     assert est.plot_gates(ax=axes) is fig
+
+
+def test_memberships_are_named_as_in_the_rules(clf: Any) -> None:
+    """The legend speaks of low, medium and high, as ``rules_as_text`` does, and sits beside the panels."""
+    fig = clf.plot_memberships()
+
+    assert [text.get_text() for text in fig.legends[0].get_texts()] == ["low", "medium", "high"]
+    assert all(panel.get_legend() is None for panel in fig.axes)
+
+
+def test_memberships_take_other_set_names(clf: Any) -> None:
+    fig = clf.plot_memberships(set_names=["cold", "mild", "hot"])
+    assert [text.get_text() for text in fig.legends[0].get_texts()] == ["cold", "mild", "hot"]
+
+
+def test_memberships_on_given_axes_keep_a_legend_per_panel(clf: Any) -> None:
+    _, axes = plt.subplots(1, 6)
+    fig = clf.plot_memberships(ax=axes)
+    assert not fig.legends
+    assert all(panel.get_legend() is not None for panel in axes)
+
+
+def test_rules_table_has_the_set_of_each_rule_and_feature(clf: Any) -> None:
+    panel = clf.plot_rules()
+    levels = np.asarray(panel.images[0].get_array())
+    table = clf.model_.get_rule_table()
+
+    assert levels.shape == (len(table), 6)
+    # Each feature has three sets, and each rule of the compact rule base uses one of them.
+    assert all(sorted(column) == [0.0, 0.5, 1.0] for column in levels.T.tolist())
+    first = clf.get_mf_params()[clf.model_.input_names[0]]
+    lowest = int(np.argmin([params["mean"] for params in first]))
+    assert levels[lowest, 0] == 0.0
+    assert sorted({text.get_text() for text in panel.texts}) == ["H", "L", "M"]
+    assert [tick.get_text() for tick in panel.get_yticklabels()] == ["Rule 0", "Rule 1", "Rule 2"]
+
+
+def test_rules_table_shows_the_chosen_features(clf: Any) -> None:
+    panel = clf.plot_rules(features=[0, 3])
+    assert np.asarray(panel.images[0].get_array()).shape[1] == 2
+    assert [tick.get_text() for tick in panel.get_xticklabels()] == ["x1", "x4"]
+
+
+def test_gate_thresholds_are_in_the_titles() -> None:
+    est = _fit("FSREADATSKClassifier", epochs=30)
+    fig = est.plot_gates()
+    for panel in fig.axes[:2]:
+        assert "threshold" in panel.get_title()
+        assert panel.get_legend() is None
