@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Sequence
 from typing import Any
 
@@ -38,6 +39,28 @@ class Report(str):
     def to_dict(self) -> dict[str, Any]:
         """Return the values that the text describes."""
         return dict(self.data)
+
+
+def interactive_session() -> bool:
+    """Whether the code runs at a prompt or in a notebook, where a result displays itself."""
+    if hasattr(sys, "ps1") or bool(sys.flags.interactive):
+        return True
+    ipython = sys.modules.get("IPython")
+    return ipython is not None and ipython.get_ipython() is not None
+
+
+def deliver(report: Report, show: bool | None) -> Report:
+    """Print *report* when asked to, and return it.
+
+    With ``show=None`` the report is printed in a script and left alone in an interactive
+    session or a notebook, where it displays itself when it is the value of the last line:
+    the same call then shows the text however the code is run.
+    """
+    if show is None:
+        show = not interactive_session()
+    if show:
+        sys.stdout.write(f"{report}\n")
+    return report
 
 
 def model_columns(estimator: Any) -> np.ndarray:

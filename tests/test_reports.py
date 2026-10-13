@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 import highfis
+from highfis import _describe as describe
 from highfis._describe import Report
 
 
@@ -59,3 +61,28 @@ def test_rules_as_text_carries_the_rule_base() -> None:
     assert len(report.data["rules"]) == est.model_.n_rules
     assert set(report.data["rules"][0].values()) <= {"low", "medium", "high"}
     assert report.data["weights"].shape == (est.model_.n_rules, 2, 4)
+
+
+def test_a_script_sees_the_text_without_printing_it(capsys: pytest.CaptureFixture[str]) -> None:
+    """Run as a script, a description prints itself, so the call is the same as in a notebook."""
+    est, x = _fit()
+
+    report = est.summary()
+
+    assert capsys.readouterr().out == f"{report}\n"
+    assert est.rules_as_text(show=False) is not None
+    assert capsys.readouterr().out == ""
+    est.explain(x[0], show=True)
+    assert capsys.readouterr().out.startswith("Prediction: ")
+
+
+def test_an_interactive_session_is_left_to_display_the_value(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    est, _ = _fit()
+    monkeypatch.setattr(describe, "interactive_session", lambda: True)
+
+    report = est.summary()
+
+    assert capsys.readouterr().out == ""
+    assert repr(report) == str(report)

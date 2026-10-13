@@ -1231,6 +1231,7 @@ class _BaseTSKEstimator(BaseEstimator):
         labels: Sequence[str] | None = None,
         max_rules: int | None = None,
         width: int = 80,
+        show: bool | None = None,
     ) -> _describe.Report:
         """Describe the fitted rule base as ``IF ... THEN ...`` sentences.
 
@@ -1260,15 +1261,18 @@ class _BaseTSKEstimator(BaseEstimator):
             max_rules: Number of rules written. ``None`` writes every rule.
             width: Width of the text, in characters. Longer lines are continued on the
                 next one, between two conditions or two terms.
+            show: Print the text (``True``) or not (``False``). ``None`` prints it in a
+                script and not in an interactive session or a notebook, where the value of
+                the last line is displayed anyway.
 
         Returns:
             The description, one block of lines per rule: a text that an interactive session
             displays as it is, with the rule base in its ``data``.
         """
         check_is_fitted(self, "model_")
-        return _describe.rules_as_text(self, top_features, digits, labels, max_rules, width)
+        return _describe.deliver(_describe.rules_as_text(self, top_features, digits, labels, max_rules, width), show)
 
-    def summary(self, digits: int = 4, width: int = 80) -> _describe.Report:
+    def summary(self, digits: int = 4, width: int = 80, show: bool | None = None) -> _describe.Report:
         """Describe the fitted model: its structure, how it was trained and how training ended.
 
         The text gives the task, the features seen in ``fit`` and used by the model, the
@@ -1281,13 +1285,16 @@ class _BaseTSKEstimator(BaseEstimator):
         Args:
             digits: Decimal places of the losses and metrics.
             width: Width of the text, in characters.
+            show: Print the text (``True``) or not (``False``). ``None`` prints it in a
+                script and not in an interactive session or a notebook, where the value of
+                the last line is displayed anyway.
 
         Returns:
             The description, one item per line: a text that an interactive session displays
             as it is (``print`` it in a script), with the values in its ``data``.
         """
         check_is_fitted(self, "model_")
-        return _describe.summary(self, digits, width)
+        return _describe.deliver(_describe.summary(self, digits, width), show)
 
     def _rule_contributions(self, x_row: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Normalized weight of each rule on one sample, and what each rule adds to the output.
@@ -1322,6 +1329,7 @@ class _BaseTSKEstimator(BaseEstimator):
         digits: int = 2,
         labels: Sequence[str] | None = None,
         width: int = 80,
+        show: bool | None = None,
     ) -> _describe.Report:
         """Describe how the rules produce the prediction for one sample.
 
@@ -1342,6 +1350,9 @@ class _BaseTSKEstimator(BaseEstimator):
             digits: Decimal places of the weights and contributions.
             labels: Names for the fuzzy sets, as in :meth:`rules_as_text`.
             width: Width of the text, in characters.
+            show: Print the text (``True``) or not (``False``). ``None`` prints it in a
+                script and not in an interactive session or a notebook, where the value of
+                the last line is displayed anyway.
 
         Returns:
             The explanation: a text that an interactive session displays as it is (``print``
@@ -1353,7 +1364,8 @@ class _BaseTSKEstimator(BaseEstimator):
         x_row = validate_data(self, sample, reset=False)
         weights, contributions = self._rule_contributions(x_row)
         prediction = self.predict(sample)[0]
-        return _describe.explain(self, weights, contributions, prediction, top_rules, digits, labels, width)
+        report = _describe.explain(self, weights, contributions, prediction, top_rules, digits, labels, width)
+        return _describe.deliver(report, show)
 
     def coverage(self, X: npt.ArrayLike) -> np.ndarray:
         """Return, for each sample, how well the best-matching rule covers it.

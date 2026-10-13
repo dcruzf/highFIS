@@ -608,3 +608,17 @@ def test_a_rule_table_that_cannot_show_every_feature_shows_those_that_tell_the_r
     assert plotting._distinguishing_features(Model(), table, names, 2) == [3, 4]
     # Once the exceptions are in, the most important features complete the selection.
     assert plotting._distinguishing_features(Model(), table, names, 3) == [0, 3, 4]
+
+
+def test_save_writes_the_figure_in_a_script_and_in_a_session(
+    clf: Any, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(plt, "show", lambda *args, **kwargs: None)
+
+    ax = clf.plot("history", save=tmp_path / "history.png")
+    assert isinstance(ax, Axes)
+    assert (tmp_path / "history.png").stat().st_size > 0
+
+    monkeypatch.setattr(plotting, "_interactive_session", lambda: True)
+    assert clf.plot("memberships", save=tmp_path / "memberships.pdf") is None
+    assert (tmp_path / "memberships.pdf").read_bytes().startswith(b"%PDF")

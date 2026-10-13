@@ -34,8 +34,10 @@ ax = clf.plot(kind="history", show=False)    # always returned, never displayed
 clf.plot(kind="history", show=True)          # always displayed
 ```
 
-Save a plot with `fig.savefig("plot.png")`, or `ax.figure.savefig("plot.png")` for a
-single panel. The plots accept `ax` to draw on existing axes, and never change the global
+`save` writes the figure to a file, whether or not it is displayed, so the same line
+serves a notebook and a batch run: `clf.plot(kind="history", save="history.pdf")`. A
+figure that was returned is saved with `fig.savefig("plot.png")`, or
+`ax.figure.savefig("plot.png")` for a single panel. The plots accept `ax` to draw on existing axes, and never change the global
 settings of matplotlib. The examples below keep the figure, as a script does.
 
 The examples below share one fitted model:

@@ -24,7 +24,8 @@ Conventions:
       sequence of axes in ``ax`` and return the ``Figure``.
     - In an interactive session or a notebook a plot is displayed and nothing is returned,
       as with a plot command; in a script, or with ``show=False``, the ``Axes`` or the
-      ``Figure`` is returned and nothing is displayed.
+      ``Figure`` is returned and nothing is displayed. ``save="figure.pdf"`` writes the
+      figure to a file in both cases.
     - The colours come from one theme, changed with :func:`set_plot_theme`, and each plot
       takes ``colors`` or ``cmap`` for a single figure. No function changes ``rcParams``.
 """
@@ -32,7 +33,6 @@ Conventions:
 from __future__ import annotations
 
 import functools
-import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from typing import Any
@@ -44,6 +44,7 @@ from sklearn.metrics import confusion_matrix, r2_score
 from sklearn.utils.validation import check_is_fitted
 
 from ._describe import feature_labels as _feature_labels
+from ._describe import interactive_session as _interactive_session
 from ._describe import model_columns as _model_columns
 from ._describe import set_labels as _set_labels
 
@@ -154,27 +155,22 @@ def _pyplot() -> Any:
     return plt
 
 
-def _interactive_session() -> bool:
-    """Whether the code runs at a prompt or in a notebook, where a figure is meant to be seen."""
-    if hasattr(sys, "ps1") or bool(sys.flags.interactive):
-        return True
-    ipython = sys.modules.get("IPython")
-    return ipython is not None and ipython.get_ipython() is not None
-
-
 def _shown(function: Callable[..., Any]) -> Callable[..., Any]:
-    """Give a plot function the ``show`` argument.
+    """Give a plot function the ``show`` and ``save`` arguments.
 
     ``show=True`` displays the figure and returns nothing, as a plot command does;
     ``show=False`` returns the ``Axes`` or the ``Figure`` without displaying anything. The
     default, ``None``, displays in an interactive session or a notebook, unless the caller
     passed its own axes, and returns the artist in a script, which is therefore never
-    stopped by a window.
+    stopped by a window. ``save`` writes the figure to a file first, in either case.
     """
 
     @functools.wraps(function)
-    def wrapper(*args: Any, show: bool | None = None, **kwargs: Any) -> Any:
+    def wrapper(*args: Any, show: bool | None = None, save: Any = None, **kwargs: Any) -> Any:
         artist = function(*args, **kwargs)
+        if save is not None:
+            figure = artist if hasattr(artist, "savefig") else artist.figure
+            figure.savefig(save, bbox_inches="tight")
         if show is None:
             show = kwargs.get("ax") is None and _interactive_session()
         if not show:
@@ -292,6 +288,7 @@ def plot_memberships(
         show: Display the figure and return nothing (``True``), or return it without
             displaying (``False``). ``None`` displays in an interactive session or a
             notebook, and returns it in a script or when ``ax`` is given.
+        save: Path of a file to write the figure to, in the format of its extension.
 
     Returns:
         The ``Figure`` holding the panels.
@@ -397,6 +394,7 @@ def plot_history(
         show: Display the figure and return nothing (``True``), or return it without
             displaying (``False``). ``None`` displays in an interactive session or a
             notebook, and returns it in a script or when ``ax`` is given.
+        save: Path of a file to write the figure to, in the format of its extension.
 
     Returns:
         The ``Axes`` with the curves, or the ``Figure`` holding one panel per phase for a
@@ -460,6 +458,7 @@ def plot_rule_activation(
         show: Display the figure and return nothing (``True``), or return it without
             displaying (``False``). ``None`` displays in an interactive session or a
             notebook, and returns it in a script or when ``ax`` is given.
+        save: Path of a file to write the figure to, in the format of its extension.
 
     Returns:
         The ``Axes`` with the heatmap (labels given) or the bar chart (no labels).
@@ -584,6 +583,7 @@ def plot_diagnostics(
         show: Display the figure and return nothing (``True``), or return it without
             displaying (``False``). ``None`` displays in an interactive session or a
             notebook, and returns it in a script or when ``ax`` is given.
+        save: Path of a file to write the figure to, in the format of its extension.
 
     Returns:
         The ``Figure`` holding the two panels.
@@ -614,6 +614,7 @@ def plot_feature_importance(
         show: Display the figure and return nothing (``True``), or return it without
             displaying (``False``). ``None`` displays in an interactive session or a
             notebook, and returns it in a script or when ``ax`` is given.
+        save: Path of a file to write the figure to, in the format of its extension.
 
     Returns:
         The ``Axes`` with the bar chart.
@@ -701,6 +702,7 @@ def plot_rules(
         show: Display the figure and return nothing (``True``), or return it without
             displaying (``False``). ``None`` displays in an interactive session or a
             notebook, and returns it in a script or when ``ax`` is given.
+        save: Path of a file to write the figure to, in the format of its extension.
 
     Returns:
         The ``Axes`` with the table.
@@ -780,6 +782,7 @@ def plot_gates(estimator: Any, *, colors: Sequence[str] | None = None, ax: Any =
         show: Display the figure and return nothing (``True``), or return it without
             displaying (``False``). ``None`` displays in an interactive session or a
             notebook, and returns it in a script or when ``ax`` is given.
+        save: Path of a file to write the figure to, in the format of its extension.
 
     Returns:
         The ``Figure`` with the two panels.
