@@ -1598,11 +1598,11 @@ its own <a href="../adatsk/">reproduction</a>.</p>
 </span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>  defuzzifier        SoftmaxLogDefuzzifier
 </span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>  consequents        GatedClassificationConsequentLayer
 </span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>  parameters         63 trainable (15 antecedent, 48 consequent)
-</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>Training
-</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>  batch size         full batch
-</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>  feature selection  1000 epochs, learning rate 0.05, training loss 1.0000 -&gt; 0.1899, training accuracy 0.8714
-</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>  rule extraction    600 epochs, learning rate 0.05, training loss 1.0000 -&gt; 0.2915, training accuracy 0.8216
-</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>  fine-tuning        1000 epochs, learning rate 0.05, training loss 0.5190 -&gt; 0.2293, training accuracy 0.8216
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>Training (full batch)
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>  phase              epochs  rate  loss first -&gt; last  accuracy
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>  feature selection    1000  0.05    1.0000 -&gt; 0.1899    0.8714
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>  rule extraction       600  0.05    1.0000 -&gt; 0.2915    0.8216
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>  fine-tuning          1000  0.05    0.5190 -&gt; 0.2293    0.8216
 </span></code></pre></div>
 <p>The table has eight of the twelve low-dimensional datasets of the article. Seven
 accuracies are within 1.4 points of the article and Spectfheart is two points below, in

@@ -1327,16 +1327,16 @@ position of its centre, and each rule shows its consequent per class:</p>
 </span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="n">clf</span> <span class="o">=</span> <span class="n">HTSKClassifier</span><span class="p">(</span><span class="n">n_mfs</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">mf_init</span><span class="o">=</span><span class="s2">"kmeans"</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 </span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="n">clf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
 </span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
-</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="nb">print</span><span class="p">(</span><span class="n">clf</span><span class="o">.</span><span class="n">rules_as_text</span><span class="p">(</span><span class="n">top_features</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">max_rules</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="n">clf</span><span class="o">.</span><span class="n">rules_as_text</span><span class="p">(</span><span class="n">top_features</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">max_rules</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 </span></code></pre></div>
-<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Rule 0: IF x1 is low AND x2 is high AND ... (2 more)
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>        THEN 0: 0.56 - 0.47 * x4 - 0.38 * x3 + ...
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>             1: -0.55 - 0.70 * x4 - 0.34 * x2 + ...
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>             2: -0.54 - 0.91 * x2 + 0.47 * x4 + ...
+<div class="language-text highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Rule 0: IF x2 is high AND the other 3 features are low
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>        THEN 0: 0.51 + 0.44 * x3 + 0.38 * x4 + ...
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>             1: -0.51 - 1.11 * x4 - 0.60 * x3 + ...
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>             2: -0.51 - 0.87 * x2 - 0.41 * x1 + ...
 </span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>... (2 more rules)
 </span></code></pre></div>
-<p><code>top_features</code> keeps the conditions on the most important features and the largest
-coefficients; <code>None</code> shows them all. Fitting on a pandas <code>DataFrame</code> with string labels
+<p>The conditions of a rule are written in full, and <code>top_features</code> keeps the largest
+coefficients of each consequent; <code>None</code> shows them all. Fitting on a pandas <code>DataFrame</code> with string labels
 gives the real feature and class names instead of <code>x1</code> and <code>0</code>. The exact numbers depend
 on the platform.</p>
 <p>Use <code>inspect()</code> for a quick overview (its <code>"rule_table"</code> and <code>"mf_params"</code> entries give

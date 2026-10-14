@@ -1499,7 +1499,7 @@
 <h2 id="1-model-introspection">1. Model Introspection</h2>
 <p>Fitted estimators can be introspected to analyze and explain their decision rules. The base estimator interface exposes:</p>
 <ul>
-<li><code>summary()</code> — a printed summary of the structure and of the training;</li>
+<li><code>summary()</code> — a summary of the structure and of the training;</li>
 <li><code>inspect()</code> — a high-level summary dictionary of the fitted model;</li>
 <li><code>get_mf_params()</code> — the membership-function parameters per input feature;</li>
 <li><code>feature_importance()</code> — a normalized importance vector derived from the consequent weights;</li>
@@ -1511,7 +1511,7 @@
 <h3 id="a-printed-summary">A Printed Summary</h3>
 <p><code>summary()</code> returns a text that describes the fitted model: its structure, the training
 configuration that <code>fit</code> resolved, and how the training ended.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nb">print</span><span class="p">(</span><span class="n">clf</span><span class="o">.</span><span class="n">summary</span><span class="p">())</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">clf</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span>
 </span></code></pre></div>
 <p>For an <code>HTSKClassifier</code> fitted on the Wine data:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>HTSKClassifier
@@ -1523,9 +1523,9 @@ configuration that <code>fit</code> resolved, and how the training ended.</p>
 </span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>  defuzzifier        SoftmaxLogDefuzzifier
 </span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>  consequents        ClassificationConsequentLayer
 </span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>  parameters         204 trainable (78 antecedent, 126 consequent)
-</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>Training
-</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>  batch size         60
-</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>  epochs             100 epochs, learning rate 0.01, training loss 1.0056 -&gt; 0.0045, training accuracy 1.0000
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>Training (batch size 60)
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>  phase     epochs  rate  loss first -&gt; last  accuracy
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>  training     100  0.01    1.0056 -&gt; 0.0045    1.0000
 </span></code></pre></div>
 <p>The learning rate and the batch size are the values used, also when the estimator was
 built with <code>"auto"</code>. The families that train in phases (DG-TSK, DG-ALETSK, FSRE-ADATSK)
@@ -1567,11 +1567,15 @@ feature to the index of the membership function it uses in that rule.</p>
 each feature are named from the order of their centres (<code>low</code>, <code>medium</code>, <code>high</code> for three
 sets), and the consequent of each rule is its linear function of the features, per class
 for a classifier.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">print</span><span class="p">(</span><span class="n">clf</span><span class="o">.</span><span class="n">rules_as_text</span><span class="p">(</span><span class="n">top_features</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">max_rules</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">clf</span><span class="o">.</span><span class="n">rules_as_text</span><span class="p">(</span><span class="n">top_features</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">max_rules</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 </span></code></pre></div>
 <ul>
-<li><code>top_features</code> limits each rule to the conditions on the most important features and
-  to the coefficients with the largest magnitude; <code>None</code> shows everything.</li>
+<li>The conditions of a rule are written in full; when more than half of the features use
+  the same fuzzy set, the rule is written as the features that differ followed by
+  <code>the other N features are low</code>.</li>
+<li><code>top_features</code> limits each consequent to the coefficients with the largest magnitude;
+  <code>None</code> shows them all.</li>
+<li><code>width</code> is the width of the text; longer lines are continued on the next one.</li>
 <li><code>labels=["cold", "mild", "hot"]</code> replaces the default names for the features that have
   that many sets.</li>
 <li><code>max_rules</code> limits the number of rules written.</li>
@@ -1584,23 +1588,30 @@ scaled features when the data were scaled first.</p>
 <p><code>explain(x)</code> describes how the rules produce the prediction of one sample. The output of
 a TSK system is the sum, over the rules, of the normalized weight of the rule times the
 value of its consequent, so each rule has a contribution that can be read on its own.</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nb">print</span><span class="p">(</span><span class="n">clf</span><span class="o">.</span><span class="n">explain</span><span class="p">(</span><span class="n">X_test</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">top_rules</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">clf</span><span class="o">.</span><span class="n">explain</span><span class="p">(</span><span class="n">X_test</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">top_rules</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 </span></code></pre></div>
 <p>For the model above and one test sample:</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>Prediction: class_2
-</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>Output, the sum of the contributions of the 3 rules: class_0: -3.26, class_1: -3.12, class_2: +3.38
-</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>Rule 1, weight 0.99: contributes class_0: -3.24, class_1: -3.13, class_2: +3.41
-</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    IF x1 is medium AND x2 is high AND x10 is high AND ... (10 more)
-</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>Rule 0, weight 0.01: contributes class_0: -0.02, class_1: +0.02, class_2: -0.02
-</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>    IF x1 is low AND x2 is low AND x10 is low AND ... (10 more)
-</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>1 other rule, weight 0.00 in all: contributes class_0: +0.01, class_1: -0.01, class_2: -0.01
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>Output, the sum of the contributions of the 3 rules: class_0: -3.26,
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    class_1: -3.12, class_2: +3.38
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>Rule 1, weight 0.99: contributes class_0: -3.24, class_1: -3.13, class_2: +3.41
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    IF x1 is medium AND x2 is high AND x3 is high AND x4 is medium
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>       AND x5 is medium AND x6 is low AND x7 is low AND x8 is high AND x9 is low
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>       AND x10 is high AND x11 is low AND x12 is low AND x13 is medium
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>Rule 0, weight 0.01: contributes class_0: -0.02, class_1: +0.02, class_2: -0.02
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>    IF x1 is low AND x2 is low AND x3 is low AND x4 is high AND x5 is low
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>       AND x6 is medium AND x7 is high AND x8 is medium AND x9 is high
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>       AND x10 is low AND x11 is high AND x12 is high AND x13 is low
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>1 other rule, weight 0.00 in all: contributes class_0: +0.01, class_1: -0.01,
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>    class_2: -0.01
 </span></code></pre></div>
 <ul>
 <li>For a classifier the output has one score per class, and the predicted class is the
   one with the largest score. For a regressor it is the predicted value.</li>
 <li><code>top_rules</code> sets how many rules are described, from the largest weight; the others are
   summed in one line. <code>None</code> describes every rule.</li>
-<li><code>top_features</code> and <code>labels</code> work as in <code>rules_as_text()</code>.</li>
+<li><code>labels</code> works as in <code>rules_as_text()</code>, and the conditions of each rule are written in
+  full. A rule whose weight rounds to zero is counted with the other rules.</li>
 </ul>
 <h3 id="feature-importance">Feature Importance</h3>
 <p><code>feature_importance()</code> returns a normalized vector (summing to 1) that ranks the input

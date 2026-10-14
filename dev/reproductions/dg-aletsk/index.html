@@ -1541,10 +1541,10 @@ the script builds the model without arguments.</p>
 </span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>  defuzzifier        SoftmaxLogDefuzzifier
 </span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>  consequents        GatedClassificationConsequentLayer
 </span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>  parameters         72 trainable (24 antecedent, 42 consequent)
-</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>Training
-</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>  batch size         6
-</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>  gates              10 epochs, learning rate 0.01, training loss 0.4802 -&gt; 0.2015, training accuracy 0.6429
-</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>  fine-tuning        50 epochs, learning rate 0.01, training loss 0.3704 -&gt; 0.0913, training accuracy 0.9286
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>Training (batch size 6)
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>  phase        epochs  rate  loss first -&gt; last  accuracy
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>  gates            10  0.01    0.4802 -&gt; 0.2015    0.6429
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>  fine-tuning      50  0.01    0.3704 -&gt; 0.0913    0.9286
 </span></code></pre></div>
 <p>On Colon (62 samples, 2000 genes) the numbers of selected genes and of extracted rules
 are reproduced: 7.2 genes and 7.0 rules against 6.8 and 6.4. The accuracy is five points
