@@ -86,7 +86,7 @@ for name, scores in results.items():
 
 print()
 print("Summary of the last model fitted")
-print(model.summary())
+model.summary()
 
 print()
 highfis.show_versions()

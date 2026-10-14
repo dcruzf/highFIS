@@ -57,9 +57,9 @@ ADMTSKClassifier
   defuzzifier        SumBasedDefuzzifier
   consequents        ClassificationConsequentLayer
   parameters         85554 trainable (42774 antecedent, 42780 consequent)
-Training
-  batch size         13
-  epochs             50 epochs, learning rate 0.0001, training loss 0.3134 -> 0.0044, training accuracy 1.0000
+Training (batch size 13)
+  phase     epochs    rate  loss first -> last  accuracy
+  training      50  0.0001    0.3134 -> 0.0044    1.0000
 ```
 
 The best of the six combinations is within 1.3 points of the article on Colon and within

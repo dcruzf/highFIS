@@ -1230,13 +1230,20 @@ class _BaseTSKEstimator(BaseEstimator):
         digits: int = 2,
         labels: Sequence[str] | None = None,
         max_rules: int | None = None,
-    ) -> str:
+        width: int = 80,
+        show: bool | None = None,
+    ) -> _describe.Report:
         """Describe the fitted rule base as ``IF ... THEN ...`` sentences.
 
         The fuzzy sets of each feature are named from the order of their centres: ``low``
         and ``high`` for two sets, ``low``, ``medium``, ``high`` for three, ``very low`` to
         ``very high`` for five, and ``level i of n`` otherwise. The consequent of a rule is
         its linear function of the features, per class for a classifier.
+
+        The conditions of a rule are written in full. When more than half of the features
+        of a rule use the same fuzzy set, the rule is written as the features that differ
+        followed by ``the other N features are low``, which is what tells it from the
+        other rules.
 
         Coefficients apply to the features as they were passed to ``fit``. If the data
         were scaled first, they are on the scaled features; with
@@ -1246,22 +1253,26 @@ class _BaseTSKEstimator(BaseEstimator):
         :meth:`get_rule_gates` are applied.
 
         Args:
-            top_features: Number of conditions and of coefficients shown per rule. The
-                conditions kept are those on the most important features according to
-                :meth:`feature_importance`; the coefficients kept are the largest in
-                magnitude. ``None`` shows everything.
+            top_features: Number of coefficients shown in each consequent, the largest in
+                magnitude. ``None`` shows every coefficient.
             digits: Decimal places of the coefficients.
             labels: Names for the fuzzy sets, from the lowest centre to the highest. Used
                 for every feature whose number of sets equals ``len(labels)``.
             max_rules: Number of rules written. ``None`` writes every rule.
+            width: Width of the text, in characters. Longer lines are continued on the
+                next one, between two conditions or two terms.
+            show: Print the text (``True``) or not (``False``). ``None`` prints it in a
+                script and not in an interactive session or a notebook, where the value of
+                the last line is displayed anyway.
 
         Returns:
-            The description, one block of lines per rule.
+            The description, one block of lines per rule: a text that an interactive session
+            displays as it is, with the rule base in its ``data``.
         """
         check_is_fitted(self, "model_")
-        return _describe.rules_as_text(self, top_features, digits, labels, max_rules)
+        return _describe.deliver(_describe.rules_as_text(self, top_features, digits, labels, max_rules, width), show)
 
-    def summary(self, digits: int = 4) -> str:
+    def summary(self, digits: int = 4, width: int = 80, show: bool | None = None) -> _describe.Report:
         """Describe the fitted model: its structure, how it was trained and how training ended.
 
         The text gives the task, the features seen in ``fit`` and used by the model, the
@@ -1273,12 +1284,17 @@ class _BaseTSKEstimator(BaseEstimator):
 
         Args:
             digits: Decimal places of the losses and metrics.
+            width: Width of the text, in characters.
+            show: Print the text (``True``) or not (``False``). ``None`` prints it in a
+                script and not in an interactive session or a notebook, where the value of
+                the last line is displayed anyway.
 
         Returns:
-            The description, one item per line. ``print`` it to read it.
+            The description, one item per line: a text that an interactive session displays
+            as it is (``print`` it in a script), with the values in its ``data``.
         """
         check_is_fitted(self, "model_")
-        return _describe.summary(self, digits)
+        return _describe.deliver(_describe.summary(self, digits, width), show)
 
     def _rule_contributions(self, x_row: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Normalized weight of each rule on one sample, and what each rule adds to the output.
@@ -1312,13 +1328,16 @@ class _BaseTSKEstimator(BaseEstimator):
         top_features: int | None = 3,
         digits: int = 2,
         labels: Sequence[str] | None = None,
-    ) -> str:
+        width: int = 80,
+        show: bool | None = None,
+    ) -> _describe.Report:
         """Describe how the rules produce the prediction for one sample.
 
         The output of a TSK system is the sum, over the rules, of the normalized weight of
         the rule times the value of its consequent. The text gives the prediction, that
         sum, and for the rules with the largest weights their weight, what they add to the
-        output and their antecedent. For a classifier the output has one score per class,
+        output and their antecedent. A rule whose weight rounds to zero is counted with the
+        other rules. For a classifier the output has one score per class,
         and the predicted class is the one with the largest score.
 
         Args:
@@ -1326,14 +1345,18 @@ class _BaseTSKEstimator(BaseEstimator):
                 row.
             top_rules: Number of rules described, from the largest weight. The others are
                 summed in one line. ``None`` describes every rule.
-            top_features: Number of conditions shown in each antecedent, on the most
-                important features according to :meth:`feature_importance`. ``None`` shows
-                all of them.
+            top_features: No longer used: the conditions of a rule are written in full, as
+                in :meth:`rules_as_text`. Kept so that existing calls keep working.
             digits: Decimal places of the weights and contributions.
             labels: Names for the fuzzy sets, as in :meth:`rules_as_text`.
+            width: Width of the text, in characters.
+            show: Print the text (``True``) or not (``False``). ``None`` prints it in a
+                script and not in an interactive session or a notebook, where the value of
+                the last line is displayed anyway.
 
         Returns:
-            The explanation as text. ``print`` it to read it.
+            The explanation: a text that an interactive session displays as it is (``print``
+            it in a script), with the weights and contributions of the rules in its ``data``.
         """
         check_is_fitted(self, "model_")
         # A data frame keeps its column names through the validation; anything else is one row.
@@ -1341,7 +1364,8 @@ class _BaseTSKEstimator(BaseEstimator):
         x_row = validate_data(self, sample, reset=False)
         weights, contributions = self._rule_contributions(x_row)
         prediction = self.predict(sample)[0]
-        return _describe.explain(self, weights, contributions, prediction, top_rules, top_features, digits, labels)
+        report = _describe.explain(self, weights, contributions, prediction, top_rules, digits, labels, width)
+        return _describe.deliver(report, show)
 
     def coverage(self, X: npt.ArrayLike) -> np.ndarray:
         """Return, for each sample, how well the best-matching rule covers it.
@@ -1415,13 +1439,15 @@ class _BaseTSKEstimator(BaseEstimator):
         n_points: int = 200,
         set_names: Sequence[str] | None = None,
         ax: Any = None,
+        **style: Any,
     ) -> Any:
         """Plot the learned fuzzy sets, one panel per feature.
 
-        See :func:`highfis.plotting.plot_memberships`.
+        See :func:`highfis.plotting.plot_memberships`. ``style`` takes its other
+        arguments, such as ``colors``.
         """
         return plotting.plot_memberships(
-            self, features, X=X, max_features=max_features, n_points=n_points, set_names=set_names, ax=ax
+            self, features, X=X, max_features=max_features, n_points=n_points, set_names=set_names, ax=ax, **style
         )
 
     def plot_rules(
@@ -1431,47 +1457,56 @@ class _BaseTSKEstimator(BaseEstimator):
         max_features: int = 12,
         set_names: Sequence[str] | None = None,
         ax: Any = None,
+        **style: Any,
     ) -> Any:
         """Plot the rule base as a table: the fuzzy set that each rule uses on each feature.
 
-        See :func:`highfis.plotting.plot_rules`.
+        See :func:`highfis.plotting.plot_rules`. ``style`` takes its other arguments,
+        such as ``cmap``.
         """
-        return plotting.plot_rules(self, features, max_features=max_features, set_names=set_names, ax=ax)
+        return plotting.plot_rules(self, features, max_features=max_features, set_names=set_names, ax=ax, **style)
 
-    def plot_history(self, metric: str | None = None, *, ax: Any = None) -> Any:
+    def plot_history(self, metric: str | None = None, *, ax: Any = None, **style: Any) -> Any:
         """Plot the training loss, or a recorded metric, per epoch.
 
-        See :func:`highfis.plotting.plot_history`.
+        See :func:`highfis.plotting.plot_history`. ``style`` takes its other arguments, such
+        as ``colors``.
         """
-        return plotting.plot_history(self, metric, ax=ax)
+        return plotting.plot_history(self, metric, ax=ax, **style)
 
-    def plot_rule_activation(self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, *, ax: Any = None) -> Any:
+    def plot_rule_activation(
+        self, X: npt.ArrayLike, y: npt.ArrayLike | None = None, *, ax: Any = None, **style: Any
+    ) -> Any:
         """Plot the mean normalized firing strength of each rule, by class when ``y`` is given.
 
-        See :func:`highfis.plotting.plot_rule_activation`.
+        See :func:`highfis.plotting.plot_rule_activation`. ``style`` takes its other
+        arguments, such as ``cmap``.
         """
-        return plotting.plot_rule_activation(self, X, y, ax=ax)
+        return plotting.plot_rule_activation(self, X, y, ax=ax, **style)
 
-    def plot_diagnostics(self, X: npt.ArrayLike, y: npt.ArrayLike, *, ax: Any = None) -> Any:
+    def plot_diagnostics(self, X: npt.ArrayLike, y: npt.ArrayLike, *, ax: Any = None, **style: Any) -> Any:
         """Plot the confusion matrix and decision margin, or the regression fit and residuals.
 
-        See :func:`highfis.plotting.plot_diagnostics`.
+        See :func:`highfis.plotting.plot_diagnostics`. ``style`` takes its other arguments,
+        such as ``cmap`` and ``colors``.
         """
-        return plotting.plot_diagnostics(self, X, y, ax=ax)
+        return plotting.plot_diagnostics(self, X, y, ax=ax, **style)
 
-    def plot_feature_importance(self, *, top: int | None = 20, ax: Any = None) -> Any:
+    def plot_feature_importance(self, *, top: int | None = 20, ax: Any = None, **style: Any) -> Any:
         """Plot the features that weigh most in the consequents.
 
-        See :func:`highfis.plotting.plot_feature_importance`.
+        See :func:`highfis.plotting.plot_feature_importance`. ``style`` takes its other
+        arguments, such as ``colors``.
         """
-        return plotting.plot_feature_importance(self, top=top, ax=ax)
+        return plotting.plot_feature_importance(self, top=top, ax=ax, **style)
 
-    def plot_gates(self, *, ax: Any = None) -> Any:
+    def plot_gates(self, *, ax: Any = None, **style: Any) -> Any:
         """Plot the gates of the kept features and rules of a gated family, with their thresholds.
 
-        See :func:`highfis.plotting.plot_gates`.
+        See :func:`highfis.plotting.plot_gates`. ``style`` takes its other arguments, such as
+        ``colors``.
         """
-        return plotting.plot_gates(self, ax=ax)
+        return plotting.plot_gates(self, ax=ax, **style)
 
     def feature_importance(self) -> np.ndarray | None:
         """Compute a normalized feature importance vector from consequent weights."""

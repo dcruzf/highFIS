@@ -23,10 +23,22 @@ Plotting needs matplotlib, which is an optional dependency:
 pip install highfis[plot]
 ```
 
-The plots follow the usual matplotlib conventions: they accept `ax` to draw on existing
-axes, they return the `Axes` (single panel) or the `Figure` (several panels), and they
-never call `plt.show()` or change global settings. Save a plot with
-`fig.savefig("plot.png")`, or `ax.figure.savefig("plot.png")` for a single panel.
+In a notebook or at an interactive prompt, a plot is displayed as soon as it is called,
+and nothing is returned: `clf.plot()` is the whole command. In a script nothing is
+displayed, so that a batch run is never stopped by a window, and the plot returns the
+`Axes` (single panel) or the `Figure` (several panels). `show` decides otherwise:
+
+```python
+clf.plot(kind="history")                     # displayed in a notebook, returned in a script
+ax = clf.plot(kind="history", show=False)    # always returned, never displayed
+clf.plot(kind="history", show=True)          # always displayed
+```
+
+`save` writes the figure to a file, whether or not it is displayed, so the same line
+serves a notebook and a batch run: `clf.plot(kind="history", save="history.pdf")`. A
+figure that was returned is saved with `fig.savefig("plot.png")`, or
+`ax.figure.savefig("plot.png")` for a single panel. The plots accept `ax` to draw on existing axes, and never change the global
+settings of matplotlib. The examples below keep the figure, as a script does.
 
 The examples below share one fitted model:
 
@@ -116,8 +128,8 @@ ax = clf.plot(kind="rules")
 ![The fuzzy set that each rule uses on each feature](../assets/plots/rules.png)
 
 One row per rule and one column per feature. Each cell is the fuzzy set that the rule
-uses on the feature, coloured from the lowest set (blue) to the highest (red) and, in
-small rule bases, labelled with the initials of its name: `L`, `M`, `H`. It is the
+uses on the feature, in the colour that the set has in the plot of the membership
+functions and, in small rule bases, labelled with the initials of its name: `L`, `M`, `H`. It is the
 complete antecedent part of the model in one figure, where `rules_as_text()` writes one
 rule at a time. `features`, `max_features` and `set_names` work as for the membership
 functions.
@@ -229,6 +241,39 @@ The other families have no gates, and the plot raises a `ValueError` for them.
 
 What to look for: gates just above the threshold belong to features or rules that a
 slightly different threshold, or a shorter gate phase, would have removed.
+
+## Colours
+
+Every plot takes its colours from one theme, so that the figures of an analysis look
+alike. The default colours are those of Okabe and Ito, which remain distinct for readers
+with a colour vision deficiency.
+
+```python
+import highfis
+
+highfis.set_plot_theme(
+    colors=["#1b9e77", "#d95f02", "#7570b3"],  # fuzzy sets, curves, classes
+    sequential="Greys",                         # confusion matrix, rule activation
+)
+highfis.reset_plot_theme()                      # back to the colours of the package
+```
+
+Only the arguments given are changed, and `highfis.get_plot_theme()` returns the theme in
+use. For a single figure, pass `colors` or `cmap` to the plot:
+
+```python
+clf.plot(kind="rules", cmap="viridis")
+clf.plot(kind="memberships", colors=["black", "grey", "silver"])
+```
+
+| Plot | `colors` | `cmap` |
+|---|---|---|
+| `"memberships"` | the fuzzy sets, from the lowest to the highest | |
+| `"history"` | the training and the validation curve | |
+| `"rules"` | the fuzzy sets, from the lowest to the highest | shades from the lowest set to the highest, in place of one colour per set |
+| `"rule_activation"` | the bars, without `y` | the table, with `y` |
+| `"diagnostics"` | the classes, or the points of a regressor | the confusion matrix |
+| `"feature_importance"`, `"gates"` | the bars | |
 
 ## Drawing on your own axes
 

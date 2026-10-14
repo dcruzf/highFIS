@@ -43,9 +43,9 @@ MHTSKClassifier
   defuzzifier        SumBasedDefuzzifier
   consequents        SparseClassificationConsequentLayer
   parameters         12834000 trainable (0 antecedent, 12834000 consequent)
-Training
-  batch size         64
-  epochs             100 epochs, learning rate 0.01, training loss 0.5000 -> 0.0083, training accuracy 1.0000
+Training (batch size 64)
+  phase     epochs  rate  loss first -> last  accuracy
+  training     100  0.01    0.5000 -> 0.0083    1.0000
 ```
 
 The article reports standard deviations of about 5 on Colon and 3 on Leukemia. Colon is
