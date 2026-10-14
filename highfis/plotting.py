@@ -7,6 +7,8 @@ Available kinds:
     - ``"memberships"`` — the learned fuzzy sets, one panel per feature.
     - ``"history"`` — loss or a metric per epoch, with the validation curve and the
       best epoch when they were recorded.
+    - ``"rules"`` — the rule base as a table: the fuzzy set that each rule uses on each
+      feature.
     - ``"rule_activation"`` — mean normalized firing strength of each rule, split by
       class when labels are given.
     - ``"diagnostics"`` — confusion matrix and decision margin for classifiers;
@@ -20,12 +22,19 @@ Conventions:
       imported when a plot is requested.
     - Single-panel plots accept ``ax`` and return the ``Axes``. Multi-panel plots accept a
       sequence of axes in ``ax`` and return the ``Figure``.
-    - No function calls ``plt.show()`` or changes ``rcParams``.
+    - In an interactive session or a notebook a plot is displayed and nothing is returned,
+      as with a plot command; in a script, or with ``show=False``, the ``Axes`` or the
+      ``Figure`` is returned and nothing is displayed. ``save="figure.pdf"`` writes the
+      figure to a file in both cases.
+    - The colours come from one theme, changed with :func:`set_plot_theme`, and each plot
+      takes ``colors`` or ``cmap`` for a single figure. No function changes ``rcParams``.
 """
 
 from __future__ import annotations
 
+import functools
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass, replace
 from typing import Any
 
 import numpy as np
@@ -35,19 +44,106 @@ from sklearn.metrics import confusion_matrix, r2_score
 from sklearn.utils.validation import check_is_fitted
 
 from ._describe import feature_labels as _feature_labels
+from ._describe import interactive_session as _interactive_session
 from ._describe import model_columns as _model_columns
+from ._describe import set_labels as _set_labels
 
 PLOT_KINDS: tuple[str, ...] = (
     "memberships",
     "history",
+    "rules",
     "rule_activation",
     "diagnostics",
     "feature_importance",
     "gates",
 )
 
+#: Colours of Okabe and Ito (2008), which stay distinct for readers with a colour vision
+#: deficiency. Yellow comes last: it is the weakest on a white page.
+_OKABE_ITO = ("#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9", "#000000", "#F0E442")
+
+
+@dataclass(frozen=True)
+class PlotTheme:
+    """Colours shared by every plot of the package.
+
+    Attributes:
+        colors: Colours of the things that are told apart by name: the fuzzy sets of a
+            feature, in the membership plot and in the table of the rule base, the training
+            and validation curves, the classes.
+        sequential: Colormap of the tables whose cells are amounts, from little to much:
+            the confusion matrix and the rule activation.
+        reference: Colour of the lines that mark a reference: thresholds, the decision
+            boundary, the best epoch.
+    """
+
+    colors: tuple[str, ...] = _OKABE_ITO
+    sequential: str = "Blues"
+    reference: str = "0.4"
+
+
+_theme = PlotTheme()
+
+
+def get_plot_theme() -> PlotTheme:
+    """Return the colours that the plots use."""
+    return _theme
+
+
+def set_plot_theme(
+    *,
+    colors: Sequence[str] | None = None,
+    sequential: str | None = None,
+    reference: str | None = None,
+) -> PlotTheme:
+    """Change the colours of every plot drawn from now on.
+
+    Only the arguments given are changed. Colours are anything matplotlib accepts as a
+    colour, and colormaps are names of matplotlib colormaps.
+
+    Args:
+        colors: Colours of the things told apart by name, in the order they are used.
+        sequential: Colormap of the confusion matrix and of the rule activation.
+        reference: Colour of the reference lines.
+
+    Returns:
+        The theme now in use.
+    """
+    global _theme
+    changes: dict[str, Any] = {"sequential": sequential, "reference": reference}
+    if colors is not None:
+        if len(colors) == 0:
+            raise ValueError("colors must have at least one colour")
+        changes["colors"] = tuple(colors)
+    _theme = replace(_theme, **{key: value for key, value in changes.items() if value is not None})
+    return _theme
+
+
+def reset_plot_theme() -> PlotTheme:
+    """Go back to the colours of the package."""
+    global _theme
+    _theme = PlotTheme()
+    return _theme
+
+
+def _colours(colors: Sequence[str] | None) -> tuple[str, ...]:
+    """Colours of one plot: those of the call when given, those of the theme otherwise."""
+    if colors is None:
+        return _theme.colors
+    if len(colors) == 0:
+        raise ValueError("colors must have at least one colour")
+    return tuple(colors)
+
+
+def _text_colour(image: Any, value: float) -> str:
+    """Black or white, whichever reads better on the cell that *image* draws for *value*."""
+    red, green, blue, _ = image.cmap(image.norm(value))
+    return "white" if 0.299 * red + 0.587 * green + 0.114 * blue < 0.5 else "black"
+
+
 _PHASE_LABELS = {"dg": "DG", "fs": "feature selection", "re": "rule extraction", "finetune": "fine-tune"}
 _HEATMAP_MAX_ANNOTATED_CELLS = 80
+_RULE_TABLE_MAX_ANNOTATED_CELLS = 400
 _MAX_LEGEND_ENTRIES = 6
 
 
@@ -57,6 +153,32 @@ def _pyplot() -> Any:
     except ImportError as exc:
         raise ImportError("Plotting requires matplotlib. Install it with `pip install highfis[plot]`.") from exc
     return plt
+
+
+def _shown(function: Callable[..., Any]) -> Callable[..., Any]:
+    """Give a plot function the ``show`` and ``save`` arguments.
+
+    ``show=True`` displays the figure and returns nothing, as a plot command does;
+    ``show=False`` returns the ``Axes`` or the ``Figure`` without displaying anything. The
+    default, ``None``, displays in an interactive session or a notebook, unless the caller
+    passed its own axes, and returns the artist in a script, which is therefore never
+    stopped by a window. ``save`` writes the figure to a file first, in either case.
+    """
+
+    @functools.wraps(function)
+    def wrapper(*args: Any, show: bool | None = None, save: Any = None, **kwargs: Any) -> Any:
+        artist = function(*args, **kwargs)
+        if save is not None:
+            figure = artist if hasattr(artist, "savefig") else artist.figure
+            figure.savefig(save, bbox_inches="tight")
+        if show is None:
+            show = kwargs.get("ax") is None and _interactive_session()
+        if not show:
+            return artist
+        _pyplot().show()
+        return None
+
+    return wrapper
 
 
 def _axes(ax: Any, n_panels: int, ncols: int, panel_size: tuple[float, float]) -> tuple[Any, list[Any]]:
@@ -101,6 +223,14 @@ def _select_features(estimator: Any, features: Sequence[int | str] | None, max_f
     return positions
 
 
+def _set_position(params: dict[str, Any]) -> float:
+    """Location of a fuzzy set on the axis of its feature, to order the sets of a feature."""
+    centre = params.get("mean", params.get("center"))
+    if centre is None and {"b", "c"} <= params.keys():
+        centre = (params["b"] + params["c"]) / 2.0
+    return float(centre) if centre is not None else 0.0
+
+
 def _mf_extent(params: dict[str, Any]) -> tuple[float, float] | None:
     """Interval that shows a fuzzy set, read from its parameters."""
     centre = params.get("mean", params.get("center"))
@@ -126,6 +256,7 @@ def _feature_range(mf_params: list[dict[str, Any]], column: np.ndarray | None) -
     return float(min(lo for lo, _ in extents)), float(max(hi for _, hi in extents))
 
 
+@_shown
 def plot_memberships(
     estimator: Any,
     features: Sequence[int | str] | None = None,
@@ -133,6 +264,8 @@ def plot_memberships(
     X: Any = None,
     max_features: int = 6,
     n_points: int = 200,
+    set_names: Sequence[str] | None = None,
+    colors: Sequence[str] | None = None,
     ax: Any = None,
 ) -> Any:
     """Plot the learned fuzzy sets, one panel per feature.
@@ -146,7 +279,16 @@ def plot_memberships(
             the range is taken from the parameters of the fuzzy sets.
         max_features: Number of features shown when ``features`` is ``None``.
         n_points: Number of points used to draw each curve.
+        set_names: Names of the fuzzy sets of a feature, from the lowest to the highest,
+            used when their number matches. By default two, three and five sets are named
+            ``low`` ... ``high``, as in :meth:`rules_as_text`.
+        colors: Colours of the fuzzy sets, from the lowest to the highest. ``None`` uses the
+            theme (see :func:`set_plot_theme`).
         ax: Axes to draw on, one per feature. ``None`` creates a new figure.
+        show: Display the figure and return nothing (``True``), or return it without
+            displaying (``False``). ``None`` displays in an interactive session or a
+            notebook, and returns it in a script or when ``ax`` is given.
+        save: Path of a file to write the figure to, in the format of its extension.
 
     Returns:
         The ``Figure`` holding the panels.
@@ -160,6 +302,8 @@ def plot_memberships(
     data = None if X is None else estimator._select_model_features(np.asarray(X))
 
     fig, axes = _axes(ax, len(positions), ncols=min(3, len(positions)), panel_size=(3.2, 2.4))
+    legends: list[list[str]] = []
+    palette = _colours(colors)
     for panel, position in zip(axes, positions, strict=True):
         name = model_names[position]
         lo, hi = _feature_range(mf_params[name], None if data is None else data[:, position])
@@ -168,16 +312,31 @@ def plot_memberships(
         centres = [c for c in centres if c is not None and lo <= c <= hi]
         points = np.unique(np.concatenate([np.linspace(lo, hi, n_points), centres]))
         grid = torch.as_tensor(points, dtype=estimator._model_dtype(), device=str(estimator.device))
-        sets = [(j, mf) for j, mf in enumerate(input_mfs[name]) if type(mf).__name__ != "ConstantMF"]
+        names = _set_labels(mf_params[name], set_names)
+        located = [j for j in range(len(names)) if names[j] is not None]
+        # The colour follows the position of a set among those of its feature, from the
+        # lowest to the highest, so that a name has the same colour on every panel.
+        rank = {j: i for i, j in enumerate(sorted(located, key=lambda j: _set_position(mf_params[name][j])))}
         with torch.no_grad():
-            for j, mf in sets:
-                panel.plot(grid.cpu().numpy(), mf(grid).cpu().numpy(), label=f"MF{j}")
+            for j in located:
+                curve = input_mfs[name][j](grid).cpu().numpy()
+                panel.plot(grid.cpu().numpy(), curve, label=names[j], color=palette[rank[j] % len(palette)])
+        legends.append([str(names[j]) for j in sorted(located, key=rank.__getitem__)])
         panel.set_title(labels[position])
         panel.set_ylim(0.0, 1.05)
         panel.set_xlabel("Feature value")
         panel.set_ylabel("Membership degree")
-        if 0 < len(sets) <= _MAX_LEGEND_ENTRIES:
-            panel.legend()
+    # The same sets on every panel: one legend beside the panels, where it hides no curve.
+    shared = ax is None and len(set(map(tuple, legends))) == 1 and 0 < len(legends[0]) <= _MAX_LEGEND_ENTRIES
+    for panel, entries in zip(axes[:1] if shared else axes, legends, strict=False):
+        if not 0 < len(entries) <= _MAX_LEGEND_ENTRIES:
+            continue
+        by_label = dict(zip(*reversed(panel.get_legend_handles_labels()), strict=True))
+        handles = [by_label[entry] for entry in entries]
+        if shared:
+            fig.legend(handles, entries, loc="outside right upper", title="Fuzzy set")
+        else:
+            panel.legend(handles, entries, fontsize="small")
     return fig
 
 
@@ -198,21 +357,48 @@ def _available_metrics(phases: list[tuple[str, dict[str, Any]]]) -> list[str]:
     return sorted(keys - reserved)
 
 
-def plot_history(estimator: Any, metric: str | None = None, *, ax: Any = None) -> Any:
+def _draw_phase(panel: Any, phase: dict[str, Any], name: str, palette: Sequence[str]) -> None:
+    """Draw the training and validation curves of one training phase, and its best epoch."""
+    n_epochs = len(phase["train_loss"])
+    for prefix, colour in (("train", palette[0]), ("val", palette[1 % len(palette)])):
+        series = phase.get(f"{prefix}_{name}")
+        if not series:
+            continue
+        # Metrics may be evaluated every few epochs; spread them over the phase.
+        epochs = (np.arange(len(series)) + 1) * n_epochs / len(series)
+        panel.plot(epochs, series, color=colour, label={"train": "training", "val": "validation"}[prefix])
+    best = phase.get("best_epoch")
+    if best is not None:
+        panel.axvline(best + 1, color=_theme.reference, linestyle="--", label="best epoch")
+    panel.set_xlabel("Epoch")
+
+
+@_shown
+def plot_history(
+    estimator: Any, metric: str | None = None, *, colors: Sequence[str] | None = None, ax: Any = None
+) -> Any:
     """Plot the training loss, or a metric, per epoch.
 
     The validation curve is drawn when a validation set was passed to ``fit``, and the
     best epoch is marked when early stopping recorded one. Families that train in several
-    phases (DG-TSK, DG-ALETSK, FSRE-ADATSK) show the phases one after the other.
+    phases (DG-TSK, DG-ALETSK, FSRE-ADATSK) get one panel per phase, side by side and on
+    the same vertical scale.
 
     Args:
         estimator: A fitted estimator.
         metric: Name of a metric recorded during ``fit`` (for example ``"accuracy"``).
             ``None`` plots the loss.
-        ax: Axes to draw on. ``None`` creates a new figure.
+        colors: Colours of the training and of the validation curve. ``None`` uses the
+            theme (see :func:`set_plot_theme`).
+        ax: Axes to draw on, one per training phase. ``None`` creates a new figure.
+        show: Display the figure and return nothing (``True``), or return it without
+            displaying (``False``). ``None`` displays in an interactive session or a
+            notebook, and returns it in a script or when ``ax`` is given.
+        save: Path of a file to write the figure to, in the format of its extension.
 
     Returns:
-        The ``Axes`` with the curves.
+        The ``Axes`` with the curves, or the ``Figure`` holding one panel per phase for a
+        family that trains in several phases.
     """
     check_is_fitted(estimator, "model_")
     phases = _history_phases(estimator.history_)
@@ -220,41 +406,43 @@ def plot_history(estimator: Any, metric: str | None = None, *, ax: Any = None) -
     if metric is not None and metric not in _available_metrics(phases):
         raise ValueError(f"metric {metric!r} was not recorded during fit; available: {_available_metrics(phases)}")
 
-    _, (panel,) = _axes(ax, 1, ncols=1, panel_size=(4.8, 3.2))
-    offset = 0
-    for index, (label, phase) in enumerate(phases):
-        n_epochs = len(phase["train_loss"])
-        for prefix, colour in (("train", "C0"), ("val", "C1")):
-            series = phase.get(f"{prefix}_{name}")
-            if not series:
-                continue
-            # Metrics may be evaluated every few epochs; spread them over the phase.
-            epochs = offset + (np.arange(len(series)) + 1) * n_epochs / len(series)
-            legend = {"train": "training", "val": "validation"}[prefix] if index == 0 else None
-            panel.plot(epochs, series, color=colour, label=legend)
-        best = phase.get("best_epoch")
-        if best is not None:
-            panel.axvline(offset + best + 1, color="0.4", linestyle="--", label="best epoch" if index == 0 else None)
+    several = len(phases) > 1
+    fig, panels = _axes(ax, len(phases), ncols=len(phases), panel_size=(3.4, 3.0) if several else (4.8, 3.2))
+    for index, (panel, (label, phase)) in enumerate(zip(panels, phases, strict=True)):
+        _draw_phase(panel, phase, name, _colours(colors))
         if label:
-            panel.axvline(offset + 0.5, color="0.8", linewidth=0.8)
-            panel.text(offset + 0.5, 1.01, f" {label}", transform=panel.get_xaxis_transform(), va="bottom")
-        offset += n_epochs
-    panel.set_xlabel("Epoch")
-    panel.set_ylabel(name.replace("_", " ").capitalize())
-    panel.legend()
-    return panel
+            panel.set_title(label[0].upper() + label[1:])
+        if index == 0:
+            panel.set_ylabel(name.replace("_", " ").capitalize())
+            if panel.get_legend_handles_labels()[0]:
+                panel.legend()
+    if several:
+        # One vertical scale, so that the level reached by a phase can be compared with the next.
+        limits = [panel.get_ylim() for panel in panels]
+        for panel in panels:
+            panel.set_ylim(min(lo for lo, _ in limits), max(hi for _, hi in limits))
+        return fig
+    return panels[0]
 
 
-def _annotated_heatmap(panel: Any, values: np.ndarray, cmap: str, fmt: Callable[[float], str]) -> None:
-    panel.imshow(values, cmap=cmap, aspect="auto", vmin=0.0)
+def _annotated_heatmap(panel: Any, values: np.ndarray, cmap: str | None, fmt: Callable[[float], str]) -> None:
+    image = panel.imshow(values, cmap=cmap or _theme.sequential, aspect="auto", vmin=0.0)
     if values.size > _HEATMAP_MAX_ANNOTATED_CELLS:
         return
-    threshold = float(values.max()) / 2.0
     for (row, col), value in np.ndenumerate(values):
-        panel.text(col, row, fmt(value), ha="center", va="center", color="white" if value >= threshold else "black")
+        panel.text(col, row, fmt(value), ha="center", va="center", color=_text_colour(image, float(value)))
 
 
-def plot_rule_activation(estimator: Any, X: Any, y: Any = None, *, ax: Any = None) -> Any:
+@_shown
+def plot_rule_activation(
+    estimator: Any,
+    X: Any,
+    y: Any = None,
+    *,
+    cmap: str | None = None,
+    colors: Sequence[str] | None = None,
+    ax: Any = None,
+) -> Any:
     """Plot the mean normalized firing strength of each rule.
 
     Args:
@@ -262,7 +450,15 @@ def plot_rule_activation(estimator: Any, X: Any, y: Any = None, *, ax: Any = Non
         X: Data on which the rules are evaluated.
         y: Optional class labels, for classifiers only. When given, the mean activation is
             computed separately for the samples of each class.
+        cmap: Colormap of the table drawn when ``y`` is given. ``None`` uses the sequential
+            colormap of the theme (see :func:`set_plot_theme`).
+        colors: Colour of the bars drawn when ``y`` is not given, as a sequence whose first
+            colour is used. ``None`` uses the theme.
         ax: Axes to draw on. ``None`` creates a new figure.
+        show: Display the figure and return nothing (``True``), or return it without
+            displaying (``False``). ``None`` displays in an interactive session or a
+            notebook, and returns it in a script or when ``ax`` is given.
+        save: Path of a file to write the figure to, in the format of its extension.
 
     Returns:
         The ``Axes`` with the heatmap (labels given) or the bar chart (no labels).
@@ -274,7 +470,7 @@ def plot_rule_activation(estimator: Any, X: Any, y: Any = None, *, ax: Any = Non
     _, (panel,) = _axes(ax, 1, ncols=1, panel_size=(4.8, max(2.4, 0.3 * n_rules + 1.2)))
 
     if y is None:
-        panel.barh(np.arange(n_rules), activation.mean(axis=0))
+        panel.barh(np.arange(n_rules), activation.mean(axis=0), color=_colours(colors)[0])
         panel.set_xlabel("Mean rule activation")
         panel.invert_yaxis()
     else:
@@ -283,7 +479,7 @@ def plot_rule_activation(estimator: Any, X: Any, y: Any = None, *, ax: Any = Non
         y = np.asarray(y)
         classes = estimator.classes_
         by_class = np.stack([activation[y == c].mean(axis=0) for c in classes], axis=1)
-        _annotated_heatmap(panel, by_class, "Greens", lambda v: f"{v:.2f}")
+        _annotated_heatmap(panel, by_class, cmap, lambda v: f"{v:.2f}")
         panel.set_xticks(np.arange(len(classes)), [str(c) for c in classes])
         panel.set_xlabel("True class")
         panel.set_title("Mean rule activation")
@@ -294,7 +490,9 @@ def plot_rule_activation(estimator: Any, X: Any, y: Any = None, *, ax: Any = Non
     return panel
 
 
-def _classification_diagnostics(estimator: Any, X: Any, y: np.ndarray, axes: list[Any]) -> None:
+def _classification_diagnostics(
+    estimator: Any, X: Any, y: np.ndarray, axes: list[Any], cmap: str | None, palette: Sequence[str]
+) -> None:
     classes = estimator.classes_
     labels = [str(c) for c in classes]
     ticks = np.arange(len(classes))
@@ -302,7 +500,7 @@ def _classification_diagnostics(estimator: Any, X: Any, y: np.ndarray, axes: lis
     predicted = classes[np.argmax(proba, axis=1)]
 
     matrix = confusion_matrix(y, predicted, labels=classes)
-    _annotated_heatmap(axes[0], matrix, "Oranges", lambda v: str(int(v)))
+    _annotated_heatmap(axes[0], matrix, cmap, lambda v: str(int(v)))
     axes[0].set_xticks(ticks, labels)
     axes[0].set_yticks(ticks, labels)
     axes[0].set_xlabel("Predicted class")
@@ -320,8 +518,9 @@ def _classification_diagnostics(estimator: Any, X: Any, y: np.ndarray, axes: lis
     rng = np.random.default_rng(0)
     for tick in ticks:
         values = margin[true_index == tick]
-        axes[1].scatter(tick + rng.uniform(-0.18, 0.18, size=len(values)), values, alpha=0.7, edgecolor="black", lw=0.3)
-    axes[1].axhline(0.0, color="0.4", linestyle="--", label="decision boundary")
+        jitter = tick + rng.uniform(-0.18, 0.18, size=len(values))
+        axes[1].scatter(jitter, values, color=palette[tick % len(palette)], alpha=0.7, edgecolor="black", lw=0.3)
+    axes[1].axhline(0.0, color=_theme.reference, linestyle="--", label="decision boundary")
     axes[1].set_xticks(ticks, labels)
     axes[1].set_ylim(-1.05, 1.05)
     axes[1].set_xlabel("True class")
@@ -330,26 +529,38 @@ def _classification_diagnostics(estimator: Any, X: Any, y: np.ndarray, axes: lis
     axes[1].legend()
 
 
-def _regression_diagnostics(estimator: Any, X: Any, y: np.ndarray, axes: list[Any]) -> None:
+def _regression_diagnostics(
+    estimator: Any, X: Any, y: np.ndarray, axes: list[Any], cmap: str | None, palette: Sequence[str]
+) -> None:
     predicted = estimator.predict(X)
     lo, hi = float(min(y.min(), predicted.min())), float(max(y.max(), predicted.max()))
     pad = 0.05 * (hi - lo) or 0.5
 
-    axes[0].plot([lo - pad, hi + pad], [lo - pad, hi + pad], color="0.4", linestyle="--", label="ideal")
-    axes[0].scatter(y, predicted, alpha=0.7, edgecolor="black", lw=0.3, label=f"$R^2$ = {r2_score(y, predicted):.3f}")
+    points = {"color": palette[0], "alpha": 0.7, "edgecolor": "black", "lw": 0.3}
+    axes[0].plot([lo - pad, hi + pad], [lo - pad, hi + pad], color=_theme.reference, linestyle="--", label="ideal")
+    axes[0].scatter(y, predicted, label=f"$R^2$ = {r2_score(y, predicted):.3f}", **points)
     axes[0].set_xlabel("Observed")
     axes[0].set_ylabel("Predicted")
     axes[0].set_title("Predicted against observed")
     axes[0].legend()
 
-    axes[1].axhline(0.0, color="0.4", linestyle="--")
-    axes[1].scatter(y, predicted - y, alpha=0.7, edgecolor="black", lw=0.3)
+    axes[1].axhline(0.0, color=_theme.reference, linestyle="--")
+    axes[1].scatter(y, predicted - y, **points)
     axes[1].set_xlabel("Observed")
     axes[1].set_ylabel("Residual (predicted $-$ observed)")
     axes[1].set_title("Residuals")
 
 
-def plot_diagnostics(estimator: Any, X: Any, y: Any, *, ax: Any = None) -> Any:
+@_shown
+def plot_diagnostics(
+    estimator: Any,
+    X: Any,
+    y: Any,
+    *,
+    cmap: str | None = None,
+    colors: Sequence[str] | None = None,
+    ax: Any = None,
+) -> Any:
     """Plot two views of the predictions on ``(X, y)``.
 
     For a classifier: the confusion matrix, and the decision margin of every sample
@@ -364,7 +575,15 @@ def plot_diagnostics(estimator: Any, X: Any, y: Any, *, ax: Any = None) -> Any:
         estimator: A fitted estimator.
         X: Data to predict.
         y: True labels or targets for ``X``.
+        cmap: Colormap of the confusion matrix. ``None`` uses the sequential colormap of
+            the theme (see :func:`set_plot_theme`).
+        colors: Colours of the classes in the decision margin, or of the points of a
+            regressor. ``None`` uses the theme.
         ax: Two axes to draw on. ``None`` creates a new figure.
+        show: Display the figure and return nothing (``True``), or return it without
+            displaying (``False``). ``None`` displays in an interactive session or a
+            notebook, and returns it in a script or when ``ax`` is given.
+        save: Path of a file to write the figure to, in the format of its extension.
 
     Returns:
         The ``Figure`` holding the two panels.
@@ -372,11 +591,14 @@ def plot_diagnostics(estimator: Any, X: Any, y: Any, *, ax: Any = None) -> Any:
     check_is_fitted(estimator, "model_")
     fig, axes = _axes(ax, 2, ncols=2, panel_size=(3.6, 3.2))
     draw = _classification_diagnostics if is_classifier(estimator) else _regression_diagnostics
-    draw(estimator, X, np.asarray(y), axes)
+    draw(estimator, X, np.asarray(y), axes, cmap, _colours(colors))
     return fig
 
 
-def plot_feature_importance(estimator: Any, *, top: int | None = 20, ax: Any = None) -> Any:
+@_shown
+def plot_feature_importance(
+    estimator: Any, *, top: int | None = 20, colors: Sequence[str] | None = None, ax: Any = None
+) -> Any:
     """Plot the features that weigh most in the consequents of the fitted model.
 
     The importance is the one of ``estimator.feature_importance()``: the mean magnitude of
@@ -386,7 +608,13 @@ def plot_feature_importance(estimator: Any, *, top: int | None = 20, ax: Any = N
     Args:
         estimator: A fitted estimator.
         top: Number of features to draw, from the most important. ``None`` draws all.
+        colors: Colour of the bars, as a sequence whose first colour is used. ``None`` uses
+            the theme (see :func:`set_plot_theme`).
         ax: Axes to draw on. ``None`` creates a new figure.
+        show: Display the figure and return nothing (``True``), or return it without
+            displaying (``False``). ``None`` displays in an interactive session or a
+            notebook, and returns it in a script or when ``ax`` is given.
+        save: Path of a file to write the figure to, in the format of its extension.
 
     Returns:
         The ``Axes`` with the bar chart.
@@ -402,10 +630,130 @@ def plot_feature_importance(estimator: Any, *, top: int | None = 20, ax: Any = N
         order = order[: int(top)]
 
     _, (panel,) = _axes(ax, 1, ncols=1, panel_size=(4.8, max(2.4, 0.22 * len(order) + 1.0)))
-    panel.barh(np.arange(len(order)), importance[order])
+    panel.barh(np.arange(len(order)), importance[order], color=_colours(colors)[0])
     panel.set_yticks(np.arange(len(order)), [labels[position] for position in order])
     panel.invert_yaxis()
     panel.set_xlabel("Feature importance")
+    return panel
+
+
+def _abbreviation(label: str) -> str:
+    """Short form of the name of a fuzzy set: initials of a phrase, the rank of a level."""
+    words = label.split()
+    if len(words) >= 2 and words[0] == "level":
+        return words[1]
+    return "".join(word[0].upper() for word in words)
+
+
+def _distinguishing_features(
+    estimator: Any, table: list[dict[str, Any]], model_names: list[str], max_features: int
+) -> list[int]:
+    """Positions of the features to show in a table of the rule base that cannot show all.
+
+    A rule on many features is told from the others by the few features on which it does
+    not use the fuzzy set it uses on most of them. Those features come first, the ones
+    that are an exception in more rules before the others, and the most important
+    features complete the selection.
+    """
+    importance = estimator.feature_importance()
+    weight = np.zeros(len(model_names)) if importance is None else np.asarray(importance, dtype=float)
+    exceptions = np.zeros(len(model_names), dtype=int)
+    for rule in table:
+        used = [int(rule[name]) for name in model_names]
+        usual = max(sorted(set(used)), key=used.count)
+        exceptions += np.array([index != usual for index in used])
+    order = sorted(range(len(model_names)), key=lambda position: (-exceptions[position], -weight[position]))
+    return sorted(order[:max_features])
+
+
+@_shown
+def plot_rules(
+    estimator: Any,
+    features: Sequence[int | str] | None = None,
+    *,
+    max_features: int = 12,
+    set_names: Sequence[str] | None = None,
+    colors: Sequence[str] | None = None,
+    cmap: str | None = None,
+    ax: Any = None,
+) -> Any:
+    """Plot the rule base as a table: one row per rule, one column per feature.
+
+    Each cell is the fuzzy set that the rule uses on the feature. A set has the colour it
+    has in :func:`plot_memberships`, the first colour for the lowest set of a feature, and
+    in small rule bases it is labelled with the initials of its name: ``VL`` for *very
+    low*, ``M`` for *medium*. A blank cell is a feature that the rule does not use.
+
+    Args:
+        estimator: A fitted estimator.
+        features: Features to show, as names or as column indices of the data seen in
+            ``fit``. ``None`` shows every feature or, when the model has more than
+            ``max_features``, the features that tell the rules apart: those on which a
+            rule departs from the fuzzy set it uses on most features, then the most
+            important ones.
+        max_features: Number of features shown when ``features`` is ``None``.
+        set_names: Names of the fuzzy sets of a feature, as in :func:`plot_memberships`.
+        colors: Colours of the fuzzy sets, from the lowest to the highest. ``None`` uses the
+            theme (see :func:`set_plot_theme`).
+        cmap: Colormap that shades the cells from the lowest set to the highest, in place
+            of one colour per set. It is also what is used, with the sequential colormap
+            of the theme, when a feature has more sets than there are colours.
+        ax: Axes to draw on. ``None`` creates a new figure.
+        show: Display the figure and return nothing (``True``), or return it without
+            displaying (``False``). ``None`` displays in an interactive session or a
+            notebook, and returns it in a script or when ``ax`` is given.
+        save: Path of a file to write the figure to, in the format of its extension.
+
+    Returns:
+        The ``Axes`` with the table.
+    """
+    check_is_fitted(estimator, "model_")
+    labels = _feature_labels(estimator)
+    model_names = [str(name) for name in estimator.model_.input_names]
+    mf_params = estimator.get_mf_params()
+    table = estimator.model_.get_rule_table()
+    if features is None and len(model_names) > max_features:
+        positions = _distinguishing_features(estimator, table, model_names, max_features)
+    else:
+        positions = _select_features(estimator, features, max_features)
+
+    levels = np.full((len(table), len(positions)), np.nan)  # position of the set among those of its feature
+    n_sets = 1
+    text: list[list[str]] = [["" for _ in positions] for _ in table]
+    for column, position in enumerate(positions):
+        name = model_names[position]
+        names = _set_labels(mf_params[name], set_names)
+        located = (j for j, label in enumerate(names) if label is not None)
+        order = sorted(located, key=lambda j: _set_position(mf_params[name][j]))
+        rank = {j: i for i, j in enumerate(order)}
+        n_sets = max(n_sets, len(order))
+        for row, rule in enumerate(table):
+            j = int(rule[name])
+            if j in rank:
+                levels[row, column] = rank[j]
+                text[row][column] = _abbreviation(str(names[j]))
+
+    size = (max(3.6, 0.62 * len(positions) + 1.6), max(2.4, 0.3 * len(table) + 1.4))
+    _, (panel,) = _axes(ax, 1, ncols=1, panel_size=size)
+    palette = _colours(colors)
+    if cmap is None and n_sets <= len(palette):
+        from matplotlib.colors import ListedColormap
+
+        shades: Any = ListedColormap(list(palette[:n_sets]), name="fuzzy sets")
+        image = panel.imshow(levels, cmap=shades, aspect="auto", vmin=-0.5, vmax=n_sets - 0.5)
+    else:
+        image = panel.imshow(levels, cmap=cmap or _theme.sequential, aspect="auto", vmin=0.0, vmax=max(n_sets - 1, 1))
+    if levels.size <= _RULE_TABLE_MAX_ANNOTATED_CELLS:
+        for (row, column), value in np.ndenumerate(levels):
+            if not np.isnan(value):
+                colour = _text_colour(image, float(value))
+                panel.text(column, row, text[row][column], ha="center", va="center", color=colour, fontsize="small")
+    panel.set_xticks(np.arange(len(positions)), [labels[p] for p in positions], rotation=60, ha="right")
+    if len(table) <= 30:
+        panel.set_yticks(np.arange(len(table)), [f"Rule {rule['rule_id']}" for rule in table])
+    else:
+        panel.set_ylabel("Rule")
+    panel.set_title("Fuzzy set of each feature in each rule")
     return panel
 
 
@@ -416,7 +764,8 @@ def _gate_thresholds(history: dict[str, Any]) -> tuple[float | None, float | Non
     return (None if feature is None else float(feature), None if rule is None else float(rule))
 
 
-def plot_gates(estimator: Any, *, ax: Any = None) -> Any:
+@_shown
+def plot_gates(estimator: Any, *, colors: Sequence[str] | None = None, ax: Any = None) -> Any:
     """Plot the gates of the features and of the rules that a gated family kept.
 
     Only DG-TSK, DG-ALETSK and FSRE-ADATSK have gates. The bars are the gate values at the
@@ -426,8 +775,14 @@ def plot_gates(estimator: Any, *, ax: Any = None) -> Any:
 
     Args:
         estimator: A fitted estimator of a gated family.
+        colors: Colour of the bars, as a sequence whose first colour is used. ``None`` uses
+            the theme (see :func:`set_plot_theme`).
         ax: Two axes to draw on, for the features and for the rules. ``None`` creates a
             new figure.
+        show: Display the figure and return nothing (``True``), or return it without
+            displaying (``False``). ``None`` displays in an interactive session or a
+            notebook, and returns it in a script or when ``ax`` is given.
+        save: Path of a file to write the figure to, in the format of its extension.
 
     Returns:
         The ``Figure`` with the two panels.
@@ -445,10 +800,10 @@ def plot_gates(estimator: Any, *, ax: Any = None) -> Any:
     fig, axes = _axes(ax, 2, ncols=2, panel_size=(4.4, 3.0))
     for panel, (title, values, labels), threshold in zip(axes, panels, thresholds, strict=True):
         positions = np.arange(len(values))
-        panel.bar(positions, values)
+        panel.bar(positions, values, color=_colours(colors)[0])
         if threshold is not None:
-            panel.axhline(threshold, color="0.3", linestyle="--", label=f"threshold ({threshold:.2f})")
-            panel.legend(loc="lower right")
+            panel.axhline(threshold, color=_theme.reference, linestyle="--")
+            title = f"{title} (dashed: threshold {threshold:.2f})"
         if labels is None:
             labels = [f"Rule {rule}" for rule in positions]
         if len(values) <= 30:
@@ -456,7 +811,7 @@ def plot_gates(estimator: Any, *, ax: Any = None) -> Any:
             panel.set_xticks(positions, labels, rotation=60 if slanted else 0, ha="right" if slanted else "center")
         else:
             panel.set_xticks([])
-        panel.set_ylim(0.0, max(1.05, float(values.max()) * 1.05))
+        panel.set_ylim(0.0, 1.1 * max(float(values.max()), threshold or 0.0))
         panel.set_ylabel("Gate value")
         panel.set_title(title)
     return fig
@@ -465,6 +820,7 @@ def plot_gates(estimator: Any, *, ax: Any = None) -> Any:
 _PLOTTERS: dict[str, Callable[..., Any]] = {
     "memberships": plot_memberships,
     "history": plot_history,
+    "rules": plot_rules,
     "rule_activation": plot_rule_activation,
     "diagnostics": plot_diagnostics,
     "feature_importance": plot_feature_importance,
@@ -477,12 +833,14 @@ def plot(estimator: Any, kind: str = "memberships", **kwargs: Any) -> Any:
 
     Args:
         estimator: A fitted estimator.
-        kind: One of ``"memberships"`` (default), ``"history"``, ``"rule_activation"``,
-            ``"diagnostics"``, ``"feature_importance"`` or ``"gates"``.
-        **kwargs: Arguments of the corresponding ``plot_<kind>`` function.
+        kind: One of ``"memberships"`` (default), ``"history"``, ``"rules"``,
+            ``"rule_activation"``, ``"diagnostics"``, ``"feature_importance"`` or ``"gates"``.
+        **kwargs: Arguments of the corresponding ``plot_<kind>`` function, among them
+            ``show``.
 
     Returns:
-        The ``Axes`` or ``Figure`` returned by that function.
+        The ``Axes`` or ``Figure`` returned by that function, or ``None`` when the figure
+        was displayed.
     """
     if kind not in _PLOTTERS:
         raise ValueError(f"kind must be one of {list(PLOT_KINDS)}; got {kind!r}")
@@ -491,6 +849,8 @@ def plot(estimator: Any, kind: str = "memberships", **kwargs: Any) -> Any:
 
 __all__: list[str] = [
     "PLOT_KINDS",
+    "PlotTheme",
+    "get_plot_theme",
     "plot",
     "plot_diagnostics",
     "plot_feature_importance",
@@ -498,4 +858,7 @@ __all__: list[str] = [
     "plot_history",
     "plot_memberships",
     "plot_rule_activation",
+    "plot_rules",
+    "reset_plot_theme",
+    "set_plot_theme",
 ]

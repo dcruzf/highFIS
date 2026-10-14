@@ -63,19 +63,19 @@ X = MinMaxScaler().fit_transform(X)
 clf = HTSKClassifier(n_mfs=3, mf_init="kmeans", epochs=20, random_state=0)
 clf.fit(X, y)
 
-print(clf.rules_as_text(top_features=2, max_rules=1))
+clf.rules_as_text(top_features=2, max_rules=1)
 ```
 
 ```text
-Rule 0: IF x1 is low AND x2 is high AND ... (2 more)
-        THEN 0: 0.56 - 0.47 * x4 - 0.38 * x3 + ...
-             1: -0.55 - 0.70 * x4 - 0.34 * x2 + ...
-             2: -0.54 - 0.91 * x2 + 0.47 * x4 + ...
+Rule 0: IF x2 is high AND the other 3 features are low
+        THEN 0: 0.51 + 0.44 * x3 + 0.38 * x4 + ...
+             1: -0.51 - 1.11 * x4 - 0.60 * x3 + ...
+             2: -0.51 - 0.87 * x2 - 0.41 * x1 + ...
 ... (2 more rules)
 ```
 
-`top_features` keeps the conditions on the most important features and the largest
-coefficients; `None` shows them all. Fitting on a pandas `DataFrame` with string labels
+The conditions of a rule are written in full, and `top_features` keeps the largest
+coefficients of each consequent; `None` shows them all. Fitting on a pandas `DataFrame` with string labels
 gives the real feature and class names instead of `x1` and `0`. The exact numbers depend
 on the platform.
 

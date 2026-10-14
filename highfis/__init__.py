@@ -159,6 +159,7 @@ from .estimators import (
     set_mf_cache_size,
 )
 from .optim import BaseTrainer, DGTrainer, GradientTrainer
+from .plotting import get_plot_theme, reset_plot_theme, set_plot_theme
 from .version import __version__
 
 __all__: list[str] = [
@@ -198,8 +199,11 @@ __all__: list[str] = [
     "TSKRegressor",
     "__version__",
     "clear_mf_cache",
+    "get_plot_theme",
     "mf_cache_info",
+    "reset_plot_theme",
     "set_mf_cache_enabled",
     "set_mf_cache_size",
+    "set_plot_theme",
     "show_versions",
 ]

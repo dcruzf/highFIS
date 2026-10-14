@@ -102,7 +102,7 @@ for name in DATASETS:
 
 print()
 print("Summary of the last model fitted")
-print(model.summary())
+model.summary()
 
 print()
 highfis.show_versions()

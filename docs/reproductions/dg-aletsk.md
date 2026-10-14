@@ -40,10 +40,10 @@ DGALETSKClassifier
   defuzzifier        SoftmaxLogDefuzzifier
   consequents        GatedClassificationConsequentLayer
   parameters         72 trainable (24 antecedent, 42 consequent)
-Training
-  batch size         6
-  gates              10 epochs, learning rate 0.01, training loss 0.4802 -> 0.2015, training accuracy 0.6429
-  fine-tuning        50 epochs, learning rate 0.01, training loss 0.3704 -> 0.0913, training accuracy 0.9286
+Training (batch size 6)
+  phase        epochs  rate  loss first -> last  accuracy
+  gates            10  0.01    0.4802 -> 0.2015    0.6429
+  fine-tuning      50  0.01    0.3704 -> 0.0913    0.9286
 ```
 
 On Colon (62 samples, 2000 genes) the numbers of selected genes and of extracted rules

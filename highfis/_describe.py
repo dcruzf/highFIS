@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Sequence
 from typing import Any
 
@@ -12,6 +13,54 @@ _LEVELS: dict[int, tuple[str, ...]] = {
     3: ("low", "medium", "high"),
     5: ("very low", "low", "medium", "high", "very high"),
 }
+
+
+class Report(str):
+    """Text that shows itself, and carries the numbers it was written from.
+
+    A report is a string: ``print`` it, search it, write it to a file. At an interactive
+    prompt or as the last line of a notebook cell it is displayed as the text itself, with
+    its line breaks, so no ``print`` is needed there. ``data`` holds what the text
+    describes, for the code that needs the values and not their description.
+    """
+
+    data: dict[str, Any]
+
+    def __new__(cls, text: str, data: dict[str, Any] | None = None) -> Report:
+        """Create the report from its text and from the values it describes."""
+        report = super().__new__(cls, text)
+        report.data = dict(data or {})
+        return report
+
+    def __repr__(self) -> str:
+        """Return the text itself, which is what an interactive session displays."""
+        return str.__str__(self)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return the values that the text describes."""
+        return dict(self.data)
+
+
+def interactive_session() -> bool:
+    """Whether the code runs at a prompt or in a notebook, where a result displays itself."""
+    if hasattr(sys, "ps1") or bool(sys.flags.interactive):
+        return True
+    ipython = sys.modules.get("IPython")
+    return ipython is not None and ipython.get_ipython() is not None
+
+
+def deliver(report: Report, show: bool | None) -> Report:
+    """Print *report* when asked to, and return it.
+
+    With ``show=None`` the report is printed in a script and left alone in an interactive
+    session or a notebook, where it displays itself when it is the value of the last line:
+    the same call then shows the text however the code is run.
+    """
+    if show is None:
+        show = not interactive_session()
+    if show:
+        sys.stdout.write(f"{report}\n")
+    return report
 
 
 def model_columns(estimator: Any) -> np.ndarray:
@@ -62,10 +111,39 @@ def set_labels(mf_params: Sequence[dict[str, Any]], labels: Sequence[str] | None
     return result
 
 
-def _linear_terms(
+def _pack(prefix: str, parts: Sequence[str], separator: str, width: int, indent: str | None = None) -> list[str]:
+    """Lay *parts* out after *prefix*, breaking lines between parts and never inside one.
+
+    The lines that continue the first are indented to the width of the prefix, or with
+    *indent* when it is given. A separator that is a punctuation mark stays at the end of
+    the line it closes; a word such as ``AND`` opens the next line.
+    """
+    indent = " " * len(prefix) if indent is None else indent
+    lines, current = [], prefix
+    for index, part in enumerate(parts):
+        piece = part if index == 0 else separator + part
+        if not current.strip() or len(current) + len(piece) <= width:
+            current += piece
+        elif separator[:1].strip():
+            lines.append(current + separator.rstrip())
+            current = indent + part
+        else:
+            lines.append(current.rstrip())
+            current = indent + piece.lstrip()
+    lines.append(current.rstrip())
+    return lines
+
+
+def _signed(value: float, digits: int) -> str:
+    """Format with a sign, writing a value that rounds to zero as ``+0.00`` and never ``-0.00``."""
+    text = f"{value:+.{digits}f}"
+    return f"{0.0:+.{digits}f}" if float(text) == 0.0 else text
+
+
+def _linear_parts(
     bias: float | None, weights: np.ndarray | None, names: list[str], top: int | None, digits: int
-) -> str:
-    """Format ``b + w1 * x1 ...`` keeping the *top* coefficients with the largest magnitude."""
+) -> list[str]:
+    """Terms of ``b + w1 * x1 ...``, keeping the *top* coefficients with the largest magnitude."""
     parts = [] if bias is None else [f"{bias:.{digits}f}"]
     if weights is not None:
         order = np.argsort(-np.abs(weights))
@@ -74,28 +152,40 @@ def _linear_terms(
             sign = "-" if weights[index] < 0 else "+"
             parts.append(f"{sign} {abs(weights[index]):.{digits}f} * {names[index]}")
         if len(kept) < len(order):
-            parts.append("+ ...")
+            # Kept with the last term, so that a line never holds the ellipsis alone.
+            parts[-1] += " + ..."
     if not parts:
-        return "(no consequent parameters)"
-    return " ".join(parts).removeprefix("+ ")
+        return ["(no consequent parameters)"]
+    parts[0] = parts[0].removeprefix("+ ")
+    return parts
 
 
-def _antecedent(
-    rule: dict[str, Any],
-    model_names: list[str],
-    names: list[str],
-    sets: dict[str, list[str | None]],
-    shown: list[int],
-) -> str:
-    conditions = [
-        (position, sets[model_names[position]][rule[model_names[position]]]) for position in range(len(model_names))
+def _conditions(
+    rule: dict[str, Any], model_names: list[str], names: list[str], sets: dict[str, list[str | None]]
+) -> list[str]:
+    """Conditions of a rule, as the parts of ``a is low AND b is high``.
+
+    When more than half of the features share a fuzzy set, the rule is written as the
+    features that differ followed by ``the other N features are low``: that is what tells a
+    rule from the next in a rule base on many features.
+    """
+    active = [
+        (names[position], label)
+        for position, name in enumerate(model_names)
+        if (label := sets[name][rule[name]]) is not None
     ]
-    active = [(position, label) for position, label in conditions if label is not None]
-    kept = [f"{names[position]} is {label}" for position, label in active if position in shown]
-    hidden = len(active) - len(kept)
-    if hidden:
-        kept.append(f"... ({hidden} more)")
-    return " AND ".join(kept) if kept else "(always)"
+    if not active:
+        return ["(always)"]
+    labels = [label for _, label in active]
+    common = max(sorted(set(labels)), key=labels.count)
+    shared = labels.count(common)
+    if len(active) <= 3 or 2 * shared <= len(active):
+        return [f"{name} is {label}" for name, label in active]
+    if shared == len(active):
+        return [f"all {shared} features are {common}"]
+    parts = [f"{name} is {label}" for name, label in active if label != common]
+    rest = "the other feature is" if shared == 1 else f"the other {shared} features are"
+    return [*parts, f"{rest} {common}"]
 
 
 def rules_as_text(
@@ -104,7 +194,8 @@ def rules_as_text(
     digits: int = 2,
     labels: Sequence[str] | None = None,
     max_rules: int | None = None,
-) -> str:
+    width: int = 80,
+) -> Report:
     """Describe the fitted rule base as ``IF ... THEN ...`` sentences.
 
     See :meth:`highfis.estimators._base._BaseTSKEstimator.rules_as_text`.
@@ -114,10 +205,6 @@ def rules_as_text(
     model_names = [str(name) for name in model.input_names]
     mf_params = estimator.get_mf_params()
     sets = {name: set_labels(mf_params[name], labels) for name in model_names}
-
-    importance = estimator.feature_importance()
-    ranked = list(range(len(names))) if importance is None else np.argsort(-np.asarray(importance)).tolist()
-    shown = ranked if top_features is None else ranked[:top_features]
 
     weights = estimator.get_consequent_weights()
     bias = estimator.get_consequent_bias()
@@ -130,20 +217,29 @@ def rules_as_text(
         r = rule["rule_id"]
         head = f"Rule {r}: "
         indent = " " * len(head)
-        lines.append(f"{head}IF {_antecedent(rule, model_names, names, sets, shown)}")
+        lines += _pack(f"{head}IF ", _conditions(rule, model_names, names, sets), " AND ", width)
         if classes is None:
             b = None if bias is None else float(bias[r])
             w = None if weights is None else weights[r]
-            lines.append(f"{indent}THEN y = {_linear_terms(b, w, names, top_features, digits)}")
+            lines += _pack(f"{indent}THEN y = ", _linear_parts(b, w, names, top_features, digits), " ", width)
             continue
+        longest = max(len(str(label)) for label in classes)
         for c, label in enumerate(classes):
             b = None if bias is None else float(bias[r, c])
             w = None if weights is None else weights[r, c]
-            prefix = "THEN " if c == 0 else "     "
-            lines.append(f"{indent}{prefix}{label}: {_linear_terms(b, w, names, top_features, digits)}")
+            prefix = f"{indent}{'THEN' if c == 0 else '    '} {str(label) + ':':{longest + 1}s} "
+            lines += _pack(prefix, _linear_parts(b, w, names, top_features, digits), " ", width)
     if len(rules) < len(table):
         lines.append(f"... ({len(table) - len(rules)} more rules)")
-    return "\n".join(lines)
+    data = {
+        "features": names,
+        "classes": None if classes is None else list(classes),
+        "fuzzy_sets": {names[i]: sets[model_names[i]] for i in range(len(names))},
+        "rules": [{names[i]: sets[model_names[i]][rule[model_names[i]]] for i in range(len(names))} for rule in table],
+        "bias": bias,
+        "weights": weights,
+    }
+    return Report("\n".join(lines), data)
 
 
 _PHASES = {"dg": "gates", "fs": "feature selection", "re": "rule extraction", "finetune": "fine-tuning"}
@@ -155,26 +251,50 @@ def _phases(history: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
     return found or [("", history)]
 
 
-def _phase_line(phase: dict[str, Any], digits: int) -> str:
-    losses = phase.get("train_loss") or []
-    config = phase.get("config") or {}
-    parts = [f"{len(losses)} epochs"]
-    if "learning_rate" in config:
-        parts.append(f"learning rate {config['learning_rate']:g}")
-    if losses:
-        parts.append(f"training loss {losses[0]:.{digits}f} -> {losses[-1]:.{digits}f}")
-    for key, values in phase.items():
-        reserved = key in ("train_loss", "train_ur_loss", "train_total_loss")
-        if key.startswith("train_") and not reserved and values:
-            parts.append(f"training {key[len('train_') :].replace('_', ' ')} {values[-1]:.{digits}f}")
-    if phase.get("val_loss"):
-        parts.append(f"validation loss {phase['val_loss'][-1]:.{digits}f}")
-    if phase.get("best_epoch") is not None:
-        parts.append(f"best epoch {int(phase['best_epoch']) + 1}")
-    return ", ".join(parts)
+def _training_metrics(phase: dict[str, Any]) -> dict[str, float]:
+    """Last value of each training metric recorded in a phase, by the name of the metric."""
+    reserved = ("train_loss", "train_ur_loss", "train_total_loss")
+    return {
+        key[len("train_") :].replace("_", " "): values[-1]
+        for key, values in phase.items()
+        if key.startswith("train_") and key not in reserved and values
+    }
 
 
-def summary(estimator: Any, digits: int = 4) -> str:
+def _training_table(phases: list[tuple[str, dict[str, Any]]], digits: int) -> list[str]:
+    """One row per training phase, one column per quantity that at least one phase recorded."""
+    columns: list[tuple[str, list[str]]] = []
+
+    def column(title: str, cells: list[str]) -> None:
+        if any(cells):
+            columns.append((title, [cell or "-" for cell in cells]))
+
+    histories = [phase for _, phase in phases]
+    losses = [phase.get("train_loss") or [] for phase in histories]
+    column("epochs", [str(len(values)) for values in losses])
+    rates = [(phase.get("config") or {}).get("learning_rate") for phase in histories]
+    column("rate", ["" if rate is None else f"{rate:g}" for rate in rates])
+    column("loss first -> last", [f"{v[0]:.{digits}f} -> {v[-1]:.{digits}f}" if v else "" for v in losses])
+    metrics = [_training_metrics(phase) for phase in histories]
+    for name in sorted({name for recorded in metrics for name in recorded}):
+        column(name, [f"{recorded[name]:.{digits}f}" if name in recorded else "" for recorded in metrics])
+    validation = [phase.get("val_loss") or [] for phase in histories]
+    column("val. loss", [f"{values[-1]:.{digits}f}" if values else "" for values in validation])
+    best = [phase.get("best_epoch") for phase in histories]
+    column("best epoch", ["" if epoch is None else str(int(epoch) + 1) for epoch in best])
+
+    names = [label or "training" for label, _ in phases]
+    first = max(len("phase"), *(len(name) for name in names))
+    widths = [max(len(title), *(len(cell) for cell in cells)) for title, cells in columns]
+    header = "".join(f"  {title:>{w}s}" for (title, _), w in zip(columns, widths, strict=True))
+    rows = [f"  {'phase':{first}s}{header}"]
+    for index, name in enumerate(names):
+        cells = "".join(f"  {cells[index]:>{w}s}" for (_, cells), w in zip(columns, widths, strict=True))
+        rows.append(f"  {name:{first}s}{cells}")
+    return rows
+
+
+def summary(estimator: Any, digits: int = 4, width: int = 80) -> Report:
     """Describe a fitted estimator: structure, training configuration and training outcome.
 
     See :meth:`highfis.estimators._base._BaseTSKEstimator.summary`.
@@ -210,24 +330,44 @@ def summary(estimator: Any, digits: int = 4) -> str:
         ("parameters", f"{total} trainable ({antecedent} antecedent, {consequent} consequent)"),
     ]
     batch = getattr(estimator, "batch_size_", None)
-    training = [("batch size", "full batch" if batch is None else str(batch))]
-    for label, phase in _phases(estimator.history_):
-        training.append((label or "epochs", _phase_line(phase, digits)))
+    phases = _phases(estimator.history_)
     solved = estimator.history_.get("lse") if isinstance(estimator.history_, dict) else None
-    if solved:
-        training.append(
-            (
-                "least squares",
-                f"consequents solved at the end, ridge {solved['ridge']:g}, "
-                f"training error {solved['train_mse']:.{digits}f}",
-            )
-        )
 
     lines = [type(estimator).__name__]
-    lines += [f"  {name:18s} {value}" for name, value in rows]
-    lines.append("Training")
-    lines += [f"  {name:18s} {value}" for name, value in training]
-    return "\n".join(lines)
+    for name, value in rows:
+        lines += _pack(f"  {name:18s} ", value.split(" "), " ", width)
+    lines.append(f"Training ({'full batch' if batch is None else f'batch size {batch}'})")
+    lines += _training_table(phases, digits)
+    if solved:
+        text = (
+            f"consequents solved at the end, ridge {solved['ridge']:g}, training error {solved['train_mse']:.{digits}f}"
+        )
+        lines += _pack("  least squares: ", text.split(" "), " ", width)
+    data = {
+        "estimator": type(estimator).__name__,
+        "task": "regression" if classes is None else "classification",
+        "classes": None if classes is None else list(classes),
+        "n_features_in": n_seen,
+        "n_features_used": n_used,
+        "n_rules": int(model.n_rules),
+        "rule_base": rule_base,
+        "n_fuzzy_sets": sets,
+        "membership_functions": kinds,
+        "n_parameters": {"total": total, "antecedent": antecedent, "consequent": consequent},
+        "batch_size": batch,
+        "phases": [
+            {
+                "name": label or "training",
+                "epochs": len(phase.get("train_loss") or []),
+                "first_loss": (phase.get("train_loss") or [None])[0],
+                "last_loss": (phase.get("train_loss") or [None])[-1],
+                "best_epoch": phase.get("best_epoch"),
+            }
+            for label, phase in phases
+        ],
+        "least_squares": dict(solved) if solved else None,
+    }
+    return Report("\n".join(lines), data)
 
 
 def explain(
@@ -236,10 +376,10 @@ def explain(
     contributions: np.ndarray,
     prediction: Any,
     top_rules: int | None = 3,
-    top_features: int | None = 3,
     digits: int = 2,
     labels: Sequence[str] | None = None,
-) -> str:
+    width: int = 80,
+) -> Report:
     """Describe how the rules produce the prediction of one sample.
 
     See :meth:`highfis.estimators._base._BaseTSKEstimator.explain`.
@@ -249,29 +389,40 @@ def explain(
     model_names = [str(name) for name in model.input_names]
     mf_params = estimator.get_mf_params()
     sets = {name: set_labels(mf_params[name], labels) for name in model_names}
-    importance = estimator.feature_importance()
-    ranked = list(range(len(names))) if importance is None else np.argsort(-np.asarray(importance)).tolist()
-    shown = ranked if top_features is None else ranked[:top_features]
     classes = getattr(estimator, "classes_", None)
     table = model.get_rule_table()
 
-    def scores(values: np.ndarray) -> str:
+    def scores(values: np.ndarray) -> list[str]:
         if classes is None:
-            return f"{float(values[0]):+.{digits}f}"
-        return ", ".join(f"{label}: {float(value):+.{digits}f}" for label, value in zip(classes, values, strict=True))
+            return [_signed(float(values[0]), digits)]
+        pairs = zip(classes, values, strict=True)
+        return [f"{label}: {_signed(float(value), digits)}" for label, value in pairs]
 
     order = np.argsort(-weights)
-    kept = order if top_rules is None else order[:top_rules]
+    # A rule whose weight is written as zero says nothing about this sample: it goes with the rest.
+    visible = [int(r) for r in order if float(weights[r]) >= 0.5 * 10.0**-digits]
+    kept = [int(r) for r in order] if top_rules is None else visible[:top_rules]
     shown_prediction = f"{float(prediction):.{digits}f}" if classes is None else str(prediction)
     lines = [f"Prediction: {shown_prediction}"]
-    lines.append(f"Output, the sum of the contributions of the {len(order)} rules: {scores(contributions.sum(axis=0))}")
+    total = f"Output, the sum of the contributions of the {len(order)} rules: "
+    lines += _pack(total, scores(contributions.sum(axis=0)), ", ", width, indent="    ")
     for r in kept:
-        lines.append(f"Rule {int(r)}, weight {float(weights[r]):.{digits}f}: contributes {scores(contributions[r])}")
-        lines.append(f"    IF {_antecedent(table[int(r)], model_names, names, sets, shown)}")
+        head = f"Rule {r}, weight {float(weights[r]):.{digits}f}: contributes "
+        lines += _pack(head, scores(contributions[r]), ", ", width, indent="    ")
+        lines += _pack("    IF ", _conditions(table[r], model_names, names, sets), " AND ", width)
     if len(kept) < len(order):
         rest = np.setdiff1d(order, kept)
-        lines.append(
-            f"{len(rest)} other rule{'s' if len(rest) > 1 else ''}, weight {float(weights[rest].sum()):.{digits}f} "
-            f"in all: contribute{'' if len(rest) > 1 else 's'} {scores(contributions[rest].sum(axis=0))}"
+        several = len(rest) > 1
+        head = (
+            f"{len(rest)} other rule{'s' if several else ''}, weight {float(weights[rest].sum()):.{digits}f} "
+            f"in all: contribute{'' if several else 's'} "
         )
-    return "\n".join(lines)
+        lines += _pack(head, scores(contributions[rest].sum(axis=0)), ", ", width, indent="    ")
+    data = {
+        "prediction": prediction,
+        "classes": None if classes is None else list(classes),
+        "output": contributions.sum(axis=0),
+        "weights": weights,
+        "contributions": contributions,
+    }
+    return Report("\n".join(lines), data)

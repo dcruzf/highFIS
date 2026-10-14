@@ -97,7 +97,7 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
         use_lse: bool = False,
-        lse_ridge: float = 0.0,
+        lse_ridge: float | str = 0.0,
     ) -> None:
         """Initialise a DombiTSK classifier.
 
@@ -153,7 +153,8 @@ class DombiTSKClassifier(_BaseClassifierEstimator):
                 their least-squares solution on the training data, with the antecedents as
                 trained (on one-hot targets for a classifier). Default ``False``.
             lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
-                least-squares solution of minimum norm.
+                least-squares solution of minimum norm. ``"auto"`` chooses the penalty with
+                the smallest leave-one-out error on the training data.
         """
         super().__init__(
             input_configs=input_configs,
@@ -288,7 +289,7 @@ class DombiTSKRegressor(_BaseRegressorEstimator):
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
         use_lse: bool = False,
-        lse_ridge: float = 0.0,
+        lse_ridge: float | str = 0.0,
     ) -> None:
         """Initialise a DombiTSK regressor.
 
@@ -337,7 +338,8 @@ class DombiTSKRegressor(_BaseRegressorEstimator):
                 their least-squares solution on the training data, with the antecedents as
                 trained (on one-hot targets for a classifier). Default ``False``.
             lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
-                least-squares solution of minimum norm.
+                least-squares solution of minimum norm. ``"auto"`` chooses the penalty with
+                the smallest leave-one-out error on the training data.
         """
         super().__init__(
             input_configs=input_configs,
@@ -466,7 +468,7 @@ class ADMTSKClassifier(_ADMTSKMembership, _BaseClassifierEstimator):
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
         use_lse: bool = False,
-        lse_ridge: float = 0.0,
+        lse_ridge: float | str = 0.0,
         membership: str = "composite",
     ) -> None:
         """Initialize an ADMTSK classifier estimator.
@@ -526,7 +528,8 @@ class ADMTSKClassifier(_ADMTSKMembership, _BaseClassifierEstimator):
                 their least-squares solution on the training data, with the antecedents as
                 trained (on one-hot targets for a classifier). Default ``False``.
             lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
-                least-squares solution of minimum norm.
+                least-squares solution of minimum norm. ``"auto"`` chooses the penalty with
+                the smallest leave-one-out error on the training data.
             membership: Membership function of the fuzzy sets, among the three that the
                 source article compares. ``"composite"`` (default) is its composite
                 Gaussian function, whose lower bound is ``1/e``; ``"extended"`` is the
@@ -672,7 +675,7 @@ class ADMTSKRegressor(_ADMTSKMembership, _BaseRegressorEstimator):
         scheduler_class: type[Any] | None = None,
         scheduler_params: Mapping[str, Any] | None = None,
         use_lse: bool = False,
-        lse_ridge: float = 0.0,
+        lse_ridge: float | str = 0.0,
         membership: str = "composite",
     ) -> None:
         """Initialize an ADMTSK regressor estimator.
@@ -731,7 +734,8 @@ class ADMTSKRegressor(_ADMTSKMembership, _BaseRegressorEstimator):
                 their least-squares solution on the training data, with the antecedents as
                 trained (on one-hot targets for a classifier). Default ``False``.
             lse_ridge: Ridge penalty of that solution. ``0.0`` (default) gives the
-                least-squares solution of minimum norm.
+                least-squares solution of minimum norm. ``"auto"`` chooses the penalty with
+                the smallest leave-one-out error on the training data.
             membership: Membership function of the fuzzy sets, among the three that the
                 source article compares. ``"composite"`` (default) is its composite
                 Gaussian function, whose lower bound is ``1/e``; ``"extended"`` is the

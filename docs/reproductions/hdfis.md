@@ -55,10 +55,10 @@ HDFISMinClassifier
   defuzzifier        SumBasedDefuzzifier
   consequents        ClassificationConsequentLayer
   parameters         42780 trainable (0 antecedent, 42780 consequent)
-Training
-  batch size         64
-  epochs             0 epochs, learning rate 0.01
-  least squares      consequents solved at the end, ridge 0, training error 0.0000
+Training (batch size 64)
+  phase     epochs  rate
+  training       0  0.01
+  least squares: consequents solved at the end, ridge 0, training error 0.0000
 ```
 
 The article reports standard deviations of 7.08 and 7.14 on Colon and of 1.82 on
