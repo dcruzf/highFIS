@@ -193,10 +193,12 @@ class FSREADATSKClassifierModel(_FSREADATSKMixin, BaseTSKClassifierModel):
         self.rule_layer = AdaSoftminRuleLayer(
             self.input_names,
             [len(input_mfs[name]) for name in self.input_names],
-            rules=rules if not self.use_en_frb else None,
+            rules=rules if rules is not None or not self.use_en_frb else None,
             rule_base="en" if self.use_en_frb else rule_base,
             eps=self.eps,
         )
+        if rule_base == "en" or self.use_en_frb:
+            self.rule_base_name = "en"
         self.n_rules = self.rule_layer.n_rules
         self.consequent_layer = self._build_consequent_layer()
 
@@ -216,6 +218,7 @@ class FSREADATSKClassifierModel(_FSREADATSKMixin, BaseTSKClassifierModel):
 
     def expand_to_en_frb(self) -> None:
         """Switch the rule layer to an Enhanced Fuzzy Rule Base for RE phase."""
+        self.rule_base_name = "en"
         self.rule_layer = AdaSoftminRuleLayer(
             self.input_names,
             [len(self.input_mfs[name]) for name in self.input_names],
@@ -334,10 +337,12 @@ class FSREADATSKRegressorModel(_FSREADATSKMixin, BaseTSKRegressorModel):
         self.rule_layer = AdaSoftminRuleLayer(
             self.input_names,
             [len(input_mfs[name]) for name in self.input_names],
-            rules=rules if not self.use_en_frb else None,
+            rules=rules if rules is not None or not self.use_en_frb else None,
             rule_base="en" if self.use_en_frb else rule_base,
             eps=self.eps,
         )
+        if rule_base == "en" or self.use_en_frb:
+            self.rule_base_name = "en"
         self.n_rules = self.rule_layer.n_rules
         self.consequent_layer = self._build_consequent_layer()
 
@@ -355,6 +360,7 @@ class FSREADATSKRegressorModel(_FSREADATSKMixin, BaseTSKRegressorModel):
 
     def expand_to_en_frb(self) -> None:
         """Switch the rule layer to an Enhanced Fuzzy Rule Base for RE phase."""
+        self.rule_base_name = "en"
         self.rule_layer = AdaSoftminRuleLayer(
             self.input_names,
             [len(self.input_mfs[name]) for name in self.input_names],
