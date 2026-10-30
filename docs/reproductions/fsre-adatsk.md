@@ -50,7 +50,7 @@ Summary of the last model fitted
 FSREADATSKClassifier
   task               classification, 2 classes
   features           44 seen in fit, 3 used by the model
-  rules              5 (rule base: coco)
+  rules              5 (rule base: en)
   fuzzy sets         5 per feature, ADATSKGaussianMF
   firing strength    AdaSoftminRuleLayer
   defuzzifier        SoftmaxLogDefuzzifier

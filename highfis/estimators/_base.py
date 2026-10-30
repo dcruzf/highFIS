@@ -1656,6 +1656,8 @@ class _BaseClassifierEstimator(ClassifierMixin, _BaseTSKEstimator):  # type: ign
         self.learning_rate_ = self._resolve_learning_rate(int(x_t.shape[1]))
         _trainer = self.trainer if self.trainer is not None else self._get_trainer()
         self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
+        # A family can replace its rule base during training; what was used is what it ended with.
+        self.rule_base_ = getattr(self.model_, "rule_base_name", self.rule_base_)
         self._solve_consequents(x_t, y_t)
         self._check_firing(x_arr)
         return self
@@ -1869,6 +1871,8 @@ class _BaseRegressorEstimator(RegressorMixin, _BaseTSKEstimator):  # type: ignor
         self.learning_rate_ = self._resolve_learning_rate(int(x_t.shape[1]))
         _trainer = self.trainer if self.trainer is not None else self._get_trainer()
         self.history_ = _trainer.fit(self.model_, x_t, y_t, x_val=x_val_t, y_val=y_val_t, metrics=metrics)
+        # A family can replace its rule base during training; what was used is what it ended with.
+        self.rule_base_ = getattr(self.model_, "rule_base_name", self.rule_base_)
         self._solve_consequents(x_t, y_t)
         self._check_firing(x_arr)
         return self
