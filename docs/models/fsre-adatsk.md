@@ -207,8 +207,9 @@ Remaining differences:
   of 0.977 with about 19 genes and 20 rules, against 0.967, 12.3 and 4.2 in the article,
   which uses other thresholds and numbers of fuzzy sets there (see the two points above).
 - **The regressor is an extension.** The article only treats classification.
-  `FSREADATSKRegressor` shares the defaults above and starts every rule from the mean of
-  the target. On the Friedman-1 problem it reaches an R² of about 0.71 with four
+  `FSREADATSKRegressor` shares the defaults above and starts the feature selection from
+  the mean of the target; the rule extraction starts from zero, on a new consequent
+  layer. On the Friedman-1 problem it reaches an R² of about 0.71 with four
   informative features and two or three rules, against 0.62 for ridge regression; it has
   no published result to be checked against. It is trained with plain gradient descent,
   so scale the target as well as the inputs: with an unscaled target the training can

@@ -310,8 +310,10 @@ def summary(estimator: Any, digits: int = 4, width: int = 80) -> Report:
         rule_layer = f"RuleLayer, T-norm {getattr(t_norm, '__name__', type(t_norm).__name__)}"
 
     # The rule base asked for, when one was named: a gated family prunes it during ``fit``.
+    # FSRE-ADATSK replaces it during ``fit``, and the model records the one it ended with.
     asked = getattr(estimator, "rule_base", None)
     rule_base = asked if isinstance(asked, str) else getattr(estimator, "rule_base_", "unknown")
+    rule_base = getattr(model, "rule_base_name", rule_base)
 
     def count(module: Any) -> int:
         return sum(p.numel() for p in module.parameters() if p.requires_grad)
