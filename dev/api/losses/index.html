@@ -26,7 +26,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="zensical-0.0.70">
+      <meta name="generator" content="zensical-0.0.73">
     
     
       
@@ -37,7 +37,7 @@
       
         
       
-      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.e442bf79.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/modern/main.4ab2de0c.min.css">
       
         
           
@@ -109,9 +109,10 @@
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 5v16M20.001 19A2 2 0 0 0 22 17V5a2 2 0 0 0-1.999-2L16 3.002A5 5 0 0 0 12 5a5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 1.999 2H8a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/></svg>
 
     </a>
-    <label class="md-header__button md-icon" for="__drawer" aria-label="Navigation">
+    <label class="md-header__button md-icon" for="__drawer">
       
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+      <span class="md-visually-hidden">Navigation</span>
     </label>
     <div class="md-header__title" data-md-component="header-title">
       <div class="md-header__ellipsis">
@@ -163,9 +164,10 @@
     
       
       
-        <label class="md-header__button md-icon" for="__search" aria-label="Search">
+        <label class="md-header__button md-icon" for="__search">
           
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <span class="md-visually-hidden">Search</span>
         </label>
         <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
   <button type="button" class="md-search__button">
@@ -1657,39 +1659,39 @@ loss, which for classifiers means comparing the outputs with one-hot targets.</p
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>highfis/losses.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-18">18</a></span>
-<span class="normal"><a href="#__codelineno-0-19">19</a></span>
-<span class="normal"><a href="#__codelineno-0-20">20</a></span>
-<span class="normal"><a href="#__codelineno-0-21">21</a></span>
-<span class="normal"><a href="#__codelineno-0-22">22</a></span>
-<span class="normal"><a href="#__codelineno-0-23">23</a></span>
-<span class="normal"><a href="#__codelineno-0-24">24</a></span>
-<span class="normal"><a href="#__codelineno-0-25">25</a></span>
-<span class="normal"><a href="#__codelineno-0-26">26</a></span>
-<span class="normal"><a href="#__codelineno-0-27">27</a></span>
-<span class="normal"><a href="#__codelineno-0-28">28</a></span>
-<span class="normal"><a href="#__codelineno-0-29">29</a></span>
-<span class="normal"><a href="#__codelineno-0-30">30</a></span>
-<span class="normal"><a href="#__codelineno-0-31">31</a></span>
-<span class="normal"><a href="#__codelineno-0-32">32</a></span>
-<span class="normal"><a href="#__codelineno-0-33">33</a></span>
-<span class="normal"><a href="#__codelineno-0-34">34</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18"></a><span class="k">class</span><span class="w"> </span><span class="nc">HalfSumSquaredErrorLoss</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span><span class="p">):</span>
-</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19"></a><span class="w">    </span><span class="sa">r</span><span class="sd">"""Squared error summed over the outputs, averaged over the samples and halved.</span>
-</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20"></a>
-</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21"></a><span class="sd">    $$E = \frac{1}{2N} \sum_{n=1}^{N} \sum_{c=1}^{C} (y_{n,c} - z_{n,c})^2$$</span>
-</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22"></a>
-</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23"></a><span class="sd">    This is the loss of the DG-TSK reference implementation and of the DG-ALETSK article</span>
-</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24"></a><span class="sd">    (Eq. (28)). ``torch.nn.MSELoss`` also divides by the number of outputs ``C``, so the</span>
-</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25"></a><span class="sd">    two differ by the factor ``C / 2``: with three classes its gradient is 1.5 times</span>
-</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26"></a><span class="sd">    smaller.</span>
-</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27"></a>
-</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28"></a><span class="sd">    It subclasses ``MSELoss`` so that the trainers keep treating it as a squared-error</span>
-</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29"></a><span class="sd">    loss, which for classifiers means comparing the outputs with one-hot targets.</span>
-</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30"></a><span class="sd">    """</span>
-</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31"></a>
-</span><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
-</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33"></a><span class="w">        </span><span class="sd">"""Return ``sum((input - target) ** 2) / (2 * N)`` for a batch of ``N`` samples."""</span>
-</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34"></a>        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="nb">input</span> <span class="o">-</span> <span class="n">target</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="nb">input</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-18">18</a></span>
+<span class="normal"><a href="#highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-19">19</a></span>
+<span class="normal"><a href="#highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-20">20</a></span>
+<span class="normal"><a href="#highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-21">21</a></span>
+<span class="normal"><a href="#highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-22">22</a></span>
+<span class="normal"><a href="#highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-23">23</a></span>
+<span class="normal"><a href="#highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-24">24</a></span>
+<span class="normal"><a href="#highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-25">25</a></span>
+<span class="normal"><a href="#highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-26">26</a></span>
+<span class="normal"><a href="#highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-27">27</a></span>
+<span class="normal"><a href="#highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-28">28</a></span>
+<span class="normal"><a href="#highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-29">29</a></span>
+<span class="normal"><a href="#highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-30">30</a></span>
+<span class="normal"><a href="#highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-31">31</a></span>
+<span class="normal"><a href="#highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-32">32</a></span>
+<span class="normal"><a href="#highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-33">33</a></span>
+<span class="normal"><a href="#highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-34">34</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="highfis.losses.HalfSumSquaredErrorLoss--source--__span-0-18"><a id="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-18" name="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-18"></a><span class="k">class</span><span class="w"> </span><span class="nc">HalfSumSquaredErrorLoss</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span><span class="p">):</span>
+</span><span id="highfis.losses.HalfSumSquaredErrorLoss--source--__span-0-19"><a id="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-19" name="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-19"></a><span class="w">    </span><span class="sa">r</span><span class="sd">"""Squared error summed over the outputs, averaged over the samples and halved.</span>
+</span><span id="highfis.losses.HalfSumSquaredErrorLoss--source--__span-0-20"><a id="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-20" name="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-20"></a>
+</span><span id="highfis.losses.HalfSumSquaredErrorLoss--source--__span-0-21"><a id="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-21" name="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-21"></a><span class="sd">    $$E = \frac{1}{2N} \sum_{n=1}^{N} \sum_{c=1}^{C} (y_{n,c} - z_{n,c})^2$$</span>
+</span><span id="highfis.losses.HalfSumSquaredErrorLoss--source--__span-0-22"><a id="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-22" name="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-22"></a>
+</span><span id="highfis.losses.HalfSumSquaredErrorLoss--source--__span-0-23"><a id="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-23" name="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-23"></a><span class="sd">    This is the loss of the DG-TSK reference implementation and of the DG-ALETSK article</span>
+</span><span id="highfis.losses.HalfSumSquaredErrorLoss--source--__span-0-24"><a id="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-24" name="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-24"></a><span class="sd">    (Eq. (28)). ``torch.nn.MSELoss`` also divides by the number of outputs ``C``, so the</span>
+</span><span id="highfis.losses.HalfSumSquaredErrorLoss--source--__span-0-25"><a id="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-25" name="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-25"></a><span class="sd">    two differ by the factor ``C / 2``: with three classes its gradient is 1.5 times</span>
+</span><span id="highfis.losses.HalfSumSquaredErrorLoss--source--__span-0-26"><a id="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-26" name="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-26"></a><span class="sd">    smaller.</span>
+</span><span id="highfis.losses.HalfSumSquaredErrorLoss--source--__span-0-27"><a id="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-27" name="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-27"></a>
+</span><span id="highfis.losses.HalfSumSquaredErrorLoss--source--__span-0-28"><a id="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-28" name="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-28"></a><span class="sd">    It subclasses ``MSELoss`` so that the trainers keep treating it as a squared-error</span>
+</span><span id="highfis.losses.HalfSumSquaredErrorLoss--source--__span-0-29"><a id="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-29" name="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-29"></a><span class="sd">    loss, which for classifiers means comparing the outputs with one-hot targets.</span>
+</span><span id="highfis.losses.HalfSumSquaredErrorLoss--source--__span-0-30"><a id="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-30" name="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-30"></a><span class="sd">    """</span>
+</span><span id="highfis.losses.HalfSumSquaredErrorLoss--source--__span-0-31"><a id="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-31" name="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-31"></a>
+</span><span id="highfis.losses.HalfSumSquaredErrorLoss--source--__span-0-32"><a id="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-32" name="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-32"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+</span><span id="highfis.losses.HalfSumSquaredErrorLoss--source--__span-0-33"><a id="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-33" name="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-33"></a><span class="w">        </span><span class="sd">"""Return ``sum((input - target) ** 2) / (2 * N)`` for a batch of ``N`` samples."""</span>
+</span><span id="highfis.losses.HalfSumSquaredErrorLoss--source--__span-0-34"><a id="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-34" name="highfis.losses.HalfSumSquaredErrorLoss--source--__codelineno-0-34"></a>        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="nb">input</span> <span class="o">-</span> <span class="n">target</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="nb">input</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 </span></code></pre></div></td></tr></table></div>
               </details>
 
@@ -1722,11 +1724,11 @@ loss, which for classifiers means comparing the outputs with one-hot targets.</p
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>highfis/losses.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-32">32</a></span>
-<span class="normal"><a href="#__codelineno-0-33">33</a></span>
-<span class="normal"><a href="#__codelineno-0-34">34</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-32"><a id="__codelineno-0-32" name="__codelineno-0-32"></a><span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
-</span><span id="__span-0-33"><a id="__codelineno-0-33" name="__codelineno-0-33"></a><span class="w">    </span><span class="sd">"""Return ``sum((input - target) ** 2) / (2 * N)`` for a batch of ``N`` samples."""</span>
-</span><span id="__span-0-34"><a id="__codelineno-0-34" name="__codelineno-0-34"></a>    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="nb">input</span> <span class="o">-</span> <span class="n">target</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="nb">input</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#highfis.losses.HalfSumSquaredErrorLoss.forward--source--__codelineno-0-32">32</a></span>
+<span class="normal"><a href="#highfis.losses.HalfSumSquaredErrorLoss.forward--source--__codelineno-0-33">33</a></span>
+<span class="normal"><a href="#highfis.losses.HalfSumSquaredErrorLoss.forward--source--__codelineno-0-34">34</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="highfis.losses.HalfSumSquaredErrorLoss.forward--source--__span-0-32"><a id="highfis.losses.HalfSumSquaredErrorLoss.forward--source--__codelineno-0-32" name="highfis.losses.HalfSumSquaredErrorLoss.forward--source--__codelineno-0-32"></a><span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+</span><span id="highfis.losses.HalfSumSquaredErrorLoss.forward--source--__span-0-33"><a id="highfis.losses.HalfSumSquaredErrorLoss.forward--source--__codelineno-0-33" name="highfis.losses.HalfSumSquaredErrorLoss.forward--source--__codelineno-0-33"></a><span class="w">    </span><span class="sd">"""Return ``sum((input - target) ** 2) / (2 * N)`` for a batch of ``N`` samples."""</span>
+</span><span id="highfis.losses.HalfSumSquaredErrorLoss.forward--source--__span-0-34"><a id="highfis.losses.HalfSumSquaredErrorLoss.forward--source--__codelineno-0-34" name="highfis.losses.HalfSumSquaredErrorLoss.forward--source--__codelineno-0-34"></a>    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="nb">input</span> <span class="o">-</span> <span class="n">target</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="nb">input</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -1775,37 +1777,37 @@ loss, which for classifiers means comparing the outputs with one-hot targets.</p
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>highfis/losses.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-37">37</a></span>
-<span class="normal"><a href="#__codelineno-0-38">38</a></span>
-<span class="normal"><a href="#__codelineno-0-39">39</a></span>
-<span class="normal"><a href="#__codelineno-0-40">40</a></span>
-<span class="normal"><a href="#__codelineno-0-41">41</a></span>
-<span class="normal"><a href="#__codelineno-0-42">42</a></span>
-<span class="normal"><a href="#__codelineno-0-43">43</a></span>
-<span class="normal"><a href="#__codelineno-0-44">44</a></span>
-<span class="normal"><a href="#__codelineno-0-45">45</a></span>
-<span class="normal"><a href="#__codelineno-0-46">46</a></span>
-<span class="normal"><a href="#__codelineno-0-47">47</a></span>
-<span class="normal"><a href="#__codelineno-0-48">48</a></span>
-<span class="normal"><a href="#__codelineno-0-49">49</a></span>
-<span class="normal"><a href="#__codelineno-0-50">50</a></span>
-<span class="normal"><a href="#__codelineno-0-51">51</a></span>
-<span class="normal"><a href="#__codelineno-0-52">52</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-37"><a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="k">class</span><span class="w"> </span><span class="nc">SumSquaredErrorLoss</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span><span class="p">):</span>
-</span><span id="__span-0-38"><a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="w">    </span><span class="sa">r</span><span class="sd">"""Squared error summed over the outputs and averaged over the samples.</span>
-</span><span id="__span-0-39"><a id="__codelineno-0-39" name="__codelineno-0-39"></a>
-</span><span id="__span-0-40"><a id="__codelineno-0-40" name="__codelineno-0-40"></a><span class="sd">    $$E = \frac{1}{N} \sum_{n=1}^{N} \sum_{c=1}^{C} (y_{n,c} - z_{n,c})^2$$</span>
-</span><span id="__span-0-41"><a id="__codelineno-0-41" name="__codelineno-0-41"></a>
-</span><span id="__span-0-42"><a id="__codelineno-0-42" name="__codelineno-0-42"></a><span class="sd">    This is the error function behind the gradients of the FSRE-ADATSK article (after its</span>
-</span><span id="__span-0-43"><a id="__codelineno-0-43" name="__codelineno-0-43"></a><span class="sd">    Eq. (8)). It is ``C`` times ``torch.nn.MSELoss`` for ``C`` outputs, so with three</span>
-</span><span id="__span-0-44"><a id="__codelineno-0-44" name="__codelineno-0-44"></a><span class="sd">    classes its gradient is three times larger. For a single output the two coincide.</span>
-</span><span id="__span-0-45"><a id="__codelineno-0-45" name="__codelineno-0-45"></a>
-</span><span id="__span-0-46"><a id="__codelineno-0-46" name="__codelineno-0-46"></a><span class="sd">    It subclasses ``MSELoss`` so that the trainers keep treating it as a squared-error</span>
-</span><span id="__span-0-47"><a id="__codelineno-0-47" name="__codelineno-0-47"></a><span class="sd">    loss, which for classifiers means comparing the outputs with one-hot targets.</span>
-</span><span id="__span-0-48"><a id="__codelineno-0-48" name="__codelineno-0-48"></a><span class="sd">    """</span>
-</span><span id="__span-0-49"><a id="__codelineno-0-49" name="__codelineno-0-49"></a>
-</span><span id="__span-0-50"><a id="__codelineno-0-50" name="__codelineno-0-50"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
-</span><span id="__span-0-51"><a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="w">        </span><span class="sd">"""Return ``sum((input - target) ** 2) / N`` for a batch of ``N`` samples."""</span>
-</span><span id="__span-0-52"><a id="__codelineno-0-52" name="__codelineno-0-52"></a>        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="nb">input</span> <span class="o">-</span> <span class="n">target</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="nb">input</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-37">37</a></span>
+<span class="normal"><a href="#highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-38">38</a></span>
+<span class="normal"><a href="#highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-39">39</a></span>
+<span class="normal"><a href="#highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-40">40</a></span>
+<span class="normal"><a href="#highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-41">41</a></span>
+<span class="normal"><a href="#highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-42">42</a></span>
+<span class="normal"><a href="#highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-43">43</a></span>
+<span class="normal"><a href="#highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-44">44</a></span>
+<span class="normal"><a href="#highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-45">45</a></span>
+<span class="normal"><a href="#highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-46">46</a></span>
+<span class="normal"><a href="#highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-47">47</a></span>
+<span class="normal"><a href="#highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-48">48</a></span>
+<span class="normal"><a href="#highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-49">49</a></span>
+<span class="normal"><a href="#highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-50">50</a></span>
+<span class="normal"><a href="#highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-51">51</a></span>
+<span class="normal"><a href="#highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-52">52</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="highfis.losses.SumSquaredErrorLoss--source--__span-0-37"><a id="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-37" name="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-37"></a><span class="k">class</span><span class="w"> </span><span class="nc">SumSquaredErrorLoss</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">MSELoss</span><span class="p">):</span>
+</span><span id="highfis.losses.SumSquaredErrorLoss--source--__span-0-38"><a id="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-38" name="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-38"></a><span class="w">    </span><span class="sa">r</span><span class="sd">"""Squared error summed over the outputs and averaged over the samples.</span>
+</span><span id="highfis.losses.SumSquaredErrorLoss--source--__span-0-39"><a id="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-39" name="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-39"></a>
+</span><span id="highfis.losses.SumSquaredErrorLoss--source--__span-0-40"><a id="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-40" name="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-40"></a><span class="sd">    $$E = \frac{1}{N} \sum_{n=1}^{N} \sum_{c=1}^{C} (y_{n,c} - z_{n,c})^2$$</span>
+</span><span id="highfis.losses.SumSquaredErrorLoss--source--__span-0-41"><a id="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-41" name="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-41"></a>
+</span><span id="highfis.losses.SumSquaredErrorLoss--source--__span-0-42"><a id="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-42" name="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-42"></a><span class="sd">    This is the error function behind the gradients of the FSRE-ADATSK article (after its</span>
+</span><span id="highfis.losses.SumSquaredErrorLoss--source--__span-0-43"><a id="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-43" name="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-43"></a><span class="sd">    Eq. (8)). It is ``C`` times ``torch.nn.MSELoss`` for ``C`` outputs, so with three</span>
+</span><span id="highfis.losses.SumSquaredErrorLoss--source--__span-0-44"><a id="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-44" name="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-44"></a><span class="sd">    classes its gradient is three times larger. For a single output the two coincide.</span>
+</span><span id="highfis.losses.SumSquaredErrorLoss--source--__span-0-45"><a id="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-45" name="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-45"></a>
+</span><span id="highfis.losses.SumSquaredErrorLoss--source--__span-0-46"><a id="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-46" name="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-46"></a><span class="sd">    It subclasses ``MSELoss`` so that the trainers keep treating it as a squared-error</span>
+</span><span id="highfis.losses.SumSquaredErrorLoss--source--__span-0-47"><a id="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-47" name="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-47"></a><span class="sd">    loss, which for classifiers means comparing the outputs with one-hot targets.</span>
+</span><span id="highfis.losses.SumSquaredErrorLoss--source--__span-0-48"><a id="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-48" name="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-48"></a><span class="sd">    """</span>
+</span><span id="highfis.losses.SumSquaredErrorLoss--source--__span-0-49"><a id="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-49" name="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-49"></a>
+</span><span id="highfis.losses.SumSquaredErrorLoss--source--__span-0-50"><a id="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-50" name="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-50"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+</span><span id="highfis.losses.SumSquaredErrorLoss--source--__span-0-51"><a id="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-51" name="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-51"></a><span class="w">        </span><span class="sd">"""Return ``sum((input - target) ** 2) / N`` for a batch of ``N`` samples."""</span>
+</span><span id="highfis.losses.SumSquaredErrorLoss--source--__span-0-52"><a id="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-52" name="highfis.losses.SumSquaredErrorLoss--source--__codelineno-0-52"></a>        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="nb">input</span> <span class="o">-</span> <span class="n">target</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="nb">input</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 </span></code></pre></div></td></tr></table></div>
               </details>
 
@@ -1838,11 +1840,11 @@ loss, which for classifiers means comparing the outputs with one-hot targets.</p
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>highfis/losses.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-50">50</a></span>
-<span class="normal"><a href="#__codelineno-0-51">51</a></span>
-<span class="normal"><a href="#__codelineno-0-52">52</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="__span-0-50"><a id="__codelineno-0-50" name="__codelineno-0-50"></a><span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
-</span><span id="__span-0-51"><a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="w">    </span><span class="sd">"""Return ``sum((input - target) ** 2) / N`` for a batch of ``N`` samples."""</span>
-</span><span id="__span-0-52"><a id="__codelineno-0-52" name="__codelineno-0-52"></a>    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="nb">input</span> <span class="o">-</span> <span class="n">target</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="nb">input</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#highfis.losses.SumSquaredErrorLoss.forward--source--__codelineno-0-50">50</a></span>
+<span class="normal"><a href="#highfis.losses.SumSquaredErrorLoss.forward--source--__codelineno-0-51">51</a></span>
+<span class="normal"><a href="#highfis.losses.SumSquaredErrorLoss.forward--source--__codelineno-0-52">52</a></span></pre></div></td><td class="code"><div><pre><span></span><code><span id="highfis.losses.SumSquaredErrorLoss.forward--source--__span-0-50"><a id="highfis.losses.SumSquaredErrorLoss.forward--source--__codelineno-0-50" name="highfis.losses.SumSquaredErrorLoss.forward--source--__codelineno-0-50"></a><span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">input</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tensor</span><span class="p">:</span>
+</span><span id="highfis.losses.SumSquaredErrorLoss.forward--source--__span-0-51"><a id="highfis.losses.SumSquaredErrorLoss.forward--source--__codelineno-0-51" name="highfis.losses.SumSquaredErrorLoss.forward--source--__codelineno-0-51"></a><span class="w">    </span><span class="sd">"""Return ``sum((input - target) ** 2) / N`` for a batch of ``N`` samples."""</span>
+</span><span id="highfis.losses.SumSquaredErrorLoss.forward--source--__span-0-52"><a id="highfis.losses.SumSquaredErrorLoss.forward--source--__codelineno-0-52" name="highfis.losses.SumSquaredErrorLoss.forward--source--__codelineno-0-52"></a>    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="nb">input</span> <span class="o">-</span> <span class="n">target</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="nb">input</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 </span></code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -1995,7 +1997,7 @@ loss, which for classifiers means comparing the outputs with one-hot targets.</p
       <script id="__config" type="application/json">{"annotate":null,"base":"../..","features":["announce.dismiss","content.action.view","content.code.annotate","content.code.copy","content.code.select","content.footnote.tooltips","content.tabs.link","content.tooltips","navigation.expand","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.instant.progress","navigation.path","navigation.prune","navigation.sections","navigation.tabs","navigation.tabs.sticky","navigation.top","navigation.tracking","search.highlight","toc.follow","toc.integrate"],"redirect":null,"search":"../../assets/javascripts/workers/search.c47bb847.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","clipboard.error":"Could not copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":{"provider":"mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.a2388154.min.js"></script>
+      <script src="../../assets/javascripts/bundle.77dd0ce9.min.js"></script>
       
         <script src="../../javascripts/mathjax.js"></script>
       
